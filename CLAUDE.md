@@ -129,6 +129,15 @@ breaks the dollars-to-density encoding.
 
 ## Data lineage
 
+- **Budget data is explicitly DOWNSTREAM of ~/BudgetPrimerFinal**: the
+  Act 175 extracts (departments + summary stats) are snapshotted into
+  data/raw/ by `tools/sync_primer.py`, which rebuilds budget.json. A
+  post-commit hook inside BudgetPrimerFinal (`.git/hooks/post-commit`,
+  installed by `sync_primer.py --install-hook`, chained by the global
+  ~/.config/git-hooks dispatcher) re-runs the sync with `--commit`
+  whenever a commit there touches those extracts — updates flow here
+  automatically. Hooks aren't tracked: re-run `--install-hook` if
+  BudgetPrimerFinal is ever recloned. Log: ~/.config/capitol-quest-sync.log.
 - `data/island_outline.geojson` ← ~/Mahele-Atlas (Oʻahu coastline)
 - `data/rail_alignment.geojson`, `data/stations.geojson` ← ~/Revenue-Modeling-TOD
 - Road density reads `~/Revenue-Modeling-TOD/data/raw/road_centerlines.geojson`
