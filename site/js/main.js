@@ -87,12 +87,32 @@ function buildRadialFlow(cfg) {
       class: "spoke", d: `M${sx},${sy} Q${mx},${my} ${nx},${ny}`,
     }));
 
-    const node = mk("circle", { class: "node", cx: nx, cy: ny, r });
+    const node = mk("circle", {
+      class: "node" + (n.onClick ? " drill" : ""), cx: nx, cy: ny, r,
+    });
+    // two label lines — name on top, dollar amount beneath
+    const above = Math.sin(a) < -0.25;
     const label = mk("text", {
-      class: "code", x: nx,
-      y: ny + (Math.sin(a) < -0.25 ? -r - 6 : r + 11),
+      class: "code", x: nx, y: ny + (above ? -r - (n.sub ? 17 : 6) : r + 11),
     });
     label.textContent = n.label;
+    nodeG.append(node, label);
+    if (n.sub) {
+      const sub = mk("text", {
+        class: "subv", x: nx, y: ny + (above ? -r - 6 : r + 22),
+      });
+      sub.textContent = n.sub;
+      nodeG.append(sub);
+    }
+    // emoji badge inside the circle, when the circle is big enough
+    if (n.icon && r >= 6.5) {
+      const ic = mk("text", {
+        class: "icon", x: nx, y: ny,
+        "font-size": Math.max(10, Math.round(r * 1.3)),
+      });
+      ic.textContent = n.icon;
+      nodeG.append(ic);
+    }
     const show = () => {
       for (const el of nodeG.querySelectorAll(".node"))
         el.classList.remove("sel");
@@ -103,8 +123,8 @@ function buildRadialFlow(cfg) {
     node.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       show();
+      if (n.onClick) n.onClick();
     });
-    nodeG.append(node, label);
 
     const dist = Math.hypot(nx - sx, ny - sy);
     const hub = [sx, sy], rim = [nx, ny];
@@ -149,6 +169,9 @@ function buildRadialFlow(cfg) {
           m.free = false;
           m.s = s;
           m.t = 0;
+          // scatter: lateral spread for views with few, high-rate spokes
+          m.ox = cfg.scatter ? (Math.random() * 2 - 1) * cfg.scatter : 0;
+          m.oy = cfg.scatter ? (Math.random() * 2 - 1) * cfg.scatter : 0;
           m.el.setAttribute("fill", s.color);
         }
       }
@@ -162,8 +185,10 @@ function buildRadialFlow(cfg) {
         }
         const t = m.t, u = 1 - t;
         const [ax, ay] = m.s.p0, [bx, by] = m.s.p1, [cx2, cy2] = m.s.p2;
-        m.el.setAttribute("cx", u * u * ax + 2 * u * t * bx + t * t * cx2);
-        m.el.setAttribute("cy", u * u * ay + 2 * u * t * by + t * t * cy2);
+        m.el.setAttribute(
+          "cx", u * u * ax + 2 * u * t * bx + t * t * cx2 + m.ox);
+        m.el.setAttribute(
+          "cy", u * u * ay + 2 * u * t * by + t * t * cy2 + m.oy);
         m.el.setAttribute("opacity", 0.95 * Math.sin(Math.PI * t));
       }
     }
@@ -187,19 +212,33 @@ const MoneyPanel = {
     const overlay = $("money-overlay");
 
     const views = {
-      revenue: { el: $("mv-revenue"), tab: $("mt-revenue"),
-                 title: "Revenue Mix · FY" + revenue.fy },
+      revenue: { el: $("mv-revenue"), tab: $("mt-revenue") },
       budget: { el: $("mv-budget"), tab: $("mt-budget"),
                 title: "State Budget · FY" + budget.fy },
     };
     let cur = "revenue";
+    // money-in is two screens deep: the funding mix first, then a drill
+    // into the taxes that fill the general fund
+    let revSub = "sources";
+    const subTitles = {
+      sources: "Money In · FY" + budget.fy,
+      taxes: "Revenue Mix · FY" + revenue.fy,
+    };
+    const setSub = (s) => {
+      revSub = s;
+      $("rv-sources").classList.toggle("hidden", s !== "sources");
+      $("rv-taxes").classList.toggle("hidden", s !== "taxes");
+      if (cur === "revenue")
+        $("money-title").textContent = subTitles[s];
+    };
     const setView = (v) => {
       cur = v;
       for (const k in views) {
         views[k].el.classList.toggle("hidden", k !== v);
         views[k].tab.classList.toggle("on", k === v);
       }
-      $("money-title").textContent = views[v].title;
+      if (v === "revenue") setSub("sources");   // always land on the split
+      else $("money-title").textContent = views[v].title;
     };
     for (const k in views) {
       views[k].tab.addEventListener("pointerdown", (e) => {
@@ -241,13 +280,88 @@ const MoneyPanel = {
         btn.textContent = listOn ? "▤ List" : "◎ Map";
       });
     };
-    const activeWhen = (viewKey, mapId) => () =>
-      !overlay.classList.contains("hidden") && cur === viewKey &&
-      !$(mapId).classList.contains("hidden");
+    // a map animates only while actually on screen — offsetParent is
+    // null whenever the overlay, tab, sub-view or List toggle hides it
+    const activeWhen = (mapId) => () => $(mapId).offsetParent !== null;
 
+    this.buildSources(budget, $, activeWhen, () => setSub("taxes"));
     this.buildBudget(budget, $, wireListToggle, activeWhen);
     this.buildRevenue(revenue, budget, $, wireListToggle, activeWhen);
+    $("rev-back").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      setSub("sources");
+    });
     setView("revenue");
+  },
+
+  /* Money-in landing screen: the three kinds of money that pay for the
+     budget, flowing into the Capitol. The General-funds node drills
+     down into the tax mix. */
+  buildSources(data, $, activeWhen, drill) {
+    const fmt = (v) =>
+      v >= 995e6 ? "$" + (v / 1e9).toFixed(v >= 9.95e9 ? 0 : 1) + "B" :
+      v >= 1e6 ? "$" + Math.round(v / 1e6) + "M" :
+      "$" + Math.round(v / 1e3) + "K";
+    const fed = data.departments.reduce((s, d) => s + d.fed, 0);
+    const other = data.departments.reduce((s, d) => s + d.other, 0);
+    const gf = data.total - fed - other;
+    const pct = (v) => Math.round(100 * v / data.total) + "%";
+
+    const FUNDS = [
+      { name: "General funds", icon: "💰", color: "#e3b64b", amt: gf,
+        onClick: drill,
+        who: "The state's own checkbook, filled almost entirely by the " +
+          "taxes Hawaiʻi collects — GET, income tax and the rest. The " +
+          "Legislature can spend it on anything. Tap the money bag to " +
+          "see the taxes." },
+      { name: "Federal funds", icon: "🦅", color: "#63a6f0", amt: fed,
+        who: "Money from Washington tied to specific programs — the " +
+          "Medicaid match, SNAP, highway and airport aid, disaster " +
+          "relief. It arrives with rules attached, which is why some " +
+          "departments feel federal budget fights." },
+      { name: "All other funds", icon: "🧰", color: "#3fbf92", amt: other,
+        who: "Money earmarked by law before it ever reaches the general " +
+          "fund — special funds like the highway fund, university " +
+          "tuition and harbor fees — plus bond borrowing for " +
+          "construction." },
+    ];
+
+    $("sources-hero").innerHTML =
+      "<b>" + fmt(data.total) + "</b> budget — paid for three ways" +
+      "<small>" + fmt(gf) + " general funds (state taxes — tap to " +
+      "explore) · " + fmt(fed) + " federal · " + fmt(other) +
+      " special funds & bonds</small>";
+
+    $("sources-foot").textContent =
+      "Means of financing for the FY" + data.fy + " budget (operating + " +
+      "capital), all departments. Source: " + data.source + ". General " +
+      "funds are the taxes one screen deeper; federal and other money " +
+      "is spent through the same departments but never passes through " +
+      "the general fund.";
+
+    buildRadialFlow({
+      svg: $("sources-svg"),
+      detail: $("sources-detail"),
+      dir: "in",
+      scatter: 7,                // 3 spokes run hot — spread the beads
+      hubText: fmt(data.total) + " to spend",
+      targetMotes: 110,          // same dollars-per-mote as money out
+      isActive: activeWhen("sources-map"),
+      defaultDetail: '<span class="dim">Three kinds of money pay for ' +
+        "everything the state does. Hover one to see what it is — and " +
+        "tap 💰 General funds to meet the taxes that fill it.</span>",
+      nodes: FUNDS.map((f) => ({
+        label: f.name,
+        sub: fmt(f.amt) + " · " + pct(f.amt),
+        icon: f.icon,
+        total: f.amt,
+        streams: [{ amt: f.amt, color: f.color }],
+        onClick: f.onClick,
+        detail: "<b>" + f.name + "</b> — <b>" + fmt(f.amt) + "</b> · " +
+          pct(f.amt) + " of the budget<br>" +
+          '<span class="dim">' + f.who + "</span>",
+      })),
+    });
   },
 
   buildBudget(data, $, wireListToggle, activeWhen) {
@@ -301,12 +415,13 @@ const MoneyPanel = {
       dir: "out",
       hubText: fmt(data.total) + " appropriated",
       targetMotes: 110,          // steady-state, whole diagram
-      isActive: activeWhen("budget", "budget-map"),
+      isActive: activeWhen("budget-map"),
       defaultDetail: '<span class="dim">Hover a department to see its ' +
         "budget and where the money comes from. Gold motes are general " +
         "funds, blue federal, green everything else.</span>",
       nodes: data.departments.map((d) => ({
         label: d.code,
+        sub: fmt(d.total),
         total: d.total,
         streams: [
           { amt: d.gf, color: "#e3b64b" },
@@ -354,6 +469,25 @@ const MoneyPanel = {
     const color = (t) =>
       t.stream === "income" ? "#e3b64b" :
       t.stream === "get" ? "#4fd8c8" : "#3fbf92";
+    // badges for the bigger sources (small nodes skip theirs)
+    const ICON = {
+      "General excise & use (GET)": "🛒",
+      "Individual income tax": "💵",
+      "Transient accommodations (TAT)": "🏨",
+      "County GET surcharge": "🚝",
+      "Estate tax": "🏰",
+      "Corporate income tax": "🏢",
+      "Unemployment insurance": "🛟",
+      "Insurance premiums tax": "☂️",
+      "Fuel taxes": "⛽",
+      "Public service companies": "💡",
+      "Motor vehicle tax & fees": "🚗",
+      "Rental vehicle surcharge": "🚙",
+      "Conveyance tax": "🏠",
+      "Tobacco tax": "🚬",
+      "Liquor tax": "🍺",
+      "All other taxes & fees": "📦",
+    };
 
     const d = data.distribution;
     $("revenue-hero").innerHTML =
@@ -401,13 +535,15 @@ const MoneyPanel = {
       dir: "in",
       hubText: fmtK(data.total) + " collected",
       targetMotes: target,
-      isActive: activeWhen("revenue", "revenue-map"),
+      isActive: activeWhen("revenue-map"),
       defaultDetail: '<span class="dim">Hover a tax to see what it raised ' +
         "and who pays it. Gold motes are the income tax and teal the GET " +
         "— the two streams drawn on the island map — green everything " +
         "else.</span>",
       nodes: data.taxes.map((t) => ({
         label: SHORT[t.name] || t.name.split(" ")[0],
+        sub: fmtK(t.amt),
+        icon: ICON[t.name],
         total: t.amt,
         streams: [{ amt: t.amt, color: color(t) }],
         detail:

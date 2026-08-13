@@ -46,16 +46,19 @@ pays at the register — income tax (the map streams) is only 29%.
 - Data: DOTAX Annual Report FY2024-25, Table 1.8 (all tax types, cash
   collections). `tools/build_revenue.py` parses the PDF table with a
   checksum against the printed $11.46B total → `site/map/revenue.json`.
-- UI (redesigned 2026-08-13): now the **"Money in · Taxes" tab of the
-  combined money overlay** — the same radial mini-map as the budget tab,
-  but reversed: the Capitol sprite at the hub, 16 tax nodes ringed
-  around it (node r ∝ √amount), motes drifting **inward** along the
-  spokes. Gold motes = income tax, teal = GET (matching the two island
-  streams), green = every other tax. Hover/tap a node for the amount,
-  share and who-pays text; a **List** toggle keeps the precise bar view
-  ($11.5B hero with the general-fund/counties/special-funds split, ★ on
-  the two map-drawn taxes). Dollars-per-mote matches the budget tab, so
-  the tax view reads sparser than the $24.8B budget view on purpose.
+- UI (redesigned 2026-08-13): now the **"Money in" tab of the combined
+  money overlay**, two screens deep. It lands on the **funding mix** —
+  General 💰 / Federal 🦅 / Other 🧰 nodes (FY2027 means of financing)
+  flowing into the Capitol — and tapping the pulsing General node
+  drills into the **tax mix**: 16 tax nodes ringed around the Capitol
+  (r ∝ √amount, dollar amount under each label, emoji badges on the
+  major sources 🛒💵🏨🚝🏰🏢), motes drifting **inward**. Gold motes =
+  income tax, teal = GET (matching the two island streams), green =
+  every other tax. Hover/tap a node for the amount, share and who-pays
+  text; "← Funding mix" backs out; a **List** toggle keeps the precise
+  bar view (★ on the two map-drawn taxes). Dollars-per-mote matches the
+  budget tab, so the tax view reads sparser than the $24.8B budget view
+  on purpose.
 
 ## 2b. The GET map layer — ✅ shipped
 

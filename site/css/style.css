@@ -203,6 +203,14 @@ html, body {
 }
 .mview.hidden { display: none; }
 
+/* money-in sub-views: funding mix ▸ tax drill-down */
+#rv-sources, #rv-taxes {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#rv-sources.hidden, #rv-taxes.hidden { display: none; }
+
 .ovl-hero {
   margin: 8px 0 2px;
   font-size: 15px;
@@ -214,7 +222,9 @@ html, body {
 
 .ovl-legend {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
   margin: 8px 0 6px;
   font-size: 11px;
   color: #dfe8ff;
@@ -269,6 +279,29 @@ html, body {
   stroke: #101d5c;
   stroke-width: 3px;
 }
+.flow-svg .subv {
+  fill: #a8b4dd;
+  font: 700 9.5px "Avenir Next", Verdana, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #101d5c;
+  stroke-width: 3px;
+}
+.flow-svg .icon {
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.flow-svg .node.drill {
+  stroke: #f2c14e;
+  stroke-width: 2.5;
+  animation: drillpulse 1.6s ease-in-out infinite;
+}
+@keyframes drillpulse {
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: .3; }
+}
 .flow-svg .hub {
   fill: #ffe9a8;
   font: 800 13px "Avenir Next", Verdana, sans-serif;
@@ -290,6 +323,7 @@ html, body {
   cursor: pointer;
 }
 .view-toggle:hover { border-color: #f2c14e; color: #ffe9a8; }
+.view-toggle.back { margin-left: 0; margin-right: auto; }
 
 .flow-detail {
   min-height: 34px;

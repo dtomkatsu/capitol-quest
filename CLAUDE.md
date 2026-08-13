@@ -50,21 +50,27 @@ render_map) — downstream layers must use it, never re-derive offsets.
 ## Money overlay = one panel, two radial tabs (features 2a + 3)
 
 Budget and revenue share ONE overlay (`#money-overlay`, `MoneyPanel` in
-main.js) with two tabs: "↓ Money in · Taxes" (16 tax nodes, motes
-node→hub) and "↑ Money out · Budget" (24 department nodes, motes
-hub→node). Both toolbar buttons remain and deep-link to their tab.
+main.js) with two tabs. "↓ Money in" is two screens deep: it LANDS on
+the funding mix (3 nodes — General 💰 / Federal 🦅 / Other 🧰, FY2027
+means of financing computed from budget.json) and the pulsing General
+node drills into the FY2025 tax mix (16 nodes, "← Funding mix" to go
+back; the tab always re-lands on the mix). "↑ Money out" is the 24
+department nodes. Motes drift node→hub on money-in views, hub→node on
+money-out. Both toolbar buttons remain and deep-link to their tab.
 `buildRadialFlow()` is the shared component: Capitol sprite at the hub,
-nodes on an ellipse (r ∝ √total), density ∝ dollars using the same
-Σ(rate × duration) normalisation as the map streams. targetMotes is
-scaled so DOLLARS-PER-MOTE MATCHES across tabs (budget 110 ⇒ revenue
-~51) — the sparser tax view next to the busier budget view is the
-teaching point (federal funds + bonds spend on top of state taxes);
-don't "fix" it. Each tab's rAF loop runs for the page lifetime but
-no-ops unless its tab AND map view are showing. The ▤ List toggles keep
-the bar views — don't delete them, they carry the precise numbers.
+nodes on an ellipse (r ∝ √total, dollar amount as a second label line,
+optional emoji icon inside circles with r ≥ 6.5, optional onClick +
+.drill pulse, `scatter` spreads beads on few-spoke views), density ∝
+dollars via the same Σ(rate × duration) normalisation as the map
+streams. targetMotes keeps DOLLARS-PER-MOTE EQUAL across views (110 ⇒
+sources 110, taxes ~51) — the sparser tax view is the teaching point
+(federal funds + bonds spend on top of state taxes); don't "fix" it.
+Animation gating is `offsetParent !== null` on the map div — hiding via
+overlay/tab/sub-view/List all no-op the rAF loop. The ▤ List toggles
+keep the bar views — don't delete them, they carry the precise numbers.
 Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
-nodes by the SHORT map in `buildRevenue()`, whose keys must match
-revenue.json tax names exactly (fallback: first word of the name).
+nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
+revenue.json tax names exactly (fallback: first word, no icon).
 
 ## Revenue-mix layer (feature 2a)
 

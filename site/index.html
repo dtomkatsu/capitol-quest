@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813113813">
+  <link rel="stylesheet" href="css/style.css?v=20260813114339">
 </head>
 <body>
   <div id="game"></div>
@@ -28,7 +28,7 @@
         </svg>
         <span>Budget</span>
       </button>
-      <button id="tb-revenue" type="button" title="Where the money comes from — FY2025 tax collections">
+      <button id="tb-revenue" type="button" title="Where the money comes from — funding mix, then the FY2025 taxes">
         <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
           <rect x="3" y="13" width="12" height="3" fill="#f2c14e"/>
           <rect x="3" y="13" width="12" height="1" fill="#ffe9a8"/>
@@ -47,24 +47,41 @@
       <div class="ovl-title" id="money-title">Revenue Mix · FY2025</div>
       <button class="ovl-close" id="money-close" type="button" aria-label="Close">✕</button>
       <div class="ovl-tabs">
-        <button id="mt-revenue" type="button">↓ Money in · Taxes</button>
-        <button id="mt-budget" type="button">↑ Money out · Budget</button>
+        <button id="mt-revenue" type="button">↓ Money in</button>
+        <button id="mt-budget" type="button">↑ Money out</button>
       </div>
 
       <div class="mview" id="mv-revenue">
-        <div class="ovl-hero" id="revenue-hero"></div>
-        <div class="ovl-legend">
-          <span><i class="sw sw-gf"></i>Income tax — gold on the map</span>
-          <span><i class="sw sw-get"></i>GET — teal on the map</span>
-          <span><i class="sw sw-oth"></i>All other taxes</span>
-          <button id="revenue-view" class="view-toggle" type="button">▤ List</button>
+        <div id="rv-sources">
+          <div class="ovl-hero" id="sources-hero"></div>
+          <div class="ovl-legend">
+            <span><i class="sw sw-gf"></i>General funds</span>
+            <span><i class="sw sw-fed"></i>Federal funds</span>
+            <span><i class="sw sw-oth"></i>All other funds</span>
+          </div>
+          <div id="sources-map" class="flow-map">
+            <svg id="sources-svg" class="flow-svg" viewBox="0 0 660 420" aria-label="The three kinds of money paying for the budget"></svg>
+            <div id="sources-detail" class="flow-detail"></div>
+          </div>
+          <div class="ovl-foot" id="sources-foot"></div>
         </div>
-        <div id="revenue-map" class="flow-map">
-          <svg id="revenue-svg" class="flow-svg" viewBox="0 0 660 420" aria-label="Taxes flowing into the Capitol"></svg>
-          <div id="revenue-detail" class="flow-detail"></div>
+
+        <div id="rv-taxes" class="hidden">
+          <div class="ovl-hero" id="revenue-hero"></div>
+          <div class="ovl-legend">
+            <button id="rev-back" class="view-toggle back" type="button">← Funding mix</button>
+            <span><i class="sw sw-gf"></i>Income tax — gold on the map</span>
+            <span><i class="sw sw-get"></i>GET — teal on the map</span>
+            <span><i class="sw sw-oth"></i>All other taxes</span>
+            <button id="revenue-view" class="view-toggle" type="button">▤ List</button>
+          </div>
+          <div id="revenue-map" class="flow-map">
+            <svg id="revenue-svg" class="flow-svg" viewBox="0 0 660 420" aria-label="Taxes flowing into the Capitol"></svg>
+            <div id="revenue-detail" class="flow-detail"></div>
+          </div>
+          <div class="ovl-rows hidden" id="revenue-rows"></div>
+          <div class="ovl-foot" id="revenue-foot"></div>
         </div>
-        <div class="ovl-rows hidden" id="revenue-rows"></div>
-        <div class="ovl-foot" id="revenue-foot"></div>
       </div>
 
       <div class="mview hidden" id="mv-budget">
@@ -114,6 +131,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813113813"></script>
+  <script src="js/main.js?v=20260813114339"></script>
 </body>
 </html>
