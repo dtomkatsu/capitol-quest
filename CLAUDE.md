@@ -55,6 +55,22 @@ whitespace in the number region) and REFUSES to write output unless the
 row sum matches the printed TOTAL within 0.1%. New report year: drop the
 PDF in data/raw/, update PDF/label constants, re-run.
 
+## GET layer (feature 2b) — measured vs modeled
+
+**GET has NO sub-island geography.** DOTAX publishes it by taxation
+district (Oʻahu/Maui/Hawaiʻi/Kauaʻi) only. `tools/build_get_flows.py`
+sums the 12 monthly district PDFs for a real Oʻahu FY2025 total ($2.903B,
+checksummed vs the June report's FY cumulative) and then MODELS the
+island spread from Census CBP payroll by ZIP. Never present the spread as
+a DOTAX figure — the chip tooltip and revenue footnote must keep saying
+which half is measured. CBP sector-level PAYANN is suppressed at ZIP
+level (returns 0); only the all-sector "00" total is usable.
+
+Flow density rule: steady-state motes = Σ(rate × duration), so stream
+rates normalise by the WEIGHTED mean duration. Using an unweighted mean
+under-draws GET (its weight is downtown on short paths) and silently
+breaks the dollars-to-density encoding.
+
 ## Data lineage
 
 - `data/island_outline.geojson` ← ~/Mahele-Atlas (Oʻahu coastline)

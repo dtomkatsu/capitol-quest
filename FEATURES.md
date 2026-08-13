@@ -51,11 +51,38 @@ pays at the register — income tax (the map streams) is only 29%.
   single-hue bars, the income-tax row highlighted gold + ★ ("shown as
   streams on the map"), hover explains who pays each tax.
 
-## 2b. The GET map layer — later
+## 2b. The GET map layer — ✅ shipped
 
-- Visual: a second flow color (teal) emanating diffusely from towns
-  (weighted by the road-density urban mask, since GET has no
-  sub-district geography), toggled from the revenue panel.
+**The teaching point:** the tax everyone pays at the register is the
+biggest stream on the map — teal outnumbers gold, because it should.
+
+**What the data can and cannot do** (checked before building):
+- DOTAX publishes GET by *taxation district* only, and there are four:
+  Oʻahu, Maui, Hawaiʻi, Kauaʻi. **Oʻahu is a single number — there is no
+  sub-island GET geography published anywhere.** (Income tax is the
+  exception: Table A-14 breaks it out by ZIP.)
+- MEASURED: Oʻahu FY2025 GET liability **$2.903B** (63.8% of the $4.552B
+  statewide), summed from the 12 monthly "GE liabilities by district"
+  reports and checksummed against the June report's own FY2025
+  cumulative column. Also measured: the split by business activity
+  (retailing $1.24B, services $567M, contracting $375M, hotel rentals
+  $129M, …).
+- MODELED: the spread across the island — allocated to ZIPs in
+  proportion to **Census County Business Patterns (2022) annual payroll
+  by ZIP** (real data; sector-level payroll is disclosure-suppressed, so
+  the all-sector total is used). Downtown 96813 carries 24%, airport/
+  Māpunapuna 96819 17%, Ala Moana 96814 9%.
+- The distinction is surfaced in the UI, not buried: the GET chip's
+  tooltip states the measured-vs-modeled split, and the revenue panel
+  footnote says GET is spread by payroll because DOTAX publishes it
+  island-wide only.
+
+**Visual:** teal motes, same calm language as the gold. Both streams
+share one mote pool; each stream's **steady-state mote count** is
+proportional to real dollars (GET:income = 1.6:1), so relative density
+is an honest encoding. Normalising uses the *weighted* mean path
+duration — GET's weight sits downtown on short paths, and an unweighted
+mean silently under-draws it. Independent toggle chips per stream.
 
 ## 3. Outflows: where the money goes
 

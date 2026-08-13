@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813005934">
+  <link rel="stylesheet" href="css/style.css?v=20260813104601">
 </head>
 <body>
   <div id="game"></div>
@@ -14,7 +14,10 @@
       <span class="star">★</span> CAPITOL QUEST <span class="sub">· Oʻahu</span>
     </div>
     <div id="hint">Drag to pan · Scroll or pinch to zoom · Tap the Capitol</div>
-    <button id="flows-chip" class="hidden" type="button"></button>
+    <div id="chips">
+      <button id="flows-chip" class="hidden" type="button"></button>
+      <button id="get-chip" class="hidden" type="button"></button>
+    </div>
 
     <div id="toolbar">
       <button id="tb-budget" type="button" title="State budget — FY2027">
@@ -60,8 +63,9 @@
       <button class="ovl-close" id="revenue-close" type="button" aria-label="Close">✕</button>
       <div class="ovl-hero" id="revenue-hero"></div>
       <div class="ovl-legend">
-        <span><i class="sw sw-gf"></i>Shown as streams on the map</span>
-        <span><i class="sw sw-fed"></i>Everything else</span>
+        <span><i class="sw sw-gf"></i>Gold streams on the map</span>
+        <span><i class="sw sw-get"></i>Teal streams on the map</span>
+        <span><i class="sw sw-fed"></i>Not shown on the map</span>
       </div>
       <div class="ovl-rows" id="revenue-rows"></div>
       <div class="ovl-foot" id="revenue-foot"></div>
@@ -97,6 +101,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813005934"></script>
+  <script src="js/main.js?v=20260813104601"></script>
 </body>
 </html>

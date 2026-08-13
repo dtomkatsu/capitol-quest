@@ -136,9 +136,11 @@ const RevenuePanel = {
       const share = 100 * t.amt / data.total;
       const shareTxt = share >= 1 ? Math.round(share) + "%" :
         share.toFixed(1) + "%";
+      const cls = t.stream === "income" ? "sw-gf"
+        : t.stream === "get" ? "sw-get" : "sw-fed";
       row.innerHTML =
-        '<span class="bname">' + t.name + (t.map ? " ★" : "") + "</span>" +
-        '<span class="bbar"><i class="' + (t.map ? "sw-gf" : "sw-fed") +
+        '<span class="bname">' + t.name + (t.stream ? " ★" : "") + "</span>" +
+        '<span class="bbar"><i class="' + cls +
         '" style="width:' + (100 * t.amt / max) + '%"></i></span>' +
         '<span class="bval"><b>' + fmtK(t.amt) + "</b> · " + shareTxt +
         "</span>";
@@ -147,7 +149,9 @@ const RevenuePanel = {
 
     $("revenue-foot").textContent =
       "Cash collections by tax type, all funds. Source: " + data.source +
-      ". Hover a row for who pays it. The budget (see Budget tool) spends " +
+      ". Hover a row for who pays it. ★ marks the two taxes drawn on the " +
+      "map: income tax by ZIP (real geography) and GET spread by business " +
+      "payroll (DOTAX publishes GET island-wide only). The budget spends " +
       "more than this because federal dollars and bond proceeds are added " +
       "on top of state taxes.";
 
@@ -179,6 +183,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("flows", "map/tax_flows.json?v=1");
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
+    this.load.json("get_flows", "map/get_flows.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -220,111 +225,144 @@ class WorldScene extends Phaser.Scene {
     this.scale.on("resize", () => this.applyLabelScale());
   }
 
-  /* ---- tax inflows: quiet gold motes drifting from each ZIP into the
-     Capitol, spawn rate proportional to income tax paid (DOTAX A-14) ---- */
+  /* ---- tax inflows: quiet motes drifting from source areas into the
+     Capitol. Two streams — gold = individual income tax (DOTAX A-14, real
+     ZIP geography), teal = general excise tax (DOTAX island total, spread
+     by Census business payroll — see build_get_flows.py). Mote density is
+     kept proportional to real dollars across both streams, so the eye
+     reads GET as the bigger one, which it is. ---- */
   buildFlows(meta) {
-    const data = this.cache.json.get("flows");
     this.flows = null;
-    if (!data || !data.zips || !data.zips.length) return;
+    const inc = this.cache.json.get("flows");
+    const get = this.cache.json.get("get_flows");
+    if (!inc || !inc.zips || !inc.zips.length) return;
 
-    const g = this.make.graphics({ add: false });
-    g.fillStyle(0xfff2c0, 0.55);
-    g.fillCircle(3, 3, 3);
-    g.fillStyle(0xffe9a0, 1);
-    g.fillCircle(3, 3, 1.6);
-    g.generateTexture("mote", 6, 6);
-    g.destroy();
+    const mote = (key, ring, core) => {
+      const g = this.make.graphics({ add: false });
+      g.fillStyle(ring, 0.5);
+      g.fillCircle(3, 3, 3);
+      g.fillStyle(core, 1);
+      g.fillCircle(3, 3, 1.6);
+      g.generateTexture(key, 6, 6);
+      g.destroy();
+    };
+    mote("mote_gold", 0xfff2c0, 0xffe9a0);
+    mote("mote_teal", 0xa8f0e6, 0x4fd8c8);
 
     const lm = meta.landmarks.find((l) => l.id === "capitol");
     const dst = new Phaser.Math.Vector2(lm.px, lm.py - 14);
+    const SPEED = 42;                 // px/s — a calm drift
+    const MIN_DUR = 3.0;              // s — keeps short downtown hops legible
+    const TARGET_MOTES = 185;         // steady-state on screen, both streams
 
-    const total = data.zips.reduce((s, z) => s + z.taxM, 0);
-    const RATE_TOTAL = 20;               // motes per second, island-wide
-    const flows = [];
-    data.zips.forEach((z, i) => {
-      const src = new Phaser.Math.Vector2(z.px, z.py);
-      const mid = new Phaser.Math.Vector2(
-        (src.x + dst.x) / 2, (src.y + dst.y) / 2);
-      const dx = dst.x - src.x, dy = dst.y - src.y;
-      const len = Math.max(1, Math.hypot(dx, dy));
-      const side = (i % 2 ? 1 : -1) * (0.10 + (i % 5) * 0.02);
-      mid.x += (-dy / len) * len * side;
-      mid.y += (dx / len) * len * side - len * 0.06;
-      flows.push({
-        curve: new Phaser.Curves.QuadraticBezier(src, mid, dst),
-        len,
-        rate: RATE_TOTAL * (z.taxM / total),
-        acc: Math.random(),              // desync the first spawns
-        zip: z,
+    const incDollars = inc.totalM * 1e6;
+    const getDollars = get ? get.oahuTotal : 0;
+    const grand = incDollars + getDollars;
+
+    const mkStream = (rows, weightOf, dollars, tex, id) => {
+      const paths = rows.map((z, i) => {
+        const src = new Phaser.Math.Vector2(z.px, z.py);
+        const dx = dst.x - src.x, dy = dst.y - src.y;
+        const len = Math.max(30, Math.hypot(dx, dy));
+        const mid = new Phaser.Math.Vector2(
+          (src.x + dst.x) / 2, (src.y + dst.y) / 2);
+        const side = (i % 2 ? 1 : -1) * (0.10 + (i % 5) * 0.02);
+        mid.x += (-dy / len) * len * side;
+        mid.y += (dx / len) * len * side - len * 0.06;
+        return { curve: new Phaser.Curves.QuadraticBezier(src, mid, dst),
+                 len, dur: Math.max(MIN_DUR, len / SPEED),
+                 w: weightOf(z), acc: Math.random(), rate: 0 };
       });
-    });
+      const wTotal = paths.reduce((s, p) => s + p.w, 0) || 1;
+      const budget = TARGET_MOTES * (dollars / grand);
+      // motes on screen = Σ(rate × duration), so normalise by the
+      // WEIGHTED mean duration — GET's weight sits downtown on short
+      // paths, and an unweighted mean silently under-draws it.
+      const wDur = paths.reduce((s, p) => s + (p.w / wTotal) * p.dur, 0);
+      const rateTotal = budget / Math.max(0.5, wDur);
+      for (const p of paths) p.rate = rateTotal * (p.w / wTotal);
+      return { id, tex, paths, enabled: true };
+    };
+
+    const streams = [
+      mkStream(inc.zips, (z) => z.taxM, incDollars, "mote_gold", "income"),
+    ];
+    if (get && get.zips && get.zips.length) {
+      streams.push(
+        mkStream(get.zips, (z) => z.share, getDollars, "mote_teal", "get"));
+    }
 
     const pool = [];
-    for (let i = 0; i < 200; i++) {
-      const im = this.add.image(0, 0, "mote")
+    for (let i = 0; i < 240; i++) {
+      const im = this.add.image(0, 0, "mote_gold")
         .setDepth(3).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
-      pool.push({ im, t: 0, dur: 1, curve: null, free: true });
+      pool.push({ im, t: 0, dur: 1, curve: null, free: true, sid: null });
     }
-    this.flows = { flows, pool, tmp: new Phaser.Math.Vector2(),
-                   enabled: true, total: data.totalM, source: data.source };
+    this.flows = { streams, pool, tmp: new Phaser.Math.Vector2() };
 
-    const chip = document.getElementById("flows-chip");
-    if (chip) {
+    const release = (id) => {
+      for (const m of this.flows.pool) {
+        if (!m.free && m.sid === id) { m.free = true; m.im.setVisible(false); }
+      }
+    };
+    const wire = (elId, stream, label, title) => {
+      const chip = document.getElementById(elId);
+      if (!chip || !stream) return;
       chip.classList.remove("hidden");
-      chip.title = data.source;
+      chip.title = title;
       const setLabel = () => {
-        chip.classList.toggle("off", !this.flows.enabled);
-        chip.textContent = (this.flows.enabled ? "◉" : "○") +
-          " Tax inflows · TY" + data.year;
+        chip.classList.toggle("off", !stream.enabled);
+        chip.textContent = (stream.enabled ? "◉" : "○") + " " + label;
       };
       setLabel();
       chip.addEventListener("pointerdown", (e) => {
         e.stopPropagation();
-        this.flows.enabled = !this.flows.enabled;
-        if (!this.flows.enabled) {
-          for (const p of this.flows.pool) {
-            p.free = true;
-            p.im.setVisible(false);
-          }
-        }
+        stream.enabled = !stream.enabled;
+        if (!stream.enabled) release(stream.id);
         setLabel();
       });
+    };
+    wire("flows-chip", streams[0], "Income tax · TY" + inc.year, inc.source);
+    if (streams[1]) {
+      wire("get-chip", streams[1], "GET · FY" + get.fy,
+           get.measured + ". " + get.modeled);
     }
   }
 
   update(_time, delta) {
     const F = this.flows;
     if (!F) return;
-    const dt = delta / 1000;
-    const zoom = this.cameras.main.zoom;
-    const moteScale = Phaser.Math.Clamp(1 / zoom, 0.9, 3.2);
-    if (F.enabled) {
-      for (const f of F.flows) {
-        f.acc += f.rate * dt;
-        while (f.acc >= 1) {
-          f.acc -= 1;
-          const p = F.pool.find((q) => q.free);
-          if (!p) break;
-          p.free = false;
-          p.curve = f.curve;
-          p.t = 0;
-          p.dur = f.len / 42;            // ~42 px/s, a calm drift
-          p.im.setVisible(true);
+    const dt = Math.min(0.05, delta / 1000);
+    const moteScale = Phaser.Math.Clamp(1 / this.cameras.main.zoom, 0.9, 3.2);
+    for (const st of F.streams) {
+      if (!st.enabled) continue;
+      for (const p of st.paths) {
+        p.acc += p.rate * dt;
+        while (p.acc >= 1) {
+          p.acc -= 1;
+          const m = F.pool.find((q) => q.free);
+          if (!m) break;
+          m.free = false;
+          m.sid = st.id;
+          m.curve = p.curve;
+          m.t = 0;
+          m.dur = p.dur;
+          m.im.setTexture(st.tex).setVisible(true);
         }
       }
     }
-    for (const p of F.pool) {
-      if (p.free) continue;
-      p.t += dt / p.dur;
-      if (p.t >= 1) {
-        p.free = true;
-        p.im.setVisible(false);
+    for (const m of F.pool) {
+      if (m.free) continue;
+      m.t += dt / m.dur;
+      if (m.t >= 1) {
+        m.free = true;
+        m.im.setVisible(false);
         continue;
       }
-      p.curve.getPoint(p.t, F.tmp);
-      p.im.setPosition(F.tmp.x, F.tmp.y);
-      p.im.setAlpha(0.55 * Math.sin(Math.PI * p.t));
-      p.im.setScale(moteScale);
+      m.curve.getPoint(m.t, F.tmp);
+      m.im.setPosition(F.tmp.x, F.tmp.y);
+      m.im.setAlpha(0.55 * Math.sin(Math.PI * m.t));
+      m.im.setScale(moteScale);
     }
   }
 

@@ -127,12 +127,15 @@ def main():
             other += amt
             continue
         short, who = hit
+        stream = ("income" if short.startswith("Individual income")
+                  else "get" if short.startswith("General excise")
+                  else None)
         named.append({"name": short, "who": who, "amt": amt,
-                      "map": short.startswith("Individual income")})
+                      "stream": stream})
     named.append({"name": "All other taxes & fees",
                   "who": "Financial corporations, environmental response "
                          "($1.05/barrel on petroleum), licenses and fees",
-                  "amt": other, "map": False})
+                  "amt": other, "stream": None})
     named.sort(key=lambda r: -r["amt"])
 
     out = {

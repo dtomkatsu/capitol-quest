@@ -53,9 +53,16 @@ html, body {
   white-space: nowrap;
 }
 
-#flows-chip {
+#chips {
   position: fixed;
   top: 14px; right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+#chips button {
   padding: 6px 12px;
   pointer-events: auto;
   background: linear-gradient(#2a3f9e, #16246b);
@@ -69,11 +76,12 @@ html, body {
   cursor: pointer;
   text-shadow: 1px 1px 0 #000;
 }
-#flows-chip.off {
+#chips button.off {
   border-color: rgba(255,255,255,.4);
   color: #9aa4c8;
 }
-#flows-chip.hidden { display: none; }
+#chips button.hidden { display: none; }
+#get-chip { border-color: #4fd8c8; color: #b8f4ec; }
 
 /* ---------- toolbar ---------- */
 #toolbar {
@@ -186,6 +194,7 @@ html, body {
 .sw-gf  { background: #b98a2e; }
 .sw-fed { background: #3987e5; }
 .sw-oth { background: #199e70; }
+.sw-get { background: #2aa79b; }
 
 .ovl-rows {
   overflow-y: auto;
@@ -237,7 +246,8 @@ html, body {
 
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }
-  #flows-chip { top: 60px; }
+  #chips { top: 56px; }
+  #chips button { font-size: 10.5px; padding: 4px 9px; }
   #toolbar { top: 58px; left: 12px; transform: none; }
   #toolbar button { padding: 5px 9px 4px; flex-direction: row; gap: 6px; }
   #toolbar button svg { width: 16px; height: 16px; }
