@@ -80,6 +80,8 @@ const BudgetPanel = {
       rows.appendChild(row);
     }
 
+    this.buildMap(data, fmt);
+
     $("budget-foot").textContent =
       "Total budget (operating + capital) by department, FY2027, all " +
       "means of financing. Source: " + data.source + ". " +
@@ -87,6 +89,13 @@ const BudgetPanel = {
       "benefits for the whole state government are paid through it.";
 
     const overlay = $("budget-overlay");
+    const viewBtn = $("budget-view");
+    viewBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const listOn = $("budget-rows").classList.toggle("hidden");
+      $("budget-map").classList.toggle("hidden", !listOn);
+      viewBtn.textContent = listOn ? "▤ List" : "◎ Map";
+    });
     $("tb-budget").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       overlay.classList.toggle("hidden");
@@ -103,6 +112,155 @@ const BudgetPanel = {
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") overlay.classList.add("hidden");
     });
+  },
+
+  /* Radial outflow map: the Capitol at the hub, the 24 departments ringed
+     around it, money drifting outward along the spokes. Each department
+     gets three sub-streams — general / federal / other funds — whose mote
+     density is proportional to those dollars, so the fund mix is legible
+     from the motion alone (Human Services runs blue, Education gold). */
+  buildMap(data, fmt) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.getElementById("budget-svg");
+    const detail = document.getElementById("budget-detail");
+    const CX = 330, CY = 205, RX = 272, RY = 158;
+    const SPEED = 62;            // svg units per second
+    const TARGET_MOTES = 110;    // steady-state, whole diagram
+    const FUNDS = [
+      { k: "gf", c: "#e3b64b" },
+      { k: "fed", c: "#63a6f0" },
+      { k: "other", c: "#3fbf92" },
+    ];
+
+    const mk = (tag, attrs) => {
+      const el = document.createElementNS(NS, tag);
+      for (const a in attrs) el.setAttribute(a, attrs[a]);
+      return el;
+    };
+
+    const depts = data.departments;
+    const maxTotal = depts[0].total;
+    const spokeG = mk("g", {});
+    const moteG = mk("g", {});
+    const nodeG = mk("g", {});
+    svg.append(spokeG, moteG, nodeG);
+
+    // hub: the Capitol sprite itself
+    svg.append(mk("image", {
+      href: "assets/sprites/capitol.png?v=1", x: CX - 56, y: CY - 46,
+      width: 112, height: 86, preserveAspectRatio: "xMidYMid meet",
+    }));
+    const hubLabel = mk("text", { x: CX, y: CY + 58, class: "hub" });
+    hubLabel.textContent = fmt(data.total) + " appropriated";
+    svg.append(hubLabel);
+
+    const streams = [];
+    depts.forEach((d, i) => {
+      const a = (i / depts.length) * Math.PI * 2 - Math.PI / 2;
+      const nx = CX + Math.cos(a) * RX;
+      const ny = CY + Math.sin(a) * RY;
+      // start the spoke outside the sprite, not under it
+      const sx = CX + Math.cos(a) * 66;
+      const sy = CY + Math.sin(a) * 52;
+      const mx = (sx + nx) / 2 - Math.sin(a) * 26;
+      const my = (sy + ny) / 2 + Math.cos(a) * 26;
+      const r = Math.max(4.5, Math.min(23, 23 * Math.sqrt(d.total / maxTotal)));
+
+      spokeG.append(mk("path", {
+        class: "spoke", d: `M${sx},${sy} Q${mx},${my} ${nx},${ny}`,
+      }));
+
+      const node = mk("circle", { class: "node", cx: nx, cy: ny, r });
+      const label = mk("text", {
+        class: "code", x: nx,
+        y: ny + (Math.sin(a) < -0.25 ? -r - 6 : r + 11),
+      });
+      label.textContent = d.code;
+      const show = () => {
+        for (const n of nodeG.querySelectorAll(".node"))
+          n.classList.remove("sel");
+        node.classList.add("sel");
+        const pct = (v) => Math.round(100 * v / d.total) + "%";
+        detail.innerHTML =
+          "<b>" + d.name + "</b> — <b>" + fmt(d.total) + "</b> · " +
+          Math.round(d.positions).toLocaleString() + " positions<br>" +
+          '<span class="dim">General ' + fmt(d.gf) + " (" + pct(d.gf) +
+          ") · Federal " + fmt(d.fed) + " (" + pct(d.fed) +
+          ") · Other " + fmt(d.other) + " (" + pct(d.other) + ")</span>";
+      };
+      node.addEventListener("mouseenter", show);
+      node.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        show();
+      });
+      nodeG.append(node, label);
+
+      const dist = Math.hypot(nx - sx, ny - sy);
+      for (const f of FUNDS) {
+        if (d[f.k] <= 0) continue;
+        streams.push({
+          p0: [sx, sy], p1: [mx, my], p2: [nx, ny],
+          dur: Math.max(1.6, dist / SPEED),
+          amt: d[f.k], color: f.c, acc: Math.random(), rate: 0,
+        });
+      }
+    });
+
+    detail.innerHTML = '<span class="dim">Hover a department to see its ' +
+      "budget and where the money comes from. Gold motes are general " +
+      "funds, blue federal, green everything else.</span>";
+
+    // density ∝ dollars: on-screen motes = Σ(rate × duration)
+    const totalAmt = streams.reduce((s, x) => s + x.amt, 0);
+    const wDur = streams.reduce(
+      (s, x) => s + (x.amt / totalAmt) * x.dur, 0);
+    const rateTotal = TARGET_MOTES / wDur;
+    for (const s of streams) s.rate = rateTotal * (s.amt / totalAmt);
+
+    const pool = [];
+    for (let i = 0; i < 150; i++) {
+      const c = mk("circle", { class: "mote", r: 2.7, opacity: 0 });
+      moteG.append(c);
+      pool.push({ el: c, free: true, t: 0, s: null });
+    }
+
+    let last = 0;
+    const frame = (now) => {
+      const overlayOpen = !document.getElementById("budget-overlay")
+        .classList.contains("hidden");
+      const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+      last = now;
+      if (overlayOpen) {
+        for (const s of streams) {
+          s.acc += s.rate * dt;
+          while (s.acc >= 1) {
+            s.acc -= 1;
+            const m = pool.find((q) => q.free);
+            if (!m) break;
+            m.free = false;
+            m.s = s;
+            m.t = 0;
+            m.el.setAttribute("fill", s.color);
+          }
+        }
+        for (const m of pool) {
+          if (m.free) continue;
+          m.t += dt / m.s.dur;
+          if (m.t >= 1) {
+            m.free = true;
+            m.el.setAttribute("opacity", 0);
+            continue;
+          }
+          const t = m.t, u = 1 - t;
+          const [ax, ay] = m.s.p0, [bx, by] = m.s.p1, [cx2, cy2] = m.s.p2;
+          m.el.setAttribute("cx", u * u * ax + 2 * u * t * bx + t * t * cx2);
+          m.el.setAttribute("cy", u * u * ay + 2 * u * t * by + t * t * cy2);
+          m.el.setAttribute("opacity", 0.95 * Math.sin(Math.PI * t));
+        }
+      }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
   },
 };
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813104601">
+  <link rel="stylesheet" href="css/style.css?v=20260813110940">
 </head>
 <body>
   <div id="game"></div>
@@ -51,8 +51,13 @@
         <span><i class="sw sw-gf"></i>General funds</span>
         <span><i class="sw sw-fed"></i>Federal funds</span>
         <span><i class="sw sw-oth"></i>All other funds</span>
+        <button id="budget-view" type="button">▤ List</button>
       </div>
-      <div class="ovl-rows" id="budget-rows"></div>
+      <div id="budget-map">
+        <svg id="budget-svg" viewBox="0 0 660 420" aria-label="Money flowing from the Capitol to each department"></svg>
+        <div id="budget-detail"></div>
+      </div>
+      <div class="ovl-rows hidden" id="budget-rows"></div>
       <div class="ovl-foot" id="budget-foot"></div>
     </div>
   </div>
@@ -101,6 +106,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813104601"></script>
+  <script src="js/main.js?v=20260813110940"></script>
 </body>
 </html>

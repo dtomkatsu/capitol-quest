@@ -129,7 +129,7 @@ html, body {
 .ovl-panel {
   position: relative;
   width: min(680px, calc(100vw - 28px));
-  max-height: min(78vh, 720px);
+  max-height: min(86vh, 780px);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -201,6 +201,74 @@ html, body {
   min-height: 0;
   padding-right: 6px;
 }
+.ovl-rows.hidden { display: none; }
+
+/* ---------- budget radial map ---------- */
+#budget-map { min-height: 0; display: flex; flex-direction: column; }
+#budget-map.hidden { display: none; }
+
+#budget-svg {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+  overflow: visible;
+}
+#budget-svg image { image-rendering: pixelated; }
+#budget-svg .spoke { stroke: #93a4dd; stroke-opacity: .17; fill: none; }
+#budget-svg .mote { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
+#budget-svg .node {
+  fill: #24337e;
+  stroke: #cdd8ff;
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill .12s;
+}
+#budget-svg .node:hover, #budget-svg .node.sel { fill: #f2c14e; }
+#budget-svg .code {
+  fill: #dfe8ff;
+  font: 700 12px "Avenir Next", Verdana, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #101d5c;
+  stroke-width: 3px;
+}
+#budget-svg .hub {
+  fill: #ffe9a8;
+  font: 800 13px "Avenir Next", Verdana, sans-serif;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #101d5c;
+  stroke-width: 3.5px;
+}
+
+#budget-view {
+  margin-left: auto;
+  padding: 2px 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.45);
+  border-radius: 999px;
+  color: #dfe8ff;
+  font: 700 10.5px inherit;
+  letter-spacing: .5px;
+  cursor: pointer;
+}
+#budget-view:hover { border-color: #f2c14e; color: #ffe9a8; }
+
+#budget-detail {
+  min-height: 34px;
+  margin-top: 2px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.06);
+  border-left: 3px solid #f2c14e;
+  border-radius: 3px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #dfe8ff;
+}
+#budget-detail b { color: #fff; }
+#budget-detail .dim { color: #a8b4dd; }
 .brow {
   display: grid;
   grid-template-columns: 172px 1fr 92px;
