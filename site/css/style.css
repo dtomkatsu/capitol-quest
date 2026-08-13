@@ -107,7 +107,7 @@ html, body {
 #toolbar button svg { width: 20px; height: 20px; }
 
 /* ---------- budget overlay ---------- */
-#budget-overlay {
+.ovl {
   position: fixed;
   inset: 0;
   background: rgba(6, 10, 32, 0.62);
@@ -116,9 +116,9 @@ html, body {
   justify-content: center;
   z-index: 30;
 }
-#budget-overlay.hidden { display: none; }
+.ovl.hidden { display: none; }
 
-#budget-panel {
+.ovl-panel {
   position: relative;
   width: min(680px, calc(100vw - 28px));
   max-height: min(78vh, 720px);
@@ -134,7 +134,7 @@ html, body {
   box-shadow: 0 8px 0 rgba(0,0,0,.35);
 }
 
-#budget-title {
+.ovl-title {
   position: absolute;
   top: -14px; left: 18px;
   padding: 3px 14px;
@@ -148,7 +148,7 @@ html, body {
   box-shadow: 0 2px 0 rgba(0,0,0,.4);
 }
 
-#budget-close {
+.ovl-close {
   position: absolute;
   top: 8px; right: 10px;
   background: none;
@@ -158,25 +158,25 @@ html, body {
   cursor: pointer;
   padding: 4px 6px;
 }
-#budget-close:hover { color: #fff; }
+.ovl-close:hover { color: #fff; }
 
-#budget-hero {
+.ovl-hero {
   margin: 8px 0 2px;
   font-size: 15px;
   line-height: 1.4;
   text-shadow: 1px 1px 0 #000;
 }
-#budget-hero b { color: #ffe9a8; font-size: 22px; }
-#budget-hero small { color: #b9c4ea; font-size: 11.5px; display: block; }
+.ovl-hero b { color: #ffe9a8; font-size: 22px; }
+.ovl-hero small { color: #b9c4ea; font-size: 11.5px; display: block; }
 
-#budget-legend {
+.ovl-legend {
   display: flex;
   gap: 14px;
   margin: 8px 0 6px;
   font-size: 11px;
   color: #dfe8ff;
 }
-#budget-legend .sw {
+.ovl-legend .sw {
   display: inline-block;
   width: 10px; height: 10px;
   border-radius: 2px;
@@ -187,7 +187,7 @@ html, body {
 .sw-fed { background: #3987e5; }
 .sw-oth { background: #199e70; }
 
-#budget-rows {
+.ovl-rows {
   overflow-y: auto;
   min-height: 0;
   padding-right: 6px;
@@ -226,7 +226,7 @@ html, body {
 }
 .brow .bval b { color: #fff; font-weight: 700; }
 
-#budget-foot {
+.ovl-foot {
   margin-top: 8px;
   padding-top: 7px;
   border-top: 1px solid rgba(255,255,255,.22);

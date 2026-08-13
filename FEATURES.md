@@ -38,16 +38,24 @@ the island — and it physically concentrates into one building.
   source + Budget-&-Finance footnote. Toolbar gains one button per
   future feature (revenue mix, layers, quests).
 
-## 2. The GET layer & "who pays what" — next
+## 2a. Revenue mix panel — ✅ shipped
 
-- Data: DOTAX annual report (Liquid fuel/GET/TAT collections by taxation
-  district); DOTAX GE/Use monthly. Oʻahu = 1st district.
+**The teaching point:** most state revenue is the excise tax everyone
+pays at the register — income tax (the map streams) is only 29%.
+
+- Data: DOTAX Annual Report FY2024-25, Table 1.8 (all tax types, cash
+  collections). `tools/build_revenue.py` parses the PDF table with a
+  checksum against the printed $11.46B total → `site/map/revenue.json`.
+- UI: second toolbar button (coin-stack icon) → panel: $11.5B hero with
+  the general-fund/counties/special-funds split, 16 tax categories as
+  single-hue bars, the income-tax row highlighted gold + ★ ("shown as
+  streams on the map"), hover explains who pays each tax.
+
+## 2b. The GET map layer — later
+
 - Visual: a second flow color (teal) emanating diffusely from towns
-  (weighted by road-density urban mask, since GET has no sub-district
-  geography); a toggleable "revenue mix" panel: GET vs income tax vs TAT
-  with real shares.
-- Teaching point: most state revenue is the excise tax everyone pays at
-  the register — not just income tax.
+  (weighted by the road-density urban mask, since GET has no
+  sub-district geography), toggled from the revenue panel.
 
 ## 3. Outflows: where the money goes
 

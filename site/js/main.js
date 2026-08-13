@@ -90,9 +90,75 @@ const BudgetPanel = {
     $("tb-budget").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       overlay.classList.toggle("hidden");
+      document.getElementById("revenue-overlay").classList.add("hidden");
       Dialog.hide();
     });
     $("budget-close").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.add("hidden");
+    });
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.classList.add("hidden");
+    });
+  },
+};
+
+/* ---------------------------------------------------------------- revenue */
+const RevenuePanel = {
+  built: false,
+  init(data) {
+    if (this.built || !data) return;
+    this.built = true;
+    const $ = (id) => document.getElementById(id);
+    const fmtK = (v) =>            // amounts arrive in $ thousands
+      v >= 995e3 ? "$" + (v / 1e6).toFixed(v >= 9.95e6 ? 1 : 2) + "B" :
+      "$" + Math.round(v / 1e3) + "M";
+
+    $("revenue-title").textContent = "Revenue Mix · FY" + data.fy;
+    const d = data.distribution;
+    $("revenue-hero").innerHTML =
+      "<b>" + fmtK(data.total) + "</b> in state tax collections, FY" +
+      data.fy +
+      "<small>Where it went: " + fmtK(d.general_fund) +
+      " (87%) to the general fund · " + fmtK(d.counties) +
+      " to the counties · " + fmtK(d.special_funds) +
+      " to special funds</small>";
+
+    const rows = $("revenue-rows");
+    const max = data.taxes[0].amt;
+    for (const t of data.taxes) {
+      const row = document.createElement("div");
+      row.className = "brow";
+      row.title = t.who;
+      const share = 100 * t.amt / data.total;
+      const shareTxt = share >= 1 ? Math.round(share) + "%" :
+        share.toFixed(1) + "%";
+      row.innerHTML =
+        '<span class="bname">' + t.name + (t.map ? " ★" : "") + "</span>" +
+        '<span class="bbar"><i class="' + (t.map ? "sw-gf" : "sw-fed") +
+        '" style="width:' + (100 * t.amt / max) + '%"></i></span>' +
+        '<span class="bval"><b>' + fmtK(t.amt) + "</b> · " + shareTxt +
+        "</span>";
+      rows.appendChild(row);
+    }
+
+    $("revenue-foot").textContent =
+      "Cash collections by tax type, all funds. Source: " + data.source +
+      ". Hover a row for who pays it. The budget (see Budget tool) spends " +
+      "more than this because federal dollars and bond proceeds are added " +
+      "on top of state taxes.";
+
+    const overlay = $("revenue-overlay");
+    $("tb-revenue").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.toggle("hidden");
+      document.getElementById("budget-overlay").classList.add("hidden");
+      Dialog.hide();
+    });
+    $("revenue-close").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       overlay.classList.add("hidden");
     });
@@ -112,6 +178,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("meta", "map/oahu.json?v=1");
     this.load.json("flows", "map/tax_flows.json?v=1");
     this.load.json("budget", "map/budget.json?v=1");
+    this.load.json("revenue", "map/revenue.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -145,6 +212,7 @@ class WorldScene extends Phaser.Scene {
     this.buildFlows(meta);
     this.buildLabels(meta);
     BudgetPanel.init(this.cache.json.get("budget"));
+    RevenuePanel.init(this.cache.json.get("revenue"));
 
     this.setupCamera(meta);
     this.setupInput();

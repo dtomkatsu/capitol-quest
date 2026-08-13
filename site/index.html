@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813005041">
+  <link rel="stylesheet" href="css/style.css?v=20260813005934">
 </head>
 <body>
   <div id="game"></div>
@@ -25,21 +25,46 @@
         </svg>
         <span>Budget</span>
       </button>
+      <button id="tb-revenue" type="button" title="Where the money comes from — FY2025 tax collections">
+        <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="3" y="13" width="12" height="3" fill="#f2c14e"/>
+          <rect x="3" y="13" width="12" height="1" fill="#ffe9a8"/>
+          <rect x="3" y="9"  width="12" height="3" fill="#f2c14e"/>
+          <rect x="3" y="9"  width="12" height="1" fill="#ffe9a8"/>
+          <rect x="5" y="1"  width="8"  height="6" fill="#ffe9a8"/>
+          <rect x="8" y="2"  width="2"  height="4" fill="#b07d1e"/>
+        </svg>
+        <span>Revenue</span>
+      </button>
     </div>
   </div>
 
-  <div id="budget-overlay" class="hidden" role="dialog" aria-modal="true">
-    <div id="budget-panel">
-      <div id="budget-title">State Budget · FY2027</div>
-      <button id="budget-close" type="button" aria-label="Close">✕</button>
-      <div id="budget-hero"></div>
-      <div id="budget-legend">
+  <div id="budget-overlay" class="ovl hidden" role="dialog" aria-modal="true">
+    <div class="ovl-panel">
+      <div class="ovl-title" id="budget-title">State Budget · FY2027</div>
+      <button class="ovl-close" id="budget-close" type="button" aria-label="Close">✕</button>
+      <div class="ovl-hero" id="budget-hero"></div>
+      <div class="ovl-legend" id="budget-legend">
         <span><i class="sw sw-gf"></i>General funds</span>
         <span><i class="sw sw-fed"></i>Federal funds</span>
         <span><i class="sw sw-oth"></i>All other funds</span>
       </div>
-      <div id="budget-rows"></div>
-      <div id="budget-foot"></div>
+      <div class="ovl-rows" id="budget-rows"></div>
+      <div class="ovl-foot" id="budget-foot"></div>
+    </div>
+  </div>
+
+  <div id="revenue-overlay" class="ovl hidden" role="dialog" aria-modal="true">
+    <div class="ovl-panel">
+      <div class="ovl-title" id="revenue-title">Revenue Mix · FY2025</div>
+      <button class="ovl-close" id="revenue-close" type="button" aria-label="Close">✕</button>
+      <div class="ovl-hero" id="revenue-hero"></div>
+      <div class="ovl-legend">
+        <span><i class="sw sw-gf"></i>Shown as streams on the map</span>
+        <span><i class="sw sw-fed"></i>Everything else</span>
+      </div>
+      <div class="ovl-rows" id="revenue-rows"></div>
+      <div class="ovl-foot" id="revenue-foot"></div>
     </div>
   </div>
 
@@ -72,6 +97,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813005041"></script>
+  <script src="js/main.js?v=20260813005934"></script>
 </body>
 </html>

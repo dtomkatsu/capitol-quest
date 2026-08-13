@@ -47,6 +47,14 @@ via startswith, and keep the off-map px filter as the safety net. The
 lon/lat→px transform ships in oahu.json under "transform" (written by
 render_map) — downstream layers must use it, never re-derive offsets.
 
+## Revenue-mix layer (feature 2a)
+
+`tools/build_revenue.py` parses DOTAX Annual Report FY2024-25 Table 1.8
+(pdfplumber; extracted digits arrive split — "4 ,630,396" — strip
+whitespace in the number region) and REFUSES to write output unless the
+row sum matches the printed TOTAL within 0.1%. New report year: drop the
+PDF in data/raw/, update PDF/label constants, re-run.
+
 ## Data lineage
 
 - `data/island_outline.geojson` ← ~/Mahele-Atlas (Oʻahu coastline)
