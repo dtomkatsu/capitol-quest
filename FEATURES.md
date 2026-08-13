@@ -22,6 +22,22 @@ the island — and it physically concentrates into one building.
   It is ~30% of general-fund revenue; GET (the biggest source) is only
   published by taxation district — see feature 2.
 
+## 1b. HUD toolbar & budget overlay — ✅ shipped
+
+**The teaching point:** here's the whole pot — $24.8B — and who gets it.
+
+- Data: enacted FY2027 budget (HB1800 CD1 / Act 175 of 2026) by
+  department, snapshotted from the Budget Primer pipeline
+  (`~/BudgetPrimerFinal/docs/js/departments_act175_fy2027.json`).
+  `tools/build_budget.py` (use `--refresh` to re-snapshot) →
+  `site/map/budget.json`.
+- UI: top-center toolbar (first button: pixel bar-graph "Budget") opens a
+  JRPG panel: hero total, then 24 departments as horizontal bars stacked
+  General / Federal / Other funds (palette validated for CVD on the navy
+  surface: #b98a2e / #3987e5 / #199e70), shares, hover tooltips,
+  source + Budget-&-Finance footnote. Toolbar gains one button per
+  future feature (revenue mix, layers, quests).
+
 ## 2. The GET layer & "who pays what" — next
 
 - Data: DOTAX annual report (Liquid fuel/GET/TAT collections by taxation

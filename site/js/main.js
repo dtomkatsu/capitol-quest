@@ -37,12 +37,81 @@ const Dialog = {
   },
 };
 
+/* ---------------------------------------------------------------- budget */
+const BudgetPanel = {
+  built: false,
+  init(data) {
+    if (this.built || !data) return;
+    this.built = true;
+    const $ = (id) => document.getElementById(id);
+    const fmt = (v) =>
+      v >= 995e6 ? "$" + (v / 1e9).toFixed(v >= 9.95e9 ? 0 : 1) + "B" :
+      v >= 1e6 ? "$" + Math.round(v / 1e6) + "M" :
+      "$" + Math.round(v / 1e3) + "K";
+
+    $("budget-title").textContent = "State Budget · FY" + data.fy;
+    $("budget-hero").innerHTML =
+      "<b>" + fmt(data.total) + "</b> total — " + fmt(data.op) +
+      " operating + " + fmt(data.cip) + " capital" +
+      "<small>" + data.act + " · " + fmt(data.gfTotal) +
+      " of it is general funds (mostly the taxes flowing into the " +
+      "Capitol on the map)</small>";
+
+    const rows = $("budget-rows");
+    const max = data.departments[0].total;
+    for (const d of data.departments) {
+      const row = document.createElement("div");
+      row.className = "brow";
+      const share = (100 * d.total / data.total);
+      const shareTxt = share >= 1 ? Math.round(share) + "%" :
+        share >= 0.05 ? share.toFixed(1) + "%" : "<0.1%";
+      const seg = (v, cls, label) => v / max * 100 < 0.15 ? "" :
+        '<i class="' + cls + '" style="width:' + (v / max * 100) +
+        '%" title="' + d.short + " — " + label + ": " + fmt(v) + '"></i>';
+      row.innerHTML =
+        '<span class="bname" title="' + d.name + '">' + d.short + "</span>" +
+        '<span class="bbar">' +
+        seg(d.gf, "sw-gf", "general funds") +
+        seg(d.fed, "sw-fed", "federal funds") +
+        seg(d.other, "sw-oth", "other funds") +
+        "</span>" +
+        '<span class="bval"><b>' + fmt(d.total) + "</b> · " + shareTxt +
+        "</span>";
+      rows.appendChild(row);
+    }
+
+    $("budget-foot").textContent =
+      "Total budget (operating + capital) by department, FY2027, all " +
+      "means of financing. Source: " + data.source + ". " +
+      "Budget & Finance looks large because debt service and employee " +
+      "benefits for the whole state government are paid through it.";
+
+    const overlay = $("budget-overlay");
+    $("tb-budget").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.toggle("hidden");
+      Dialog.hide();
+    });
+    $("budget-close").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.add("hidden");
+    });
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.classList.add("hidden");
+    });
+  },
+};
+
 /* ---------------------------------------------------------------- scenes */
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload() {
     this.load.json("meta", "map/oahu.json?v=1");
     this.load.json("flows", "map/tax_flows.json?v=1");
+    this.load.json("budget", "map/budget.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -75,6 +144,7 @@ class WorldScene extends Phaser.Scene {
     this.buildCapitol(meta);
     this.buildFlows(meta);
     this.buildLabels(meta);
+    BudgetPanel.init(this.cache.json.get("budget"));
 
     this.setupCamera(meta);
     this.setupInput();

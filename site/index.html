@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813003813">
+  <link rel="stylesheet" href="css/style.css?v=20260813005041">
 </head>
 <body>
   <div id="game"></div>
@@ -15,6 +15,32 @@
     </div>
     <div id="hint">Drag to pan · Scroll or pinch to zoom · Tap the Capitol</div>
     <button id="flows-chip" class="hidden" type="button"></button>
+
+    <div id="toolbar">
+      <button id="tb-budget" type="button" title="State budget — FY2027">
+        <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="1"  y="10" width="4" height="7" fill="#f2c14e"/>
+          <rect x="7"  y="5"  width="4" height="12" fill="#f2c14e"/>
+          <rect x="13" y="1"  width="4" height="16" fill="#ffe9a8"/>
+        </svg>
+        <span>Budget</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="budget-overlay" class="hidden" role="dialog" aria-modal="true">
+    <div id="budget-panel">
+      <div id="budget-title">State Budget · FY2027</div>
+      <button id="budget-close" type="button" aria-label="Close">✕</button>
+      <div id="budget-hero"></div>
+      <div id="budget-legend">
+        <span><i class="sw sw-gf"></i>General funds</span>
+        <span><i class="sw sw-fed"></i>Federal funds</span>
+        <span><i class="sw sw-oth"></i>All other funds</span>
+      </div>
+      <div id="budget-rows"></div>
+      <div id="budget-foot"></div>
+    </div>
   </div>
 
   <div id="dialog" class="hidden" role="dialog" aria-live="polite">
@@ -46,6 +72,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813003813"></script>
+  <script src="js/main.js?v=20260813005041"></script>
 </body>
 </html>
