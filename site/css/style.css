@@ -1,0 +1,114 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1d4f8c;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+#game canvas { image-rendering: pixelated; }
+
+/* ---------- HUD ---------- */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#title-chip {
+  display: inline-block;
+  margin: 12px 0 0 12px;
+  padding: 8px 14px;
+  background: linear-gradient(#2a3f9e, #16246b);
+  border: 2px solid #f8f8ff;
+  outline: 2px solid #16246b;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 2.5px;
+  text-shadow: 1px 1px 0 #000;
+}
+#title-chip .star { color: #f2c14e; }
+#title-chip .sub { color: #9fd4f0; letter-spacing: 1px; font-weight: 600; }
+
+#hint {
+  position: fixed;
+  bottom: 10px; left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  background: rgba(10, 18, 50, 0.72);
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 999px;
+  color: #dfe8ff;
+  font-size: 12px;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+
+/* ---------- JRPG dialogue box ---------- */
+#dialog {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 18px 20px;
+  background: linear-gradient(#1c2f86 0%, #101d5c 100%);
+  border: 3px solid #f8f8ff;
+  outline: 3px solid #101d5c;
+  border-radius: 8px;
+  color: #fff;
+  z-index: 20;
+  box-shadow: 0 6px 0 rgba(0,0,0,.35);
+  cursor: pointer;
+  user-select: none;
+}
+#dialog.hidden { display: none; }
+
+#dialog-name {
+  display: inline-block;
+  position: relative;
+  top: -26px;
+  margin-bottom: -18px;
+  padding: 3px 12px;
+  background: #f2c14e;
+  color: #3a2c05;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.4);
+}
+
+#dialog-text {
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 46px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+#dialog-next {
+  position: absolute;
+  right: 14px; bottom: 6px;
+  color: #f2c14e;
+  animation: bob 0.8s ease-in-out infinite alternate;
+  font-size: 13px;
+}
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(3px); } }
+
+@media (max-width: 600px) {
+  #title-chip { font-size: 11px; letter-spacing: 1.5px; }
+  #hint { font-size: 10px; bottom: 6px; }
+  #dialog { bottom: 24px; }
+  #dialog-text { font-size: 13px; }
+}

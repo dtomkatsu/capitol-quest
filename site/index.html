@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Capitol Quest — Oʻahu</title>
+  <link rel="stylesheet" href="css/style.css?v=20260813002543">
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="hud">
+    <div id="title-chip">
+      <span class="star">★</span> CAPITOL QUEST <span class="sub">· Oʻahu</span>
+    </div>
+    <div id="hint">Drag to pan · Scroll or pinch to zoom · Tap the Capitol</div>
+  </div>
+
+  <div id="dialog" class="hidden" role="dialog" aria-live="polite">
+    <div id="dialog-name"></div>
+    <div id="dialog-text"></div>
+    <div id="dialog-next">▼</div>
+  </div>
+
+  <script>
+    // Dev-only: headless/hidden webviews never fire requestAnimationFrame,
+    // which stalls the game loop. ?raf=mc swaps in a MessageChannel-driven
+    // rAF so automated previews can render. Never active for real players.
+    if (location.search.includes("raf=mc")) {
+      (function () {
+        const ch = new MessageChannel();
+        let cbs = [];
+        ch.port1.onmessage = () => {
+          const list = cbs; cbs = [];
+          const t = performance.now();
+          list.forEach((cb) => { try { cb(t); } catch (e) { console.error(e); } });
+        };
+        window.requestAnimationFrame = (cb) => {
+          cbs.push(cb);
+          if (cbs.length === 1) setTimeout(() => ch.port2.postMessage(0), 8);
+          return cbs.length;
+        };
+        window.cancelAnimationFrame = () => {};
+      })();
+    }
+  </script>
+  <script src="vendor/phaser.min.js"></script>
+  <script src="js/main.js?v=20260813002543"></script>
+</body>
+</html>
