@@ -114,7 +114,7 @@ html, body {
 #toolbar button:hover { border-color: #f2c14e; color: #ffe9a8; }
 #toolbar button svg { width: 20px; height: 20px; }
 
-/* ---------- budget overlay ---------- */
+/* ---------- money overlay ---------- */
 .ovl {
   position: fixed;
   inset: 0;
@@ -168,6 +168,41 @@ html, body {
 }
 .ovl-close:hover { color: #fff; }
 
+.ovl-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.ovl-tabs button {
+  flex: 1;
+  padding: 6px 8px;
+  background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.35);
+  border-radius: 7px;
+  color: #b9c4ea;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+.ovl-tabs button:hover { border-color: #f2c14e; color: #ffe9a8; }
+.ovl-tabs button.on {
+  background: #f2c14e;
+  border-color: #fff;
+  color: #3a2c05;
+  text-shadow: none;
+}
+
+.mview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mview.hidden { display: none; }
+
 .ovl-hero {
   margin: 8px 0 2px;
   font-size: 15px;
@@ -203,29 +238,29 @@ html, body {
 }
 .ovl-rows.hidden { display: none; }
 
-/* ---------- budget radial map ---------- */
-#budget-map { min-height: 0; display: flex; flex-direction: column; }
-#budget-map.hidden { display: none; }
+/* ---------- radial flow map (both tabs) ---------- */
+.flow-map { min-height: 0; display: flex; flex-direction: column; }
+.flow-map.hidden { display: none; }
 
-#budget-svg {
+.flow-svg {
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
   display: block;
   overflow: visible;
 }
-#budget-svg image { image-rendering: pixelated; }
-#budget-svg .spoke { stroke: #93a4dd; stroke-opacity: .17; fill: none; }
-#budget-svg .mote { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
-#budget-svg .node {
+.flow-svg image { image-rendering: pixelated; }
+.flow-svg .spoke { stroke: #93a4dd; stroke-opacity: .17; fill: none; }
+.flow-svg .mote { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
+.flow-svg .node {
   fill: #24337e;
   stroke: #cdd8ff;
   stroke-width: 1.5;
   cursor: pointer;
   transition: fill .12s;
 }
-#budget-svg .node:hover, #budget-svg .node.sel { fill: #f2c14e; }
-#budget-svg .code {
+.flow-svg .node:hover, .flow-svg .node.sel { fill: #f2c14e; }
+.flow-svg .code {
   fill: #dfe8ff;
   font: 700 12px "Avenir Next", Verdana, sans-serif;
   text-anchor: middle;
@@ -234,7 +269,7 @@ html, body {
   stroke: #101d5c;
   stroke-width: 3px;
 }
-#budget-svg .hub {
+.flow-svg .hub {
   fill: #ffe9a8;
   font: 800 13px "Avenir Next", Verdana, sans-serif;
   text-anchor: middle;
@@ -243,7 +278,7 @@ html, body {
   stroke-width: 3.5px;
 }
 
-#budget-view {
+.view-toggle {
   margin-left: auto;
   padding: 2px 10px;
   background: rgba(255,255,255,.08);
@@ -254,9 +289,9 @@ html, body {
   letter-spacing: .5px;
   cursor: pointer;
 }
-#budget-view:hover { border-color: #f2c14e; color: #ffe9a8; }
+.view-toggle:hover { border-color: #f2c14e; color: #ffe9a8; }
 
-#budget-detail {
+.flow-detail {
   min-height: 34px;
   margin-top: 2px;
   padding: 6px 10px;
@@ -267,8 +302,8 @@ html, body {
   line-height: 1.45;
   color: #dfe8ff;
 }
-#budget-detail b { color: #fff; }
-#budget-detail .dim { color: #a8b4dd; }
+.flow-detail b { color: #fff; }
+.flow-detail .dim { color: #a8b4dd; }
 .brow {
   display: grid;
   grid-template-columns: 172px 1fr 92px;

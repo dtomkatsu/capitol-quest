@@ -37,19 +37,225 @@ const Dialog = {
   },
 };
 
-/* ---------------------------------------------------------------- budget */
-const BudgetPanel = {
+/* ------------------------------------------------- radial flow (shared) */
+/* Capitol-at-the-hub flow diagram used by both tabs of the money overlay:
+   dir "out" drifts motes hub→node (budget), dir "in" node→hub (taxes).
+   Node r ∝ √total; mote density ∝ dollars using the same Σ(rate ×
+   duration) normalisation as the map streams. targetMotes is scaled per
+   tab so dollars-per-mote MATCHES across the two views — the budget tab
+   reading busier than the tax tab is the teaching point (federal funds
+   and bond proceeds spend on top of state taxes). */
+function buildRadialFlow(cfg) {
+  const NS = "http://www.w3.org/2000/svg";
+  const CX = 330, CY = 205, RX = 272, RY = 158;
+  const SPEED = 62;            // svg units per second
+
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(NS, tag);
+    for (const a in attrs) el.setAttribute(a, attrs[a]);
+    return el;
+  };
+
+  const maxTotal = Math.max(...cfg.nodes.map((n) => n.total));
+  const spokeG = mk("g", {});
+  const moteG = mk("g", {});
+  const nodeG = mk("g", {});
+  cfg.svg.append(spokeG, moteG, nodeG);
+
+  // hub: the Capitol sprite itself
+  cfg.svg.append(mk("image", {
+    href: "assets/sprites/capitol.png?v=1", x: CX - 56, y: CY - 46,
+    width: 112, height: 86, preserveAspectRatio: "xMidYMid meet",
+  }));
+  const hubLabel = mk("text", { x: CX, y: CY + 58, class: "hub" });
+  hubLabel.textContent = cfg.hubText;
+  cfg.svg.append(hubLabel);
+
+  const streams = [];
+  cfg.nodes.forEach((n, i) => {
+    const a = (i / cfg.nodes.length) * Math.PI * 2 - Math.PI / 2;
+    const nx = CX + Math.cos(a) * RX;
+    const ny = CY + Math.sin(a) * RY;
+    // the spoke meets the hub outside the sprite, not under it
+    const sx = CX + Math.cos(a) * 66;
+    const sy = CY + Math.sin(a) * 52;
+    const mx = (sx + nx) / 2 - Math.sin(a) * 26;
+    const my = (sy + ny) / 2 + Math.cos(a) * 26;
+    const r = Math.max(4.5, Math.min(23, 23 * Math.sqrt(n.total / maxTotal)));
+
+    spokeG.append(mk("path", {
+      class: "spoke", d: `M${sx},${sy} Q${mx},${my} ${nx},${ny}`,
+    }));
+
+    const node = mk("circle", { class: "node", cx: nx, cy: ny, r });
+    const label = mk("text", {
+      class: "code", x: nx,
+      y: ny + (Math.sin(a) < -0.25 ? -r - 6 : r + 11),
+    });
+    label.textContent = n.label;
+    const show = () => {
+      for (const el of nodeG.querySelectorAll(".node"))
+        el.classList.remove("sel");
+      node.classList.add("sel");
+      cfg.detail.innerHTML = n.detail;
+    };
+    node.addEventListener("mouseenter", show);
+    node.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      show();
+    });
+    nodeG.append(node, label);
+
+    const dist = Math.hypot(nx - sx, ny - sy);
+    const hub = [sx, sy], rim = [nx, ny];
+    const [p0, p2] = cfg.dir === "in" ? [rim, hub] : [hub, rim];
+    for (const s of n.streams) {
+      if (s.amt <= 0) continue;
+      streams.push({
+        p0, p1: [mx, my], p2,
+        dur: Math.max(1.6, dist / SPEED),
+        amt: s.amt, color: s.color, acc: Math.random(), rate: 0,
+      });
+    }
+  });
+
+  cfg.detail.innerHTML = cfg.defaultDetail;
+
+  // density ∝ dollars: on-screen motes = Σ(rate × duration)
+  const totalAmt = streams.reduce((s, x) => s + x.amt, 0);
+  const wDur = streams.reduce(
+    (s, x) => s + (x.amt / totalAmt) * x.dur, 0);
+  const rateTotal = cfg.targetMotes / wDur;
+  for (const s of streams) s.rate = rateTotal * (s.amt / totalAmt);
+
+  const pool = [];
+  for (let i = 0; i < Math.ceil(cfg.targetMotes * 1.4); i++) {
+    const c = mk("circle", { class: "mote", r: 2.7, opacity: 0 });
+    moteG.append(c);
+    pool.push({ el: c, free: true, t: 0, s: null });
+  }
+
+  let last = 0;
+  const frame = (now) => {
+    const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+    last = now;
+    if (cfg.isActive()) {
+      for (const s of streams) {
+        s.acc += s.rate * dt;
+        while (s.acc >= 1) {
+          s.acc -= 1;
+          const m = pool.find((q) => q.free);
+          if (!m) break;
+          m.free = false;
+          m.s = s;
+          m.t = 0;
+          m.el.setAttribute("fill", s.color);
+        }
+      }
+      for (const m of pool) {
+        if (m.free) continue;
+        m.t += dt / m.s.dur;
+        if (m.t >= 1) {
+          m.free = true;
+          m.el.setAttribute("opacity", 0);
+          continue;
+        }
+        const t = m.t, u = 1 - t;
+        const [ax, ay] = m.s.p0, [bx, by] = m.s.p1, [cx2, cy2] = m.s.p2;
+        m.el.setAttribute("cx", u * u * ax + 2 * u * t * bx + t * t * cx2);
+        m.el.setAttribute("cy", u * u * ay + 2 * u * t * by + t * t * cy2);
+        m.el.setAttribute("opacity", 0.95 * Math.sin(Math.PI * t));
+      }
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/* --------------------------------------------------------- money overlay */
+/* One overlay, two tabs sharing the radial hub component: taxes flowing
+   IN (FY2025 collections) and the budget flowing OUT (FY2027
+   appropriations). Both toolbar buttons open it pre-selected to their
+   tab; each tab keeps its ▤ List view, which carries the precise
+   numbers. */
+const MoneyPanel = {
   built: false,
-  init(data) {
-    if (this.built || !data) return;
+  init(budget, revenue) {
+    if (this.built || !budget || !revenue) return;
     this.built = true;
     const $ = (id) => document.getElementById(id);
+    const overlay = $("money-overlay");
+
+    const views = {
+      revenue: { el: $("mv-revenue"), tab: $("mt-revenue"),
+                 title: "Revenue Mix · FY" + revenue.fy },
+      budget: { el: $("mv-budget"), tab: $("mt-budget"),
+                title: "State Budget · FY" + budget.fy },
+    };
+    let cur = "revenue";
+    const setView = (v) => {
+      cur = v;
+      for (const k in views) {
+        views[k].el.classList.toggle("hidden", k !== v);
+        views[k].tab.classList.toggle("on", k === v);
+      }
+      $("money-title").textContent = views[v].title;
+    };
+    for (const k in views) {
+      views[k].tab.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        setView(k);
+      });
+    }
+    const wireToolbar = (btnId, view) => {
+      $(btnId).addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        if (!overlay.classList.contains("hidden") && cur === view) {
+          overlay.classList.add("hidden");
+        } else {
+          setView(view);
+          overlay.classList.remove("hidden");
+          Dialog.hide();
+        }
+      });
+    };
+    wireToolbar("tb-budget", "budget");
+    wireToolbar("tb-revenue", "revenue");
+    $("money-close").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.add("hidden");
+    });
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.classList.add("hidden");
+    });
+
+    const wireListToggle = (btnId, rowsId, mapId) => {
+      const btn = $(btnId);
+      btn.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        const listOn = $(rowsId).classList.toggle("hidden");
+        $(mapId).classList.toggle("hidden", !listOn);
+        btn.textContent = listOn ? "▤ List" : "◎ Map";
+      });
+    };
+    const activeWhen = (viewKey, mapId) => () =>
+      !overlay.classList.contains("hidden") && cur === viewKey &&
+      !$(mapId).classList.contains("hidden");
+
+    this.buildBudget(budget, $, wireListToggle, activeWhen);
+    this.buildRevenue(revenue, budget, $, wireListToggle, activeWhen);
+    setView("revenue");
+  },
+
+  buildBudget(data, $, wireListToggle, activeWhen) {
     const fmt = (v) =>
       v >= 995e6 ? "$" + (v / 1e9).toFixed(v >= 9.95e9 ? 0 : 1) + "B" :
       v >= 1e6 ? "$" + Math.round(v / 1e6) + "M" :
       "$" + Math.round(v / 1e3) + "K";
 
-    $("budget-title").textContent = "State Budget · FY" + data.fy;
     $("budget-hero").innerHTML =
       "<b>" + fmt(data.total) + "</b> total — " + fmt(data.op) +
       " operating + " + fmt(data.cip) + " capital" +
@@ -80,202 +286,75 @@ const BudgetPanel = {
       rows.appendChild(row);
     }
 
-    this.buildMap(data, fmt);
-
     $("budget-foot").textContent =
       "Total budget (operating + capital) by department, FY2027, all " +
       "means of financing. Source: " + data.source + ". " +
       "Budget & Finance looks large because debt service and employee " +
       "benefits for the whole state government are paid through it.";
 
-    const overlay = $("budget-overlay");
-    const viewBtn = $("budget-view");
-    viewBtn.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      const listOn = $("budget-rows").classList.toggle("hidden");
-      $("budget-map").classList.toggle("hidden", !listOn);
-      viewBtn.textContent = listOn ? "▤ List" : "◎ Map";
-    });
-    $("tb-budget").addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      overlay.classList.toggle("hidden");
-      document.getElementById("revenue-overlay").classList.add("hidden");
-      Dialog.hide();
-    });
-    $("budget-close").addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      overlay.classList.add("hidden");
-    });
-    overlay.addEventListener("pointerdown", (e) => {
-      if (e.target === overlay) overlay.classList.add("hidden");
-    });
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") overlay.classList.add("hidden");
-    });
-  },
+    wireListToggle("budget-view", "budget-rows", "budget-map");
 
-  /* Radial outflow map: the Capitol at the hub, the 24 departments ringed
-     around it, money drifting outward along the spokes. Each department
-     gets three sub-streams — general / federal / other funds — whose mote
-     density is proportional to those dollars, so the fund mix is legible
-     from the motion alone (Human Services runs blue, Education gold). */
-  buildMap(data, fmt) {
-    const NS = "http://www.w3.org/2000/svg";
-    const svg = document.getElementById("budget-svg");
-    const detail = document.getElementById("budget-detail");
-    const CX = 330, CY = 205, RX = 272, RY = 158;
-    const SPEED = 62;            // svg units per second
-    const TARGET_MOTES = 110;    // steady-state, whole diagram
-    const FUNDS = [
-      { k: "gf", c: "#e3b64b" },
-      { k: "fed", c: "#63a6f0" },
-      { k: "other", c: "#3fbf92" },
-    ];
-
-    const mk = (tag, attrs) => {
-      const el = document.createElementNS(NS, tag);
-      for (const a in attrs) el.setAttribute(a, attrs[a]);
-      return el;
-    };
-
-    const depts = data.departments;
-    const maxTotal = depts[0].total;
-    const spokeG = mk("g", {});
-    const moteG = mk("g", {});
-    const nodeG = mk("g", {});
-    svg.append(spokeG, moteG, nodeG);
-
-    // hub: the Capitol sprite itself
-    svg.append(mk("image", {
-      href: "assets/sprites/capitol.png?v=1", x: CX - 56, y: CY - 46,
-      width: 112, height: 86, preserveAspectRatio: "xMidYMid meet",
-    }));
-    const hubLabel = mk("text", { x: CX, y: CY + 58, class: "hub" });
-    hubLabel.textContent = fmt(data.total) + " appropriated";
-    svg.append(hubLabel);
-
-    const streams = [];
-    depts.forEach((d, i) => {
-      const a = (i / depts.length) * Math.PI * 2 - Math.PI / 2;
-      const nx = CX + Math.cos(a) * RX;
-      const ny = CY + Math.sin(a) * RY;
-      // start the spoke outside the sprite, not under it
-      const sx = CX + Math.cos(a) * 66;
-      const sy = CY + Math.sin(a) * 52;
-      const mx = (sx + nx) / 2 - Math.sin(a) * 26;
-      const my = (sy + ny) / 2 + Math.cos(a) * 26;
-      const r = Math.max(4.5, Math.min(23, 23 * Math.sqrt(d.total / maxTotal)));
-
-      spokeG.append(mk("path", {
-        class: "spoke", d: `M${sx},${sy} Q${mx},${my} ${nx},${ny}`,
-      }));
-
-      const node = mk("circle", { class: "node", cx: nx, cy: ny, r });
-      const label = mk("text", {
-        class: "code", x: nx,
-        y: ny + (Math.sin(a) < -0.25 ? -r - 6 : r + 11),
-      });
-      label.textContent = d.code;
-      const show = () => {
-        for (const n of nodeG.querySelectorAll(".node"))
-          n.classList.remove("sel");
-        node.classList.add("sel");
-        const pct = (v) => Math.round(100 * v / d.total) + "%";
-        detail.innerHTML =
+    const pct = (v, d) => Math.round(100 * v / d.total) + "%";
+    buildRadialFlow({
+      svg: $("budget-svg"),
+      detail: $("budget-detail"),
+      dir: "out",
+      hubText: fmt(data.total) + " appropriated",
+      targetMotes: 110,          // steady-state, whole diagram
+      isActive: activeWhen("budget", "budget-map"),
+      defaultDetail: '<span class="dim">Hover a department to see its ' +
+        "budget and where the money comes from. Gold motes are general " +
+        "funds, blue federal, green everything else.</span>",
+      nodes: data.departments.map((d) => ({
+        label: d.code,
+        total: d.total,
+        streams: [
+          { amt: d.gf, color: "#e3b64b" },
+          { amt: d.fed, color: "#63a6f0" },
+          { amt: d.other, color: "#3fbf92" },
+        ],
+        detail:
           "<b>" + d.name + "</b> — <b>" + fmt(d.total) + "</b> · " +
           Math.round(d.positions).toLocaleString() + " positions<br>" +
-          '<span class="dim">General ' + fmt(d.gf) + " (" + pct(d.gf) +
-          ") · Federal " + fmt(d.fed) + " (" + pct(d.fed) +
-          ") · Other " + fmt(d.other) + " (" + pct(d.other) + ")</span>";
-      };
-      node.addEventListener("mouseenter", show);
-      node.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        show();
-      });
-      nodeG.append(node, label);
-
-      const dist = Math.hypot(nx - sx, ny - sy);
-      for (const f of FUNDS) {
-        if (d[f.k] <= 0) continue;
-        streams.push({
-          p0: [sx, sy], p1: [mx, my], p2: [nx, ny],
-          dur: Math.max(1.6, dist / SPEED),
-          amt: d[f.k], color: f.c, acc: Math.random(), rate: 0,
-        });
-      }
+          '<span class="dim">General ' + fmt(d.gf) + " (" + pct(d.gf, d) +
+          ") · Federal " + fmt(d.fed) + " (" + pct(d.fed, d) +
+          ") · Other " + fmt(d.other) + " (" + pct(d.other, d) + ")</span>",
+      })),
     });
-
-    detail.innerHTML = '<span class="dim">Hover a department to see its ' +
-      "budget and where the money comes from. Gold motes are general " +
-      "funds, blue federal, green everything else.</span>";
-
-    // density ∝ dollars: on-screen motes = Σ(rate × duration)
-    const totalAmt = streams.reduce((s, x) => s + x.amt, 0);
-    const wDur = streams.reduce(
-      (s, x) => s + (x.amt / totalAmt) * x.dur, 0);
-    const rateTotal = TARGET_MOTES / wDur;
-    for (const s of streams) s.rate = rateTotal * (s.amt / totalAmt);
-
-    const pool = [];
-    for (let i = 0; i < 150; i++) {
-      const c = mk("circle", { class: "mote", r: 2.7, opacity: 0 });
-      moteG.append(c);
-      pool.push({ el: c, free: true, t: 0, s: null });
-    }
-
-    let last = 0;
-    const frame = (now) => {
-      const overlayOpen = !document.getElementById("budget-overlay")
-        .classList.contains("hidden");
-      const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
-      last = now;
-      if (overlayOpen) {
-        for (const s of streams) {
-          s.acc += s.rate * dt;
-          while (s.acc >= 1) {
-            s.acc -= 1;
-            const m = pool.find((q) => q.free);
-            if (!m) break;
-            m.free = false;
-            m.s = s;
-            m.t = 0;
-            m.el.setAttribute("fill", s.color);
-          }
-        }
-        for (const m of pool) {
-          if (m.free) continue;
-          m.t += dt / m.s.dur;
-          if (m.t >= 1) {
-            m.free = true;
-            m.el.setAttribute("opacity", 0);
-            continue;
-          }
-          const t = m.t, u = 1 - t;
-          const [ax, ay] = m.s.p0, [bx, by] = m.s.p1, [cx2, cy2] = m.s.p2;
-          m.el.setAttribute("cx", u * u * ax + 2 * u * t * bx + t * t * cx2);
-          m.el.setAttribute("cy", u * u * ay + 2 * u * t * by + t * t * cy2);
-          m.el.setAttribute("opacity", 0.95 * Math.sin(Math.PI * t));
-        }
-      }
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
   },
-};
 
-/* ---------------------------------------------------------------- revenue */
-const RevenuePanel = {
-  built: false,
-  init(data) {
-    if (this.built || !data) return;
-    this.built = true;
-    const $ = (id) => document.getElementById(id);
+  buildRevenue(data, budget, $, wireListToggle, activeWhen) {
     const fmtK = (v) =>            // amounts arrive in $ thousands
       v >= 995e3 ? "$" + (v / 1e6).toFixed(v >= 9.95e6 ? 1 : 2) + "B" :
       "$" + Math.round(v / 1e3) + "M";
+    const shareTxt = (amt) => {
+      const s = 100 * amt / data.total;
+      return s >= 1 ? Math.round(s) + "%" : s.toFixed(1) + "%";
+    };
+    // node labels; the full names live in the detail box and the list
+    const SHORT = {
+      "General excise & use (GET)": "GET",
+      "Individual income tax": "Income",
+      "Transient accommodations (TAT)": "TAT",
+      "County GET surcharge": "Cnty GET",
+      "Estate tax": "Estate",
+      "Corporate income tax": "Corp",
+      "Unemployment insurance": "UI",
+      "Insurance premiums tax": "Insurance",
+      "Fuel taxes": "Fuel",
+      "Public service companies": "Utilities",
+      "Motor vehicle tax & fees": "Vehicle",
+      "Rental vehicle surcharge": "Rental car",
+      "Conveyance tax": "Convey",
+      "Tobacco tax": "Tobacco",
+      "Liquor tax": "Liquor",
+      "All other taxes & fees": "Other",
+    };
+    // gold/teal match the island-map streams; green = not on the map
+    const color = (t) =>
+      t.stream === "income" ? "#e3b64b" :
+      t.stream === "get" ? "#4fd8c8" : "#3fbf92";
 
-    $("revenue-title").textContent = "Revenue Mix · FY" + data.fy;
     const d = data.distribution;
     $("revenue-hero").innerHTML =
       "<b>" + fmtK(data.total) + "</b> in state tax collections, FY" +
@@ -291,44 +370,51 @@ const RevenuePanel = {
       const row = document.createElement("div");
       row.className = "brow";
       row.title = t.who;
-      const share = 100 * t.amt / data.total;
-      const shareTxt = share >= 1 ? Math.round(share) + "%" :
-        share.toFixed(1) + "%";
       const cls = t.stream === "income" ? "sw-gf"
-        : t.stream === "get" ? "sw-get" : "sw-fed";
+        : t.stream === "get" ? "sw-get" : "sw-oth";
       row.innerHTML =
         '<span class="bname">' + t.name + (t.stream ? " ★" : "") + "</span>" +
         '<span class="bbar"><i class="' + cls +
         '" style="width:' + (100 * t.amt / max) + '%"></i></span>' +
-        '<span class="bval"><b>' + fmtK(t.amt) + "</b> · " + shareTxt +
+        '<span class="bval"><b>' + fmtK(t.amt) + "</b> · " + shareTxt(t.amt) +
         "</span>";
       rows.appendChild(row);
     }
 
     $("revenue-foot").textContent =
       "Cash collections by tax type, all funds. Source: " + data.source +
-      ". Hover a row for who pays it. ★ marks the two taxes drawn on the " +
-      "map: income tax by ZIP (real geography) and GET spread by business " +
-      "payroll (DOTAX publishes GET island-wide only). The budget spends " +
-      "more than this because federal dollars and bond proceeds are added " +
-      "on top of state taxes.";
+      ". ★ marks the two taxes drawn on the island map: income tax by ZIP " +
+      "(real geography) and GET spread by where people live (DOTAX " +
+      "publishes GET island-wide only). The budget spends more than this " +
+      "because federal dollars and bond proceeds are added on top of " +
+      "state taxes — same dollars-per-mote scale on both tabs, so the " +
+      "busier budget map is honest.";
 
-    const overlay = $("revenue-overlay");
-    $("tb-revenue").addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      overlay.classList.toggle("hidden");
-      document.getElementById("budget-overlay").classList.add("hidden");
-      Dialog.hide();
-    });
-    $("revenue-close").addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      overlay.classList.add("hidden");
-    });
-    overlay.addEventListener("pointerdown", (e) => {
-      if (e.target === overlay) overlay.classList.add("hidden");
-    });
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") overlay.classList.add("hidden");
+    wireListToggle("revenue-view", "revenue-rows", "revenue-map");
+
+    // keep dollars-per-mote equal to the budget tab (110 motes ≙ $24.8B)
+    const target = Math.round(110 * (data.total * 1e3) / budget.total);
+
+    buildRadialFlow({
+      svg: $("revenue-svg"),
+      detail: $("revenue-detail"),
+      dir: "in",
+      hubText: fmtK(data.total) + " collected",
+      targetMotes: target,
+      isActive: activeWhen("revenue", "revenue-map"),
+      defaultDetail: '<span class="dim">Hover a tax to see what it raised ' +
+        "and who pays it. Gold motes are the income tax and teal the GET " +
+        "— the two streams drawn on the island map — green everything " +
+        "else.</span>",
+      nodes: data.taxes.map((t) => ({
+        label: SHORT[t.name] || t.name.split(" ")[0],
+        total: t.amt,
+        streams: [{ amt: t.amt, color: color(t) }],
+        detail:
+          "<b>" + t.name + "</b> — <b>" + fmtK(t.amt) + "</b> · " +
+          shareTxt(t.amt) + " of collections<br>" +
+          '<span class="dim">' + t.who + "</span>",
+      })),
     });
   },
 };
@@ -374,8 +460,8 @@ class WorldScene extends Phaser.Scene {
     this.buildCapitol(meta);
     this.buildFlows(meta);
     this.buildLabels(meta);
-    BudgetPanel.init(this.cache.json.get("budget"));
-    RevenuePanel.init(this.cache.json.get("revenue"));
+    MoneyPanel.init(
+      this.cache.json.get("budget"), this.cache.json.get("revenue"));
 
     this.setupCamera(meta);
     this.setupInput();

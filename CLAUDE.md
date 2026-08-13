@@ -47,16 +47,24 @@ via startswith, and keep the off-map px filter as the safety net. The
 lon/lat→px transform ships in oahu.json under "transform" (written by
 render_map) — downstream layers must use it, never re-derive offsets.
 
-## Budget overlay = radial outflow map (feature 3)
+## Money overlay = one panel, two radial tabs (features 2a + 3)
 
-`BudgetPanel.buildMap()` in main.js: Capitol sprite at the hub, 24
-department nodes on an ellipse (node r ∝ √total), SVG motes drifting
-outward per department × fund (gold/blue/green), density ∝ dollars using
-the same Σ(rate × duration) normalisation as the map streams. Its rAF
-loop runs for the page lifetime but no-ops while the overlay is hidden.
-The List toggle keeps the old bar view — don't delete it, it carries the
-precise numbers. Department nodes are labeled by DOTAX/budget CODE (HMS,
-TRN, EDN…), which is also how the budget documents refer to them.
+Budget and revenue share ONE overlay (`#money-overlay`, `MoneyPanel` in
+main.js) with two tabs: "↓ Money in · Taxes" (16 tax nodes, motes
+node→hub) and "↑ Money out · Budget" (24 department nodes, motes
+hub→node). Both toolbar buttons remain and deep-link to their tab.
+`buildRadialFlow()` is the shared component: Capitol sprite at the hub,
+nodes on an ellipse (r ∝ √total), density ∝ dollars using the same
+Σ(rate × duration) normalisation as the map streams. targetMotes is
+scaled so DOLLARS-PER-MOTE MATCHES across tabs (budget 110 ⇒ revenue
+~51) — the sparser tax view next to the busier budget view is the
+teaching point (federal funds + bonds spend on top of state taxes);
+don't "fix" it. Each tab's rAF loop runs for the page lifetime but
+no-ops unless its tab AND map view are showing. The ▤ List toggles keep
+the bar views — don't delete them, they carry the precise numbers.
+Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
+nodes by the SHORT map in `buildRevenue()`, whose keys must match
+revenue.json tax names exactly (fallback: first word of the name).
 
 ## Revenue-mix layer (feature 2a)
 
