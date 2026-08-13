@@ -202,6 +202,29 @@ part of the choice.
 - Next: consequences (what happens when the general fund runs dry),
   department-level effects on the money-out map, quest hooks.
 
+## 9. All eight islands — ✅ shipped (2026-08-13)
+
+**The teaching point:** Hawaiʻi is more than Oʻahu — the state the
+Capitol governs stretches from Niʻihau to the Big Island.
+
+- Engine made config-driven: `tools/islands.py` holds each island's grid,
+  scale, real-crest ridgelines (Haleakalā with its crater, Mauna Kea /
+  Mauna Loa with Mokuʻāweoweo, Kīlauea's caldera, Waiʻaleʻale, Nā Pali,
+  Kamakou, Lānaʻihale …), plantation fields, reef-flat bays (Molokaʻi's
+  south reef), towns and landmarks. Coastlines are the real statewide-GIS
+  polygons; urban tiles come from Census 2020 urban areas plus hand town
+  spots for sub-UA settlements. Oʻahu's bake is byte-identical to the
+  single-island engine's.
+- Per-island scale keeps every canvas in budget: 0.32 km/tile, except
+  Maui 0.40 and Hawaiʻi 0.60. Islands are separate map screens, so mixed
+  scales never share a viewport. ~20MB of PNGs total.
+- Runtime: the "· Oʻahu ▾" tag on the title chip opens the island menu;
+  switching loads that island's meta + slices and restarts the world
+  scene (textures cache, so returning is instant). Capitol, tax streams
+  and rail appear only on Oʻahu; the other islands are explorable
+  terrain with their own labels — their stories (county budgets? TAT?)
+  come later.
+
 ## Visual language rules (all features)
 
 - Flows are ambient, never diagrammatic: motes, not arrows; alpha < 0.6;

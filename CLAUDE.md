@@ -8,9 +8,30 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
 - **North-up iso**: screen-up = geographic north. Grid axes are diagonal to
   geography — NEVER convert lon/lat to tiles by linear bbox scaling; always
   use `lonlat_to_cell()` / `cell_center_lonlat()` in `tools/build_map.py`.
-- **Rebuild order**: `tools/build_map.py` → `tools/render_map.py`. Sprites:
+- **Rebuild order**: `tools/build_map.py --island <slug>` →
+  `tools/render_map.py --island <slug>` (or `--all`). Sprites:
   `tools/make_sprites.py`. The map is baked; editing `site/js/main.js` alone
   never changes terrain.
+- **All eight islands** are separate baked map screens (never one world —
+  the chain would blow the 4096px slice limit and mobile texture memory).
+  Per-island geography (grid, scale, ridgelines, craters, fields, towns,
+  landmarks) lives in `tools/islands.py`; render reads geometry from
+  `build/map_grid_<slug>.json`, NEVER from its own constants. Scale is
+  per-island: 0.32 km/tile except Maui 0.40 and Hawaiʻi 0.60 — islands
+  are separate screens, so the difference never shows on screen together.
+  Oʻahu regression rule: after touching the engine, rebuild oahu and diff
+  `build/map_grid_oahu.json` tiles/heights against the committed bake —
+  the refactor kept them byte-identical; keep it that way.
+- Neighbor-island coastlines: `data/coastlines/<slug>.geojson` (statewide
+  GIS coast_n83, split by `tools/prep_islands_data.py`); urban =
+  `data/urban_areas_hi.geojson` (Census 2020 UAs) + hand `towns` circles
+  in islands.py for sub-UA settlements (Kaunakakai, Lānaʻi City …).
+  Oʻahu keeps its Mahele-Atlas outline + road-density urban — untouched.
+- Runtime: the "· Oʻahu ▾" tag on the title chip is the island switcher
+  (`IslandUI` + `WorldScene.switchIsland`); Capitol, tax streams and rail
+  are gated to `island === "oahu"`. Scene restarts re-run create(): guard
+  texture/anim creation and DOM listeners (see `chip.onpointerdown`,
+  `_resizeWired`) or they stack.
 - **Slices must stay < 4096 px** per side (old-mobile GL limit kept for
   safety even though we render with Canvas): render_map asserts this.
 - Phaser is vendored (`site/vendor/phaser.min.js`, v3.90.0, MIT). Do not

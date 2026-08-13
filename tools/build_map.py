@@ -1,37 +1,45 @@
 #!/usr/bin/env python3
-"""Build the Oʻahu tile grid for Capitol Quest.
+"""Build an island tile grid for Capitol Quest.
 
-Reads real geodata and classifies every tile of a 224x176 grid
-(~320m/tile) into JRPG overworld terrain:
+Classifies every tile of an island's grid (~320m/tile; larger on Maui and
+Hawaiʻi — see tools/islands.py) into JRPG overworld terrain:
 
   water_deep, water_shallow, sand, grass, field, forest,
   mountain, urban, urban_dense
 
-plus overlay flags (rail viaduct) and landmark/station positions.
+plus overlay flags (rail viaduct, Oʻahu only) and landmark/station
+positions. All island-specific geography lives in tools/islands.py.
 
-Inputs
-  data/island_outline.geojson   Oʻahu coastline (from Mahele-Atlas)
-  data/rail_line.geojson        Skyline rail alignment (from Revenue-Modeling-TOD)
-  data/stations.geojson         19 rail stations
-  ~/Revenue-Modeling-TOD/data/raw/road_centerlines.geojson
-                                road density -> urban tiles (not copied into
-                                repo; only the derived grid is committed)
+Usage:
+  python3 tools/build_map.py                 # Oʻahu
+  python3 tools/build_map.py --island maui
+  python3 tools/build_map.py --all
+
+Inputs (per island; see islands.py):
+  outline geojson               real coastline polygon
+  urban source                  "roads": ~/Revenue-Modeling-TOD road
+                                centerlines -> density (Oʻahu)
+                                "ua": data/urban_areas_hi.geojson (Census
+                                2020 urban areas) + hand town spots
+  data/rail_alignment.geojson   Skyline (Oʻahu only)
+  data/stations.geojson
 
 Outputs
-  build/map_grid.json           full grid for tools/render_map.py
-  build/debug_map.png           top-down colored QA render
-  site/map/oahu.json            runtime metadata (landmarks, sparkles, dims)
+  build/map_grid_<slug>.json    full grid for tools/render_map.py
+  build/debug_map_<slug>.png    top-down colored QA render
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
-import os
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+from islands import ISLANDS
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -40,11 +48,12 @@ ROOT = Path(__file__).resolve().parent.parent
 # axes run diagonally across geography. With screen x = (c-r)*16 and
 # y = (c+r)*8, the +c axis heads SE and the +r axis heads SW; then
 # x ∝ east and y ∝ -north, i.e. the island renders in true map orientation.
+# These module globals are set per island in main().
 COLS = ROWS = 288
-LON_C, LAT_C = -157.965, 21.4825       # island bbox center
-KM_PER_LON = 103.8                     # at ~21.4N
+LON_C, LAT_C = -157.965, 21.4825
+KM_PER_LON = 103.8
 KM_PER_LAT = 110.9
-TILE_KM = 0.32                         # ground spacing between tile centers
+TILE_KM = 0.32
 K = TILE_KM * math.sqrt(2.0)
 
 TILE_W, TILE_H = 32, 16                # iso diamond, 2:1
@@ -99,6 +108,23 @@ def rings_of(geom):
     raise ValueError(geom["type"])
 
 
+def geom_of(gj):
+    if gj.get("type") == "Feature":
+        return gj["geometry"]
+    if gj.get("type") == "FeatureCollection":
+        feats = gj["features"]
+        if len(feats) == 1:
+            return feats[0]["geometry"]
+        # merge into one MultiPolygon
+        coords = []
+        for f in feats:
+            g = f["geometry"]
+            coords += g["coordinates"] if g["type"] == "MultiPolygon" \
+                else [g["coordinates"]]
+        return {"type": "MultiPolygon", "coordinates": coords}
+    return gj
+
+
 def points_in_rings(px, py, rings):
     """Even-odd rule across all rings (holes handled automatically)."""
     try:
@@ -142,89 +168,10 @@ def dist_to_polyline_km(lon, lat, line):
     return best
 
 
-# ---------------------------------------------------------------- ridges
-KOOLAU = [(-157.990, 21.620), (-157.945, 21.575), (-157.900, 21.520),
-          (-157.865, 21.470), (-157.830, 21.420), (-157.800, 21.380),
-          (-157.788, 21.350), (-157.760, 21.330), (-157.715, 21.318),
-          (-157.670, 21.305)]
-WAIANAE = [(-158.260, 21.555), (-158.225, 21.535), (-158.200, 21.520),
-           (-158.145, 21.507), (-158.120, 21.470), (-158.105, 21.430),
-           (-158.090, 21.390), (-158.075, 21.360)]
-
-CRATERS = [  # (lon, lat, rim_inner_km, rim_outer_km)
-    (-157.8055, 21.2620, 0.45, 1.00),   # Lēʻahi / Diamond Head
-    (-157.6773, 21.2905, 0.30, 0.70),   # Koko Crater
-    (-157.8457, 21.3066, 0.00, 0.38),   # Pūowaina / Punchbowl
-]
-
-# ag plateau bboxes (lon0, lat0, lon1, lat1)
-FIELDS = [(-158.16, 21.42, -157.92, 21.62),
-          (-158.12, 21.33, -157.99, 21.42)]   # Kunia / ʻEwa plain
-
-# Honolulu urban core (dense towers allowed)
-CORE = (-157.875, 21.270, -157.815, 21.320)
-
-LANDMARKS = [
-    # id, name, lon, lat, kind
-    ("capitol", "Hawaiʻi State Capitol", -157.85736, 21.30737, "capitol"),
-    ("iolani", "ʻIolani Palace", -157.85868, 21.30655, "poi"),
-    ("honolulu", "Honolulu", -157.8630, 21.2930, "town"),
-    ("waikiki", "Waikīkī", -157.8270, 21.2780, "town"),
-    ("diamondhead", "Lēʻahi (Diamond Head)", -157.8055, 21.2600, "nature"),
-    ("pearlharbor", "Pearl Harbor", -157.9600, 21.3550, "nature"),
-    ("kaneohe", "Kāneʻohe", -157.8000, 21.4080, "town"),
-    ("kailua", "Kailua", -157.7400, 21.3930, "town"),
-    ("kapolei", "Kapolei", -158.0580, 21.3350, "town"),
-    ("waianae", "Waiʻanae", -158.1850, 21.4470, "town"),
-    ("wahiawa", "Wahiawā", -158.0240, 21.5030, "town"),
-    ("haleiwa", "Haleʻiwa", -158.1030, 21.5930, "town"),
-    ("koolau", "Koʻolau Range", -157.8650, 21.4700, "range"),
-    ("waianaerange", "Waiʻanae Range", -158.1450, 21.4900, "range"),
-]
-
-
-def main():
-    lon, lat = cell_center_lonlat()
-    n = ROWS * COLS
-
-    # ---- land / water
-    outline = json.load(open(ROOT / "data" / "island_outline.geojson"))
-    geom = outline["geometry"] if outline.get("type") == "Feature" else outline
-    rings = rings_of(geom)
-    print(f"outline: {len(rings)} rings")
-    land = points_in_rings(lon, lat, rings)
-    print(f"land tiles: {land.sum()} / {n}")
-
-    tiles = np.full(n, WATER_DEEP, np.uint8)
-    tiles[land] = GRASS
-    landg_pre = land.reshape(ROWS, COLS)
-
-    # ---- ridges -> mountain / forest (noise-modulated widths)
-    noise = smooth_noise((ROWS, COLS)).ravel()
-    d_koolau = dist_to_polyline_km(lon, lat, KOOLAU)
-    d_waianae = dist_to_polyline_km(lon, lat, WAIANAE)
-    wob = 0.55 + 0.9 * noise          # 0.55..1.45 width multiplier
-    mountain = land & ((d_koolau < 1.8 * wob) | (d_waianae < 2.3 * wob))
-    forest = land & ((d_koolau < 3.6 * wob) | (d_waianae < 4.2 * wob)) & ~mountain
-    peak = land & ((d_koolau < 0.55) | (d_waianae < 0.7))
-    for clon, clat, r_in, r_out in CRATERS:
-        d = np.hypot((lon - clon) * KM_PER_LON, (lat - clat) * KM_PER_LAT)
-        rim = land & (d >= r_in) & (d < r_out)
-        mountain |= rim
-        forest &= ~rim
-
-    # ---- ag fields (noisy edges so the bbox doesn't read as a rectangle)
-    field = np.zeros(n, bool)
-    noise2 = smooth_noise((ROWS, COLS), seed=7).ravel()
-    for x0, y0, x1, y1 in FIELDS:
-        # distance to bbox edge in degrees, positive inside
-        din = np.minimum.reduce([lon - x0, x1 - lon, lat - y0, y1 - lat])
-        band = 0.018 * (0.4 + 1.2 * noise2)  # fuzzy shrink of the bbox rim
-        field |= din > band - 0.018
-    field &= land & ~mountain & ~forest
-
-    # ---- urban from road density
-    roads_path = Path.home() / "Revenue-Modeling-TOD/data/raw/road_centerlines.geojson"
+# ------------------------------------------------- urban sources
+def density_from_roads(lon, lat):
+    roads_path = Path.home() / \
+        "Revenue-Modeling-TOD/data/raw/road_centerlines.geojson"
     density = np.zeros((ROWS, COLS), np.float32)
     roads = json.load(open(roads_path))
     for f in roads["features"]:
@@ -239,7 +186,8 @@ def main():
                 continue
             # sample each segment every ~80m
             for (x1, y1), (x2, y2) in zip(arr[:-1], arr[1:]):
-                seg_km = math.hypot((x2 - x1) * KM_PER_LON, (y2 - y1) * KM_PER_LAT)
+                seg_km = math.hypot((x2 - x1) * KM_PER_LON,
+                                    (y2 - y1) * KM_PER_LAT)
                 k = max(1, int(seg_km / 0.08))
                 ts = (np.arange(k) + 0.5) / k
                 sx = x1 + ts * (x2 - x1)
@@ -248,25 +196,126 @@ def main():
                 cc, rr = cf.astype(int), rf.astype(int)
                 ok = (cc >= 0) & (cc < COLS) & (rr >= 0) & (rr < ROWS)
                 np.add.at(density, (rr[ok], cc[ok]), 1.0)
-    density = density.ravel()
-    print(f"road density: max {density.max():.0f}, p90 {np.percentile(density[density>0], 90):.0f}")
+    return density
 
-    T_URBAN, T_DENSE = 20.0, 60.0
-    urban = land & (density >= T_URBAN) & ~mountain
-    # de-speckle: drop weak isolated tiles, fill surrounded gaps (2 passes)
-    ug = urban.reshape(ROWS, COLS)
-    dg = density.reshape(ROWS, COLS)
-    for _ in range(2):
-        nb = np.zeros((ROWS, COLS), np.int8)
-        for dr in (-1, 0, 1):
-            for dc in (-1, 0, 1):
-                if dr or dc:
-                    nb += np.roll(np.roll(ug, dr, 0), dc, 1)
-        ug = (ug & ((nb >= 3) | (dg >= 45))) | (~ug & (nb >= 6) & landg_pre)
-    urban = ug.ravel() & land & ~mountain
-    in_core = (lon >= CORE[0]) & (lon <= CORE[2]) & (lat >= CORE[1]) & (lat <= CORE[3])
-    dense = urban & in_core & (density >= T_DENSE)
-    # urban beats forest/field where roads are truly dense
+
+def urban_from_ua(lon, lat, towns):
+    """Census urban-area polygons + hand town spots -> urban mask."""
+    urban = np.zeros(lon.shape[0], bool)
+    ua_path = ROOT / "data" / "urban_areas_hi.geojson"
+    pad = 0.05
+    x0, x1 = lon.min() - pad, lon.max() + pad
+    y0, y1 = lat.min() - pad, lat.max() + pad
+    ua = json.load(open(ua_path))
+    for f in ua["features"]:
+        g = f["geometry"]
+        rings = rings_of(g)
+        # cheap bbox reject against this island's window
+        bx = np.concatenate([r[:, 0] for r in rings])
+        by = np.concatenate([r[:, 1] for r in rings])
+        if bx.max() < x0 or bx.min() > x1 or by.max() < y0 or by.min() > y1:
+            continue
+        urban |= points_in_rings(lon, lat, rings)
+    for tlon, tlat, r_km in towns:
+        d = np.hypot((lon - tlon) * KM_PER_LON, (lat - tlat) * KM_PER_LAT)
+        urban |= d <= r_km
+    return urban
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--island", default="oahu", choices=sorted(ISLANDS))
+    ap.add_argument("--all", action="store_true")
+    args = ap.parse_args()
+    slugs = list(ISLANDS) if args.all else [args.island]
+    for slug in slugs:
+        build_island(slug)
+
+
+def build_island(slug):
+    cfg = ISLANDS[slug]
+    global COLS, ROWS, LON_C, LAT_C, KM_PER_LON, KM_PER_LAT, TILE_KM, K
+    COLS = ROWS = cfg["grid"]
+    LON_C, LAT_C = cfg["center"]
+    KM_PER_LON = cfg["km_per_lon"]
+    KM_PER_LAT = cfg["km_per_lat"]
+    TILE_KM = cfg["tile_km"]
+    K = TILE_KM * math.sqrt(2.0)
+    print(f"=== {slug}: grid {COLS}, {TILE_KM} km/tile ===")
+
+    lon, lat = cell_center_lonlat()
+    n = ROWS * COLS
+
+    # ---- land / water
+    outline = json.load(open(ROOT / cfg["outline"]))
+    rings = rings_of(geom_of(outline))
+    print(f"outline: {len(rings)} rings")
+    land = points_in_rings(lon, lat, rings)
+    print(f"land tiles: {land.sum()} / {n}")
+
+    tiles = np.full(n, WATER_DEEP, np.uint8)
+    tiles[land] = GRASS
+    landg_pre = land.reshape(ROWS, COLS)
+
+    # ---- ridges -> mountain / forest (noise-modulated widths)
+    noise = smooth_noise((ROWS, COLS)).ravel()
+    wob = 0.55 + 0.9 * noise          # 0.55..1.45 width multiplier
+    mountain = np.zeros(n, bool)
+    forest_src = np.zeros(n, bool)
+    peak = np.zeros(n, bool)
+    closeness = np.zeros(n, np.float32)
+    for pts, w_mtn, w_forest, w_peak, h_mult in cfg["ridges"]:
+        d = dist_to_polyline_km(lon, lat, pts)
+        mountain |= land & (d < w_mtn * wob)
+        forest_src |= land & (d < w_forest * wob)
+        peak |= land & (d < w_peak)
+        closeness = np.maximum(
+            closeness, np.clip(1.0 - d / (w_mtn * wob), 0.0, 1.0) * h_mult)
+    forest = forest_src & ~mountain
+    for clon, clat, r_in, r_out, _rim_h in cfg["craters"]:
+        d = np.hypot((lon - clon) * KM_PER_LON, (lat - clat) * KM_PER_LAT)
+        rim = land & (d >= r_in) & (d < r_out)
+        mountain |= rim
+        forest &= ~rim
+
+    # ---- ag fields (noisy edges so the bbox doesn't read as a rectangle)
+    field = np.zeros(n, bool)
+    noise2 = smooth_noise((ROWS, COLS), seed=7).ravel()
+    for x0, y0, x1, y1 in cfg["fields"]:
+        # distance to bbox edge in degrees, positive inside
+        din = np.minimum.reduce([lon - x0, x1 - lon, lat - y0, y1 - lat])
+        band = 0.018 * (0.4 + 1.2 * noise2)  # fuzzy shrink of the bbox rim
+        field |= din > band - 0.018
+    field &= land & ~mountain & ~forest
+
+    # ---- urban
+    if cfg["urban"] == "roads":
+        density = density_from_roads(lon, lat).ravel()
+        print(f"road density: max {density.max():.0f}, "
+              f"p90 {np.percentile(density[density > 0], 90):.0f}")
+        T_URBAN, T_DENSE = 20.0, 60.0
+        urban = land & (density >= T_URBAN) & ~mountain
+        # de-speckle: drop weak isolated tiles, fill surrounded gaps
+        ug = urban.reshape(ROWS, COLS)
+        dg = density.reshape(ROWS, COLS)
+        for _ in range(2):
+            nb = np.zeros((ROWS, COLS), np.int8)
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr or dc:
+                        nb += np.roll(np.roll(ug, dr, 0), dc, 1)
+            ug = (ug & ((nb >= 3) | (dg >= 45))) | \
+                (~ug & (nb >= 6) & landg_pre)
+        urban = ug.ravel() & land & ~mountain
+        core = cfg["core"]
+        in_core = (lon >= core[0]) & (lon <= core[2]) & \
+            (lat >= core[1]) & (lat <= core[3])
+        dense = urban & in_core & (density >= T_DENSE)
+    else:
+        urban = urban_from_ua(lon, lat, cfg["towns"]) & land & ~mountain
+        dense = np.zeros(n, bool)
+    print(f"urban tiles: {urban.sum()}")
+    # urban beats forest/field where it is real
     forest &= ~urban
     field &= ~urban
     peak &= ~urban
@@ -299,8 +348,10 @@ def main():
         newly = grow & (dist == 99)
         dist[newly] = k
         cur = grow
-    bay = ((lon >= -157.84) & (lon <= -157.75) &
-           (lat >= 21.40) & (lat <= 21.51)).reshape(ROWS, COLS)
+    bay = np.zeros(n, bool)
+    for x0, y0, x1, y1 in cfg["bays_tiles"]:
+        bay |= (lon >= x0) & (lon <= x1) & (lat >= y0) & (lat <= y1)
+    bay = bay.reshape(ROWS, COLS)
     shallow = ~landg & ((dist <= 2) | (bay & (dist <= 6)))
     mid = ~landg & ~shallow & ((dist <= 5) | (bay & (dist <= 9)))
     g[shallow & (g == WATER_DEEP)] = WATER_SHALLOW
@@ -309,59 +360,61 @@ def main():
     tiles = g.ravel()
 
     # ---- mountain height field (graded toward the crest, noisy)
-    closeness = np.maximum(1.0 - d_koolau / (1.8 * wob),
-                           1.0 - d_waianae / (2.3 * wob))
-    closeness = np.clip(closeness, 0.0, 1.0)
-    hgrid = np.zeros(n, np.uint8)
+    hgrid = np.zeros(n, np.float32)
     mmask = (tiles == MOUNTAIN)
-    hgrid[mmask] = (4 + closeness[mmask] * 9 + noise[mmask] * 3).astype(np.uint8)
+    hgrid[mmask] = 4 + closeness[mmask] * 9 + noise[mmask] * 3
     pmask = (tiles == PEAK)
-    hgrid[pmask] = (16 + noise[pmask] * 5).astype(np.uint8)
-    # crater rims sit lower than the big ranges
-    for clon, clat, r_in, r_out in CRATERS:
+    hgrid[pmask] = 16 * np.maximum(1.0, closeness[pmask]) + noise[pmask] * 5
+    # crater rims sit at their configured height
+    for clon, clat, r_in, r_out, rim_h in cfg["craters"]:
         d = np.hypot((lon - clon) * KM_PER_LON, (lat - clat) * KM_PER_LAT)
         rim = (d >= r_in) & (d < r_out) & mmask
-        hgrid[rim] = 8
+        hgrid[rim] = rim_h
+    hgrid = hgrid.astype(np.uint8)
 
     # ---- rail: tile mask (gameplay) + smooth fractional paths (render)
     rail = np.zeros((ROWS, COLS), bool)
     rail_paths = []
-    rl = json.load(open(ROOT / "data" / "rail_alignment.geojson"))
-    feats = rl["features"] if rl.get("type") == "FeatureCollection" else [rl]
-    for f in feats:
-        gm = f["geometry"]
-        lines = [gm["coordinates"]] if gm["type"] == "LineString" else \
-                gm["coordinates"] if gm["type"] == "MultiLineString" else []
-        for line in lines:
-            arr = np.asarray(line, dtype=float)[:, :2]
-            path = []
-            for (x1, y1), (x2, y2) in zip(arr[:-1], arr[1:]):
-                seg_km = math.hypot((x2 - x1) * KM_PER_LON, (y2 - y1) * KM_PER_LAT)
-                k = max(1, int(seg_km / 0.05))
-                ts = np.linspace(0, 1, k + 1)
-                cf, rf = lonlat_to_cell(x1 + ts * (x2 - x1),
-                                        y1 + ts * (y2 - y1))
-                cc, rr = cf.astype(int), rf.astype(int)
-                ok = (cc >= 0) & (cc < COLS) & (rr >= 0) & (rr < ROWS)
-                rail[rr[ok], cc[ok]] = True
-                path.extend([[round(float(u), 3), round(float(v), 3)]
-                             for u, v in zip(cf[ok], rf[ok])])
-            if len(path) > 1:
-                # thin to ~every 4th sample; enough for smooth ink
-                rail_paths.append(path[::4] + [path[-1]])
+    if cfg["rail"]:
+        rl = json.load(open(ROOT / "data" / "rail_alignment.geojson"))
+        feats = rl["features"] if rl.get("type") == "FeatureCollection" \
+            else [rl]
+        for f in feats:
+            gm = f["geometry"]
+            lines = [gm["coordinates"]] if gm["type"] == "LineString" else \
+                    gm["coordinates"] if gm["type"] == "MultiLineString" else []
+            for line in lines:
+                arr = np.asarray(line, dtype=float)[:, :2]
+                path = []
+                for (x1, y1), (x2, y2) in zip(arr[:-1], arr[1:]):
+                    seg_km = math.hypot((x2 - x1) * KM_PER_LON,
+                                        (y2 - y1) * KM_PER_LAT)
+                    k = max(1, int(seg_km / 0.05))
+                    ts = np.linspace(0, 1, k + 1)
+                    cf, rf = lonlat_to_cell(x1 + ts * (x2 - x1),
+                                            y1 + ts * (y2 - y1))
+                    cc, rr = cf.astype(int), rf.astype(int)
+                    ok = (cc >= 0) & (cc < COLS) & (rr >= 0) & (rr < ROWS)
+                    rail[rr[ok], cc[ok]] = True
+                    path.extend([[round(float(u), 3), round(float(v), 3)]
+                                 for u, v in zip(cf[ok], rf[ok])])
+                if len(path) > 1:
+                    # thin to ~every 4th sample; enough for smooth ink
+                    rail_paths.append(path[::4] + [path[-1]])
 
     # ---- stations
-    st = json.load(open(ROOT / "data" / "stations.geojson"))
     stations = []
-    for f in st["features"]:
-        slon, slat = f["geometry"]["coordinates"][:2]
-        c, r = lonlat_to_cell(slon, slat)
-        stations.append({"name": f["properties"]["name"],
-                         "col": int(c), "row": int(r)})
+    if cfg["rail"]:
+        st = json.load(open(ROOT / "data" / "stations.geojson"))
+        for f in st["features"]:
+            slon, slat = f["geometry"]["coordinates"][:2]
+            c, r = lonlat_to_cell(slon, slat)
+            stations.append({"name": f["properties"]["name"],
+                             "col": int(c), "row": int(r)})
 
     # ---- landmarks -> tile coords
     lms = []
-    for lid, name, llon, llat, kind in LANDMARKS:
+    for lid, name, llon, llat, kind in cfg["landmarks"]:
         c, r = lonlat_to_cell(llon, llat)
         lms.append({"id": lid, "name": name, "kind": kind,
                     "col": round(c, 2), "row": round(r, 2)})
@@ -370,20 +423,25 @@ def main():
     (ROOT / "build").mkdir(exist_ok=True)
     grid = tiles.reshape(ROWS, COLS)
     out = {
+        "island": slug, "name": cfg["name"], "home": cfg["home"],
         "cols": COLS, "rows": ROWS,
         "tile_w": TILE_W, "tile_h": TILE_H,
         "center": [LON_C, LAT_C], "tile_km": TILE_KM,
+        "km_per_lon": KM_PER_LON, "km_per_lat": KM_PER_LAT,
+        "outline": cfg["outline"],
+        "bays": cfg["bays"],
         "names": NAMES,
         "tiles": [row.tolist() for row in grid],
         "heights": [row.tolist() for row in hgrid.reshape(ROWS, COLS)],
-        "rail": [[int(c) for c in np.flatnonzero(rail[r])] for r in range(ROWS)],
+        "rail": [[int(c) for c in np.flatnonzero(rail[r])]
+                 for r in range(ROWS)],
         "rail_paths": rail_paths,
         "stations": stations,
         "landmarks": lms,
     }
-    with open(ROOT / "build" / "map_grid.json", "w") as fh:
+    with open(ROOT / "build" / f"map_grid_{slug}.json", "w") as fh:
         json.dump(out, fh)
-    print("wrote build/map_grid.json")
+    print(f"wrote build/map_grid_{slug}.json")
 
     # ---- debug render (top-down, 4px per tile)
     colors = np.array([
@@ -393,9 +451,10 @@ def main():
     ], np.uint8)
     img = colors[grid]
     img[rail] = [255, 60, 120]
-    im = Image.fromarray(img, "RGB").resize((COLS * 4, ROWS * 4), Image.NEAREST)
-    im.save(ROOT / "build" / "debug_map.png")
-    print("wrote build/debug_map.png")
+    im = Image.fromarray(img, "RGB").resize((COLS * 4, ROWS * 4),
+                                            Image.NEAREST)
+    im.save(ROOT / "build" / f"debug_map_{slug}.png")
+    print(f"wrote build/debug_map_{slug}.png")
 
     counts = {NAMES[i]: int((tiles == i).sum()) for i in range(len(NAMES))}
     print(counts)

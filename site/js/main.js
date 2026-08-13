@@ -733,6 +733,50 @@ const PolicyPanel = {
   },
 };
 
+/* -------------------------------------------------------- island switcher */
+/* The "· Oʻahu ▾" tag on the title chip opens a list of all eight islands;
+   picking one loads its baked map + meta and restarts the world scene.
+   Only Oʻahu carries the Capitol, the tax streams and the rail — the
+   other islands are explorable terrain (their stories come later). */
+const IslandUI = {
+  built: false,
+  scene: null,
+  init(scene) {
+    this.scene = scene;                       // rebind on every restart
+    if (this.built) return;
+    this.built = true;
+    const chip = document.getElementById("island-chip");
+    const menu = document.getElementById("island-menu");
+    const index = scene.cache.json.get("islands");
+    if (!index) return;
+    for (const isl of index.islands) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = isl.name;
+      b.dataset.slug = isl.slug;
+      b.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        menu.classList.add("hidden");
+        this.scene.switchIsland(isl.slug);
+      });
+      menu.appendChild(b);
+    }
+    chip.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("hidden");
+    });
+    window.addEventListener("pointerdown", () =>
+      menu.classList.add("hidden"));
+  },
+  update(meta) {
+    document.getElementById("island-chip").textContent =
+      "· " + (meta.name || "Oʻahu") + " ▾";
+    for (const b of document.querySelectorAll("#island-menu button")) {
+      b.classList.toggle("on", b.dataset.slug === (meta.island || "oahu"));
+    }
+  },
+};
+
 /* ---------------------------------------------------------------- scenes */
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
@@ -743,6 +787,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
     this.load.json("policies", "map/policies.json?v=1");
+    this.load.json("islands", "map/islands.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -764,6 +809,7 @@ class WorldScene extends Phaser.Scene {
 
   create(meta) {
     this.meta = meta;
+    this.island = meta.island || "oahu";
     this.cameras.main.setBackgroundColor(DEEP_BLUE);
     this.cameras.main.setBounds(0, 0, meta.w, meta.h);
 
@@ -772,18 +818,60 @@ class WorldScene extends Phaser.Scene {
     }
 
     this.buildSparkles(meta);
-    this.buildCapitol(meta);
+    if (meta.landmarks.some((l) => l.id === "capitol")) {
+      this.buildCapitol(meta);
+    }
     this.buildFlows(meta);
     this.buildLabels(meta);
     MoneyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("revenue"));
     PolicyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("policies"));
+    IslandUI.init(this);
+    IslandUI.update(meta);
 
     this.setupCamera(meta);
     this.setupInput();
 
-    this.scale.on("resize", () => this.applyLabelScale());
+    if (!this._resizeWired) {
+      this._resizeWired = true;
+      this.scale.on("resize", () => this.applyLabelScale());
+    }
+  }
+
+  /* ---- island switching: load the target island's meta + slices, then
+     restart this scene with the new meta. Textures stay cached, so
+     returning to an island is instant. */
+  switchIsland(slug) {
+    if (slug === this.island || this._switching) return;
+    this._switching = true;
+    this.stopIntro();
+    const key = "meta_" + slug;
+    const startWith = (meta) => {
+      const need = meta.slices.filter(
+        (s) => !this.textures.exists("map_" + s.file));
+      if (!need.length) {
+        this._switching = false;
+        this.scene.restart(meta);
+        return;
+      }
+      for (const s of need) {
+        this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=1");
+      }
+      this.load.once("complete", () => {
+        this._switching = false;
+        this.scene.restart(meta);
+      });
+      this.load.start();
+    };
+    if (this.cache.json.exists(key)) {
+      startWith(this.cache.json.get(key));
+    } else {
+      this.load.json(key, "map/" + slug + ".json?v=1");
+      this.load.once("complete", () =>
+        startWith(this.cache.json.get(key)));
+      this.load.start();
+    }
   }
 
   /* ---- tax inflows: quiet motes drifting from source areas into the
@@ -794,11 +882,19 @@ class WorldScene extends Phaser.Scene {
      reads GET as the bigger one, which it is. ---- */
   buildFlows(meta) {
     this.flows = null;
+    // the tax streams are Oʻahu geometry (ZIP centroids in Oʻahu map px)
+    if (this.island !== "oahu") {
+      for (const id of ["flows-chip", "get-chip"]) {
+        document.getElementById(id).classList.add("hidden");
+      }
+      return;
+    }
     const inc = this.cache.json.get("flows");
     const get = this.cache.json.get("get_flows");
     if (!inc || !inc.zips || !inc.zips.length) return;
 
     const mote = (key, ring, core) => {
+      if (this.textures.exists(key)) return;
       const g = this.make.graphics({ add: false });
       g.fillStyle(ring, 0.5);
       g.fillCircle(3, 3, 3);
@@ -876,12 +972,13 @@ class WorldScene extends Phaser.Scene {
         chip.textContent = (stream.enabled ? "◉" : "○") + " " + label;
       };
       setLabel();
-      chip.addEventListener("pointerdown", (e) => {
+      // scene restarts re-run buildFlows: replace the handler, never stack
+      chip.onpointerdown = (e) => {
         e.stopPropagation();
         stream.enabled = !stream.enabled;
         if (!stream.enabled) release(stream.id);
         setLabel();
-      });
+      };
     };
     wire("flows-chip", streams[0], "Income tax · TY" + inc.year, inc.source);
     if (streams[1]) {
@@ -929,12 +1026,14 @@ class WorldScene extends Phaser.Scene {
 
   /* ---- water sparkles ---- */
   buildSparkles(meta) {
-    this.anims.create({
-      key: "sparkle",
-      frames: [{ key: "sp0" }, { key: "sp1" }, { key: "sp2" },
-               { key: "sp1" }, { key: "sp0" }],
-      frameRate: 7,
-    });
+    if (!this.anims.exists("sparkle")) {
+      this.anims.create({
+        key: "sparkle",
+        frames: [{ key: "sp0" }, { key: "sp1" }, { key: "sp2" },
+                 { key: "sp1" }, { key: "sp0" }],
+        frameRate: 7,
+      });
+    }
     const pts = Phaser.Utils.Array.Shuffle(meta.sparkles.slice()).slice(0, 160);
     for (const [x, y] of pts) {
       const sp = this.add.sprite(x, y, "sp0").setDepth(2).setAlpha(0.9);
@@ -1023,7 +1122,7 @@ class WorldScene extends Phaser.Scene {
   /* ---- camera: intro flight, then free pan/zoom ---- */
   setupCamera(meta) {
     const cam = this.cameras.main;
-    const [cx, cy] = meta.camera.capitol;
+    const [cx, cy] = meta.camera.home || meta.camera.capitol;
     const fit = Math.max(
       this.scale.width / meta.w, this.scale.height / meta.h);
     this.minZoom = Math.max(fit * 0.95, 0.22);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake the Capitol Quest Oʻahu overworld — modern 2D-JRPG pixel art.
+"""Bake a Capitol Quest island overworld — modern 2D-JRPG pixel art.
 
 v2 renderer: the ground is rendered in SCREEN SPACE at pixel resolution
 instead of stamping per-tile diamonds:
@@ -13,15 +13,23 @@ instead of stamping per-tile diamonds:
     sprites with cast shadows, scattered per tile and depth-sorted
 
 The tile grid from build_map.py still decides WHAT is where; it no longer
-decides the shape of any edge.
+decides the shape of any edge. All geometry (grid size, center, scale,
+bays, outline path) rides in build/map_grid_<slug>.json, written by
+build_map.py from tools/islands.py.
+
+Usage:
+  python3 tools/render_map.py                 # Oʻahu
+  python3 tools/render_map.py --island maui
+  python3 tools/render_map.py --all
 
 Outputs
-  site/assets/map/oahu_<i>.png   2x2 slices (each < 4096px)
-  site/map/oahu.json             runtime metadata
+  site/assets/map/<slug>_<i>.png  slices (each < 4096px)
+  site/map/<slug>.json            runtime metadata
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import os
@@ -42,7 +50,7 @@ DEEP = "#1c5490"
  URBAN_DENSE, PEAK, WATER_MID) = range(11)
 LAND_IDS = [SAND, GRASS, FIELD, FOREST, MOUNTAIN, URBAN, URBAN_DENSE, PEAK]
 
-# must match build_map.py
+# set per island in render_island() from the grid json (build_map.py)
 GRID = 288
 KM_PER_LON, KM_PER_LAT = 103.8, 110.9
 LON_C, LAT_C = -157.965, 21.4825
@@ -273,7 +281,26 @@ def spr_tower(rng):
 
 # ---------------------------------------------------------------- main
 def main():
-    grid_data = json.load(open(ROOT / "build" / "map_grid.json"))
+    from islands import ISLANDS
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--island", default="oahu", choices=sorted(ISLANDS))
+    ap.add_argument("--all", action="store_true")
+    args = ap.parse_args()
+    for slug in (list(ISLANDS) if args.all else [args.island]):
+        render_island(slug)
+
+
+def render_island(slug):
+    grid_data = json.load(open(ROOT / "build" / f"map_grid_{slug}.json"))
+    global GRID, KM_PER_LON, KM_PER_LAT, LON_C, LAT_C, TILE_KM, K
+    GRID = grid_data["cols"]
+    KM_PER_LON = grid_data["km_per_lon"]
+    KM_PER_LAT = grid_data["km_per_lat"]
+    LON_C, LAT_C = grid_data["center"]
+    TILE_KM = grid_data["tile_km"]
+    K = TILE_KM * math.sqrt(2.0)
+    print(f"=== {slug}: grid {GRID}, {TILE_KM} km/tile ===")
+
     COLS, ROWS = grid_data["cols"], grid_data["rows"]
     tiles = np.array(grid_data["tiles"], np.uint8)
     theights = np.array(grid_data["heights"], np.float32)
@@ -306,8 +333,16 @@ def main():
     lat = LAT_C + N / KM_PER_LAT
 
     # ---- smooth land mask from the real coastline polygon
-    outline = json.load(open(ROOT / "data" / "island_outline.geojson"))
+    outline = json.load(open(ROOT / grid_data["outline"]))
     geom = outline["geometry"] if outline.get("type") == "Feature" else outline
+    if geom.get("type") == "FeatureCollection":
+        feats = geom["features"]
+        coords = []
+        for f in feats:
+            g = f["geometry"]
+            coords += g["coordinates"] if g["type"] == "MultiPolygon" \
+                else [g["coordinates"]]
+        geom = {"type": "MultiPolygon", "coordinates": coords}
     polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else \
         [geom["coordinates"]]
 
@@ -374,13 +409,15 @@ def main():
 
     col = np.zeros((H, W, 3), np.float32)
 
-    # water bands (dither the band edges with fine noise). Kāneʻohe Bay's
-    # reef flats widen the bands via a FEATHERED influence field (no bbox
-    # edges in the water).
-    bay = (np.clip((lon + 157.855) / 0.025, 0, 1) *
-           np.clip((-157.73 - lon) / 0.025, 0, 1) *
-           np.clip((lat - 21.39) / 0.025, 0, 1) *
-           np.clip((21.53 - lat) / 0.025, 0, 1))
+    # water bands (dither the band edges with fine noise). Reef-flat bays
+    # (Kāneʻohe on Oʻahu, Molokaʻi's south reef) widen the bands via a
+    # FEATHERED influence field (no bbox edges in the water).
+    bay = np.zeros((H, W), np.float32)
+    for bx0, by0, bx1, by1 in grid_data.get("bays", []):
+        bay = np.maximum(bay, (np.clip((lon - bx0) / 0.025, 0, 1) *
+                               np.clip((bx1 - lon) / 0.025, 0, 1) *
+                               np.clip((lat - by0) / 0.025, 0, 1) *
+                               np.clip((by1 - lat) / 0.025, 0, 1)))
     dw = (d_sea + (fine - 0.5) * 5.0) / (1.0 + 1.5 * bay)
     wcol = np.empty_like(col)
     wcol[:] = WATER_BANDS[-1][1]
@@ -561,21 +598,27 @@ def main():
             d.line([(ax, ay - LIFT - 1), (bx2, by2 - LIFT - 1)],
                    fill=(216, 220, 226, 255), width=2)
 
-    # ---- slices
+    # ---- slices: minimal grid keeping every side < 4096 (old-mobile GL)
     out_dir = ROOT / "site" / "assets" / "map"
     out_dir.mkdir(parents=True, exist_ok=True)
-    for old in out_dir.glob("oahu_*.png"):
+    for old in out_dir.glob(f"{slug}_*.png"):
         old.unlink()
-    sw, sh = (W + 1) // 2, (H + 1) // 2
+    nx = max(1, math.ceil(W / 4000))
+    ny = max(1, math.ceil(H / 4000))
+    sw, sh = (W + nx - 1) // nx, (H + ny - 1) // ny
     assert sw < 4096 and sh < 4096, (sw, sh)
     slices = []
     rgb = canvas.convert("RGB")
-    for i, (sx, sy) in enumerate([(0, 0), (sw, 0), (0, sh), (sw, sh)]):
-        tile_im = rgb.crop((sx, sy, min(sx + sw, W), min(sy + sh, H)))
-        f = f"oahu_{i}.png"
-        tile_im.save(out_dir / f, optimize=True)
-        slices.append({"file": f, "x": sx, "y": sy,
-                       "w": tile_im.width, "h": tile_im.height})
+    i = 0
+    for gy in range(ny):
+        for gx in range(nx):
+            sx, sy = gx * sw, gy * sh
+            tile_im = rgb.crop((sx, sy, min(sx + sw, W), min(sy + sh, H)))
+            f = f"{slug}_{i}.png"
+            tile_im.save(out_dir / f, optimize=True)
+            slices.append({"file": f, "x": sx, "y": sy,
+                           "w": tile_im.width, "h": tile_im.height})
+            i += 1
 
     # ---- runtime metadata
     def iso_center(c, r):
@@ -594,13 +637,15 @@ def main():
     rngs = random.Random(5)
     sparkles = []
     wet = np.argwhere((tiles == WATER_DEEP) | (tiles == WATER_MID))
-    for r, c in wet[rngs.sample(range(len(wet)), 700)]:
+    for r, c in wet[rngs.sample(range(len(wet)), min(700, len(wet)))]:
         px, py = iso_center(int(c), int(r))
         if 0 <= px < W and 0 <= py < H:
             sparkles.append([px, py])
 
-    cap = next(lm for lm in grid_data["landmarks"] if lm["id"] == "capitol")
+    home = next(lm for lm in grid_data["landmarks"]
+                if lm["id"] == grid_data["home"])
     meta = {
+        "island": slug, "name": grid_data["name"],
         "w": W, "h": H, "deep": DEEP,
         # lon/lat -> map px for downstream layers (see build_tax_flows.py)
         "transform": {"grid": GRID, "originX": origin_x, "topPad": TOP_PAD,
@@ -611,15 +656,16 @@ def main():
         "landmarks": landmarks,
         "stations": stations,
         "sparkles": sparkles,
-        "camera": {"capitol": [round(v) for v in
-                               iso_center(cap["col"], cap["row"])]},
+        "camera": {"home": [round(v) for v in
+                            iso_center(home["col"], home["row"])]},
     }
     map_dir = ROOT / "site" / "map"
     map_dir.mkdir(parents=True, exist_ok=True)
-    with open(map_dir / "oahu.json", "w") as fh:
+    with open(map_dir / f"{slug}.json", "w") as fh:
         json.dump(meta, fh)
     sizes = [os.path.getsize(out_dir / s["file"]) for s in slices]
-    print("wrote site/map/oahu.json;", f"png total {sum(sizes)/1e6:.1f}MB")
+    print(f"wrote site/map/{slug}.json;",
+          f"png total {sum(sizes)/1e6:.1f}MB")
 
 
 if __name__ == "__main__":

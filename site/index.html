@@ -3,16 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813130018">
+  <title>Capitol Quest — Hawaiʻi</title>
+  <link rel="stylesheet" href="css/style.css?v=20260813132336">
 </head>
 <body>
   <div id="game"></div>
 
   <div id="hud">
     <div id="title-chip">
-      <span class="star">★</span> CAPITOL QUEST <span class="sub">· Oʻahu</span>
+      <span class="star">★</span> CAPITOL QUEST
+      <button id="island-chip" type="button" title="Change island">· Oʻahu ▾</button>
     </div>
+    <div id="island-menu" class="hidden"></div>
     <div id="hint">Drag to pan · Scroll or pinch to zoom · Tap the Capitol</div>
     <div id="chips">
       <button id="flows-chip" class="hidden" type="button"></button>
@@ -166,6 +168,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813130018"></script>
+  <script src="js/main.js?v=20260813132336"></script>
 </body>
 </html>
