@@ -381,13 +381,112 @@ html, body {
   line-height: 1.45;
 }
 
+/* ---------- policy overlay ---------- */
+.prow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.prow:last-child { border-bottom: none; }
+.prow .pname { flex: 1 1 auto; min-width: 0; }
+.prow .pname b {
+  display: block;
+  color: #eef2ff;
+  font-size: 12.5px;
+}
+.prow .pname small {
+  display: block;
+  color: #a8b4dd;
+  font-size: 10.5px;
+  line-height: 1.35;
+  margin-top: 1px;
+}
+.prow .ptag {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.prow .ptag.cost { color: #f4a8a0; }
+.prow .ptag.gain { color: #8fe6b7; }
+.prow .pgo {
+  flex: 0 0 auto;
+  width: 74px;
+  padding: 5px 0;
+  background: rgba(255,255,255,.06);
+  border: 2px solid rgba(255,255,255,.4);
+  border-radius: 7px;
+  color: #dfe8ff;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+.prow .pgo:hover { border-color: #f2c14e; color: #ffe9a8; }
+.prow.on .pgo {
+  background: #f2c14e;
+  border-color: #fff;
+  color: #3a2c05;
+  text-shadow: none;
+}
+.prow.on .pname b { color: #ffe9a8; }
+
+/* ---------- budget scoreboard (bottom right) ---------- */
+#fund-chip {
+  position: fixed;
+  bottom: 10px; right: 12px;
+  pointer-events: auto;
+  padding: 7px 13px;
+  background: linear-gradient(#2a3f9e, #16246b);
+  border: 2px solid #f8f8ff;
+  outline: 2px solid #16246b;
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  text-align: right;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+#fund-chip:hover { border-color: #f2c14e; }
+#fund-chip .fc-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9fd4f0;
+}
+#fund-chip .fc-amt {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffe9a8;
+  font-variant-numeric: tabular-nums;
+}
+#fund-chip .fc-delta {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#fund-chip .fc-delta.cost { color: #f4a8a0; }
+#fund-chip .fc-delta.gain { color: #8fe6b7; }
+
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }
-  #chips { top: 56px; }
+  #chips { top: 102px; }   /* below the 3-button toolbar row */
   #chips button { font-size: 10.5px; padding: 4px 9px; }
   #toolbar { top: 58px; left: 12px; transform: none; }
   #toolbar button { padding: 5px 9px 4px; flex-direction: row; gap: 6px; }
   #toolbar button svg { width: 16px; height: 16px; }
+  .prow .pgo { width: 64px; }
+  #fund-chip { bottom: 40px; }
+  #fund-chip .fc-amt { font-size: 14px; }
 }
 
 /* ---------- JRPG dialogue box ---------- */

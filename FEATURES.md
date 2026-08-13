@@ -177,6 +177,31 @@ others feel state ones.
   introduction → committees → crossover → conference → governor.
   Data: real deadlines from the legislative calendar.
 
+## 8. Policies: the core loop — ✅ shipped (first cut, 2026-08-13)
+
+**The teaching point:** budgets are choices. Priorities cost money, the
+legislature has to raise the revenue to pay for them — and *who pays* is
+part of the choice.
+
+- Data: `site/map/policies.json`, hand-curated with a per-item source
+  (amt = $ thousands/yr, FY2027 scale). Priorities: universal free
+  school meals ($33M — Appleseed/DOE projected-participation co-payment
+  cost), state child tax credit ($185M — $650 × ~284K keiki, modeled).
+  Revenue: GET +0.5pt ($586M — FY27 GF GET projection ÷ 8), conveyance
+  modernization ($75M), capital gains as ordinary income ($110M),
+  worldwide combined reporting ($85M) — Budget Primer tax-fairness /
+  ITEP numbers.
+- UI: third toolbar button (**Policies**) → overlay with 🎯 Priorities
+  and 💵 Raise revenue tabs; each row = name + who-pays line + ±$/yr
+  price tag + Enact/repeal toggle (row tooltip = source). Enacted
+  choices persist in localStorage (`cq-policies`).
+- **Budget scoreboard** (bottom-right chip): FY2027 total; hover
+  tooltip splits operating vs capital (Act 175). Priorities subtract
+  from the total, revenue policies add, and a red/green delta line says
+  why. Tapping the chip opens the Policies overlay.
+- Next: consequences (what happens when the general fund runs dry),
+  department-level effects on the money-out map, quest hooks.
+
 ## Visual language rules (all features)
 
 - Flows are ambient, never diagrammatic: motes, not arrows; alpha < 0.6;

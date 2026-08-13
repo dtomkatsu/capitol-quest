@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Oʻahu</title>
-  <link rel="stylesheet" href="css/style.css?v=20260813114339">
+  <link rel="stylesheet" href="css/style.css?v=20260813125857">
 </head>
 <body>
   <div id="game"></div>
@@ -39,7 +39,19 @@
         </svg>
         <span>Revenue</span>
       </button>
+      <button id="tb-policy" type="button" title="Pass policies — invest in priorities, raise the revenue to pay for them">
+        <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="3"  y="1"  width="12" height="16" fill="#f6f1dc"/>
+          <rect x="5"  y="4"  width="8"  height="1"  fill="#7b6a3a"/>
+          <rect x="5"  y="7"  width="8"  height="1"  fill="#7b6a3a"/>
+          <rect x="5"  y="10" width="5"  height="1"  fill="#7b6a3a"/>
+          <rect x="10" y="12" width="4"  height="4"  fill="#f2c14e"/>
+          <rect x="11" y="13" width="2"  height="2"  fill="#b07d1e"/>
+        </svg>
+        <span>Policies</span>
+      </button>
     </div>
+    <button id="fund-chip" type="button"></button>
   </div>
 
   <div id="money-overlay" class="ovl hidden" role="dialog" aria-modal="true">
@@ -102,6 +114,29 @@
     </div>
   </div>
 
+  <div id="policy-overlay" class="ovl hidden" role="dialog" aria-modal="true">
+    <div class="ovl-panel">
+      <div class="ovl-title" id="policy-title">Policies · FY2027</div>
+      <button class="ovl-close" id="policy-close" type="button" aria-label="Close">✕</button>
+      <div class="ovl-tabs">
+        <button id="pt-priorities" type="button">🎯 Priorities</button>
+        <button id="pt-revenue" type="button">💵 Raise revenue</button>
+      </div>
+
+      <div class="mview" id="pv-priorities">
+        <div class="ovl-hero" id="prio-hero"></div>
+        <div class="ovl-rows" id="prio-rows"></div>
+        <div class="ovl-foot" id="prio-foot"></div>
+      </div>
+
+      <div class="mview hidden" id="pv-revenue">
+        <div class="ovl-hero" id="rpol-hero"></div>
+        <div class="ovl-rows" id="rpol-rows"></div>
+        <div class="ovl-foot" id="rpol-foot"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="dialog" class="hidden" role="dialog" aria-live="polite">
     <div id="dialog-name"></div>
     <div id="dialog-text"></div>
@@ -131,6 +166,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260813123337"></script>
+  <script src="js/main.js?v=20260813125857"></script>
 </body>
 </html>

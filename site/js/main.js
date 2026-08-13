@@ -552,6 +552,182 @@ const MoneyPanel = {
   },
 };
 
+/* -------------------------------------------------------- policy overlay */
+/* The core game loop: pick spending priorities, then pass the revenue to
+   pay for them. Amounts arrive in $ thousands/yr (policies.json,
+   hand-curated with a per-item source shown as the row tooltip). Enacted
+   policies move the FY2027 budget scoreboard in the bottom-right corner:
+   priorities spend from it, revenue policies add to it. Choices persist
+   in localStorage. Must init AFTER MoneyPanel so the tb-budget/tb-revenue
+   listeners here run in addition to (not instead of) MoneyPanel's. */
+const PolicyPanel = {
+  built: false,
+  init(budget, data) {
+    if (this.built || !budget || !data) return;
+    this.built = true;
+    const $ = (id) => document.getElementById(id);
+    const overlay = $("policy-overlay");
+    const fmtK = (v) => {            // $ thousands → compact dollars
+      if (!v) return "$0";
+      const d = Math.abs(v) * 1e3;
+      return d >= 995e6 ? "$" + (d / 1e9).toFixed(1) + "B" :
+        "$" + Math.round(d / 1e6) + "M";
+    };
+    const fmtB = (v) => "$" + (v / 1e9).toFixed(2) + "B";
+
+    // enacted policy ids survive reloads (ignore ids that no longer exist)
+    const KEY = "cq-policies";
+    const known = new Set(
+      [...data.priorities, ...data.revenue].map((p) => p.id));
+    let enacted;
+    try {
+      enacted = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")
+        .filter((id) => known.has(id)));
+    } catch (e) { enacted = new Set(); }
+    const save = () => {
+      try { localStorage.setItem(KEY, JSON.stringify([...enacted])); }
+      catch (e) { /* private mode — choices last the session only */ }
+    };
+    const sum = (list) => list.filter((p) => enacted.has(p.id))
+      .reduce((s, p) => s + p.amt, 0);
+
+    /* budget scoreboard, bottom right */
+    const chip = $("fund-chip");
+    const updateChip = () => {
+      const spent = sum(data.priorities);
+      const raised = sum(data.revenue);
+      const delta = (raised - spent) * 1e3;          // dollars
+      chip.innerHTML =
+        '<span class="fc-label">FY' + budget.fy + " budget</span>" +
+        '<span class="fc-amt">' + fmtB(budget.total + delta) + "</span>" +
+        (delta ? '<span class="fc-delta ' +
+          (delta < 0 ? "cost" : "gain") + '">' +
+          (delta < 0 ? "−" : "+") + fmtK(Math.abs(delta) / 1e3) +
+          " from your policies</span>" : "");
+      chip.title =
+        "Act 175 (2026): " + fmtB(budget.op) + " operating + " +
+        fmtB(budget.cip) + " capital." +
+        (spent || raised
+          ? "\nYour policies: −" + fmtK(spent) + "/yr invested, +" +
+            fmtK(raised) + "/yr new revenue."
+          : "\nOpen Policies to invest in priorities — and to raise " +
+            "the revenue that pays for them.");
+    };
+
+    const updateHeros = () => {
+      const spent = sum(data.priorities);
+      const raised = sum(data.revenue);
+      $("prio-hero").innerHTML =
+        "<b>" + fmtK(spent) + "/yr</b> invested in what comes next" +
+        "<small>Tap Enact to fund a priority. Spending lands on the " +
+        "budget scoreboard (bottom right) — cover it from the 💵 Raise " +
+        "revenue tab.</small>";
+      $("rpol-hero").innerHTML =
+        "<b>+" + fmtK(raised) + "/yr</b> in new revenue" +
+        "<small>Every option is a real proposal with a real trade-off — " +
+        "who pays is as important as how much.</small>";
+    };
+
+    const buildRows = (list, rowsEl, kind) => {
+      for (const p of list) {
+        const row = document.createElement("div");
+        row.className = "prow" + (enacted.has(p.id) ? " on" : "");
+        row.title = "Source: " + p.src;
+        row.innerHTML =
+          '<span class="pname"><b>' + p.icon + " " + p.name +
+          "</b><small>" + p.who + "</small></span>" +
+          '<span class="ptag ' + kind + '">' +
+          (kind === "cost" ? "−" : "+") + fmtK(p.amt) + "/yr</span>" +
+          '<button class="pgo" type="button"></button>';
+        const btn = row.querySelector(".pgo");
+        const paint = () => {
+          const on = enacted.has(p.id);
+          row.classList.toggle("on", on);
+          btn.textContent = on ? "✓ Passed" : "Enact";
+          btn.title = on ? "Tap to repeal" : "";
+        };
+        btn.addEventListener("pointerdown", (e) => {
+          e.stopPropagation();
+          if (enacted.has(p.id)) enacted.delete(p.id);
+          else enacted.add(p.id);
+          save();
+          paint();
+          updateChip();
+          updateHeros();
+        });
+        paint();
+        rowsEl.appendChild(row);
+      }
+    };
+    buildRows(data.priorities, $("prio-rows"), "cost");
+    buildRows(data.revenue, $("rpol-rows"), "gain");
+
+    $("prio-foot").textContent =
+      "Price tags are annual, FY2027 scale — Hawaiʻi Appleseed and " +
+      "Budget Primer analyses (hover a row for its source). Spending " +
+      "here is stylized: real appropriations go through the " +
+      "legislature's budget bill.";
+    $("rpol-foot").textContent =
+      "Revenue estimates are annual — Budget Primer tax-fairness " +
+      "analyses and ITEP (hover a row for its source). The GET is the " +
+      "biggest lever but the most regressive; the reforms below it " +
+      "raise money from those most able to pay.";
+
+    /* tabs + open/close */
+    $("policy-title").textContent = "Policies · FY" + budget.fy;
+    const views = {
+      priorities: { el: $("pv-priorities"), tab: $("pt-priorities") },
+      revenue: { el: $("pv-revenue"), tab: $("pt-revenue") },
+    };
+    const setView = (v) => {
+      for (const k in views) {
+        views[k].el.classList.toggle("hidden", k !== v);
+        views[k].tab.classList.toggle("on", k === v);
+      }
+    };
+    for (const k in views) {
+      views[k].tab.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        setView(k);
+      });
+    }
+    const open = () => {
+      $("money-overlay").classList.add("hidden");
+      overlay.classList.remove("hidden");
+      Dialog.hide();
+    };
+    $("tb-policy").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      if (overlay.classList.contains("hidden")) open();
+      else overlay.classList.add("hidden");
+    });
+    chip.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      open();
+    });
+    // the money-overlay toolbar buttons close this overlay (their own
+    // handlers stopPropagation, but same-element listeners still run)
+    for (const id of ["tb-budget", "tb-revenue"]) {
+      $(id).addEventListener("pointerdown", () =>
+        overlay.classList.add("hidden"));
+    }
+    $("policy-close").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.add("hidden");
+    });
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.classList.add("hidden");
+    });
+
+    setView("priorities");
+    updateChip();
+    updateHeros();
+  },
+};
+
 /* ---------------------------------------------------------------- scenes */
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
@@ -561,6 +737,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
+    this.load.json("policies", "map/policies.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -595,6 +772,8 @@ class WorldScene extends Phaser.Scene {
     this.buildLabels(meta);
     MoneyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("revenue"));
+    PolicyPanel.init(
+      this.cache.json.get("budget"), this.cache.json.get("policies"));
 
     this.setupCamera(meta);
     this.setupInput();

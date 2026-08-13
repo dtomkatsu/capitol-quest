@@ -72,6 +72,22 @@ Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
 nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
 revenue.json tax names exactly (fallback: first word, no icon).
 
+## Policies overlay + budget scoreboard (feature 8)
+
+`PolicyPanel` in main.js must init AFTER MoneyPanel: it registers extra
+pointerdown listeners on tb-budget/tb-revenue (to close itself), and
+same-element listeners run in registration order — MoneyPanel's
+stopPropagation only stops bubbling, not those. `site/map/policies.json`
+is HAND-CURATED editorial data ($ thousands/yr, FY2027 scale): every
+item needs a defensible `amt` and a `src` line (shown as the row
+tooltip). Priorities spend from the FY2027 budget scoreboard
+(#fund-chip, bottom right — tooltip splits operating vs capital);
+revenue policies add to it. Enacted ids persist in localStorage
+`cq-policies`; unknown ids are dropped on load, so RENAMING an id
+silently repeals it for existing players. The GET half-point amt is the
+FY27 GF GET projection ÷ 8 — recompute it whenever revenue.json
+re-bases.
+
 ## Revenue-mix layer (feature 2a) — FY2027 projected, general fund only
 
 `tools/build_revenue.py` builds the FY2027 PROJECTED general-fund tax
