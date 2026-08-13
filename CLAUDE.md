@@ -61,10 +61,16 @@ PDF in data/raw/, update PDF/label constants, re-run.
 district (Oʻahu/Maui/Hawaiʻi/Kauaʻi) only. `tools/build_get_flows.py`
 sums the 12 monthly district PDFs for a real Oʻahu FY2025 total ($2.903B,
 checksummed vs the June report's FY cumulative) and then MODELS the
-island spread from Census CBP payroll by ZIP. Never present the spread as
-a DOTAX figure — the chip tooltip and revenue footnote must keep saying
-which half is measured. CBP sector-level PAYANN is suppressed at ZIP
-level (returns 0); only the all-sector "00" total is usable.
+island spread. Never present the spread as a DOTAX figure — the chip
+tooltip and revenue footnote must keep saying which half is measured.
+
+**Basis = population** (ACS5 by ZIP), NOT payroll. `--basis=payroll`
+switches to the CBP remittance view. This is an editorial decision with a
+rationale table in FEATURES.md ("NOTE — choosing the modeled basis"):
+population says everyone pays GET everywhere (the point of the layer);
+payroll collapses half the island onto downtown + the airport. Read that
+note before changing it. (CBP sector-level PAYANN is suppressed at ZIP
+level — only the all-sector "00" total is usable.)
 
 Flow density rule: steady-state motes = Σ(rate × duration), so stream
 rates normalise by the WEIGHTED mean duration. Using an unweighted mean

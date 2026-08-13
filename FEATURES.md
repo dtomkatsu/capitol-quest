@@ -67,15 +67,34 @@ biggest stream on the map — teal outnumbers gold, because it should.
   cumulative column. Also measured: the split by business activity
   (retailing $1.24B, services $567M, contracting $375M, hotel rentals
   $129M, …).
-- MODELED: the spread across the island — allocated to ZIPs in
-  proportion to **Census County Business Patterns (2022) annual payroll
-  by ZIP** (real data; sector-level payroll is disclosure-suppressed, so
-  the all-sector total is used). Downtown 96813 carries 24%, airport/
-  Māpunapuna 96819 17%, Ala Moana 96814 9%.
+- MODELED: the spread across the island. **Basis: population** (Census
+  ACS 5-year residents per ZIP; `tools/build_get_flows.py --basis=payroll`
+  switches it). See the note below — the choice of basis is a real
+  editorial decision, not a technicality.
 - The distinction is surfaced in the UI, not buried: the GET chip's
   tooltip states the measured-vs-modeled split, and the revenue panel
   footnote says GET is spread by payroll because DOTAX publishes it
   island-wide only.
+
+### NOTE — choosing the modeled basis (decided 2026-08-13)
+
+Because no measured sub-island GET geography exists, *whatever* basis we
+pick is an argument, and the two candidates tell opposite stories:
+
+| Basis | What it answers | What the map looks like |
+|---|---|---|
+| **population** (chosen) | who *bears* the tax — GET is charged on nearly every transaction and passed through to customers | teal rises evenly across the island: ʻEwa 8%, Waipahu 7%, Salt Lake 6%, Kāneʻohe 6%, Mililani 5%… |
+| payroll (CBP) | who *remits* it — the legal incidence is on the business | ~50% of the island collapses onto downtown 96813 (24%) + airport 96819 (17%), reading as "Honolulu pays for everything" |
+
+Population wins because the lesson of this layer is that **everyone pays
+GET, everywhere, every day** — the regressive-by-design fact that makes
+GET politically distinct from the income tax. The payroll view is still
+one flag away and is the honest choice if the question is ever "where do
+businesses remit from" (e.g. a future GET-remittance or TOD module).
+
+Both are modeled, neither is a DOTAX figure, and the UI says so. Retain
+this note: a future contributor who "fixes" the basis without reading it
+will silently change the argument the map is making.
 
 **Visual:** teal motes, same calm language as the gold. Both streams
 share one mote pool; each stream's **steady-state mote count** is

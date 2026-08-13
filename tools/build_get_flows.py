@@ -12,16 +12,28 @@ which Table A-14 breaks out by ZIP). So:
     twelve monthly "GE liabilities by district" reports and checksummed
     against the June report's own FY2025 cumulative column. Also measured:
     the split by business activity (retailing, hotel rentals, ...).
-  * MODELED: where on the island it comes from. We distribute the island
-    total across ZIP codes in proportion to Census County Business
-    Patterns annual payroll by ZIP (2022) — i.e. where the paid business
-    activity actually is. This is an assumption, not a DOTAX figure, and
-    the game labels it as such wherever it appears.
+  * MODELED: where on the island it comes from. This is an assumption,
+    not a DOTAX figure, and the game labels it as such wherever it
+    appears. Two bases are supported (--basis):
+
+      population (DEFAULT) — allocate by residents per ZIP (ACS 5-year).
+        GET is charged on virtually every transaction and is passed
+        through to customers, so residents everywhere pay it; this basis
+        says "everyone on this island is paying, all the time."
+      payroll — allocate by Census County Business Patterns annual
+        payroll per ZIP, i.e. where businesses REMIT from. Truer to the
+        legal incidence (GET is levied on the business), but it piles
+        ~50% of the island onto downtown + the airport district, which
+        reads as "Honolulu pays for everything" — the opposite of the
+        lesson. Kept available for the remittance view.
+
+    Neither basis is a measured distribution; they answer different
+    questions ("who bears it" vs "who remits it").
 
 Inputs
   data/raw/ge_district/*.pdf    12 monthly DOTAX district reports (FY2025)
   data/raw/2020_Gaz_zcta_national.txt   ZCTA centroids
-  Census CBP API (cached to data/raw/cbp_payroll.json)
+  Census ACS5 / CBP APIs (cached under data/raw/)
 
 Output
   site/map/get_flows.json
@@ -30,8 +42,8 @@ Output
 from __future__ import annotations
 
 import json
-import os
 import re
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -41,6 +53,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PDF_DIR = ROOT / "data" / "raw" / "ge_district"
 GAZ = ROOT / "data" / "raw" / "2020_Gaz_zcta_national.txt"
 CBP_CACHE = ROOT / "data" / "raw" / "cbp_payroll.json"
+POP_CACHE = ROOT / "data" / "raw" / "acs_population.json"
 META = ROOT / "site" / "map" / "oahu.json"
 OUT = ROOT / "site" / "map" / "get_flows.json"
 
@@ -80,21 +93,41 @@ def parse_month(path):
     return grand[0], grand[1], grand[2], acts
 
 
+def _key():
+    return (Path.home() / ".census_api_key").read_text().strip()
+
+
 def load_cbp(zips):
     if CBP_CACHE.exists():
         return json.load(open(CBP_CACHE))
-    key = (Path.home() / ".census_api_key").read_text().strip()
     out = {}
     for i in range(0, len(zips), 40):
         batch = ",".join(zips[i:i + 40])
         url = ("https://api.census.gov/data/2022/cbp?get=ESTAB,PAYANN"
-               f"&for=zipcode:{batch}&NAICS2017=00&key={key}")
+               f"&for=zipcode:{batch}&NAICS2017=00&key={_key()}")
         with urllib.request.urlopen(url, timeout=60) as fh:
             rows = json.load(fh)
         for estab, pay, _n, z in rows[1:]:
             out[z] = {"estab": int(estab), "payann": int(pay)}
     json.dump(out, open(CBP_CACHE, "w"))
     print(f"fetched CBP payroll for {len(out)} zips -> cached")
+    return out
+
+
+def load_pop(zips):
+    if POP_CACHE.exists():
+        return json.load(open(POP_CACHE))
+    out = {}
+    for i in range(0, len(zips), 40):
+        batch = ",".join(zips[i:i + 40])
+        url = ("https://api.census.gov/data/2022/acs/acs5?get=B01003_001E"
+               f"&for=zip%20code%20tabulation%20area:{batch}&key={_key()}")
+        with urllib.request.urlopen(url, timeout=60) as fh:
+            rows = json.load(fh)
+        for pop, z in rows[1:]:
+            out[z] = {"pop": int(pop)}
+    json.dump(out, open(POP_CACHE, "w"))
+    print(f"fetched ACS population for {len(out)} zips -> cached")
     return out
 
 
@@ -146,18 +179,25 @@ def main():
             on_map[z] = (px, py)
     print(f"{len(on_map)} ZCTAs land inside the Oʻahu map window")
 
+    basis = "payroll" if "--basis=payroll" in sys.argv else "population"
     cbp = load_cbp(sorted(on_map))
-    weighted = [(z, on_map[z], cbp[z]["payann"], cbp[z]["estab"])
-                for z in on_map if cbp.get(z, {}).get("payann", 0) > 0]
-    tot_pay = sum(w[2] for w in weighted)
+    pop = load_pop(sorted(on_map))
+    if basis == "payroll":
+        raw = {z: cbp.get(z, {}).get("payann", 0) for z in on_map}
+        unit = "annual payroll ($k)"
+    else:
+        raw = {z: pop.get(z, {}).get("pop", 0) for z in on_map}
+        unit = "residents"
+    weighted = [(z, on_map[z], raw[z]) for z in on_map if raw[z] > 0]
+    tot = sum(w[2] for w in weighted)
     zips = []
-    for z, (px, py), pay, est in sorted(weighted, key=lambda w: -w[2]):
+    for z, (px, py), w in sorted(weighted, key=lambda t: -t[2]):
         zips.append({"zip": z, "px": px, "py": py,
-                     "share": round(pay / tot_pay, 6),
-                     "getM": round(oahu * pay / tot_pay / 1e6, 2),
-                     "estab": est})
-    print(f"payroll basis: {len(zips)} zips, ${tot_pay/1e6:,.0f}M annual "
-          f"payroll; top: " +
+                     "share": round(w / tot, 6),
+                     "getM": round(oahu * w / tot / 1e6, 2),
+                     "pop": pop.get(z, {}).get("pop", 0),
+                     "payann": cbp.get(z, {}).get("payann", 0)})
+    print(f"{basis} basis: {len(zips)} zips, {tot:,} {unit}; top: " +
           ", ".join(f"{z['zip']} {100*z['share']:.0f}%" for z in zips[:4]))
 
     top_acts = sorted(acts.items(), key=lambda kv: -kv[1])
@@ -167,12 +207,20 @@ def main():
         "oahuTotal": oahu,
         "stateTotal": allsd,
         "oahuShare": round(oahu / allsd, 4),
+        "basis": basis,
         "measured": ("Oʻahu district GET liability, FY2025, summed from the "
                      "12 monthly DOTAX 'GE liabilities by district' reports"),
-        "modeled": ("DOTAX publishes GET only island-wide — no sub-island "
-                    "geography exists. The spread across the island is "
-                    "modeled from Census County Business Patterns (2022) "
-                    "annual payroll by ZIP code."),
+        "modeled": (
+            "DOTAX publishes GET only island-wide — no sub-island geography "
+            "exists. The spread shown is modeled from where people live "
+            "(Census ACS 5-year population by ZIP): GET is charged on "
+            "nearly every transaction and passed through to customers, so "
+            "residents everywhere pay it."
+            if basis == "population" else
+            "DOTAX publishes GET only island-wide — no sub-island geography "
+            "exists. The spread shown is modeled from Census County "
+            "Business Patterns (2022) annual payroll by ZIP — where "
+            "businesses remit from, not where the buyers are."),
         "activities": [{"name": k, "amt": v,
                         "note": ACTIVITY_NOTE.get(k, "")}
                        for k, v in top_acts if v > 0],
