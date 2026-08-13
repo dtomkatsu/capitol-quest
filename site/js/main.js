@@ -199,10 +199,10 @@ function buildRadialFlow(cfg) {
 
 /* --------------------------------------------------------- money overlay */
 /* One overlay, two tabs sharing the radial hub component: taxes flowing
-   IN (FY2025 collections) and the budget flowing OUT (FY2027
-   appropriations). Both toolbar buttons open it pre-selected to their
-   tab; each tab keeps its ▤ List view, which carries the precise
-   numbers. */
+   IN (FY2027 projected general-fund taxes, Council on Revenues) and the
+   budget flowing OUT (FY2027 appropriations). Both toolbar buttons open
+   it pre-selected to their tab; each tab keeps its ▤ List view, which
+   carries the precise numbers. */
 const MoneyPanel = {
   built: false,
   init(budget, revenue) {
@@ -222,7 +222,8 @@ const MoneyPanel = {
     let revSub = "sources";
     const subTitles = {
       sources: "Money In · FY" + budget.fy,
-      taxes: "Revenue Mix · FY" + revenue.fy,
+      taxes: "Taxes · FY" + revenue.fy +
+        (revenue.projected ? " (projected)" : ""),
     };
     const setSub = (s) => {
       revSub = s;
@@ -451,16 +452,12 @@ const MoneyPanel = {
       "General excise & use (GET)": "GET",
       "Individual income tax": "Income",
       "Transient accommodations (TAT)": "TAT",
-      "County GET surcharge": "Cnty GET",
       "Estate tax": "Estate",
       "Corporate income tax": "Corp",
-      "Unemployment insurance": "UI",
       "Insurance premiums tax": "Insurance",
-      "Fuel taxes": "Fuel",
       "Public service companies": "Utilities",
-      "Motor vehicle tax & fees": "Vehicle",
-      "Rental vehicle surcharge": "Rental car",
       "Conveyance tax": "Convey",
+      "Banks & financial corporations": "Banks",
       "Tobacco tax": "Tobacco",
       "Liquor tax": "Liquor",
       "All other taxes & fees": "Other",
@@ -474,29 +471,24 @@ const MoneyPanel = {
       "General excise & use (GET)": "🛒",
       "Individual income tax": "💵",
       "Transient accommodations (TAT)": "🏨",
-      "County GET surcharge": "🚝",
       "Estate tax": "🏰",
       "Corporate income tax": "🏢",
-      "Unemployment insurance": "🛟",
       "Insurance premiums tax": "☂️",
-      "Fuel taxes": "⛽",
       "Public service companies": "💡",
-      "Motor vehicle tax & fees": "🚗",
-      "Rental vehicle surcharge": "🚙",
       "Conveyance tax": "🏠",
+      "Banks & financial corporations": "🏦",
       "Tobacco tax": "🚬",
       "Liquor tax": "🍺",
       "All other taxes & fees": "📦",
     };
 
-    const d = data.distribution;
     $("revenue-hero").innerHTML =
-      "<b>" + fmtK(data.total) + "</b> in state tax collections, FY" +
-      data.fy +
-      "<small>Where it went: " + fmtK(d.general_fund) +
-      " (87%) to the general fund · " + fmtK(d.counties) +
-      " to the counties · " + fmtK(d.special_funds) +
-      " to special funds</small>";
+      "<b>" + fmtK(data.total) + "</b> in state taxes projected to fill " +
+      "the FY" + data.fy + " general fund" +
+      "<small>Council on Revenues forecast, May 2026 · fees and other " +
+      "nontax revenue add ~" + fmtK(data.gf_nontax) + " · taxes " +
+      "collected for the counties, rail and the highway fund live " +
+      "outside this pot</small>";
 
     const rows = $("revenue-rows");
     const max = data.taxes[0].amt;
@@ -516,13 +508,17 @@ const MoneyPanel = {
     }
 
     $("revenue-foot").textContent =
-      "Cash collections by tax type, all funds. Source: " + data.source +
-      ". ★ marks the two taxes drawn on the island map: income tax by ZIP " +
-      "(real geography) and GET spread by where people live (DOTAX " +
-      "publishes GET island-wide only). The budget spends more than this " +
-      "because federal dollars and bond proceeds are added on top of " +
-      "state taxes — same dollars-per-mote scale on both tabs, so the " +
-      "busier budget map is honest.";
+      "Projected general-fund tax revenue by type, FY" + data.fy +
+      ". Source: " + data.source +
+      ". ★ marks the two taxes drawn on the island map (FY2025 " +
+      "geography: income tax by ZIP, GET spread by where people live). " +
+      "Not in this pot: the counties' GET surcharge (" +
+      fmtK(data.county_surcharge) + ", mostly Honolulu rail) and " +
+      "special-fund taxes (" + fmtK(data.special_fund_taxes) +
+      " — fuel, rental cars, vehicle fees) that are earmarked before " +
+      "they reach the general fund. The budget spends federal dollars " +
+      "and bond proceeds on top of state taxes — same dollars-per-mote " +
+      "scale on both tabs, so the busier budget map is honest.";
 
     wireListToggle("revenue-view", "revenue-rows", "revenue-map");
 
@@ -533,13 +529,14 @@ const MoneyPanel = {
       svg: $("revenue-svg"),
       detail: $("revenue-detail"),
       dir: "in",
-      hubText: fmtK(data.total) + " collected",
+      hubText: fmtK(data.total) +
+        (data.projected ? " projected" : " collected"),
       targetMotes: target,
       isActive: activeWhen("revenue-map"),
-      defaultDetail: '<span class="dim">Hover a tax to see what it raised ' +
-        "and who pays it. Gold motes are the income tax and teal the GET " +
-        "— the two streams drawn on the island map — green everything " +
-        "else.</span>",
+      defaultDetail: '<span class="dim">Hover a tax to see what it is ' +
+        "projected to raise and who pays it. Gold motes are the income " +
+        "tax and teal the GET — the two streams drawn on the island map " +
+        "— green everything else.</span>",
       nodes: data.taxes.map((t) => ({
         label: SHORT[t.name] || t.name.split(" ")[0],
         sub: fmtK(t.amt),
@@ -548,7 +545,7 @@ const MoneyPanel = {
         streams: [{ amt: t.amt, color: color(t) }],
         detail:
           "<b>" + t.name + "</b> — <b>" + fmtK(t.amt) + "</b> · " +
-          shareTxt(t.amt) + " of collections<br>" +
+          shareTxt(t.amt) + " of general-fund taxes<br>" +
           '<span class="dim">' + t.who + "</span>",
       })),
     });

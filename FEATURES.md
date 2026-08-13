@@ -41,18 +41,26 @@ the island — and it physically concentrates into one building.
 ## 2a. Revenue mix panel — ✅ shipped
 
 **The teaching point:** most state revenue is the excise tax everyone
-pays at the register — income tax (the map streams) is only 29%.
+pays at the register — income tax (the map streams) is under a third,
+and falling as the 2024 income-tax cuts phase in.
 
-- Data: DOTAX Annual Report FY2024-25, Table 1.8 (all tax types, cash
-  collections). `tools/build_revenue.py` parses the PDF table with a
-  checksum against the printed $11.46B total → `site/map/revenue.json`.
+- Data (re-based 2026-08-13): **FY2027 PROJECTED general-fund taxes**,
+  so the drill matches the FY2027 budget one screen up (the FY2025
+  DOTAX Table 1.8 all-funds version is in git history).
+  `tools/build_revenue.py` parses the by-type allocation in B&F's FY27
+  Executive Supplemental "Tables Indicating the Basis for Revenue
+  Estimates" (Dec 2025, checksummed vs the printed $9.695B) and scales
+  every line onto the Council on Revenues 2026-05-21 forecast total
+  ($9.822B, FY27 +1.0%) → `site/map/revenue.json`. County-surcharge,
+  special-fund-tax and GF-nontax context amounts ride along for the
+  hero/footnote.
 - UI (redesigned 2026-08-13): now the **"Money in" tab of the combined
   money overlay**, two screens deep. It lands on the **funding mix** —
   General 💰 / Federal 🦅 / Other 🧰 nodes (FY2027 means of financing)
   flowing into the Capitol — and tapping the pulsing General node
-  drills into the **tax mix**: 16 tax nodes ringed around the Capitol
+  drills into the **tax mix**: 12 tax nodes ringed around the Capitol
   (r ∝ √amount, dollar amount under each label, emoji badges on the
-  major sources 🛒💵🏨🚝🏰🏢), motes drifting **inward**. Gold motes =
+  major sources 🛒💵🏨🏰🏢), motes drifting **inward**. Gold motes =
   income tax, teal = GET (matching the two island streams), green =
   every other tax. Hover/tap a node for the amount, share and who-pays
   text; "← Funding mix" backs out; a **List** toggle keeps the precise

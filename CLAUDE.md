@@ -53,8 +53,8 @@ Budget and revenue share ONE overlay (`#money-overlay`, `MoneyPanel` in
 main.js) with two tabs. "↓ Money in" is two screens deep: it LANDS on
 the funding mix (3 nodes — General 💰 / Federal 🦅 / Other 🧰, FY2027
 means of financing computed from budget.json) and the pulsing General
-node drills into the FY2025 tax mix (16 nodes, "← Funding mix" to go
-back; the tab always re-lands on the mix). "↑ Money out" is the 24
+node drills into the FY2027 projected general-fund tax mix (12 nodes,
+"← Funding mix" to go back; the tab always re-lands on the mix). "↑ Money out" is the 24
 department nodes. Motes drift node→hub on money-in views, hub→node on
 money-out. Both toolbar buttons remain and deep-link to their tab.
 `buildRadialFlow()` is the shared component: Capitol sprite at the hub,
@@ -63,7 +63,7 @@ optional emoji icon inside circles with r ≥ 6.5, optional onClick +
 .drill pulse, `scatter` spreads beads on few-spoke views), density ∝
 dollars via the same Σ(rate × duration) normalisation as the map
 streams. targetMotes keeps DOLLARS-PER-MOTE EQUAL across views (110 ⇒
-sources 110, taxes ~51) — the sparser tax view is the teaching point
+sources 110, taxes ~43) — the sparser tax view is the teaching point
 (federal funds + bonds spend on top of state taxes); don't "fix" it.
 Animation gating is `offsetParent !== null` on the map div — hiding via
 overlay/tab/sub-view/List all no-op the rAF loop. The ▤ List toggles
@@ -72,13 +72,22 @@ Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
 nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
 revenue.json tax names exactly (fallback: first word, no icon).
 
-## Revenue-mix layer (feature 2a)
+## Revenue-mix layer (feature 2a) — FY2027 projected, general fund only
 
-`tools/build_revenue.py` parses DOTAX Annual Report FY2024-25 Table 1.8
-(pdfplumber; extracted digits arrive split — "4 ,630,396" — strip
-whitespace in the number region) and REFUSES to write output unless the
-row sum matches the printed TOTAL within 0.1%. New report year: drop the
-PDF in data/raw/, update PDF/label constants, re-run.
+`tools/build_revenue.py` builds the FY2027 PROJECTED general-fund tax
+mix so the money-in drill matches the FY2027 budget year (the FY2025
+DOTAX Table 1.8 all-funds version is in git history). Sources in
+data/raw/: `fy27supp_revenue_basis.pdf` (B&F FY27 Executive
+Supplemental, Dec 2025 — TRPO's by-type allocation of the COR 2025-09-04
+forecast, checksummed vs the printed $9.695B) and
+`cor_gf_2026-05-21.pdf` (Council on Revenues, latest forecast: FY27
+$9.822B, +1.0%). Line items are scaled onto the COR total — TRPO's own
+method — and the scaled sum must land on it within rounding ($50K).
+County-surcharge / special-fund-tax / GF-nontax context amounts ride
+along for the hero + footnote; they are NOT general fund — never add
+them into `total`. Next COR meeting is 2026-09-03: when the new report
+posts, drop the PDF in data/raw/, update COR_PDF + the growth sanity
+check, re-run.
 
 ## GET layer (feature 2b) — measured vs modeled
 
