@@ -36,6 +36,17 @@ Phantom pointer/wheel events happen in the pane (they cancel the intro
 tween and can zoom randomly) — position the camera explicitly before
 screenshots; not a game bug.
 
+## Tax-flow layer (feature 1 — see FEATURES.md for the full scope)
+
+`tools/build_tax_flows.py` parses DOTAX Table A-14 (individual income tax
+by ZIP, TY2022) + Census ZCTA gazetteer → `site/map/tax_flows.json`;
+runtime `buildFlows()`/`update()` in main.js drifts gold motes along
+bezier paths into the Capitol (rate ∝ dollars, additive, alpha ≤ 0.55).
+Island sections in A-14 are headed "O'AHU" / "MAUI COUNTY" etc. — match
+via startswith, and keep the off-map px filter as the safety net. The
+lon/lat→px transform ships in oahu.json under "transform" (written by
+render_map) — downstream layers must use it, never re-derive offsets.
+
 ## Data lineage
 
 - `data/island_outline.geojson` ← ~/Mahele-Atlas (Oʻahu coastline)

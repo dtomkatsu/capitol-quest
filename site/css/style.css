@@ -53,6 +53,28 @@ html, body {
   white-space: nowrap;
 }
 
+#flows-chip {
+  position: fixed;
+  top: 14px; right: 12px;
+  padding: 6px 12px;
+  pointer-events: auto;
+  background: linear-gradient(#2a3f9e, #16246b);
+  border: 2px solid #f2c14e;
+  border-radius: 999px;
+  color: #ffe9a8;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .5px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+#flows-chip.off {
+  border-color: rgba(255,255,255,.4);
+  color: #9aa4c8;
+}
+#flows-chip.hidden { display: none; }
+
 /* ---------- JRPG dialogue box ---------- */
 #dialog {
   position: fixed;

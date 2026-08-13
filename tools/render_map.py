@@ -602,6 +602,11 @@ def main():
     cap = next(lm for lm in grid_data["landmarks"] if lm["id"] == "capitol")
     meta = {
         "w": W, "h": H, "deep": DEEP,
+        # lon/lat -> map px for downstream layers (see build_tax_flows.py)
+        "transform": {"grid": GRID, "originX": origin_x, "topPad": TOP_PAD,
+                      "x0": x0, "y0": y0, "lonC": LON_C, "latC": LAT_C,
+                      "kmPerLon": KM_PER_LON, "kmPerLat": KM_PER_LAT,
+                      "K": K},
         "slices": slices,
         "landmarks": landmarks,
         "stations": stations,

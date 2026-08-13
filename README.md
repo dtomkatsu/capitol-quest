@@ -35,6 +35,8 @@ Real geography drives every tile:
 | `data/rail_alignment.geojson` | HART Skyline alignment | elevated rail viaduct ink |
 | `data/stations.geojson` | HART | 19 station points (future tax/TOD module) |
 | Hand-drawn ridgelines in `tools/build_map.py` | — | Koʻolau & Waiʻanae ranges, craters (Lēʻahi, Koko, Pūowaina) |
+| `data/raw/2022indinc_tables.xlsx` | DOTAX Individual Income Tax Statistics TY2022, Table A-14 | tax inflow streams by ZIP (`tools/build_tax_flows.py`) |
+| `data/raw/2020_Gaz_zcta_national.txt` | Census 2020 ZCTA gazetteer | ZIP centroid locations |
 
 ### Build pipeline
 

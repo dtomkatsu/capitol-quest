@@ -42,6 +42,7 @@ class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload() {
     this.load.json("meta", "map/oahu.json?v=1");
+    this.load.json("flows", "map/tax_flows.json?v=1");
   }
   create() {
     const meta = this.cache.json.get("meta");
@@ -72,12 +73,121 @@ class WorldScene extends Phaser.Scene {
 
     this.buildSparkles(meta);
     this.buildCapitol(meta);
+    this.buildFlows(meta);
     this.buildLabels(meta);
 
     this.setupCamera(meta);
     this.setupInput();
 
     this.scale.on("resize", () => this.applyLabelScale());
+  }
+
+  /* ---- tax inflows: quiet gold motes drifting from each ZIP into the
+     Capitol, spawn rate proportional to income tax paid (DOTAX A-14) ---- */
+  buildFlows(meta) {
+    const data = this.cache.json.get("flows");
+    this.flows = null;
+    if (!data || !data.zips || !data.zips.length) return;
+
+    const g = this.make.graphics({ add: false });
+    g.fillStyle(0xfff2c0, 0.55);
+    g.fillCircle(3, 3, 3);
+    g.fillStyle(0xffe9a0, 1);
+    g.fillCircle(3, 3, 1.6);
+    g.generateTexture("mote", 6, 6);
+    g.destroy();
+
+    const lm = meta.landmarks.find((l) => l.id === "capitol");
+    const dst = new Phaser.Math.Vector2(lm.px, lm.py - 14);
+
+    const total = data.zips.reduce((s, z) => s + z.taxM, 0);
+    const RATE_TOTAL = 20;               // motes per second, island-wide
+    const flows = [];
+    data.zips.forEach((z, i) => {
+      const src = new Phaser.Math.Vector2(z.px, z.py);
+      const mid = new Phaser.Math.Vector2(
+        (src.x + dst.x) / 2, (src.y + dst.y) / 2);
+      const dx = dst.x - src.x, dy = dst.y - src.y;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      const side = (i % 2 ? 1 : -1) * (0.10 + (i % 5) * 0.02);
+      mid.x += (-dy / len) * len * side;
+      mid.y += (dx / len) * len * side - len * 0.06;
+      flows.push({
+        curve: new Phaser.Curves.QuadraticBezier(src, mid, dst),
+        len,
+        rate: RATE_TOTAL * (z.taxM / total),
+        acc: Math.random(),              // desync the first spawns
+        zip: z,
+      });
+    });
+
+    const pool = [];
+    for (let i = 0; i < 200; i++) {
+      const im = this.add.image(0, 0, "mote")
+        .setDepth(3).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
+      pool.push({ im, t: 0, dur: 1, curve: null, free: true });
+    }
+    this.flows = { flows, pool, tmp: new Phaser.Math.Vector2(),
+                   enabled: true, total: data.totalM, source: data.source };
+
+    const chip = document.getElementById("flows-chip");
+    if (chip) {
+      chip.classList.remove("hidden");
+      chip.title = data.source;
+      const setLabel = () => {
+        chip.classList.toggle("off", !this.flows.enabled);
+        chip.textContent = (this.flows.enabled ? "◉" : "○") +
+          " Tax inflows · TY" + data.year;
+      };
+      setLabel();
+      chip.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.flows.enabled = !this.flows.enabled;
+        if (!this.flows.enabled) {
+          for (const p of this.flows.pool) {
+            p.free = true;
+            p.im.setVisible(false);
+          }
+        }
+        setLabel();
+      });
+    }
+  }
+
+  update(_time, delta) {
+    const F = this.flows;
+    if (!F) return;
+    const dt = delta / 1000;
+    const zoom = this.cameras.main.zoom;
+    const moteScale = Phaser.Math.Clamp(1 / zoom, 0.9, 3.2);
+    if (F.enabled) {
+      for (const f of F.flows) {
+        f.acc += f.rate * dt;
+        while (f.acc >= 1) {
+          f.acc -= 1;
+          const p = F.pool.find((q) => q.free);
+          if (!p) break;
+          p.free = false;
+          p.curve = f.curve;
+          p.t = 0;
+          p.dur = f.len / 42;            // ~42 px/s, a calm drift
+          p.im.setVisible(true);
+        }
+      }
+    }
+    for (const p of F.pool) {
+      if (p.free) continue;
+      p.t += dt / p.dur;
+      if (p.t >= 1) {
+        p.free = true;
+        p.im.setVisible(false);
+        continue;
+      }
+      p.curve.getPoint(p.t, F.tmp);
+      p.im.setPosition(F.tmp.x, F.tmp.y);
+      p.im.setAlpha(0.55 * Math.sin(Math.PI * p.t));
+      p.im.setScale(moteScale);
+    }
   }
 
   /* ---- water sparkles ---- */
@@ -114,12 +224,18 @@ class WorldScene extends Phaser.Scene {
 
     cap.on("pointerup", (pointer) => {
       if (pointer.getDistance() > 8) return;   // was a drag, not a tap
+      const fl = this.cache.json.get("flows");
+      const money = fl && fl.totalM
+        ? "The golden streams you see are real: in tax year " + fl.year +
+          ", Oʻahu residents owed about $" + (fl.totalM / 1000).toFixed(1) +
+          " billion in state income tax, all flowing here. "
+        : "";
       Dialog.show(
         "Hawaiʻi State Capitol",
         "Every state law — and every dollar in Hawaiʻi's budget — passes " +
-        "through this building. Here the Legislature decides how much to " +
-        "collect in taxes, and where it all goes. (Module 1: Taxes & the " +
-        "Budget — coming soon. Step inside!)"
+        "through this building. " + money +
+        "Here the Legislature decides how much to collect, and where it " +
+        "all goes. (Module 1: Taxes & the Budget — coming soon.)"
       );
     });
     this.capitol = cap;
