@@ -12,26 +12,38 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
   `tools/render_map.py --island <slug>` (or `--all`). Sprites:
   `tools/make_sprites.py`. The map is baked; editing `site/js/main.js` alone
   never changes terrain.
-- **All eight islands** are separate baked map screens (never one world —
-  the chain would blow the 4096px slice limit and mobile texture memory).
-  Per-island geography (grid, scale, ridgelines, craters, fields, towns,
+- **ONE world, all eight islands** at true geographic positions.
+  `tools/build_world.py` composes the per-island bakes into a single
+  41.8k×14.4k coordinate frame at the 0.32 km/tile reference scale and
+  writes `site/map/world.json` (anchors, display scales, Capitol world
+  px) + `overview.png` (1/12 stitch, the always-loaded zoomed-out
+  backdrop). Hawaiʻi bakes at exactly 0.64 km/tile = 2× reference and
+  displays at integer 2× — keep any future tile_km an INTEGER multiple
+  of 0.32 (build_world asserts). Rebuild order for a terrain change:
+  build_map → render_map → **build_world** → build_tax_flows +
+  build_get_flows (flows carry world px).
+- Per-island geography (grid, scale, ridgelines, craters, fields, towns,
   landmarks) lives in `tools/islands.py`; render reads geometry from
-  `build/map_grid_<slug>.json`, NEVER from its own constants. Scale is
-  per-island: 0.32 km/tile except Maui 0.40 and Hawaiʻi 0.60 — islands
-  are separate screens, so the difference never shows on screen together.
-  Oʻahu regression rule: after touching the engine, rebuild oahu and diff
-  `build/map_grid_oahu.json` tiles/heights against the committed bake —
-  the refactor kept them byte-identical; keep it that way.
+  `build/map_grid_<slug>.json`, NEVER from its own constants.
+  Oʻahu regression rule: after touching the engine, rebuild oahu and
+  diff `build/map_grid_oahu.json` tiles/heights against the committed
+  bake — the refactor kept them byte-identical; keep it that way.
+- **Downstream layers convert lon/lat to world px THROUGH the containing
+  island's transform chain** (`tools/worldmath.py world_px()`: bake px ×
+  scale + anchor) — never through the world frame directly, or points
+  drift off the drawn geography (each island bake has its own kmPerLon).
 - Neighbor-island coastlines: `data/coastlines/<slug>.geojson` (statewide
   GIS coast_n83, split by `tools/prep_islands_data.py`); urban =
   `data/urban_areas_hi.geojson` (Census 2020 UAs) + hand `towns` circles
   in islands.py for sub-UA settlements (Kaunakakai, Lānaʻi City …).
   Oʻahu keeps its Mahele-Atlas outline + road-density urban — untouched.
-- Runtime: the "· Oʻahu ▾" tag on the title chip is the island switcher
-  (`IslandUI` + `WorldScene.switchIsland`); Capitol, tax streams and rail
-  are gated to `island === "oahu"`. Scene restarts re-run create(): guard
-  texture/anim creation and DOM listeners (see `chip.onpointerdown`,
-  `_resizeWired`) or they stack.
+- Runtime: lazy island manager in `WorldScene` (`manageIslands` on a
+  400ms timer) loads an island's slices/labels/sparkles when the camera
+  is near and zoom > 0.06, and unloads + frees textures when far — the
+  overview backdrop covers the gap. The "· Oʻahu ▾" title-chip menu is a
+  camera fly-to (`flyTo`), NOT a scene switch. minZoom fits the whole
+  chain and is recomputed on resize (`recomputeMinZoom` — the canvas can
+  report 0×0 when booted hidden; never trust `scale.width` alone).
 - **Slices must stay < 4096 px** per side (old-mobile GL limit kept for
   safety even though we render with Canvas): render_map asserts this.
 - Phaser is vendored (`site/vendor/phaser.min.js`, v3.90.0, MIT). Do not
@@ -57,16 +69,18 @@ Phantom pointer/wheel events happen in the pane (they cancel the intro
 tween and can zoom randomly) — position the camera explicitly before
 screenshots; not a game bug.
 
-## Tax-flow layer (feature 1 — see FEATURES.md for the full scope)
+## Tax-flow layer (feature 1) — STATEWIDE
 
-`tools/build_tax_flows.py` parses DOTAX Table A-14 (individual income tax
-by ZIP, TY2022) + Census ZCTA gazetteer → `site/map/tax_flows.json`;
-runtime `buildFlows()`/`update()` in main.js drifts gold motes along
-bezier paths into the Capitol (rate ∝ dollars, additive, alpha ≤ 0.55).
-Island sections in A-14 are headed "O'AHU" / "MAUI COUNTY" etc. — match
-via startswith, and keep the off-map px filter as the safety net. The
-lon/lat→px transform ships in oahu.json under "transform" (written by
-render_map) — downstream layers must use it, never re-derive offsets.
+`tools/build_tax_flows.py` parses ALL county sections of DOTAX Table
+A-14 (individual income tax by ZIP, TY2022 — headers "O'AHU" /
+"MAUI COUNTY" …; STATE sections skipped) + Census ZCTA gazetteer →
+`site/map/tax_flows.json` with WORLD px via worldmath.world_px().
+Runtime `buildFlows()`/`update()` drifts gold motes along bezier paths
+from every island into the Capitol (rate ∝ dollars, additive,
+alpha ≤ 0.55). Neighbor-island crossings cap at MAX_DUR 60s so the
+dollars-per-mote density stays honest without minutes-long flights;
+mote screen size is constant down to z≈0.07, then fades to dust at
+chain zoom (clamp cap 14).
 
 ## Money overlay = one panel, two radial tabs (features 2a + 3)
 
@@ -126,14 +140,18 @@ them into `total`. Next COR meeting is 2026-09-03: when the new report
 posts, drop the PDF in data/raw/, update COR_PDF + the growth sanity
 check, re-run.
 
-## GET layer (feature 2b) — measured vs modeled
+## GET layer (feature 2b) — measured vs modeled, STATEWIDE
 
 **GET has NO sub-island geography.** DOTAX publishes it by taxation
-district (Oʻahu/Maui/Hawaiʻi/Kauaʻi) only. `tools/build_get_flows.py`
-sums the 12 monthly district PDFs for a real Oʻahu FY2025 total ($2.903B,
-checksummed vs the June report's FY cumulative) and then MODELS the
-island spread. Never present the spread as a DOTAX figure — the chip
+district only — Oʻahu / Maui (= Maui+Molokaʻi+Lānaʻi) / Hawaiʻi / Kauaʻi
+(= Kauaʻi+Niʻihau). `tools/build_get_flows.py` sums the 12 monthly
+district PDFs for real FY2025 totals per district (statewide $4.552B
+checksummed vs the June cumulative; Oʻahu $2.903B) and then MODELS the
+spread WITHIN each district — district totals are never reallocated
+across districts. Never present the spread as a DOTAX figure — the chip
 tooltip and revenue footnote must keep saying which half is measured.
+PDF quirk: the UNKNOWN district column is 0 and invisible to the number
+regex; when ≥1,000 it shifts columns (the `off` guard in parse_month).
 
 **Basis = population** (ACS5 by ZIP), NOT payroll. `--basis=payroll`
 switches to the CBP remittance view. This is an editorial decision with a

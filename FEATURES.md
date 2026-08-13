@@ -202,12 +202,13 @@ part of the choice.
 - Next: consequences (what happens when the general fund runs dry),
   department-level effects on the money-out map, quest hooks.
 
-## 9. All eight islands — ✅ shipped (2026-08-13)
+## 9. One world: all eight islands, statewide streams — ✅ shipped (2026-08-13)
 
-**The teaching point:** Hawaiʻi is more than Oʻahu — the state the
-Capitol governs stretches from Niʻihau to the Big Island.
+**The teaching point:** the whole state's taxes converge on one
+building. Zoom out and the archipelago is one map; gold and teal motes
+cross the channels from Hilo, Kahului and Līhuʻe into the Capitol.
 
-- Engine made config-driven: `tools/islands.py` holds each island's grid,
+- Engine is config-driven: `tools/islands.py` holds each island's grid,
   scale, real-crest ridgelines (Haleakalā with its crater, Mauna Kea /
   Mauna Loa with Mokuʻāweoweo, Kīlauea's caldera, Waiʻaleʻale, Nā Pali,
   Kamakou, Lānaʻihale …), plantation fields, reef-flat bays (Molokaʻi's
@@ -215,15 +216,23 @@ Capitol governs stretches from Niʻihau to the Big Island.
   polygons; urban tiles come from Census 2020 urban areas plus hand town
   spots for sub-UA settlements. Oʻahu's bake is byte-identical to the
   single-island engine's.
-- Per-island scale keeps every canvas in budget: 0.32 km/tile, except
-  Maui 0.40 and Hawaiʻi 0.60. Islands are separate map screens, so mixed
-  scales never share a viewport. ~20MB of PNGs total.
-- Runtime: the "· Oʻahu ▾" tag on the title chip opens the island menu;
-  switching loads that island's meta + slices and restarts the world
-  scene (textures cache, so returning is instant). Capitol, tax streams
-  and rail appear only on Oʻahu; the other islands are explorable
-  terrain with their own labels — their stories (county budgets? TAT?)
-  come later.
+- **One continuous world** (`tools/build_world.py`): every bake is
+  anchored at its true position in a 41.8k×14.4k frame at 0.32 km/tile;
+  Hawaiʻi bakes at 0.64 and displays at crisp integer 2×. A 1/12-scale
+  stitched `overview.png` carries the zoomed-out view; detailed slices
+  lazy-load as the camera approaches and unload (textures freed) when it
+  leaves — that's what keeps mobile texture memory sane. The island menu
+  flies the camera; the intro dives from the whole chain into the
+  Capitol.
+- **Statewide tax streams**: income tax now uses ALL A-14 county
+  sections (121 ZIPs, $2.53B TY2022 — Oʻahu $1.78B, Maui $310M, Hawaiʻi
+  $288M, Kauaʻi $137M…); GET uses all four districts' measured FY2025
+  totals ($4.552B — Oʻahu $2.903B, Maui $714M, Hawaiʻi $626M, Kauaʻi
+  $310M), each spread within its own district by population. ZIP world
+  positions go through each island's transform chain (worldmath.py), so
+  streams rise exactly from the drawn towns.
+- Next: per-island stories (county budgets, the TAT), Molokini, quest
+  hooks on neighbor islands.
 
 ## Visual language rules (all features)
 

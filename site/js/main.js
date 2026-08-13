@@ -733,23 +733,23 @@ const PolicyPanel = {
   },
 };
 
-/* -------------------------------------------------------- island switcher */
-/* The "· Oʻahu ▾" tag on the title chip opens a list of all eight islands;
-   picking one loads its baked map + meta and restarts the world scene.
-   Only Oʻahu carries the Capitol, the tax streams and the rail — the
-   other islands are explorable terrain (their stories come later). */
+/* -------------------------------------------------------- island fly-to */
+/* The "· Oʻahu ▾" tag on the title chip opens a list of all eight
+   islands; picking one flies the camera there — it's ONE continuous map,
+   so this is navigation, not a scene switch. The chip label tracks
+   whichever island the camera is over ("Hawaiʻi" over open water). */
 const IslandUI = {
   built: false,
   scene: null,
   init(scene) {
-    this.scene = scene;                       // rebind on every restart
+    this.scene = scene;
     if (this.built) return;
     this.built = true;
     const chip = document.getElementById("island-chip");
     const menu = document.getElementById("island-menu");
-    const index = scene.cache.json.get("islands");
-    if (!index) return;
-    for (const isl of index.islands) {
+    const world = scene.cache.json.get("world");
+    if (!world) return;
+    for (const isl of world.islands) {
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = isl.name;
@@ -757,7 +757,7 @@ const IslandUI = {
       b.addEventListener("pointerdown", (e) => {
         e.stopPropagation();
         menu.classList.add("hidden");
-        this.scene.switchIsland(isl.slug);
+        this.scene.flyTo(isl.slug);
       });
       menu.appendChild(b);
     }
@@ -768,11 +768,12 @@ const IslandUI = {
     window.addEventListener("pointerdown", () =>
       menu.classList.add("hidden"));
   },
-  update(meta) {
+  update(current) {
     document.getElementById("island-chip").textContent =
-      "· " + (meta.name || "Oʻahu") + " ▾";
+      "· " + (current ? current.name : "Hawaiʻi") + " ▾";
     for (const b of document.querySelectorAll("#island-menu button")) {
-      b.classList.toggle("on", b.dataset.slug === (meta.island || "oahu"));
+      b.classList.toggle("on",
+        !!current && b.dataset.slug === current.slug);
     }
   },
 };
@@ -781,17 +782,21 @@ const IslandUI = {
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload() {
-    this.load.json("meta", "map/oahu.json?v=1");
+    this.load.json("world", "map/world.json?v=1");
+    this.load.json("meta_oahu", "map/oahu.json?v=1");
     this.load.json("flows", "map/tax_flows.json?v=1");
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
     this.load.json("policies", "map/policies.json?v=1");
-    this.load.json("islands", "map/islands.json?v=1");
   }
   create() {
-    const meta = this.cache.json.get("meta");
-    for (const s of meta.slices) {
+    const world = this.cache.json.get("world");
+    this.load.image("overview",
+                    "assets/map/" + world.overview.file + "?v=1");
+    // Oʻahu is preloaded — the intro dives into the Capitol
+    const oahu = this.cache.json.get("meta_oahu");
+    for (const s of oahu.slices) {
       this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=1");
     }
     this.load.image("capitol", "assets/sprites/capitol.png?v=1");
@@ -799,7 +804,7 @@ class BootScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) {
       this.load.image("sp" + i, `assets/sprites/sparkle_${i}.png?v=1`);
     }
-    this.load.once("complete", () => this.scene.start("world", meta));
+    this.load.once("complete", () => this.scene.start("world", world));
     this.load.start();
   }
 }
@@ -807,71 +812,175 @@ class BootScene extends Phaser.Scene {
 class WorldScene extends Phaser.Scene {
   constructor() { super("world"); }
 
-  create(meta) {
-    this.meta = meta;
-    this.island = meta.island || "oahu";
+  create(world) {
+    this.world = world;
     this.cameras.main.setBackgroundColor(DEEP_BLUE);
-    this.cameras.main.setBounds(0, 0, meta.w, meta.h);
+    this.cameras.main.setBounds(0, 0, world.w, world.h);
 
-    for (const s of meta.slices) {
-      this.add.image(s.x, s.y, "map_" + s.file).setOrigin(0, 0).setDepth(0);
-    }
+    // zoomed-out backdrop: 1/12-scale stitch of all eight bakes,
+    // upscaled — detailed island slices layer over it as you approach
+    this.add.image(0, 0, "overview").setOrigin(0, 0)
+      .setScale(world.overview.scale).setDepth(-2);
 
-    this.buildSparkles(meta);
-    if (meta.landmarks.some((l) => l.id === "capitol")) {
-      this.buildCapitol(meta);
+    this.labels = [];
+    this.isl = {};                 // slug -> lazy island state
+    if (!this.anims.exists("sparkle")) {
+      this.anims.create({
+        key: "sparkle",
+        frames: [{ key: "sp0" }, { key: "sp1" }, { key: "sp2" },
+                 { key: "sp1" }, { key: "sp0" }],
+        frameRate: 7,
+      });
     }
-    this.buildFlows(meta);
-    this.buildLabels(meta);
+    for (const e of world.islands) {
+      this.makeLabel("island", e.name,
+                     e.anchor[0] + e.w * e.scale / 2,
+                     e.anchor[1] + e.h * e.scale / 2);
+    }
+    this.buildCapitol(world);
+    this.buildFlows(world);
     MoneyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("revenue"));
     PolicyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("policies"));
     IslandUI.init(this);
-    IslandUI.update(meta);
 
-    this.setupCamera(meta);
+    this.setupCamera(world);
     this.setupInput();
 
-    if (!this._resizeWired) {
-      this._resizeWired = true;
-      this.scale.on("resize", () => this.applyLabelScale());
-    }
+    this.ensureIsland("oahu");     // slices preloaded by BootScene
+    this.time.addEvent({ delay: 400, loop: true,
+                         callback: () => this.manageIslands() });
+    this.scale.on("resize", () => {
+      this.recomputeMinZoom();
+      this.applyLabelScale();
+    });
   }
 
-  /* ---- island switching: load the target island's meta + slices, then
-     restart this scene with the new meta. Textures stay cached, so
-     returning to an island is instant. */
-  switchIsland(slug) {
-    if (slug === this.island || this._switching) return;
-    this._switching = true;
-    this.stopIntro();
+  /* ---- lazy island manager: detailed slices, labels and sparkles load
+     when the camera is near and zoomed in; they unload (textures freed)
+     when far, leaving the overview backdrop. */
+  islandRect(e, grow = 0) {
+    return new Phaser.Geom.Rectangle(
+      e.anchor[0] - grow, e.anchor[1] - grow,
+      e.w * e.scale + 2 * grow, e.h * e.scale + 2 * grow);
+  }
+
+  manageIslands() {
+    const cam = this.cameras.main;
+    const view = cam.worldView;
+    const pad = Math.max(view.width, view.height) * 0.5;
+    let current = null;
+    for (const e of this.world.islands) {
+      const st = this.isl[e.slug];
+      const nearR = this.islandRect(e, pad);
+      const wanted = cam.zoom > 0.06 &&
+        Phaser.Geom.Rectangle.Contains(nearR, view.centerX, view.centerY) ||
+        (cam.zoom > 0.06 && Phaser.Geom.Rectangle.Overlaps(
+          this.islandRect(e), view));
+      if (wanted && !st) this.ensureIsland(e.slug);
+      else if (!wanted && st && st.state === "on" &&
+               (cam.zoom <= 0.05 ||
+                !Phaser.Geom.Rectangle.Overlaps(
+                  this.islandRect(e, pad * 4), view))) {
+        this.unloadIsland(e.slug);
+      }
+      if (Phaser.Geom.Rectangle.Contains(
+            this.islandRect(e), view.centerX, view.centerY)) {
+        current = e;
+      }
+    }
+    IslandUI.update(current);
+  }
+
+  ensureIsland(slug) {
+    if (this.isl[slug]) return;
+    this.isl[slug] = { state: "loading", imgs: [], labels: [],
+                       sparkles: [], timers: [] };
+    const e = this.world.islands.find((i) => i.slug === slug);
     const key = "meta_" + slug;
-    const startWith = (meta) => {
+    const step2 = () => {
+      const meta = this.cache.json.get(key);
       const need = meta.slices.filter(
         (s) => !this.textures.exists("map_" + s.file));
-      if (!need.length) {
-        this._switching = false;
-        this.scene.restart(meta);
-        return;
-      }
+      if (!need.length) { this.addIsland(e, meta); return; }
       for (const s of need) {
         this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=1");
       }
-      this.load.once("complete", () => {
-        this._switching = false;
-        this.scene.restart(meta);
-      });
+      this.load.once("complete", () => this.addIsland(e, meta));
       this.load.start();
     };
-    if (this.cache.json.exists(key)) {
-      startWith(this.cache.json.get(key));
-    } else {
+    if (this.cache.json.exists(key)) step2();
+    else {
       this.load.json(key, "map/" + slug + ".json?v=1");
-      this.load.once("complete", () =>
-        startWith(this.cache.json.get(key)));
+      this.load.once("complete", step2);
       this.load.start();
     }
+  }
+
+  addIsland(e, meta) {
+    const st = this.isl[e.slug];
+    if (!st || st.state !== "loading") return;   // unloaded while loading
+    st.state = "on";
+    for (const s of meta.slices) {
+      st.imgs.push(this.add.image(
+        e.anchor[0] + s.x * e.scale, e.anchor[1] + s.y * e.scale,
+        "map_" + s.file).setOrigin(0, 0).setScale(e.scale).setDepth(-1));
+    }
+    for (const lm of meta.landmarks) {
+      st.labels.push(this.makeLabel(
+        lm.kind, lm.name,
+        e.anchor[0] + lm.px * e.scale, e.anchor[1] + lm.py * e.scale,
+        lm.kind === "capitol" ? 26 : 0));
+    }
+    const pts = Phaser.Utils.Array.Shuffle(meta.sparkles.slice())
+      .slice(0, 90);
+    for (const [x, y] of pts) {
+      const sp = this.add.sprite(
+        e.anchor[0] + x * e.scale, e.anchor[1] + y * e.scale, "sp0")
+        .setDepth(2).setAlpha(0.9);
+      st.sparkles.push(sp);
+      st.timers.push(this.time.addEvent({
+        delay: 1200 + Math.random() * 5200,
+        loop: true,
+        callback: () => sp.play("sparkle"),
+      }));
+    }
+    this.applyLabelScale();
+  }
+
+  unloadIsland(slug) {
+    const st = this.isl[slug];
+    if (!st) return;
+    delete this.isl[slug];
+    if (st.state !== "on") return;
+    for (const o of [...st.imgs, ...st.sparkles, ...st.labels]) o.destroy();
+    for (const t of st.timers) t.remove();
+    this.labels = this.labels.filter((l) => !st.labels.includes(l));
+    const meta = this.cache.json.get("meta_" + slug);
+    for (const s of meta.slices) this.textures.remove("map_" + s.file);
+  }
+
+  /* ---- fly the camera to an island (the menu's action) */
+  flyTo(slug) {
+    const e = this.world.islands.find((i) => i.slug === slug);
+    const cam = this.cameras.main;
+    const [sw, sh] = this.viewSize();
+    const w = e.w * e.scale, h = e.h * e.scale;
+    const z = Phaser.Math.Clamp(
+      Math.min(sw / w, sh / h) * 0.92,
+      this.minZoom, this.maxZoom);
+    this.stopIntro();
+    this.tweens.add({
+      targets: cam,
+      zoom: z,
+      scrollX: e.anchor[0] + w / 2 - sw / 2 / z,
+      scrollY: e.anchor[1] + h / 2 - sh / 2 / z,
+      duration: 1100,
+      ease: "Sine.easeInOut",
+      onUpdate: () => this.applyLabelScale(),
+      onComplete: () => this.applyLabelScale(),
+    });
   }
 
   /* ---- tax inflows: quiet motes drifting from source areas into the
@@ -880,15 +989,8 @@ class WorldScene extends Phaser.Scene {
      by Census business payroll — see build_get_flows.py). Mote density is
      kept proportional to real dollars across both streams, so the eye
      reads GET as the bigger one, which it is. ---- */
-  buildFlows(meta) {
+  buildFlows(world) {
     this.flows = null;
-    // the tax streams are Oʻahu geometry (ZIP centroids in Oʻahu map px)
-    if (this.island !== "oahu") {
-      for (const id of ["flows-chip", "get-chip"]) {
-        document.getElementById(id).classList.add("hidden");
-      }
-      return;
-    }
     const inc = this.cache.json.get("flows");
     const get = this.cache.json.get("get_flows");
     if (!inc || !inc.zips || !inc.zips.length) return;
@@ -906,14 +1008,15 @@ class WorldScene extends Phaser.Scene {
     mote("mote_gold", 0xfff2c0, 0xffe9a0);
     mote("mote_teal", 0xa8f0e6, 0x4fd8c8);
 
-    const lm = meta.landmarks.find((l) => l.id === "capitol");
-    const dst = new Phaser.Math.Vector2(lm.px, lm.py - 14);
+    const dst = new Phaser.Math.Vector2(
+      world.capitol[0], world.capitol[1] - 14);
     const SPEED = 42;                 // px/s — a calm drift
     const MIN_DUR = 3.0;              // s — keeps short downtown hops legible
+    const MAX_DUR = 60.0;             // s — neighbor-island crossings speed up
     const TARGET_MOTES = 185;         // steady-state on screen, both streams
 
     const incDollars = inc.totalM * 1e6;
-    const getDollars = get ? get.oahuTotal : 0;
+    const getDollars = get ? get.total : 0;
     const grand = incDollars + getDollars;
 
     const mkStream = (rows, weightOf, dollars, tex, id) => {
@@ -927,7 +1030,8 @@ class WorldScene extends Phaser.Scene {
         mid.x += (-dy / len) * len * side;
         mid.y += (dx / len) * len * side - len * 0.06;
         return { curve: new Phaser.Curves.QuadraticBezier(src, mid, dst),
-                 len, dur: Math.max(MIN_DUR, len / SPEED),
+                 len,
+                 dur: Math.min(MAX_DUR, Math.max(MIN_DUR, len / SPEED)),
                  w: weightOf(z), acc: Math.random(), rate: 0 };
       });
       const wTotal = paths.reduce((s, p) => s + p.w, 0) || 1;
@@ -946,11 +1050,11 @@ class WorldScene extends Phaser.Scene {
     ];
     if (get && get.zips && get.zips.length) {
       streams.push(
-        mkStream(get.zips, (z) => z.share, getDollars, "mote_teal", "get"));
+        mkStream(get.zips, (z) => z.getM, getDollars, "mote_teal", "get"));
     }
 
     const pool = [];
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 300; i++) {
       const im = this.add.image(0, 0, "mote_gold")
         .setDepth(3).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
       pool.push({ im, t: 0, dur: 1, curve: null, free: true, sid: null });
@@ -991,7 +1095,9 @@ class WorldScene extends Phaser.Scene {
     const F = this.flows;
     if (!F) return;
     const dt = Math.min(0.05, delta / 1000);
-    const moteScale = Phaser.Math.Clamp(1 / this.cameras.main.zoom, 0.9, 3.2);
+    // screen-constant motes down to z≈0.07, then they fade to faint
+    // gold dust crossing the channels at chain zoom
+    const moteScale = Phaser.Math.Clamp(1 / this.cameras.main.zoom, 0.9, 14);
     for (const st of F.streams) {
       if (!st.enabled) continue;
       for (const p of st.paths) {
@@ -1024,35 +1130,14 @@ class WorldScene extends Phaser.Scene {
     }
   }
 
-  /* ---- water sparkles ---- */
-  buildSparkles(meta) {
-    if (!this.anims.exists("sparkle")) {
-      this.anims.create({
-        key: "sparkle",
-        frames: [{ key: "sp0" }, { key: "sp1" }, { key: "sp2" },
-                 { key: "sp1" }, { key: "sp0" }],
-        frameRate: 7,
-      });
-    }
-    const pts = Phaser.Utils.Array.Shuffle(meta.sparkles.slice()).slice(0, 160);
-    for (const [x, y] of pts) {
-      const sp = this.add.sprite(x, y, "sp0").setDepth(2).setAlpha(0.9);
-      this.time.addEvent({
-        delay: 1200 + Math.random() * 5200,
-        loop: true,
-        callback: () => sp.play("sparkle"),
-      });
-    }
-  }
-
-  /* ---- the State Capitol landmark ---- */
-  buildCapitol(meta) {
-    const lm = meta.landmarks.find((l) => l.id === "capitol");
-    const cap = this.add.image(lm.px, lm.py + 6, "capitol")
-      .setOrigin(0.5, 0.9).setDepth(lm.py);
+  /* ---- the State Capitol landmark (world position) ---- */
+  buildCapitol(world) {
+    const [cx, cy] = world.capitol;
+    const cap = this.add.image(cx, cy + 6, "capitol")
+      .setOrigin(0.5, 0.9).setDepth(cy);
     cap.setInteractive({ useHandCursor: true, pixelPerfect: false });
 
-    const mk = this.add.image(lm.px, lm.py - 78, "marker").setDepth(lm.py + 1);
+    const mk = this.add.image(cx, cy - 78, "marker").setDepth(cy + 1);
     this.tweens.add({
       targets: mk, y: mk.y - 8, duration: 550,
       yoyo: true, repeat: -1, ease: "Sine.easeInOut",
@@ -1063,8 +1148,9 @@ class WorldScene extends Phaser.Scene {
       const fl = this.cache.json.get("flows");
       const money = fl && fl.totalM
         ? "The golden streams you see are real: in tax year " + fl.year +
-          ", Oʻahu residents owed about $" + (fl.totalM / 1000).toFixed(1) +
-          " billion in state income tax, all flowing here. "
+          ", Hawaiʻi residents owed about $" + (fl.totalM / 1000).toFixed(1) +
+          " billion in state income tax, streaming in from every " +
+          "island. "
         : "";
       Dialog.show(
         "Hawaiʻi State Capitol",
@@ -1077,66 +1163,75 @@ class WorldScene extends Phaser.Scene {
     this.capitol = cap;
   }
 
-  /* ---- place labels ---- */
-  buildLabels(meta) {
-    this.labels = [];
+  /* ---- labels (created per island load + island names at boot) ---- */
+  makeLabel(kind, name, x, y, dy = 0) {
     const styles = {
       town: { size: 13, color: "#ffffff", stroke: "#1b2a4a", weight: "800" },
       nature: { size: 12, color: "#eaf6d8", stroke: "#25431f", weight: "700" },
       range: { size: 15, color: "#f0ead2", stroke: "#3d3323", weight: "800" },
       poi: { size: 11, color: "#ffe9a8", stroke: "#4a3a10", weight: "700" },
       capitol: { size: 13, color: "#ffe9a8", stroke: "#4a3a10", weight: "800" },
+      island: { size: 17, color: "#eaf2ff", stroke: "#101d5c", weight: "800" },
     };
-    for (const lm of meta.landmarks) {
-      const st = styles[lm.kind] || styles.town;
-      const dy = lm.kind === "capitol" ? 26 : 0;
-      const txt = this.add.text(lm.px, lm.py + dy, lm.name, {
-        fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
-        fontSize: st.size + "px",
-        fontStyle: st.weight,
-        color: st.color,
-        stroke: st.stroke,
-        strokeThickness: 4,
-        letterSpacing: lm.kind === "range" ? 3 : 1,
-      }).setOrigin(0.5, 0).setDepth(10000);
-      txt._kind = lm.kind;
-      this.labels.push(txt);
-    }
-    this.applyLabelScale();
+    const st = styles[kind] || styles.town;
+    const txt = this.add.text(x, y + dy, name, {
+      fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
+      fontSize: st.size + "px",
+      fontStyle: st.weight,
+      color: st.color,
+      stroke: st.stroke,
+      strokeThickness: 4,
+      letterSpacing: kind === "range" ? 3 : kind === "island" ? 4 : 1,
+    }).setOrigin(0.5, kind === "island" ? 0.5 : 0).setDepth(10000);
+    txt._kind = kind;
+    this.labels.push(txt);
+    return txt;
   }
 
   applyLabelScale() {
     const z = this.cameras.main.zoom;
     const inv = 1 / z;
     for (const t of this.labels) {
-      t.setScale(Math.min(inv, 2.6));
+      t.setScale(Math.min(inv, t._kind === "island" ? 60 : 2.6));
       const vis =
-        t._kind === "range" ? z <= 1.1 :
+        t._kind === "island" ? z <= 0.45 :
+        t._kind === "range" ? z >= 0.3 && z <= 1.1 :
         t._kind === "poi" ? z >= 1.6 :
-        t._kind === "capitol" ? z >= 0.9 :
-        true;
+        t._kind === "capitol" ? z >= 0.45 :
+        t._kind === "nature" ? z >= 0.6 :
+        z >= 0.45;                                   // towns
       t.setVisible(vis);
     }
   }
 
-  /* ---- camera: intro flight, then free pan/zoom ---- */
-  setupCamera(meta) {
+  /* ---- camera: whole-chain intro dive to the Capitol, then free ---- */
+  viewSize() {
+    // the canvas can report 0x0 when booted in a hidden tab/webview
+    return [this.scale.width || window.innerWidth || 800,
+            this.scale.height || window.innerHeight || 450];
+  }
+
+  recomputeMinZoom() {
+    const [sw, sh] = this.viewSize();
+    this.minZoom = Math.max(
+      Math.max(sw / this.world.w, sh / this.world.h) * 0.98, 0.008);
+  }
+
+  setupCamera(world) {
     const cam = this.cameras.main;
-    const [cx, cy] = meta.camera.home || meta.camera.capitol;
-    const fit = Math.max(
-      this.scale.width / meta.w, this.scale.height / meta.h);
-    this.minZoom = Math.max(fit * 0.95, 0.22);
+    const [cx, cy] = world.capitol;
+    this.recomputeMinZoom();         // the whole archipelago fits
     this.maxZoom = 4;
 
-    cam.centerOn(meta.w / 2, meta.h * 0.45);
+    cam.centerOn(world.w / 2, world.h / 2);
     cam.setZoom(this.minZoom * 1.02);
     this.introTween = this.tweens.add({
       targets: cam,
       zoom: 1.7,
       scrollX: cx - this.scale.width / 2 / 1.7,
       scrollY: cy - 40 - this.scale.height / 2 / 1.7,
-      duration: 3000,
-      delay: 500,
+      duration: 4200,
+      delay: 700,
       ease: "Sine.easeInOut",
       onUpdate: () => this.applyLabelScale(),
       onComplete: () => this.applyLabelScale(),

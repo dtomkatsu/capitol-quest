@@ -8,10 +8,12 @@ plantation plains, and urban tiles come from data (road density on Oʻahu,
 Census 2020 urban areas + hand town spots elsewhere — small towns like
 Kaunakakai fall under the Census urban-area threshold).
 
-Scale note: tile_km varies by island so every baked canvas stays within
-slice/texture budgets — Maui is 0.40 km/tile and Hawaiʻi 0.60 vs 0.32
-elsewhere. Islands are separate map screens, not one world, so the
-difference never shows on screen together.
+Scale note: the runtime is ONE continuous world at a 0.32 km/tile
+reference scale (see tools/build_world.py). Every island bakes at 0.32
+except Hawaiʻi at exactly 0.64 = 2× the reference — its slices display
+at integer 2× (crisp for pixel art) so the island occupies its true
+footprint while the bake stays inside texture budgets. Keep any future
+tile_km an integer multiple of 0.32.
 
 Ridge tuple: (crest_pts, w_mtn_km, w_forest_km, w_peak_km, h_mult)
 Crater tuple: (lon, lat, rim_inner_km, rim_outer_km, rim_height)
@@ -228,7 +230,7 @@ ISLANDS = {
     # -------------------------------------------------------------- Maui
     "maui": {
         "name": "Maui",
-        "grid": 240, "tile_km": 0.40,
+        "grid": 288, "tile_km": 0.32,
         "center": (-156.335, 20.805),
         "km_per_lon": 104.06, "km_per_lat": 110.9,
         "outline": "data/coastlines/maui.geojson",
@@ -265,7 +267,7 @@ ISLANDS = {
     # ----------------------------------------------------------- Hawaiʻi
     "hawaii": {
         "name": "Hawaiʻi",
-        "grid": 368, "tile_km": 0.60,
+        "grid": 336, "tile_km": 0.64,
         "center": (-155.43, 19.585),
         "km_per_lon": 104.9, "km_per_lat": 110.9,
         "outline": "data/coastlines/hawaii.geojson",
