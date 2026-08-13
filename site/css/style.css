@@ -468,14 +468,15 @@ html, body {
   color: #ffe9a8;
   font-variant-numeric: tabular-nums;
 }
-#fund-chip .fc-delta {
+#fund-chip .fc-bal {
   display: block;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-#fund-chip .fc-delta.cost { color: #f4a8a0; }
-#fund-chip .fc-delta.gain { color: #8fe6b7; }
+#fund-chip .fc-bal.cost { color: #ff8d80; }
+#fund-chip .fc-bal.gain { color: #7ff0ae; }
+#fund-chip .fc-bal.even { color: #b9c4ea; }
 
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }

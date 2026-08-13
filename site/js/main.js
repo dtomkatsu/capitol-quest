@@ -600,16 +600,21 @@ const PolicyPanel = {
       chip.innerHTML =
         '<span class="fc-label">FY' + budget.fy + " budget</span>" +
         '<span class="fc-amt">' + fmtB(budget.total + delta) + "</span>" +
-        (delta ? '<span class="fc-delta ' +
-          (delta < 0 ? "cost" : "gain") + '">' +
-          (delta < 0 ? "−" : "+") + fmtK(Math.abs(delta) / 1e3) +
-          " from your policies</span>" : "");
+        // the consequence line: balance vs the enacted Act 175 figure
+        (spent || raised ? '<span class="fc-bal ' +
+          (delta < 0 ? "cost" : delta > 0 ? "gain" : "even") + '">' +
+          (delta < 0 ? "▼ " + fmtK(-delta / 1e3) + " deficit" :
+           delta > 0 ? "▲ " + fmtK(delta / 1e3) + " surplus" :
+           "● balanced") + "</span>" : "");
       chip.title =
         "Act 175 (2026): " + fmtB(budget.op) + " operating + " +
-        fmtB(budget.cip) + " capital." +
+        fmtB(budget.cip) + " capital = " + fmtB(budget.total) + "." +
         (spent || raised
           ? "\nYour policies: −" + fmtK(spent) + "/yr invested, +" +
-            fmtK(raised) + "/yr new revenue."
+            fmtK(raised) + "/yr new revenue → " +
+            (delta < 0 ? "a " + fmtK(-delta / 1e3) + " hole to fill." :
+             delta > 0 ? fmtK(delta / 1e3) + " left over." :
+             "exactly balanced.")
           : "\nOpen Policies to invest in priorities — and to raise " +
             "the revenue that pays for them.");
     };
