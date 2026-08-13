@@ -103,14 +103,31 @@ is an honest encoding. Normalising uses the *weighted* mean path
 duration — GET's weight sits downtown on short paths, and an unweighted
 mean silently under-draws it. Independent toggle chips per stream.
 
-## 3. Outflows: where the money goes
+## 3. Outflows: Capitol → departments (budget overlay redesign) — IN PROGRESS
 
-- Data: enacted budget by department (already parsed in the
-  BudgetPrimerFinal repo — fy_comparison / report_data pipelines).
-- Visual: reverse streams (cool white-blue) from the Capitol out to icon
-  landmarks: schools (DOE), UH Mānoa, hospitals (Med-QUEST), roads (DOT),
-  parks (DLNR). Same unobtrusive language as inflows. Toggling "in" vs
-  "out" is the first interactive lesson: revenue vs appropriation.
+**The teaching point:** the money doesn't stop at the Capitol. It flows
+back out to 24 departments — and the *kind* of money differs by
+department, which is why some agencies feel federal budget fights and
+others feel state ones.
+
+- Data: already in hand — `site/map/budget.json` (FY2027 enacted, Act
+  175, from the Budget Primer pipeline), with per-department General /
+  Federal / Other fund splits.
+- Visual: the Budget overlay becomes a **radial mini-map** instead of a
+  bar list. The Capitol pixel sprite sits at the center; the 24
+  departments ring it, node size ∝ total budget, department code (HMS,
+  TRN, EDN…) as the standing label. Money **flows outward** from the
+  Capitol to each department as motes along faint spokes — reusing the
+  map's mote language, so inflow and outflow read as one system.
+- The flows carry the fund mix: **gold motes = general funds, blue =
+  federal, green = other**, each sub-stream's density ∝ its dollars. So
+  Human Services visibly runs blue (federal Medicaid match),
+  Education runs gold, Transportation green (special funds). The lesson
+  is in the motion, not a legend.
+- Hovering/tapping a node reveals that department's numbers; a
+  **List** toggle keeps the precise bar view (nothing is lost).
+- Later: promote this to the overworld itself — department landmarks
+  (schools, UH Mānoa, hospitals, harbors) receiving the same streams.
 
 ## 4. Enter the Capitol: follow-a-dollar quest
 
