@@ -47,6 +47,17 @@ via startswith, and keep the off-map px filter as the safety net. The
 lon/lat→px transform ships in oahu.json under "transform" (written by
 render_map) — downstream layers must use it, never re-derive offsets.
 
+## Budget overlay = radial outflow map (feature 3)
+
+`BudgetPanel.buildMap()` in main.js: Capitol sprite at the hub, 24
+department nodes on an ellipse (node r ∝ √total), SVG motes drifting
+outward per department × fund (gold/blue/green), density ∝ dollars using
+the same Σ(rate × duration) normalisation as the map streams. Its rAF
+loop runs for the page lifetime but no-ops while the overlay is hidden.
+The List toggle keeps the old bar view — don't delete it, it carries the
+precise numbers. Department nodes are labeled by DOTAX/budget CODE (HMS,
+TRN, EDN…), which is also how the budget documents refer to them.
+
 ## Revenue-mix layer (feature 2a)
 
 `tools/build_revenue.py` parses DOTAX Annual Report FY2024-25 Table 1.8

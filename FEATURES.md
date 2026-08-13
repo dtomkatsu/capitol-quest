@@ -103,7 +103,7 @@ is an honest encoding. Normalising uses the *weighted* mean path
 duration — GET's weight sits downtown on short paths, and an unweighted
 mean silently under-draws it. Independent toggle chips per stream.
 
-## 3. Outflows: Capitol → departments (budget overlay redesign) — IN PROGRESS
+## 3. Outflows: Capitol → departments (budget overlay redesign) — ✅ shipped
 
 **The teaching point:** the money doesn't stop at the Capitol. It flows
 back out to 24 departments — and the *kind* of money differs by
