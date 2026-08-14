@@ -751,13 +751,15 @@ const PolicyPanel = {
    the player a legislator's powers. Time passes in TURNS — one turn =
    one week of the legislative session. Each week: an intel report
    (accuracy gated per facet by skills — see intelHtml), an event
-   dialogue (PROGRESSIVE and CONSERVATIVE chime in on everything), free
-   talk story, and exactly ONE action (rally / lobby / push). Actions
-   hone the skill they exercise (train() — two uses buy a pip). Week 0
-   is the week before session: allocate skill points and pick up to
-   three bills that lined-up members will introduce — that package IS
-   your session. All content is data-driven from map/session.json; the
-   thought cabinet bolts on next. */
+   dialogue (the six SKILLS chime in on everything, colored by pole —
+   not a left/right trait system), free talk story, and exactly ONE
+   action (rally / lobby / push). Actions
+   hone the skill they exercise (train() — two uses buy a pip). Week 1
+   is Opening Day: allocate skill points and pick up to three bills
+   that lined-up members will introduce — that package IS your
+   session. There is no week 0; the session starts in session. All
+   content is data-driven from map/session.json; the thought cabinet
+   bolts on next. */
 const SessionPanel = {
   built: false,
   init(budget, policies, data, chairData, rateData) {
@@ -791,7 +793,7 @@ const SessionPanel = {
       return o;
     };
     const defaults = () => ({
-      week: 0, actionWeek: -1, agendaLocked: false, agenda: [],
+      week: 1, actionWeek: -1, agendaLocked: false, agenda: [],
       eventDone: [], talked: {}, log: [], flags: {}, checks: {},
       bills: [], chairs: {}, pushWeek: -1, pushBill: null,
       skills: baseSkills(), skillPts: skStart.points || 0, train: {},
@@ -810,6 +812,39 @@ const SessionPanel = {
       if (S.metrics.wealthy != null) S.metrics.influence = S.metrics.wealthy;
       delete S.metrics.families;
       delete S.metrics.wealthy;
+      // pre-2026-08-14 saves carried a week 0 (pre-session, agenda-only) —
+      // that week is gone, its agenda step folded into week 1
+      if (S.week < 1) { S.week = 1; S.agendaLocked = false; }
+      // Grassroots split into Mobilizing + Base Building (2026-08-14).
+      // Seed BOTH halves at the old value rather than dividing it: the
+      // player earned that skill under the old rules, and halving it
+      // would silently nerf an in-progress campaign — the same failure
+      // the metrics migration above exists to prevent. Cap still applies.
+      // NB: baseSkills() above has already seeded both halves at `base`,
+      // so this must MAX against that, not test for null — an == null
+      // guard here would never fire and the migration would silently
+      // no-op, dropping the player's investment back to 1.
+      if (S.skills.grassroots != null) {
+        const g = S.skills.grassroots;
+        S.skills.mobilizing = Math.max(S.skills.mobilizing || 0, g);
+        S.skills.basebuilding = Math.max(S.skills.basebuilding || 0, g);
+        delete S.skills.grassroots;
+        if (S.train.grassroots != null) {
+          S.train.mobilizing = Math.max(S.train.mobilizing || 0,
+            S.train.grassroots);
+          S.train.basebuilding = Math.max(S.train.basebuilding || 0,
+            S.train.grassroots);
+          delete S.train.grassroots;
+        }
+      }
+      // Whip Count retired into Talk Story (2026-08-14, same MAX-not-null
+      // reasoning as the grassroots migration above — baseSkills() has
+      // already seeded talkstory at `base`). No action ever trained whip
+      // (it was intel-only), so there's no S.train.whip to carry over.
+      if (S.skills.whip != null) {
+        S.skills.talkstory = Math.max(S.skills.talkstory || 0, S.skills.whip);
+        delete S.skills.whip;
+      }
     } catch (e) { /* fresh campaign */ }
     const save = () => {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
@@ -825,8 +860,7 @@ const SessionPanel = {
       return {
         week: w,
         title: hit.title || data.weekTitles[w] || "Interim",
-        phase: hit.phase || (w === 0 ? "Pre-session" :
-          w >= data.sineDieWeek ? "Adjournment" :
+        phase: hit.phase || (w >= data.sineDieWeek ? "Adjournment" :
           w >= 14 ? "Conference" : "Session"),
         event: hit.event !== undefined ? hit.event :
           (w >= 2 && w < data.sineDieWeek
@@ -837,6 +871,24 @@ const SessionPanel = {
         talks: hit.talks ||
           (w >= 1 && w <= data.sineDieWeek ? data.talkDefaults : {}),
       };
+    };
+
+    /* ---- real calendar dates, derived from data.sessionStart (the
+       convening date, always the 3rd Wednesday in January) — week 1 is
+       that week, each later week is +7 days */
+    const DAY_MS = 86400000;
+    const sessionStart = data.sessionStart ?
+      new Date(data.sessionStart + "T00:00:00") : null;
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const fmtDate = (d) => MONTHS[d.getMonth()] + " " + d.getDate();
+    const dateRangeFor = (w) => {
+      if (!sessionStart) return "";
+      const start = new Date(sessionStart.getTime() + (w - 1) * 7 * DAY_MS);
+      const end = new Date(start.getTime() + 6 * DAY_MS);
+      return (start.getMonth() === end.getMonth()
+        ? fmtDate(start) + "–" + end.getDate()
+        : fmtDate(start) + " – " + fmtDate(end)) + ", " + end.getFullYear();
     };
 
     /* ---- metrics */
@@ -898,14 +950,94 @@ const SessionPanel = {
         esc(sk.name) + " sharpens — one more week of this</span></div>";
     };
 
+    /* ---- mini timeline: the session's real milestones (crossover,
+       conference, sine die…) plotted from data.calendar, with a marker
+       for the current week. Milestone dots stagger label rows top/bottom
+       so 8-9 titles don't collide in the overlay's width; a separate
+       round cursor marks the current week even between milestones. */
+    const renderTimeline = () => {
+      const el = $("sess-timeline");
+      if (!el) return;
+      const span = Math.max(1, data.sineDieWeek - 1);
+      const pctOf = (w) => Math.max(0, Math.min(100,
+        ((w - 1) / span) * 100));
+      const curPct = pctOf(S.week);
+      const atMilestone = data.calendar.some((c) => c.week === S.week);
+      let h = '<div class="stl-track"></div>' +
+        '<div class="stl-fill" style="width:' + curPct + '%"></div>';
+      data.calendar.forEach((c, i) => {
+        const state = c.week < S.week ? "past" :
+          c.week === S.week ? "now" : "future";
+        // the first/last dot sit at the very edge of the scroll strip —
+        // a centered label there would overflow into unreachable
+        // negative scroll space, so those two anchor to their dot's
+        // outer edge instead of straddling it
+        const edge = i === 0 ? " edge-l" :
+          i === data.calendar.length - 1 ? " edge-r" : "";
+        h += '<div class="stl-m ' + state + (i % 2 ? " lbl-b" : " lbl-t") +
+          edge + '" style="left:' + pctOf(c.week) + '%" title="' +
+          esc(c.title) + " — Week " + c.week + (dateRangeFor(c.week) ?
+            " · " + esc(dateRangeFor(c.week)) : "") + '">' +
+          '<span class="stl-dot"></span>' +
+          '<span class="stl-lbl">' + esc(c.title) + "</span></div>";
+      });
+      if (!atMilestone) {
+        h += '<div class="stl-cursor" style="left:' + curPct +
+          '%" title="Week ' + S.week + '"></div>';
+      }
+      // fixed min-width inner track so 9 milestone labels never collide
+      // on a narrow overlay — the strip scrolls horizontally instead
+      el.innerHTML = '<div class="stl-inner">' + h + "</div>";
+      // land the strip on the current week, not always its left edge
+      requestAnimationFrame(() => {
+        const cur = el.querySelector(".stl-m.now") ||
+          el.querySelector(".stl-cursor");
+        if (cur) cur.scrollIntoView({ inline: "center", block: "nearest" });
+      });
+    };
+
+    /* ---- the same session-progress read, shrunk to a dot strip that
+       sits on the map HUD above the End Turn button — always visible,
+       not just inside the overlay. No text labels (no room); each dot's
+       title carries the milestone name + date, same data as the full
+       timeline. */
+    const renderHudTimeline = () => {
+      const el = $("hud-timeline");
+      if (!el) return;
+      const span = Math.max(1, data.sineDieWeek - 1);
+      const pctOf = (w) => Math.max(0, Math.min(100,
+        ((w - 1) / span) * 100));
+      const curPct = pctOf(S.week);
+      let h = '<div class="htl-track"></div>' +
+        '<div class="htl-fill" style="width:' + curPct + '%"></div>';
+      data.calendar.forEach((c) => {
+        const state = c.week < S.week ? "past" :
+          c.week === S.week ? "now" : "future";
+        h += '<span class="htl-dot ' + state + '" style="left:' +
+          pctOf(c.week) + '%" title="' + esc(c.title) + " — Week " +
+          c.week + (dateRangeFor(c.week) ?
+            " · " + esc(dateRangeFor(c.week)) : "") + '"></span>';
+      });
+      // the padded outer chip isn't itself the percentage frame — an
+      // inset inner div is, so 0%/100% land on the track's ends, not
+      // the chip's outer border
+      el.innerHTML = '<div class="htl-inner">' + h + "</div>";
+    };
+
     /* ---- header + metrics bar */
     const renderHead = () => {
       const cal = calFor(S.week);
+      const dateStr = dateRangeFor(S.week);
       $("session-title").textContent = "The Campaign · Week " + S.week;
       $("tb-week-badge").textContent = "W" + S.week;
+      $("tb-week-badge").title = dateStr;
       $("sess-week").innerHTML =
         "<b>Week " + S.week + " — " + esc(cal.title) + "</b>" +
-        "<small>" + esc(cal.phase) + " · one action per week</small>";
+        "<small>" + esc(cal.phase) +
+        (dateStr ? " · " + esc(dateStr) : "") +
+        " · one action per week</small>";
+      renderTimeline();
+      renderHudTimeline();
       const rev = S.metrics.revenueK;
       $("sess-metrics").innerHTML =
         '<span class="met m-rev ' + (rev < 0 ? "cost" : "gain") + '">💰 ' +
@@ -925,7 +1057,7 @@ const SessionPanel = {
 
     /* ---- the End Turn button (bottom left, always on the map)
        One turn = one week, so this is the game's primary verb and it
-       lives on the HUD, not inside the session overlay. Week 0 is the
+       lives on the HUD, not inside the session overlay. Week 1 is the
        exception: its move is locking the agenda, so the button routes
        into the overlay instead of burning the week. The dot means the
        week still has something unspent (an unplayed event or your one
@@ -1037,21 +1169,17 @@ const SessionPanel = {
         chk.dc + " " + dcName(chk.dc).toLowerCase() + "</small></div>";
     };
 
-    /* ---- dialogue runner (trait AND skill voices chime in) */
+    /* ---- dialogue runner (skill voices chime in) */
     /* Disco's dialogue form: NAME – line, every voice in its own color,
        continuation lines hanging under the text rather than the name.
        Skill voices take their color from their POLE (session.json
        skills.*.pole), the way Disco's take theirs from the parent
        attribute — six shades of the same gold is an unreadable wall;
-       three families you can learn is not. */
+       three families you can learn is not. The old PROGRESSIVE/
+       CONSERVATIVE trait system is retired (2026-08-14) — it's the
+       player's own instincts commenting, not an ideology. */
     const dash = '<span class="sd-dash">–</span>';
     const voiceHtml = (voices) => (voices || []).map((v) => {
-      const tr = data.traits[v.t];
-      if (tr) {
-        return '<div class="sd-voice v-' + v.t + '"><b>' + tr.name +
-          " (" + tr.sub.toUpperCase() + ")</b>" + dash + esc(v.text) +
-          "</div>";
-      }
       const sk = data.skills[v.t];
       if (!sk) return "";
       return '<div class="sd-voice v-skill p-' + (sk.pole || "bridge") +
@@ -1071,7 +1199,10 @@ const SessionPanel = {
       if (!dlg) { onDone(); return; }
       const renderNode = (nodeId) => {
         const n = dlg[nodeId];
-        const who = data.characters[n.speaker];
+        // no `speaker` = a faceless narrative injection (the campaign,
+        // the coalition, the room) rather than a named individual —
+        // rendered as unattributed prose, same as a choice's `reply`
+        const who = n.speaker ? data.characters[n.speaker] : null;
         // choices with no `check` behave exactly as they always have
         const btnHtml = (c, i) => {
           const num = '<span class="sd-num">' + (i + 1) + ".</span>";
@@ -1097,8 +1228,16 @@ const SessionPanel = {
             '<small class="cmeta p-' + (sk.pole || "bridge") + '">' + meta +
             "</small></span></button>";
         };
+        // event banner: `art` on the node, else on the dialogue. The id
+        // is slug-filtered rather than esc()'d — esc() leaves quotes
+        // alone, which is fine for text but would break out of an
+        // attribute, and content JSON is not trusted HTML.
+        const art = String(n.art || dlg.art || "").replace(/[^a-z0-9_-]/gi, "");
         let html = '<div class="sd-scene">' +
-          saidHtml(who, n.text) +
+          (art ? '<img class="sd-art" alt="" src="assets/events/' +
+            art + '.png">' : "") +
+          (who ? saidHtml(who, n.text) :
+            '<div class="sd-narr">' + esc(n.text) + "</div>") +
           voiceHtml(n.voices) +
           '<div class="sd-choices">' +
           n.choices.map(btnHtml).join("") +
@@ -1231,7 +1370,7 @@ const SessionPanel = {
           (done ? "The week's event — handled" :
             "Something needs your attention") +
           "</b><small>" + (done ? "Choices made. The week rolls on." :
-            "An event is waiting — the traits have opinions.") +
+            "An event is waiting — your instincts have opinions.") +
           "</small></span>" +
           '<button class="shgo" type="button"' + (done ? " disabled" : "") +
           ">" + (done ? "✓ Done" : "Open ▸") + "</button></div>";
@@ -1296,11 +1435,18 @@ const SessionPanel = {
           if (stageOf(sid).gate !== "chair") continue;
           const ch = chairOf(sid);
           if (!ch) continue;
+          const stDl = stageOf(sid);
+          const dlLeft = stDl.deadline != null ? stDl.deadline - S.week : null;
           html += '<div class="sh-row" data-push="' + b.id +
             '"><span class="shname"><b>📌 Work ' + esc(ch.name) +
             "</b><small>spend the week on " + esc(b.name) + " — " +
             Math.round((G.actionBonus || 0.15) * 100) +
-            " points of scheduling odds</small></span>" +
+            " points of scheduling odds" +
+            (dlLeft != null ? ' · <b class="dl' +
+              (dlLeft <= 1 ? " dl-soon" : "") + '">' +
+              (dlLeft <= 0 ? "deadline week" :
+                "deadline week " + stDl.deadline) + "</b>" : "") +
+            "</small></span>" +
             '<button class="shgo" type="button"' + (used ? " disabled" : "") +
             ">" + (used ? "—" : "Act ▸") + "</button></div>";
         }
@@ -1394,9 +1540,12 @@ const SessionPanel = {
         if (!S.agenda.length) return;
         S.agendaLocked = true;
         startBills();
-        S.log.push({ week: 0, agenda: [...S.agenda] });
+        S.log.push({ week: S.week, agenda: [...S.agenda] });
         save();
-        renderHub();
+        // skill points + agenda are set — now play the week's narrative,
+        // if any is still waiting
+        if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+        else renderHub();
       });
       for (const r of body.querySelectorAll("[data-talk]")) {
         r.querySelector(".shgo").addEventListener("pointerdown", (ev) => {
@@ -1725,8 +1874,21 @@ const SessionPanel = {
             }
           }
         } else if (st.gate === "conf") {
-          // conference dilutes: hold the number or take the deal
-          const r = rollCheck({ skill: "grassroots", dc: G.confDC || 12,
+          // Conference dilutes: hold the number or take the deal. This
+          // roll is AUTOMATIC and halves the bill on a miss, so it is the
+          // highest-stakes check in the game — and unlike a dialogue
+          // check the player never opts into it. When Grassroots split
+          // into Mobilizing + Base Building (2026-08-14) it therefore
+          // takes the BETTER of the two rather than keying on Base
+          // Building alone: keying on one half would drop a player who
+          // invested in the other from ~58% to ~17% through no fault of
+          // their own and quietly move the simulation-calibrated
+          // enact-rate bands. Durability is still what conference is
+          // ABOUT — that is why Base Building carries the Grange dare,
+          // which the player does choose.
+          const org = (S.skills.basebuilding || 0) >= (S.skills.mobilizing || 0)
+            ? "basebuilding" : "mobilizing";
+          const r = rollCheck({ skill: org, dc: G.confDC || 12,
             mods: [{ from: "influence", per: 30 }] });
           moved = true;
           if (!r.ok) b.amtScale = 0.5;
@@ -1765,18 +1927,22 @@ const SessionPanel = {
     /* ---- the weekly intel report (the campaign's ears)
        Every round the campaign hears SOMETHING about each live bill;
        how much of it is true depends on skills, per facet
-       (session.json `intel`): Whip Count prices the chairs — below
+       (session.json `intel`): Talk Story prices the chairs — below
        `band` you get hallway rumor whose band may be off by one
        (seeded per week+bill, wrong ON PURPOSE — don't "fix" the
        noise), at `band` an honest band, at `exact` the live
        percentage plus the chair's disposition (the number the paid
-       lobbyist already has). Procedure reads the clock — deadline
-       warnings before they are one week out; without it you hear
-       about deadlines when they are on top of you. Fiscal Acumen puts
-       the MEASURED hearing rate in print — it is always in the bill
-       tooltip, but tooltips don't exist on touch. The ledger's live
-       odds are gated by the same Whip tiers (bstatFor); the measured
-       base stays reachable by everyone, because it is public data. */
+       lobbyist already has). This was Whip Count's job until it was
+       retired 2026-08-14 and folded into Talk Story at the same
+       thresholds — reading a chair's real disposition turned out to be
+       the same read as reading a coalition partner's. Procedure reads
+       the clock — deadline warnings before they are one week out;
+       without it you hear about deadlines when they are on top of you.
+       Policy Brain puts the MEASURED hearing rate in print — it is
+       always in the bill tooltip, but tooltips don't exist on touch.
+       The ledger's live odds are gated by the same Talk Story tiers
+       (bstatFor); the measured base stays reachable by everyone,
+       because it is public data. */
     const IN = data.intel || {};
     const hash32 = (s) => {
       let h = 2166136261;
@@ -1799,16 +1965,16 @@ const SessionPanel = {
       const ch = Object.assign({ id: sid }, chairOf(sid) || {});
       const p = chairOdds(b, ch);
       const o = IN.odds || {};
-      const whip = S.skills[o.skill || "whip"] || 0;
-      if (whip >= (o.exact || 5)) {
+      const read = S.skills[o.skill || "talkstory"] || 0;
+      if (read >= (o.exact || 5)) {
         const disp = (S.chairs[sid] != null ? S.chairs[sid]
           : ch.disposition) || 0;
         return { t: esc(ch.name || "The chair") + " calendars it at <b>" +
           Math.round(p * 100) + "%</b> this week — disposition " + disp +
-          ".", src: "the whip sheet" };
+          ".", src: "someone who knows him well" };
       }
       const band = bandOf(p);
-      if (whip >= (o.band || 3)) {
+      if (read >= (o.band || 3)) {
         return { t: "A good source puts a hearing at <b>" +
           esc(band.label) + "</b>.", src: "a good source" };
       }
@@ -1872,22 +2038,22 @@ const SessionPanel = {
           "</span></div>";
       }
       h += '<div class="sh-agenda-cap">What you hear is only as good ' +
-        "as your skills: Whip Count prices the chairs, Procedure reads " +
-        "the clock, Fiscal Acumen knows the measured numbers.</div>";
+        "as your skills: Talk Story prices the chairs, Procedure reads " +
+        "the clock, Policy Brain knows the measured numbers.</div>";
       return h;
     };
 
     /* the live number is insider knowledge — the ledger prices it only
-       as well as your whip network can; floor odds are your own two
+       as well as you can read the room; floor odds are your own two
        meters, so they stay open */
     const bstatFor = (b, sid, ch) => {
       const st = stageOf(sid);
       if (st.gate === "chair") {
         const o = IN.odds || {};
-        const whip = S.skills[o.skill || "whip"] || 0;
+        const read = S.skills[o.skill || "talkstory"] || 0;
         const p = chairOdds(b, Object.assign({ id: sid }, ch || {}));
-        if (whip >= (o.exact || 5)) return Math.round(p * 100) + "%";
-        if (whip >= (o.band || 3)) return esc(bandOf(p).short || "?");
+        if (read >= (o.exact || 5)) return Math.round(p * 100) + "%";
+        if (read >= (o.band || 3)) return esc(bandOf(p).short || "?");
         return "?";
       }
       if (st.gate === "floor") return Math.round(floorOdds(b) * 100) + "%";
@@ -1896,15 +2062,15 @@ const SessionPanel = {
 
     /* A bill's own support/influence explain WHY it's struggling — dying
        unheard (influence) vs surviving thin (support) — so they ride the
-       same Whip Count tiers as the odds badge, or a player who can't see
+       same Talk Story tiers as the odds badge, or a player who can't see
        the odds yet gets a free second readout that means the same thing.
        Reuses bandOf's qualitative ladder for both 0-100 meters, same as
        hearing probability — both answer "how is this looking." */
     const meterNote = (b) => {
       const o = IN.odds || {};
-      const whip = S.skills[o.skill || "whip"] || 0;
-      if (whip < (o.band || 3)) return "";
-      const fmt = (v) => whip >= (o.exact || 5)
+      const read = S.skills[o.skill || "talkstory"] || 0;
+      if (read < (o.band || 3)) return "";
+      const fmt = (v) => read >= (o.exact || 5)
         ? Math.round(v) : esc(bandOf(v / 100).short || "?");
       return " · 👪" + fmt(b.support) + " 🏛️" + fmt(b.influence);
     };
@@ -1929,7 +2095,10 @@ const SessionPanel = {
             (reveal && ch ? "<br>" + esc(ch.name) + "'s disposition toward it: " +
               ((S.chairs[sid] != null ? S.chairs[sid] : ch.disposition) || 0) : "");
         } else {
-          line = st.label + " · deadline week " + st.deadline +
+          const dlLeft = st.deadline != null ? st.deadline - S.week : null;
+          line = st.label + " · <b class=\"dl" +
+            (dlLeft != null && dlLeft <= 1 ? " dl-soon" : "") +
+            "\">deadline week " + st.deadline + "</b>" +
             (ch ? " · " + esc(ch.name) : "") +
             (b.amtScale < 1 ? " · already cut to " +
               Math.round(b.amtScale * 100) + "%" : "") +
@@ -1941,7 +2110,7 @@ const SessionPanel = {
           '><span class="shname"><b>' + esc(b.name) + "</b><small>" +
           line + '</small></span><span class="bstat" title="' +
           (b.status === "alive" && bstatFor(b, sid, ch) === "?"
-            ? "Your whip count can&#39;t price this chair yet."
+            ? "You don&#39;t know this chair well enough yet."
             : "") + '">' +
           (b.status === "enacted" ? "✓" : b.status === "dead" ? "✕" :
             bstatFor(b, sid, ch)) + "</span></div>";
@@ -1980,20 +2149,33 @@ const SessionPanel = {
       overlay.classList.remove("hidden");
       Dialog.hide();
     };
-    $("tb-session").addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
+    const toggleSession = () => {
       if (overlay.classList.contains("hidden")) {
         openOverlay();
         const cal = calFor(S.week);
-        if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+        // skill investment / bill agenda comes first when it's pending —
+        // the narrative event follows once that's locked in
+        if (cal.agenda && !S.agendaLocked) renderHub();
+        else if (cal.event && !S.eventDone.includes(S.week)) runEvent();
         else renderHub();
       } else overlay.classList.add("hidden");
+    };
+    $("tb-session").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      toggleSession();
+    });
+    // the HUD mini timeline is a second entry point into the same
+    // overlay — a glance-and-tap shortcut that doesn't require finding
+    // the toolbar button
+    $("hud-timeline").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      toggleSession();
     });
     $("turn-chip").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       const cal = calFor(S.week);
       if (S.week > data.sineDieWeek) return;
-      if (cal.agenda && !S.agendaLocked) {   // week 0: lock the agenda first
+      if (cal.agenda && !S.agendaLocked) {   // week 1: lock the agenda first
         openOverlay();
         renderHub();
         return;
@@ -2055,8 +2237,10 @@ const SessionPanel = {
     if ((cal0.event && !S.eventDone.includes(S.week)) ||
         (cal0.agenda && !S.agendaLocked)) {
       openOverlay();
-      if (cal0.event && !S.eventDone.includes(S.week)) runEvent();
-      else renderHub();
+      // skill investment / bill agenda comes first when it's pending —
+      // the narrative event follows once that's locked in (see sess-lock)
+      if (cal0.agenda && !S.agendaLocked) renderHub();
+      else runEvent();
     }
   },
 };
@@ -2117,7 +2301,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
     this.load.json("policies", "map/policies.json?v=1");
-    this.load.json("session", "map/session.json?v=1");
+    this.load.json("session", "map/session.json?v=5");
     this.load.json("chairs", "map/chairs.json?v=1");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

@@ -107,7 +107,7 @@ Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
 nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
 revenue.json tax names exactly (fallback: first word, no icon).
 
-## Session overlay — turns + trait voices (feature 10)
+## Session overlay — turns + skill voices (feature 10)
 
 `SessionPanel` in main.js + `site/map/session.json` (ALL content is
 data: characters, calendar, dialogues, actions — write content there,
@@ -122,31 +122,214 @@ Rules that must survive edits:
   Organizer/Wonk + voice-picks + capital-wallet sketch, deleted —
   superseded by these decisions; its intel bands moved into
   session.json).
-- **Skills are chosen at week 0 and honed by doing** (`train()` in
-  main.js): every action names the skill it exercises (session.json
-  `trains`; the bill-push action exercises Procedure) and
-  `skillStart.honeEvery` uses buy one pip, up to the cap. This is the
-  only repeatable growth after week 0 — one-off event grants still
+- **Skills are chosen at week 1 (Opening Day) and honed by doing**
+  (`train()` in main.js): every action names the skill it exercises
+  (session.json `trains`; the bill-push action exercises Procedure)
+  and `skillStart.honeEvery` uses buy one pip, up to the cap. This is
+  the only repeatable growth after week 1 — one-off event grants still
   ride `fx.skill`.
+- **The six skills** (session.json `skills`, ids are stable, only
+  `name`/`pole`/`desc` are display): Policy Brain (`fiscal` — id kept
+  from its 2026-08-13 name to avoid touching every reference),
+  Procedure, Educator (wonk); Talk Story, Mobilizing, Base Building
+  (organizer). **Bridge pole is now empty (0)** — Rhetoric was cut
+  2026-08-14 into Talk Story's organizer slot, then Whip Count was
+  retired the same day and its chair-odds intel gate (`intel.odds`)
+  folded into Talk Story too, at the same thresholds (band=3/exact=5).
+  Talk Story now single-handedly carries the "reading a person" remit
+  Bridge used to split across two skills — its own description folds
+  in Whip Count's ("who's really with you"). `poles.bridge` stays
+  defined in session.json but unused; `renderHub` already skips empty
+  poles so nothing renders a dead column. Pole split is 3/3/0, not the
+  old clean 2/2/2. Any dialogue `check.skill` or `voices[].t` that
+  points at a dead skill id silently disappears (`voiceHtml` no-ops on
+  an unknown id) — repoint, don't delete.
+- **Mobilizing vs Base Building is load-bearing, not flavor**
+  (split out of Grassroots 2026-08-14, the McAlevey distinction).
+  Mobilizing activates the already-convinced — spiky, breadth; it
+  scales and is trained by the rally, and carries the `ev-testimony`
+  pack-the-room check. Base Building grows the coalition and develops
+  leaders — slow, durability; it carries the Grange on-the-record dare
+  and is trained by **Build the bench**, the deliberately unglamorous
+  action whose immediate support tick is the smallest in the game ON
+  PURPOSE (its payoff is the endgame, not the week). Never re-merge
+  them, and never raise bench's effect to match the rally's — the
+  whole teaching is that turnout and durability are bought separately.
+- **The conference roll takes the BETTER of the two organizing halves**
+  (`resolveBills`, the `conf` gate). It is automatic, the player never
+  opts into it, and a miss halves the bill — so keying it on one half
+  alone would drop a player who invested in the other from ~58% to
+  ~17% through no fault of their own and quietly move the
+  simulation-calibrated enact-rate bands. Conference is still ABOUT
+  durability; that is why Base Building carries the Grange dare, which
+  the player does choose.
+- **Only 3 of 6 skills have an action that trains them** (rally →
+  Mobilizing, bench → Base Building, lobby → Talk Story, plus the
+  bill-push → Procedure). Policy Brain and Educator can only be bought
+  at week 1 or granted by `fx.skill`. Known gap: the action roster, not
+  the skill list, is the bottleneck.
 - **The weekly intel report is skill-gated per FACET** (session.json
-  `intel`, rendered by `intelHtml`): Whip Count prices the chairs
+  `intel`, rendered by `intelHtml`): Talk Story prices the chairs
   (below `band` = hallway rumor whose band may be off by one, seeded
   per week+bill — wrong ON PURPOSE, don't "fix" the noise; at `band` =
-  honest band; at `exact` = live % + chair disposition), Procedure
-  reads the clock (deadline warnings before they're a week out),
-  Fiscal Acumen puts the measured hearing rate in print. The bill
-  ledger's live odds are gated by the SAME Whip tiers (`bstatFor`) or
-  intel is decorative — but the measured base rate in the row tooltip
-  stays reachable by everyone, because it is public data.
-- Every dialogue node, event and action carries trait `voices`
-  (PROGRESSIVE/CONSERVATIVE chime-ins) — that's the Disco identity.
+  honest band; at `exact` = live % + chair disposition — this was Whip
+  Count's job until it was retired 2026-08-14), Procedure reads the
+  clock (deadline warnings before they're a week out), Policy Brain
+  puts the measured hearing rate in print. The bill ledger's live odds
+  are gated by the SAME Talk Story tiers (`bstatFor`) or intel is
+  decorative — but the measured base rate in the row tooltip stays
+  reachable by everyone, because it is public data.
+- Every dialogue node, event and action carries `voices` — the SIX
+  SKILLS chime in, colored by their pole (`voiceHtml` in main.js,
+  `v.t` = a skill id from `data.skills`). Retired 2026-08-14: the
+  PROGRESSIVE/CONSERVATIVE trait system (`data.traits`, `v-prog`/
+  `v-cons` CSS) — it read as the player having a preassigned ideology
+  rather than the player's own instincts arguing with each other. The
+  Disco identity is now carried by skill voices alone.
+- **Only two named individuals exist as dialogue speakers**: Fonoti
+  (House money chair) and Grange (lobbyist) — external actors the
+  player negotiates or contends with. The player's OWN campaign is
+  deliberately faceless, per the same 2026-08-14 change that retired
+  the traits: Nālani Chun ("your policy director") and Malia Reyes
+  ("your field organizer") are gone from `characters`. A dialogue node
+  with no `speaker` key renders as unattributed narration (`sd-narr`,
+  same treatment as a choice's `reply` text) instead of a named
+  character's line — that's how the campaign's own staff/coalition now
+  "speaks": as narrative injection ("the coalition wants to know...",
+  a note on a whiteboard), never as an individual. Their old weekly
+  Talk-story slots survive as faceless entries keyed `office` (was
+  `nalani`, dialogue `talk-office`, was `talk-nalani`) and `coalition`
+  (was `malia`, dialogue `talk-coalition`, was `talk-malia`) — `office`
+  covers procedural/status flavor, `coalition` covers turnout/base
+  flavor. If a new event or talk needs a speaker, ask: is this an
+  external actor (name it) or the player's own campaign (leave
+  `speaker` unset)?
+- **Event banner art** comes from `tools/make_event_art.py` →
+  `site/assets/events/<id>.png` (640x220), shown when a dialogue (or a
+  single node) carries an `art` key. TWO routes, and the first is the
+  one to reach for:
+  - **`--photo PATH` — a real photograph. THIS IS THE PRIMARY ROUTE.**
+    Sources live in `data/raw/events/`. The pipeline letterboxes it,
+    pulls it a few percent toward the overlay palette, and quantizes
+    with dithering so it carries the same limited palette and grain as
+    everything else. Procedural code can place geometry exactly but
+    cannot PAINT; a photo brings real materials, real light and a real
+    crowd for free. Getting the crowd to read cost four procedural
+    passes and still lost to a photograph.
+    - Workflow that produced w1-opening: photo of the real rotunda →
+      an image model (Gemini) asked to **add** a motion-blurred crowd
+      while changing nothing else → `--photo`. Ask for a narrow EDIT
+      of a real photo, never a repaint: style words ("painterly",
+      "Disco Elysium", "warm gold") make the model reinterpret the
+      scene and invent things — it turned the wood doors yellow. Keep
+      the prompt photographic ("documentary", "natural daylight") and
+      let the game's look come from the quantize step, which is CODE
+      and therefore identical across all ~20 banners.
+    - `--center` picks the surviving band (a 4:3 source keeps only
+      ~46% of its height at 2.9:1), `--grade` how far toward the
+      palette. Keep `--grade` small: the point of a photo is realism,
+      and pushing hard toward navy/gold just reinvents the
+      stylisation that made the procedural version look wrong.
+    - **`--paint RADIUS` gives a mild painterly finish** (needs
+      `opencv-contrib-python-headless` — see README). It runs
+      `cv2.xphoto.oilPainting`, but the brush radius has to be judged
+      relative to the OUTPUT, not the source: a radius of 4–8 is
+      invisible on a 2400px photo and only reads once applied at ~2x
+      the 640-wide output and then resized down (`paintify()`).
+    - **`--paint-strength` is the mildness dial, NOT radius.** Default
+      0.55 with radius 4, which is the intended house look: strokes
+      soften the image while photographic detail still shows through.
+      Dropping the radius instead just makes the strokes small and
+      busy, which reads as a noisy photo rather than a gentle painting.
+      Full strength at radius 8 flattens everything into poster paint —
+      it was tried and is far too extreme for this.
+    - A FULLY painted image (strength ≥ 0.85) has flat colour regions
+      that dithering would muddy back toward "filtered photo", so it
+      switches to no-dither + a 96-colour palette. A mild blend still
+      has photographic gradients that NEED dithering to survive a small
+      palette, so it keeps the normal 32-colour `COLORS` + dither.
+      That is why grade/colors/dither/noise all default to `None` in
+      `from_photo` and resolve from the strength rather than sharing
+      one constant.
+  - **`--scene <id>` — procedural.** For subjects with no usable
+    photograph. Full control of composition, no painterly rendering.
+    `opening_day` is the worked example; the notes below are what it
+    cost to learn.
+  - **Work from a reference either way.** Invented compositions failed
+    three times (a flat balcony elevation that read as a motel; a
+    one-point shaft that read as a bullseye; an exterior-at-dawn that
+    was a perfectly nice picture of the wrong thing).
+  - **Value separation carries a procedural scene, not
+    draughtsmanship** — the repeated LIGHT rail / DARK recess
+    alternation plus shaded side walls against a lit far wall. Detail
+    beyond that turns to noise.
+  - **Disco Elysium's lighting logic, not its brushwork** — one
+    motivated source, deep shadow, coloured bounce. Oil-paint texture
+    does not survive translation to pixels; directional light does.
+    Palette is locked to the overlay's own tokens.
+  - **Crowds are the hard part, and three things make them read.**
+    Cost several passes to find, so don't undo them casually:
+    1. **Resolution.** At true architectural scale a person is half a
+       storey. Showing a whole four-storey courtyard at 320px puts
+       them at ~12px with a 2px head — unreadable at any shading. So
+       banners resolve to 640 natively, and a crowded scene CROPS
+       CLOSER than its reference (three bands, not five).
+    2. **Draw order.** Railings are repainted OVER the crowd layer, so
+       what survives is heads and torsos above a rail. That reads as a
+       person instantly; a whole tiny free-standing body reads as a
+       bottle, and a rail lined with them reads as a shelf of bottles.
+    3. **Silhouette.** Head ~45% of shoulder width, tapering to the
+       legs, nearer 1:3 than 1:2. A wide blob with a bulb on top is a
+       bowling pin. Jitter size and footing per figure; a level row of
+       identical ones is the other half of the shelf problem.
+    Blur is only a whisker (~0.16x supersample). "Vague" has to come
+    from anonymity, not smearing — at this size blur destroys the
+    head/shoulder separation doing all the work. Also: figures in an
+    open light well are lit from ABOVE, so heads and shoulders must
+    catch light; dark figures on dark recesses are invisible.
+  - **Brightness.** The reference is a bright daylit space. It is easy
+    to stack directional shading + a downward gradient + edge grading
+    + the `finish()` vignette until the whole thing reads as a
+    dungeon. They compound — tune them together, not one at a time.
+  - Frame edges are graded down (`side_g`) so the near ends of the
+    side walls, which perspective makes enormous, don't outweigh the
+    centre.
+  - **Designed at 320x110, SHIPPED at 640x220.** Resolving natively to
+    640 (rather than rendering 320 and upscaling) is what lets a figure
+    exist at all — see the crowd note above. The column is ~615–652px
+    wide depending on the overlay scrollbar, so the file is only ever
+    resampled by about a percent; `.sd-art` therefore deliberately does
+    NOT set `image-rendering: pixelated`, which would turn that small
+    downscale into dropped rows. Don't "fix" either half alone.
+  - **`.sd-art` clamps to `max-height: 32vh` with `object-fit: cover`.**
+    Clamping against the viewport (rather than shipping a shorter file)
+    lets a tall window show the whole composition and a short one crop
+    to the middle. 32vh is a balance point worth not nudging blind: the
+    banner is ~219px tall in a 615px column, so it shows UNCROPPED from
+    about 700px of viewport upward and only trims below that. 26vh
+    cropped even tall windows and read as a squat letterbox; 38vh
+    stopped clamping at all and pushed the dialogue clean off the panel
+    on short ones.
+  - The `art` id is slug-filtered in `showDialogue`, not `esc()`'d —
+    `esc()` leaves quotes alone, which is fine for text but would
+    break out of an attribute.
 - Revenue effects (`revenueK`, $ thousands/yr) flow into the budget
   scoreboard via `PolicyPanel.setExternal(S.metrics.revenueK)` — call
   it after EVERY metric change and once on boot, or the chip drifts.
-- One action per week (`S.actionWeek === S.week` gate); week 0 has no
-  action — its move is locking the ≤3-bill agenda (`S.agendaLocked`).
+- One action per week (`S.actionWeek === S.week` gate). There is no
+  week 0 — the session starts at week 1 (Opening Day), whose calendar
+  entry carries `agenda: true` so the same turn also locks the ≤3-bill
+  agenda (`S.agendaLocked`) that lined-up members will introduce.
 - The weekly overlay auto-pops only while the week's event is
   unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
+- **Real calendar dates**: `data.sessionStart` (session.json, the 3rd
+  Wednesday in January) anchors week 1; `dateRangeFor(w)` in main.js
+  derives every other week's date range by +7 days, no per-week dates
+  stored. A mini timeline (`renderTimeline`, `#sess-timeline`) plots
+  `data.calendar`'s milestones (First Lateral, Crossover, Conference,
+  Sine Die…) across the session and marks the current week — keep
+  `data.calendar` as the single source of both the intel/deadline copy
+  and the timeline's waypoints, don't fork a second milestone list.
 - Characters are FICTIONAL — never use real legislators' names.
 - Dialogue text is escaped (`esc()`) — keep it that way; content JSON
   is not trusted HTML.

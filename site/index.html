@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260814084337">
+  <link rel="stylesheet" href="css/style.css?v=20260814131804">
 </head>
 <body>
   <div id="game"></div>
@@ -52,7 +52,7 @@
           <rect x="4"  y="12" width="3"  height="2"  fill="#b8a468"/>
           <rect x="9"  y="12" width="5"  height="2"  fill="#f2c14e"/>
         </svg>
-        <span>Session <b id="tb-week-badge" class="wk-badge">W0</b></span>
+        <span>Session <b id="tb-week-badge" class="wk-badge">W1</b></span>
       </button>
       <button id="tb-policy" type="button" title="Pass policies — invest in priorities, raise the revenue to pay for them">
         <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
@@ -67,10 +67,13 @@
       </button>
     </div>
     <button id="fund-chip" type="button"></button>
-    <button id="turn-chip" type="button" title="Advance the session by one week">
-      <span class="tc-label">Week 0</span>
-      <span class="tc-act">End Turn ▸</span>
-    </button>
+    <div id="hud-turn">
+      <div id="hud-timeline" title="Session timeline"></div>
+      <button id="turn-chip" type="button" title="Advance the session by one week">
+        <span class="tc-label">Week 1</span>
+        <span class="tc-act">End Turn ▸</span>
+      </button>
+    </div>
   </div>
 
   <div id="money-overlay" class="ovl hidden" role="dialog" aria-modal="true">
@@ -158,10 +161,11 @@
 
   <div id="session-overlay" class="ovl hidden" role="dialog" aria-modal="true">
     <div class="ovl-panel">
-      <div class="ovl-title" id="session-title">The Campaign · Week 0</div>
+      <div class="ovl-title" id="session-title">The Campaign · Week 1</div>
       <button class="ovl-close" id="session-close" type="button" aria-label="Close">✕</button>
       <div id="sess-head">
         <div id="sess-week"></div>
+        <div id="sess-timeline" class="sess-timeline"></div>
         <div id="sess-metrics"></div>
       </div>
       <div class="ovl-rows" id="sess-body"></div>
@@ -198,6 +202,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260814084337"></script>
+  <script src="js/main.js?v=20260814131804"></script>
 </body>
 </html>
