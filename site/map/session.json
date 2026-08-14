@@ -1,4 +1,23 @@
 {
+ "identity": {
+  "name": "The Advocate",
+  "icon": "🪧",
+  "tag": "No seat. No vote. Everything else.",
+  "desc": "You lead the campaign for tax fairness — the coalition outside the building, the argument inside it. Members carry the bills; you make them impossible to ignore."
+ },
+ "intel": {
+  "_note": "The weekly intel report. Each FACET is gated by the skill that would really buy it: Whip Count prices the chairs (live scheduling odds — rumor below `band`, honest band at `band`, exact odds + disposition at `exact`), Procedure reads the clock (deadline warnings before they are one week out), Fiscal Acumen puts the MEASURED hearing rate in print (it is always in the bill tooltip, but tooltips don't exist on touch). Rumor-tier odds are seeded per week+bill and may be off by one band — wrong on purpose; do not 'fix' the noise.",
+  "odds": { "skill": "whip", "band": 3, "exact": 5 },
+  "clock": { "skill": "procedure", "warn": 3 },
+  "basis": { "skill": "fiscal", "cite": 3 },
+  "bands": [
+   { "max": 0.15, "label": "almost no chance", "short": "no shot" },
+   { "max": 0.3, "label": "roughly one in four", "short": "~1 in 4" },
+   { "max": 0.45, "label": "roughly one in three", "short": "~1 in 3" },
+   { "max": 0.6, "label": "a coin flip", "short": "coin flip" },
+   { "max": 1.01, "label": "better than even", "short": "even+" }
+  ]
+ },
  "traits": {
   "prog": {
    "name": "PROGRESSIVE",
@@ -9,42 +28,65 @@
    "sub": "Anti-Tax"
   }
  },
+ "poles": {
+  "_note": "Display grouping for the skill sheet — Disco groups skills under their parent attribute and colors them by it; ours group under the campaign function they serve. Order here is the order they render, and each pole's color lives in CSS as .p-<id>.",
+  "order": ["wonk", "bridge", "organizer"],
+  "wonk": {
+   "name": "Wonk",
+   "sub": "The numbers and the rules"
+  },
+  "bridge": {
+   "name": "Bridge",
+   "sub": "Reads people, either direction"
+  },
+  "organizer": {
+   "name": "Organizer",
+   "sub": "The street and the microphone"
+  }
+ },
+ "_skillsNote": "skills.*.pole is WONK (inside/institutional), ORGANIZER (outside/movement) or BRIDGE (works both faces — pure metadata today, not read by any code; grouping/UI is a later step). Fiscal + Procedure are wonk; Rhetoric + Grassroots are organizer; Talk Story + Whip Count are bridge. Clean 2/2/2 on purpose. NOTE: this note lives OUTSIDE the skills object on purpose — main.js does `Object.keys(data.skills)` to enumerate skill records, so a stray key INSIDE skills breaks every skill-grid render (learned the hard way, 2026-08-13).",
  "skills": {
   "fiscal": {
    "name": "Fiscal Acumen",
    "icon": "📊",
+   "pole": "wonk",
    "desc": "Revenue estimates, fiscal notes, and whether the number on the page is real."
   },
   "procedure": {
    "name": "Procedure",
    "icon": "📜",
+   "pole": "wonk",
    "desc": "Referrals, deadlines, decking — what the rules quietly allow."
   },
   "whip": {
    "name": "Whip Count",
    "icon": "🗳️",
-   "desc": "Who votes yes, and who votes yes only when it doesn't matter."
+   "pole": "bridge",
+   "desc": "Who's really with you — in the building, and in the coalition."
   },
   "rhetoric": {
    "name": "Rhetoric",
    "icon": "🎙️",
+   "pole": "organizer",
    "desc": "Hearings, cameras, and the sentence people repeat afterward."
   },
   "talkstory": {
    "name": "Talk Story",
    "icon": "🌺",
-   "desc": "Reading the room. Trust built slowly and spent quickly."
+   "pole": "bridge",
+   "desc": "Reading a person — a skeptical chair or a coalition partner, same skill either way."
   },
-  "backbone": {
-   "name": "Backbone",
-   "icon": "🪨",
-   "desc": "What's left of your bill after everyone has had a turn at it."
+  "grassroots": {
+   "name": "Grassroots",
+   "icon": "✊",
+   "pole": "organizer",
+   "desc": "Coalition capacity — how many people you actually turn out, and how fast."
   }
  },
  "characters": {
   "nalani": {
    "name": "Nālani Chun",
-   "role": "your chief of staff",
+   "role": "your policy director",
    "icon": "📋"
   },
   "fonoti": {
@@ -59,7 +101,7 @@
   },
   "malia": {
    "name": "Malia Reyes",
-   "role": "coalition organizer",
+   "role": "your field organizer",
    "icon": "🌺"
   }
  },
@@ -68,9 +110,17 @@
    "name": "Hold a rally",
    "icon": "📣",
    "desc": "Pack the rotunda. Sign-waving, testimony trainings, kūpuna in matching shirts.",
+   "trains": "grassroots",
    "effects": {
     "support": 6,
     "influence": -2
+   },
+   "scale": {
+    "_note": "Grassroots turns the SAME rally into a bigger, cheaper one — more support per point of skill, less political cost. Reuses the identical skill/per math as check mods (modOf), just applied to an action's effects instead of a roll.",
+    "mods": [
+     { "on": "support", "from": "skill", "id": "grassroots", "per": 2 },
+     { "on": "influence", "from": "skill", "id": "grassroots", "per": 3 }
+    ]
    },
    "result": "The rotunda echoes for an hour. A senator's aide films it from the balcony, expressionless. Coverage runs at six and ten.",
    "voices": [
@@ -88,6 +138,7 @@
    "name": "Work the building",
    "icon": "🤝",
    "desc": "Office to office, floor by floor. Coffee, one-pagers, favors remembered.",
+   "trains": "talkstory",
    "effects": {
     "support": 1,
     "influence": 3
@@ -204,15 +255,15 @@
   "w0-intro": {
    "start": {
     "speaker": "nalani",
-    "text": "Session opens Wednesday. Here's the picture: the Council on Revenues says $9.8 billion in general-fund taxes next year. The budget spends $10.6 billion of general funds. The gap is savings and prayer. Whatever bills you introduce this week ARE your session — so choose like it.",
+    "text": "Session opens Wednesday. Here's the picture: the Council on Revenues says $9.8 billion in general-fund taxes next year. The budget spends $10.6 billion of general funds. The gap is savings and prayer. You don't hold a seat in that building — what you hold is the campaign: the coalition, the argument, and members willing to carry your bills. Whatever you hand them this week IS your session — so choose like it.",
     "voices": [
      {
       "t": "prog",
-      "text": "A gap means the wealthiest state economy in the Pacific is UNDERTAXED at the top. You know the list: conveyance, capital gains, the loopholes. Introduce all of it."
+      "text": "A gap means the wealthiest state economy in the Pacific is UNDERTAXED at the top. You know the list: conveyance, capital gains, the loopholes. Hand them all of it."
      },
      {
       "t": "cons",
-      "text": "A gap means spending grew faster than a shrinking tax base. Families are already paying the highest cost of living in America. Introduce restraint."
+      "text": "A gap means spending grew faster than a shrinking tax base. Families are already paying the highest cost of living in America. Hand them restraint."
      }
     ],
     "choices": [
@@ -233,7 +284,7 @@
      {
       "label": "Say nothing. Look at the numbers again.",
       "effects": {},
-      "reply": "She waits. The numbers do not improve under observation. \"Okay. Pick your bills — the calendar won't.\""
+      "reply": "She waits. The numbers do not improve under observation. \"Okay. Pick the package — the calendar won't.\""
      }
     ]
    }
@@ -241,11 +292,11 @@
   "w0-nalani": {
    "start": {
     "speaker": "nalani",
-    "text": "Ground rules while it's quiet. Each week you get the room — talk to whoever you want — and ONE real move: a rally or a walk through the building. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
+    "text": "Ground rules while it's quiet. Each week you get the room — talk to whoever you want — and ONE real move: a rally or a walk through the building. And what you spend your weeks doing, you get better at doing. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
     "voices": [
      {
       "t": "cons",
-      "text": "One move a week. Scarcity. Finally, a mechanic this office understands."
+      "text": "One move a week. Scarcity. Finally, a mechanic this campaign understands."
      },
      {
       "t": "prog",
@@ -264,15 +315,15 @@
   "w1-opening": {
    "start": {
     "speaker": "nalani",
-    "text": "Opening Day. Lei on every railing, three governors in the gallery, and every member gets one floor minute that the cameras will actually air. Yours is at 11:40. What's the minute?",
+    "text": "Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?",
     "voices": [
      {
       "t": "prog",
-      "text": "Say the quiet number LOUD: seventy percent of capital gains go to people making over $400K. One minute is plenty."
+      "text": "Say the quiet number LOUD: seventy percent of capital gains go to people making over $400K. Four minutes is plenty."
      },
      {
       "t": "cons",
-      "text": "Say nothing that becomes an attack mailer. Praise the kūpuna, thank the staff, sit down."
+      "text": "Say nothing a chair has to answer for by lunch. Thank the members carrying your bills, praise the kūpuna, hand out the one-pager."
      }
     ],
     "choices": [
@@ -282,7 +333,7 @@
        "support": 5,
        "influence": -4
       },
-      "reply": "The gallery claps. Two members study their desks. Grange, in the back, writes one word on a legal pad."
+      "reply": "The crowd claps. Upstairs, two office doors close quietly. Grange, at the edge of the steps, writes one word on a legal pad."
      },
      {
       "label": "\"Cost of living. Discipline. A budget that doesn't wobble.\"",
@@ -290,15 +341,15 @@
        "influence": 5,
        "support": -3
       },
-      "reply": "The chamber murmurs approval. Somewhere upstairs, a coalition text thread goes quiet."
+      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet."
      },
      {
-      "label": "One minute of pure aloha — thank everyone, promise nothing.",
+      "label": "Four minutes of pure aloha — thank everyone, promise nothing.",
       "effects": {
        "support": 1,
        "influence": 1
       },
-      "reply": "Warm, safe, forgettable. Three members ask to co-sponsor 'whatever that was.'"
+      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'"
      }
     ]
    }
@@ -306,7 +357,7 @@
   "w1-fonoti": {
    "start": {
     "speaker": "fonoti",
-    "text": "Fonoti doesn't look up from the committee referral sheet. \"I schedule what can pass. Your revenue bills — I can hear one of them early, IF the ask is trimmed to something the floor survives. Or you keep the full number and wait for me to find a week. Maybe I find one.\"",
+    "text": "Fonoti doesn't look up from the committee referral sheet. \"I schedule what can pass. The bills your people are carrying — I can hear one of them early, IF the ask is trimmed to something the floor survives. Or you keep the full number and wait for me to find a week. Maybe I find one.\"",
     "voices": [
      {
       "t": "cons",
@@ -405,7 +456,7 @@
      {
       "label": "\"Say it at the hearing, then. On the record, under your own name.\"",
       "check": {
-       "skill": "backbone",
+       "skill": "grassroots",
        "dc": 12,
        "type": "red",
        "mods": [
@@ -436,7 +487,7 @@
   "ev-forecast": {
    "start": {
     "speaker": "nalani",
-    "text": "Rumor from the tax department: the Council on Revenues may shave the forecast at its next meeting. If it's true, every bill with a price tag gets harder. The caucus wants to know your posture before the papers ask.",
+    "text": "Rumor from the tax department: the Council on Revenues may shave the forecast at its next meeting. If it's true, every bill with a price tag gets harder. The coalition wants to know the campaign's posture before the papers ask.",
     "voices": [
      {
       "t": "cons",
@@ -461,11 +512,11 @@
       "reply": "You beat the rumor to the microphone. The clip travels. So does your name, attached to the word 'taxes.'"
      },
      {
-      "label": "Brief the caucus quietly. Keep powder dry.",
+      "label": "Brief the steering committee quietly. Keep powder dry.",
       "effects": {
        "influence": 3
       },
-      "reply": "Doors close, voices lower. The caucus appreciates a member who doesn't make weather."
+      "reply": "Doors close, voices lower. The building notices a campaign that can keep its own counsel."
      },
      {
       "label": "Say nothing yet. Ask the department for the actual worksheet.",
@@ -482,7 +533,7 @@
        ]
       },
       "success": {
-       "reply": "Three pages of tables. The shave is 0.4 percent, not the two the rumor grew on the way over. You go to the caucus with the real number and watch the room recalibrate around you.",
+       "reply": "Three pages of tables. The shave is 0.4 percent, not the two the rumor grew on the way over. You walk into the steering meeting with the real number and watch the room recalibrate around you.",
        "effects": {
         "support": 2,
         "influence": 3,
@@ -502,7 +553,7 @@
   "ev-emergency": {
    "start": {
     "speaker": "nalani",
-    "text": "Health department's in the hallway with a real one: a federal reimbursement fell through and a rural clinic network needs a $40M emergency appropriation to stay open through the fiscal year. Money committee wants co-signers by Friday.",
+    "text": "Health department's in the hallway with a real one: a federal reimbursement fell through and a rural clinic network needs a $40M emergency appropriation to stay open through the fiscal year. The rescue coalition wants your campaign's name on the joint letter by Friday.",
     "voices": [
      {
       "t": "prog",
@@ -515,12 +566,12 @@
     ],
     "choices": [
      {
-      "label": "Co-sign. Clinics stay open.",
+      "label": "Sign the letter. Clinics stay open.",
       "effects": {
        "revenueK": -40000,
        "support": 4
       },
-      "reply": "Your name goes second on the list. The clinic director cries in the hallway. The fiscal note does not."
+      "reply": "Your campaign's name goes second on the list. The clinic director cries in the hallway. The fiscal note does not."
      },
      {
       "label": "Ask for a scrubbed budget first. Defer.",
@@ -561,7 +612,7 @@
       "effects": {
        "influence": 2
       },
-      "reply": "By Thursday it's fish wrap. The building respects a member who doesn't chase every ball."
+      "reply": "By Thursday it's fish wrap. The building respects a campaign that doesn't chase every ball."
      },
      {
       "label": "Skip the reply. Take it to live radio, unedited.",
@@ -630,7 +681,7 @@
   "ev-potluck": {
    "start": {
     "speaker": "nalani",
-    "text": "Friday caucus potluck. Someone brought squid lūʻau, someone brought Costco chicken bake, the Senate side brought a rumor about conference chairs. Attendance is, technically, optional.",
+    "text": "Friday coalition potluck, church hall two blocks makai of the Capitol. Someone brought squid lūʻau, someone brought Costco chicken bake, and somebody's cousin on Senate staff brought a rumor about conference chairs. Attendance is, technically, optional.",
     "voices": [
      {
       "t": "cons",
@@ -703,7 +754,7 @@
   "talk-fonoti": {
    "start": {
     "speaker": "fonoti",
-    "text": "\"Every member thinks their bill is the one the ceiling bends for.\" He taps the referral sheet. \"Bring me something the floor survives, and we'll talk about ceilings.\"",
+    "text": "\"Every advocate who makes it up these stairs thinks their bill is the one the ceiling bends for.\" He taps the referral sheet. \"Bring me something the floor survives, and we'll talk about ceilings.\"",
     "voices": [
      {
       "t": "prog",
@@ -796,6 +847,7 @@
   "base": 1,
   "points": 5,
   "creationCap": 4,
-  "cap": 6
+  "cap": 6,
+  "honeEvery": 2
  }
 }

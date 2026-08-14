@@ -113,6 +113,31 @@ revenue.json tax names exactly (fallback: first word, no icon).
 data: characters, calendar, dialogues, actions — write content there,
 not in JS). One turn = one week; state in localStorage `cq-session`.
 Rules that must survive edits:
+- **The player is THE ADVOCATE — one identity, leading a campaign from
+  OUTSIDE the building.** No seat, no vote, no floor minute, no
+  co-signing: members carry the bills ("your introducers"), the player
+  runs the coalition and the argument. Content must NEVER hand the
+  player a legislator's powers; the pre-2026-08-13 draft that framed
+  the player as a member is gone, as is `campaign.json` (a two-identity
+  Organizer/Wonk + voice-picks + capital-wallet sketch, deleted —
+  superseded by these decisions; its intel bands moved into
+  session.json).
+- **Skills are chosen at week 0 and honed by doing** (`train()` in
+  main.js): every action names the skill it exercises (session.json
+  `trains`; the bill-push action exercises Procedure) and
+  `skillStart.honeEvery` uses buy one pip, up to the cap. This is the
+  only repeatable growth after week 0 — one-off event grants still
+  ride `fx.skill`.
+- **The weekly intel report is skill-gated per FACET** (session.json
+  `intel`, rendered by `intelHtml`): Whip Count prices the chairs
+  (below `band` = hallway rumor whose band may be off by one, seeded
+  per week+bill — wrong ON PURPOSE, don't "fix" the noise; at `band` =
+  honest band; at `exact` = live % + chair disposition), Procedure
+  reads the clock (deadline warnings before they're a week out),
+  Fiscal Acumen puts the measured hearing rate in print. The bill
+  ledger's live odds are gated by the SAME Whip tiers (`bstatFor`) or
+  intel is decorative — but the measured base rate in the row tooltip
+  stays reachable by everyone, because it is public data.
 - Every dialogue node, event and action carries trait `voices`
   (PROGRESSIVE/CONSERVATIVE chime-ins) — that's the Disco identity.
 - Revenue effects (`revenueK`, $ thousands/yr) flow into the budget
@@ -131,6 +156,17 @@ Rules that must survive edits:
   every scheduling decision — never render them as a balance. The
   pre-2026-08-13 keys were `families` / `wealthy`; the load-time
   migration in `SessionPanel` must stay, or old saves reset.
+- **Support/influence are ALSO per-bill** (2026-08-13): `S.metrics.*`
+  is the campaign's global numbers; each `S.bills[i]` carries its own
+  `support`/`influence`, seeded at introduction from the global numbers
+  plus a small editorial tilt by tax family (`chairs.json`
+  `gate.familyTilt`). `chairOdds`/`floorOdds` read the BILL's numbers,
+  not the global ones — that split is what makes low-influence
+  (never heard) and low-support (heard but diluted at the chair gate,
+  `gate.dilution`) genuinely different failure modes instead of both
+  feeding one probability. New bills always need this seed
+  (`startBills`); old saves need `migrateBills()` at boot, or their
+  bills' odds silently go `NaN` and stop being heard forever.
 - **Skill checks** (feature 11 step 1): 2d6 + skill + mods vs DC, with
   snake eyes/boxcars overriding. Odds are printed ON the choice button
   — that visibility is the teaching, don't hide it. WHITE checks reopen

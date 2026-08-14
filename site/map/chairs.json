@@ -9,7 +9,26 @@
   "floorSupportDiv": 300,
   "floorInfluenceDiv": 400,
   "confDC": 12,
-  "championed": 0.12
+  "championed": 0.12,
+  "pushInfluence": 4,
+  "dilution": {
+   "_note": "Distinct failure modes: low influence still kills a bill outright (never heard, unchanged). Low SUPPORT no longer just nudges the same hearing roll — the moment a bill clears a chair gate, if its support is under floor, it comes out smaller. Multiplicative and stacks across the two money-committee gates (a chronically unpopular bill can limp out of both already thin), floored so dilution alone never zeroes a bill — killing it stays the job of never-heard/voted-down/conference.",
+   "floor": 35,
+   "cut": 0.85,
+   "min": 0.4
+  },
+  "familyTilt": {
+   "_note": "EDITORIAL, not measured — same standard as `championed` above: named, small, a judgment call about who a tax family's natural base is, not survey data. Seeds a bill's OWN support/influence away from the campaign's global numbers at introduction: wealth taxes poll well and lack institutional access; GET is the reverse (broad, visible, unpopular — but the lever leadership reaches for precisely because it avoids concentrated opposition); credits and tourism/admin sit closest to the measured hearing-rate story (session's easiest gates). Deltas are added to S.metrics.support/influence at seed time, then clamped 0-100 — they do not touch the measured base rate in baseRate(), which stays untouched by design.",
+   "wealth": { "support": 12, "influence": -10 },
+   "income": { "support": 6, "influence": -6 },
+   "get": { "support": -10, "influence": 6 },
+   "exemption": { "support": 6, "influence": 2 },
+   "credit": { "support": 8, "influence": 8 },
+   "sin": { "support": 4, "influence": -2 },
+   "tourism": { "support": 4, "influence": 6 },
+   "admin": { "support": -4, "influence": 8 },
+   "_default": { "support": 0, "influence": 0 }
+  }
  },
  "chairs": {
   "h-fin": {

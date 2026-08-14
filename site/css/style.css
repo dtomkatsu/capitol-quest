@@ -534,91 +534,162 @@ html, body {
 
 #sess-body { margin-top: 8px; }
 
-/* dialogue view */
-.sd-speaker {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 8px 0 2px;
+/* ---------- dialogue view: the Disco Elysium reader ----------
+   The rest of the game is a bright pixel-art JRPG panel; the dialogue
+   is deliberately a different surface — a dark, serif, literary column
+   you read rather than a HUD you operate. Rules that carry the look:
+   speakers are NAME – line (not a header block), continuation lines
+   hang under the TEXT so the colored names form a clean left column,
+   every voice owns a color, and choices are numbered in signal red. */
+.sd-scene {
+  --de-ink: #ddd6c6;
+  --de-dim: #9c9584;
+  margin: 6px -6px 0;
+  padding: 12px 14px 10px;
+  background: rgba(8, 9, 14, .60);
+  border-left: 2px solid rgba(242,193,78,.30);
+  border-radius: 4px;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
+    "Times New Roman", serif;
 }
-.sd-speaker b { color: #ffe9a8; font-size: 13px; }
-.sd-speaker small { color: #9fb0e8; font-size: 10.5px; }
-.sd-text {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #eef2ff;
-  margin: 2px 0 6px;
+
+/* a spoken line — hanging indent keeps the names in a readable column */
+.sd-said, .sd-voice, .sd-narr {
+  margin: 0 0 11px;
+  padding-left: 18px;
+  text-indent: -18px;
+  font-size: 14.5px;
+  line-height: 1.52;
+  color: var(--de-ink, #ddd6c6);
 }
-.sd-voice {
-  margin: 7px 0 7px 10px;
-  padding-left: 10px;
-  font-size: 12.5px;
-  line-height: 1.45;
+.sd-said:last-child, .sd-voice:last-child { margin-bottom: 4px; }
+.sd-who {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  color: #f0e3bd;
+}
+.sd-role {
+  font-size: 11.5px;
   font-style: italic;
+  color: var(--de-dim, #9c9584);
+  margin-left: 5px;
+}
+.sd-dash { color: var(--de-dim, #9c9584); margin: 0 7px; }
+.sd-said.sd-you .sd-who { color: #9ec2e0; }        /* YOU, pale blue */
+.sd-narr { color: #b6afa0; font-style: italic; }   /* unattributed prose */
+
+/* voices: italic body, upright colored name, a rule in the same color */
+.sd-voice {
+  font-style: italic;
+  margin-left: 2px;
+  padding-left: 24px;
+  text-indent: -18px;
+  border-left: 2px solid currentColor;
 }
 .sd-voice b {
   font-style: normal;
-  font-size: 11px;
-  letter-spacing: 1.2px;
-}
-.sd-voice.v-prog { border-left: 3px solid #ff9d6e; color: #ffd9c4; }
-.sd-voice.v-prog b { color: #ff9d6e; }
-.sd-voice.v-cons { border-left: 3px solid #86b4e8; color: #cfe2f8; }
-.sd-voice.v-cons b { color: #86b4e8; }
-
-.sd-voice.v-skill { border-left: 3px solid #f2c14e; color: #f6ecd2; }
-.sd-voice.v-skill b { color: #f2c14e; }
-
-.sd-choices { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
-.sd-choices button {
-  text-align: left;
-  padding: 8px 12px;
-  background: rgba(255,255,255,.06);
-  border: 2px solid rgba(255,255,255,.35);
-  border-radius: 8px;
-  color: #dfe8ff;
-  font-family: inherit;
   font-size: 12.5px;
-  line-height: 1.35;
+  letter-spacing: 1.3px;
+}
+/* the two tax traits keep the colors they've always had */
+.sd-voice.v-prog { color: #e8b9a2; border-color: #ff9d6e; }
+.sd-voice.v-prog b { color: #ff9d6e; }
+.sd-voice.v-cons { color: #b9cee6; border-color: #86b4e8; }
+.sd-voice.v-cons b { color: #86b4e8; }
+/* skills speak in their POLE's color — see .p-* below */
+.sd-voice.v-skill { color: var(--de-ink); border-color: var(--pole, #f2c14e); }
+.sd-voice.v-skill b { color: var(--pole, #f2c14e); }
+
+/* pole palette — one family per campaign function, used by both the
+   skill sheet and the voices so a color means the same thing in both */
+.p-wonk      { --pole: #6fa8dc; }   /* the numbers and the rules  */
+.p-bridge    { --pole: #c98bc4; }   /* reads people, either way   */
+.p-organizer { --pole: #e8795c; }   /* the street and the mic     */
+
+.sd-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 14px 0 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+.sd-choices button {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  text-align: left;
+  padding: 7px 8px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 3px;
+  color: #d9503f;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.42;
   cursor: pointer;
 }
+.sd-choices button .sd-num {
+  flex: 0 0 auto;
+  color: #8d8672;
+  font-weight: 700;
+}
+.sd-choices button .sd-lbl { flex: 1 1 auto; min-width: 0; }
+.sd-choices button:hover {
+  background: rgba(216,80,63,.10);
+  border-left-color: #d9503f;
+  color: #ff7a63;
+}
+.sd-choices button:hover .sd-num { color: #d9503f; }
 .sd-choices button:hover { border-color: #f2c14e; color: #ffe9a8; }
 
 /* ---------- skill checks ---------- */
 /* The odds ride on the button on purpose: the player should watch a
    difficulty get cheaper as their influence grows. White = retryable
    once something changes, red = one shot, forever. */
-.sd-choices button.chk {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
 .sd-choices button.chk .cmeta {
-  font-size: 10.5px;
+  display: block;
+  margin-top: 2px;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: .6px;
+  letter-spacing: .7px;
   text-transform: uppercase;
+  color: var(--pole, #b9cdf2);
 }
-.sd-choices button.c-white { border-color: rgba(210,226,255,.65); }
-.sd-choices button.c-white .cmeta { color: #b9cdf2; }
+/* white = retryable once something changes; red = one shot, forever.
+   The red check reads as the expensive one before you click it. */
+.sd-choices button.c-white { border-left-color: rgba(210,226,255,.35); }
 .sd-choices button.c-red {
-  border-color: rgba(255,141,128,.75);
-  background: rgba(255,141,128,.07);
+  border-left-color: rgba(255,141,128,.55);
+  background: rgba(255,141,128,.05);
 }
-.sd-choices button.c-red .cmeta { color: #ff9d90; }
+/* :not(.spent) — the spent label already says "one shot only" itself */
+.sd-choices button.c-red:not(.spent) .cmeta::after {
+  content: " · one shot";
+  opacity: .75;
+}
 .sd-choices button.chk.spent {
-  opacity: .5;
+  opacity: .45;
   cursor: default;
-  border-style: dashed;
+  border-left-style: dashed;
 }
-.sd-choices button.chk.spent:hover { border-color: rgba(255,255,255,.35); color: #dfe8ff; }
+.sd-choices button.chk.spent:hover {
+  background: none;
+  border-left-color: rgba(255,255,255,.25);
+  color: #d9503f;
+}
+.sd-choices button.chk.spent:hover .sd-num { color: #8d8672; }
 
 .sd-roll {
-  margin: 8px 0;
+  margin: 2px 0 11px 18px;
   padding: 8px 12px;
-  border-radius: 8px;
-  border-left: 4px solid;
-  background: rgba(0,0,0,.22);
+  border-radius: 4px;
+  border-left: 3px solid;
+  background: rgba(0,0,0,.30);
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
 }
 .sd-roll > b {
   display: block;
@@ -679,41 +750,142 @@ html, body {
   line-height: 1.45;
 }
 
-/* ---------- skills ("your instincts") ---------- */
-.sk-grid { display: flex; flex-direction: column; }
+/* ---------- the character sheet ("your instincts") ----------
+   Disco's sheet groups skills under the attribute that feeds them and
+   colors each group; ours groups them under the campaign function they
+   serve (session.json `poles`). The level is a NUMERAL in a bordered
+   box, not a row of dots — it reads at a glance and doesn't imply the
+   cap is a progress bar you're meant to fill. */
+.sk-sheet {
+  /* the fallback lives on the PARENT so it is inherited, not competing:
+     .p-* and .sk-col are both one class, so a default declared here as
+     `.sk-col { --pole: … }` would out-cascade every pole color by
+     source order and silently paint the whole sheet gold */
+  --pole: #f2c14e;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 4px 16px;
+  margin: 4px 0 2px;
+}
+.sk-col { min-width: 0; }
+.sk-pole {
+  margin: 6px 0 3px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--pole);
+}
+.sk-pole b {
+  color: var(--pole);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.sk-pole small {
+  display: block;
+  margin-top: 1px;
+  color: #8b95bb;
+  font-size: 9.5px;
+  font-style: italic;
+}
 .sk-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 5px 0;
-  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.sk-row:last-child { border-bottom: none; }
+.sk-row .skpip {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--pole);
+  border-radius: 3px;
+  background: rgba(0,0,0,.25);
+  color: var(--pole);
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+/* mid-practice: the box is filling in, one more week of this buys the pip */
+.sk-row .skpip.honing {
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--pole) 40%, transparent) 50%,
+    rgba(0,0,0,.25) 50%);
+}
 .sk-row .skname { flex: 1 1 auto; min-width: 0; }
 .sk-row .skname b { display: block; color: #eef2ff; font-size: 12px; }
-.sk-row .skname small { display: block; color: #a8b4dd; font-size: 10px; }
-.sk-row .skpips {
-  flex: 0 0 auto;
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: #f2c14e;
+.sk-row .skname small {
+  display: block;
+  color: #a8b4dd;
+  font-size: 9.5px;
+  line-height: 1.35;
 }
-.sk-row .skpips i { color: rgba(255,255,255,.22); font-style: normal; }
+
+/* ---------- the advocate + weekly intel ---------- */
+.adv-card {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 6px 0 2px;
+  padding: 8px 12px;
+  background: rgba(242,193,78,.08);
+  border-left: 4px solid #f2c14e;
+  border-radius: 8px;
+}
+.adv-card b { color: #ffe9a8; font-size: 13px; }
+.adv-card small { color: #b9c4ea; font-size: 10.5px; letter-spacing: .4px; }
+
+.intel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.intel-row:last-of-type { border-bottom: none; }
+.intel-row .shname { flex: 1 1 auto; min-width: 0; }
+.intel-row .shname b { display: block; color: #eef2ff; font-size: 12px; }
+.intel-row .shname small {
+  display: block;
+  color: #a8b4dd;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.intel-row .shname small b { display: inline; color: #ffe9a8; font-size: 10.5px; }
+.intel-row .isrc {
+  flex: 0 0 auto;
+  max-width: 92px;
+  text-align: right;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: #9fb0e8;
+  line-height: 1.3;
+}
+
+.sd-fx .hone { color: #e3b64b; }
 .sk-row .skup {
   flex: 0 0 auto;
-  width: 26px;
+  width: 22px;
   padding: 3px 0;
-  background: rgba(242,193,78,.18);
-  border: 2px solid #f2c14e;
-  border-radius: 7px;
-  color: #ffe9a8;
+  background: none;
+  border: 1.5px dashed var(--pole, #f2c14e);
+  border-radius: 3px;
+  color: var(--pole, #f2c14e);
   font-family: inherit;
   font-size: 13px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
 }
-.sk-row .skup:disabled { opacity: .35; cursor: default; }
+.sk-row .skup:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--pole, #f2c14e) 22%, transparent);
+  border-style: solid;
+}
+.sk-row .skup:disabled { opacity: .3; cursor: default; }
 .sd-reply {
   margin: 8px 0;
   padding: 8px 12px;
@@ -723,8 +895,11 @@ html, body {
   line-height: 1.45;
   color: #cfd8f5;
 }
+/* effect readouts and buttons are HUD, not prose — they must NOT
+   inherit the dialogue serif when they render inside .sd-scene */
 .sd-fx {
-  margin: 2px 0 8px;
+  margin: 2px 0 10px 18px;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   font-size: 11.5px;
   font-weight: 700;
   color: #9fb0e8;
@@ -739,7 +914,7 @@ html, body {
   border: 2px solid #fff;
   border-radius: 8px;
   color: #3a2c05;
-  font-family: inherit;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .8px;

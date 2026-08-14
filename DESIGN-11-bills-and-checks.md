@@ -64,10 +64,14 @@ existing PROGRESSIVE / CONSERVATIVE traits.
                  "desc": "Hearings, cameras, and the sentence people repeat afterward." },
   "talkstory": { "name": "Talk Story",    "icon": "🌺",
                  "desc": "Reading the room. Trust built slowly and spent quickly." },
-  "backbone":  { "name": "Backbone",      "icon": "🪨",
-                 "desc": "What's left of your bill after everyone has had a turn at it." }
+  "grassroots":{ "name": "Grassroots",    "icon": "✊",
+                 "desc": "Coalition capacity — how many people you actually turn out, and how fast." }
 }
 ```
+
+Superseded 2026-08-13: Backbone is retired (see Decisions below). Two
+wonk (Fiscal, Procedure), two organizer (Rhetoric, Grassroots), two
+bridge (Talk Story, Whip Count).
 
 Player skills live in save state: every skill starts at **1**, and week 0
 distributes **5 points** (creation cap 4, hard cap 6). Thoughts grant +1s
@@ -288,7 +292,7 @@ the calendar, which is why they're the *right* deadlines.
 - `vote` — bloc math from §4 vs `majority`.
 - `conf` — both money chairs must agree. Disagreement offers the player
   a choice: **accept a scaled amount** (`amtScale` 0.5 or 0.25) or hold
-  firm and roll a Backbone check to keep it whole, with death on
+  firm and roll a Grassroots check to keep it whole, with death on
   failure. This is where dilution enters, and it enters as dollars.
 
 **Referral as a weapon:** a bill can be referred to *two* committees
@@ -393,6 +397,13 @@ than unheard ones and inflate every rate.
 
 ## 8d. Calibration (20,000 sessions per profile, two-committee route)
 
+**STALE as of 2026-08-13.** This table assumed one shared support/
+influence pool for all bills (`S.metrics.*`). Bills now seed their own
+support/influence per tax family and diverge independently (see
+Decisions below), and chair-gate dilution is a new death spiral that
+didn't exist when this ran. The four invariants below are still the
+right ones to check for — re-run before citing these numbers again.
+
 | profile | wealth tax | GET | credit |
 |---|---|---|---|
 | passive (sup 50, inf 30, 0 pushes) | 5.0% | 4.6% | 9.2% |
@@ -412,13 +423,98 @@ passes anything** while engaged play lands roughly one bill of three.
 2. Chairs + `chair` gates + death by never-heard + the obituary screen.
    This is the feature's whole thesis; ship it second, not last.
 3. Chambers, blocs, floor votes, crossover.
-4. Conference, `amtScale`, the Backbone-or-fold choice.
+4. Conference, `amtScale`, the Grassroots-or-fold choice.
 5. Thought cabinet as reputation, feeding checks and dispositions.
+
+## Decisions (2026-08-13) — the campaign reframe
+
+- **The player is not a legislator.** One identity — **The Advocate**,
+  leading a campaign from outside the building. Members carry the
+  bills; the player runs the coalition and the argument. This resolves
+  the "which chamber" question below: neither.
+- **Skills**: chosen at week 0 (5 points, as shipped) and honed by the
+  actions taken — each action trains the skill it exercises, two uses
+  per pip (`skillStart.honeEvery`).
+- **Intel every round**, accuracy gated per facet by skills: Whip
+  Count → live chair odds (rumor with deliberate noise → band →
+  exact + disposition), Procedure → deadline warnings, Fiscal Acumen →
+  the measured rate in print. Ledger odds gated by the same tiers;
+  measured base rates stay public.
+- The `campaign.json` sketch (Organizer/Wonk identities, voice picks,
+  capital wallet, 7-stage turns) is superseded and deleted; its intel
+  bands live on in session.json.
+
+## Decisions (2026-08-13) — skills retooled: wonk / organizer / bridge
+
+- **Backbone never fit a lane and is retired.** The six skills are now
+  a clean 2/2/2: wonk (Fiscal Acumen, Procedure), organizer (Rhetoric,
+  **Grassroots**, new), bridge (Talk Story, Whip Count — reworded to
+  make clear both work either direction, not just "inside" skills that
+  happened to be useful outside). session.json `skills.*.pole` records
+  this; nothing reads it yet — it's grouping metadata for a future
+  week-0 UI pass, not wired into any mechanic.
+- **Grassroots is coalition capacity** — how many people you can
+  actually turn out. It took over both of Backbone's jobs (the
+  conference hold-firm check, the "testify on the record" dare to
+  Grange) because "does the deal survive a chair's pen" was always
+  really "is there still outside pressure in the room" — a Grassroots
+  question, not a generic resilience stat.
+- **Actions can scale by skill, not just train it.** `session.json`
+  actions gained an optional `scale.mods` block — the identical
+  `{from, per}` shape as check mods, applied to the action's own
+  effects via `modOf` (`scaledFx` in main.js). Rally uses it: Grassroots
+  adds Public Support per point and reduces the Political Influence
+  cost per point, so a skilled organizer's rally is the SAME action
+  landing bigger and cheaper, not a different, better action unlocking.
+  Deterministic, not a check — the weekly action stays the one
+  guaranteed move a player can plan around; RNG stays reserved for
+  dialogue checks. Rally's `trains` moved from Rhetoric to Grassroots
+  to match (the rotunda-and-signs flavor was always turnout, not
+  message-craft).
+
+## Decisions (2026-08-13) — per-bill support/influence, distinct failure modes
+
+- **One shared pool was hiding the lesson.** With `S.metrics.support`/
+  `.influence` feeding every bill's odds, support and influence just
+  added into the SAME probability — nothing forced a player to need
+  both. Each bill now carries its own `support`/`influence`, seeded at
+  introduction from the campaign's numbers plus a small tax-family tilt
+  (`chairs.json` `gate.familyTilt`, editorial — same standard as
+  `championed`: named, small, a judgment call, not survey data). A
+  wealth-tax bill starts more popular and less connected than a GET
+  bill drawn from the same coalition at the same moment; that gap is
+  the honest version of "wealth taxes are hard" — not that voters
+  dislike them (they generally don't), but that the opposition is
+  concentrated and present at every gate while support is diffuse.
+- **Two failure modes, not one.** Low influence still kills a bill
+  outright — never heard, unchanged, that stays the thesis. Low support
+  now does something ELSE: the moment a bill clears a chair gate,
+  support under `gate.dilution.floor` shrinks `amtScale` right there
+  (`gate.dilution.cut`, floored at `gate.dilution.min` so dilution alone
+  never zeroes a bill) — separate from, and stacking with, conference
+  dilution. A bill can limp out of committee already thin. That's the
+  "heard, but gutted" mode a shared pool couldn't express.
+- **Pushing got sharper.** `push` already targeted one live bill; it now
+  also raises THAT bill's own influence (`gate.pushInfluence`), on top
+  of the existing one-week odds bonus — the inside-game move you were
+  already taking finally moves the number it should move.
+- **The ledger can now say why, not just how likely.** `meterNote`
+  surfaces a bill's own support/influence at the same Whip Count tiers
+  that already gate the odds badge — a struggling bill now reads as
+  either "no one downtown will hear it" or "it'll get through thin,"
+  which are different problems with different fixes.
+- **Cost:** the §8d calibration table is invalidated (flagged above,
+  not yet re-run). Save migration is handled (`migrateBills()`,
+  boot-time) — old saves' `S.bills[i]` had no `support`/`influence`
+  keys, which would have gone `undefined` in the odds formulas and
+  silently become `NaN` (`Math.random() < NaN` is always false — bills
+  would never be heard again, quietly). Backfilled from current
+  campaign numbers + the same family tilt as a fresh seed.
 
 ## Open questions
 
-- Which chamber is the player in — fixed House, or chosen at week 0?
-  (Chosen is better: replaying as a senator shows a different building.)
+- ~~Which chamber is the player in?~~ Resolved above: the player is
+  not a member of either.
 - Does the player carry all 3 bills through, or can they abandon one to
   concentrate influence? (Abandoning is a real and painful skill.)
 - Should skill points also come from events, or only week 0 + thoughts?

@@ -744,16 +744,20 @@ const PolicyPanel = {
 };
 
 /* -------------------------------------------------------- session panel */
-/* The disco-flavored core loop. Time passes in TURNS — one turn = one
-   week of the legislative session. Each week: an event dialogue pops
-   (the two tax traits, PROGRESSIVE and CONSERVATIVE, chime in on
-   everything), you can talk story with characters freely, and you get
-   exactly ONE action (rally / lobby). Week 0 is the week before session:
-   pick up to three bills from policies.json to introduce — that agenda
-   IS your session. Decisions move three metrics: Revenue ($K/yr, wired
-   into the budget scoreboard via PolicyPanel.setExternal), Working
-   Families and The Wealthy & Businesses (0–100 opinion). All content is
-   data-driven from map/session.json; the thought cabinet bolts on next. */
+/* The disco-flavored core loop. The player is THE ADVOCATE — one
+   identity, leading a campaign from OUTSIDE the building. No seat, no
+   vote, no floor minute, no co-signing: members carry the bills, the
+   player runs the coalition and the argument. Content must never hand
+   the player a legislator's powers. Time passes in TURNS — one turn =
+   one week of the legislative session. Each week: an intel report
+   (accuracy gated per facet by skills — see intelHtml), an event
+   dialogue (PROGRESSIVE and CONSERVATIVE chime in on everything), free
+   talk story, and exactly ONE action (rally / lobby / push). Actions
+   hone the skill they exercise (train() — two uses buy a pip). Week 0
+   is the week before session: allocate skill points and pick up to
+   three bills that lined-up members will introduce — that package IS
+   your session. All content is data-driven from map/session.json; the
+   thought cabinet bolts on next. */
 const SessionPanel = {
   built: false,
   init(budget, policies, data, chairData, rateData) {
@@ -777,7 +781,9 @@ const SessionPanel = {
        building. Same scale, different physics — that asymmetry is the
        teaching point, so never present them as a balance. */
     const KEY = "cq-session";
-    const SK = Object.keys(data.skills || {});
+    // "_"-prefixed keys are doc notes, not skill records — session.json
+    // keeps them OUTSIDE this collection, but filter defensively anyway
+    const SK = Object.keys(data.skills || {}).filter((k) => k[0] !== "_");
     const skStart = data.skillStart || {};
     const baseSkills = () => {
       const o = {};
@@ -788,7 +794,7 @@ const SessionPanel = {
       week: 0, actionWeek: -1, agendaLocked: false, agenda: [],
       eventDone: [], talked: {}, log: [], flags: {}, checks: {},
       bills: [], chairs: {}, pushWeek: -1, pushBill: null,
-      skills: baseSkills(), skillPts: skStart.points || 0,
+      skills: baseSkills(), skillPts: skStart.points || 0, train: {},
       metrics: { revenueK: 0, support: 50, influence: 30 },
     });
     let S = defaults();
@@ -797,6 +803,7 @@ const SessionPanel = {
         JSON.parse(localStorage.getItem(KEY) || "{}"));
       S.metrics = Object.assign(defaults().metrics, S.metrics);
       S.skills = Object.assign(baseSkills(), S.skills);
+      S.train = S.train || {};
       // saves written before the rename carried families/wealthy —
       // migrate them, or an in-progress campaign silently resets
       if (S.metrics.families != null) S.metrics.support = S.metrics.families;
@@ -869,10 +876,32 @@ const SessionPanel = {
         parts.join(" · ") + "</div>" : "";
     };
 
+    /* Learn by doing: each action names the skill it exercises
+       (session.json `trains`; the push action exercises Procedure), and
+       skillStart.honeEvery uses buy one pip, up to the cap. This is the
+       only repeatable way to grow a skill after week 0 — one-off event
+       grants still ride fx.skill. Returns the fx line to show. */
+    const train = (skill) => {
+      const sk = data.skills[skill];
+      if (!sk) return "";
+      if ((S.skills[skill] || 0) >= (skStart.cap || 6)) return "";
+      S.train[skill] = (S.train[skill] || 0) + 1;
+      if (S.train[skill] >= (skStart.honeEvery || 2)) {
+        S.train[skill] = 0;
+        S.skills[skill] += 1;
+        save();
+        return '<div class="sd-fx"><span class="gain">' + sk.icon + " " +
+          esc(sk.name) + " +1 — practice</span></div>";
+      }
+      save();
+      return '<div class="sd-fx"><span class="hone">' + sk.icon + " " +
+        esc(sk.name) + " sharpens — one more week of this</span></div>";
+    };
+
     /* ---- header + metrics bar */
     const renderHead = () => {
       const cal = calFor(S.week);
-      $("session-title").textContent = "Session · Week " + S.week;
+      $("session-title").textContent = "The Campaign · Week " + S.week;
       $("tb-week-badge").textContent = "W" + S.week;
       $("sess-week").innerHTML =
         "<b>Week " + S.week + " — " + esc(cal.title) + "</b>" +
@@ -1009,17 +1038,33 @@ const SessionPanel = {
     };
 
     /* ---- dialogue runner (trait AND skill voices chime in) */
+    /* Disco's dialogue form: NAME – line, every voice in its own color,
+       continuation lines hanging under the text rather than the name.
+       Skill voices take their color from their POLE (session.json
+       skills.*.pole), the way Disco's take theirs from the parent
+       attribute — six shades of the same gold is an unreadable wall;
+       three families you can learn is not. */
+    const dash = '<span class="sd-dash">–</span>';
     const voiceHtml = (voices) => (voices || []).map((v) => {
       const tr = data.traits[v.t];
       if (tr) {
         return '<div class="sd-voice v-' + v.t + '"><b>' + tr.name +
-          " (" + tr.sub.toUpperCase() + ")</b> — " + esc(v.text) + "</div>";
+          " (" + tr.sub.toUpperCase() + ")</b>" + dash + esc(v.text) +
+          "</div>";
       }
       const sk = data.skills[v.t];
       if (!sk) return "";
-      return '<div class="sd-voice v-skill"><b>' + sk.icon + " " +
-        sk.name.toUpperCase() + "</b> — " + esc(v.text) + "</div>";
+      return '<div class="sd-voice v-skill p-' + (sk.pole || "bridge") +
+        '"><b>' + sk.icon + " " + sk.name.toUpperCase() + "</b>" + dash +
+        esc(v.text) + "</div>";
     }).join("");
+
+    // one spoken line, DE format — speaker in caps and color, role dimmed
+    const saidHtml = (who, text, cls) =>
+      '<div class="sd-said' + (cls ? " " + cls : "") + '"><b class="sd-who">' +
+      (who.icon ? who.icon + " " : "") + esc((who.name || "").toUpperCase()) +
+      "</b>" + (who.role ? '<span class="sd-role">' + esc(who.role) +
+        "</span>" : "") + dash + esc(text) + "</div>";
 
     const showDialogue = (dlgId, onDone) => {
       const dlg = data.dialogues[dlgId];
@@ -1029,9 +1074,10 @@ const SessionPanel = {
         const who = data.characters[n.speaker];
         // choices with no `check` behave exactly as they always have
         const btnHtml = (c, i) => {
+          const num = '<span class="sd-num">' + (i + 1) + ".</span>";
           if (!c.check) {
-            return '<button type="button" data-i="' + i + '">' +
-              esc(c.label) + "</button>";
+            return '<button type="button" data-i="' + i + '">' + num +
+              '<span class="sd-lbl">' + esc(c.label) + "</span></button>";
           }
           const key = dlgId + ":" + nodeId + ":" + i;
           const st = checkState(key, c.check);
@@ -1046,17 +1092,17 @@ const SessionPanel = {
               " · " + m.odds.toFixed(0) + "%";
           return '<button type="button" data-i="' + i + '" class="chk c-' +
             (c.check.type || "white") + (st.done ? " spent" : "") + '"' +
-            (st.done ? " disabled" : "") + "><span>" + esc(c.label) +
-            '</span><small class="cmeta">' + meta + "</small></button>";
+            (st.done ? " disabled" : "") + ">" + num +
+            '<span class="sd-lbl">' + esc(c.label) +
+            '<small class="cmeta p-' + (sk.pole || "bridge") + '">' + meta +
+            "</small></span></button>";
         };
-        let html =
-          '<div class="sd-speaker"><b>' + who.icon + " " +
-          esc(who.name) + "</b><small>" + esc(who.role) + "</small></div>" +
-          '<div class="sd-text">' + esc(n.text) + "</div>" +
+        let html = '<div class="sd-scene">' +
+          saidHtml(who, n.text) +
           voiceHtml(n.voices) +
           '<div class="sd-choices">' +
           n.choices.map(btnHtml).join("") +
-          "</div>";
+          "</div></div>";
         body.innerHTML = html;
         body.scrollTop = 0;
         for (const btn of body.querySelectorAll(".sd-choices button")) {
@@ -1079,10 +1125,14 @@ const SessionPanel = {
               roll ? { check: c.check.skill, dc: c.check.dc,
                        ok: roll.ok, total: roll.total } : {}));
             save();
+            // the line you picked reads back as YOUR line; the response
+            // stays unattributed because authored `reply` text is a mix
+            // of spoken answers and pure narration ("The gallery claps…")
+            // — putting a speaker's name on narration would be a lie
             body.querySelector(".sd-choices").outerHTML =
-              '<div class="sd-reply">▸ ' + esc(c.label) + "</div>" +
+              saidHtml({ name: "You" }, c.label, "sd-you") +
               (roll ? rollHtml(c.check, roll) : "") +
-              (out.reply ? '<div class="sd-reply">' + esc(out.reply) +
+              (out.reply ? '<div class="sd-narr">' + esc(out.reply) +
                 "</div>" : "") + voiceHtml(out.voices) + fxHtml +
               (out.goto
                 ? '<button class="sd-done" data-goto="' + out.goto +
@@ -1107,6 +1157,16 @@ const SessionPanel = {
       const interim = S.week > data.sineDieWeek;
       let html = "";
 
+      // who you are — one identity, chosen skills, no seat
+      const idn = data.identity || {};
+      html += '<div class="adv-card" title="' + esc(idn.desc || "") +
+        '"><b>' + (idn.icon || "🪧") + " " +
+        esc(idn.name || "The Advocate") + "</b><small>" +
+        esc(idn.tag || "") + "</small></div>";
+
+      // the week's intel — what the campaign heard, as well as it can hear
+      html += intelHtml();
+
       // your instincts — the six skills every check rolls against
       const cap = S.skillPts > 0 && !S.agendaLocked
         ? (skStart.creationCap || 4) : (skStart.cap || 6);
@@ -1114,26 +1174,50 @@ const SessionPanel = {
         (S.skillPts ? ' <small>' + S.skillPts + " point" +
           (S.skillPts > 1 ? "s" : "") + " to spend</small>" : "") +
         "</div>";
-      html += '<div class="sk-grid">';
-      for (const k of SK) {
+      /* The character sheet, Disco-style: skills grouped under the
+         campaign function they serve, each group in its own color, the
+         level as a numeral rather than a row of dots (a numeral reads
+         at a glance and doesn't imply the cap is a progress bar).
+         Grouping + labels are data — session.json `poles`. */
+      const PO = data.poles || {};
+      const order = (PO.order || []).filter((p) => PO[p]);
+      const seen = {};
+      const skRow = (k) => {
         const s = data.skills[k];
         const v = S.skills[k];
-        html += '<div class="sk-row" data-skill="' + k + '">' +
+        const honing = (S.train[k] || 0) > 0 && v < (skStart.cap || 6);
+        return '<div class="sk-row" data-skill="' + k + '">' +
+          '<span class="skpip' + (honing ? " honing" : "") + '" title="' +
+          v + (honing ? " — honing: one more week of practice" : "") +
+          '">' + v + "</span>" +
           '<span class="skname"><b>' + s.icon + " " + esc(s.name) +
           "</b><small>" + esc(s.desc) + "</small></span>" +
-          '<span class="skpips" title="' + v + '">' +
-          "●".repeat(v) + '<i>' + "○".repeat((skStart.cap || 6) - v) +
-          "</i></span>" +
           (S.skillPts > 0
             ? '<button class="skup" type="button"' +
               (v >= cap ? " disabled" : "") + ">+</button>"
             : "") + "</div>";
+      };
+      html += '<div class="sk-sheet">';
+      for (const p of order) {
+        const ks = SK.filter((k) => (data.skills[k].pole || "bridge") === p);
+        if (!ks.length) continue;
+        ks.forEach((k) => { seen[k] = 1; });
+        html += '<div class="sk-col p-' + p + '"><div class="sk-pole"><b>' +
+          esc(PO[p].name || p) + "</b><small>" + esc(PO[p].sub || "") +
+          "</small></div>" + ks.map(skRow).join("") + "</div>";
+      }
+      // any skill whose pole is missing from `order` still has to render
+      const orphans = SK.filter((k) => !seen[k]);
+      if (orphans.length) {
+        html += '<div class="sk-col p-bridge">' +
+          orphans.map(skRow).join("") + "</div>";
       }
       html += "</div>";
       if (S.skillPts > 0) {
         html += '<div class="sh-agenda-cap">Checks roll 2d6 + skill ' +
           "against a difficulty. Support and influence add to the roll — " +
-          "so does being the kind of legislator who noticed.</div>";
+          "so does being the kind of advocate who noticed. What you " +
+          "practice each week, you sharpen.</div>";
       }
 
       html += billLedger(interim);
@@ -1156,8 +1240,9 @@ const SessionPanel = {
       // week-0 agenda picker (up to 3 bills)
       if (cal.agenda && !S.agendaLocked) {
         html += '<div class="sh-sec">Your bill package</div>' +
-          '<div class="sh-agenda-cap">Choose up to 3 bills to introduce ' +
-          "— this agenda is your session.</div>";
+          '<div class="sh-agenda-cap">Choose up to 3 bills — you have ' +
+          "members lined up to introduce them. This package is your " +
+          "campaign.</div>";
         for (const p of allPolicies) {
           const on = S.agenda.includes(p.id);
           html += '<div class="sh-row" data-pol="' + p.id +
@@ -1168,9 +1253,10 @@ const SessionPanel = {
             (on ? "✓ In" : "Add") + "</button></div>";
         }
         html += '<button class="sh-week-end" id="sess-lock" type="button"' +
-          (S.agenda.length ? "" : " disabled") + ">Introduce " +
+          (S.agenda.length ? "" : " disabled") + ">Hand " +
           (S.agenda.length || "your") + " bill" +
-          (S.agenda.length === 1 ? "" : "s") + " ▸</button>";
+          (S.agenda.length === 1 ? "" : "s") +
+          " to your introducers ▸</button>";
       } else if (S.agendaLocked && S.agenda.length) {
         html += '<div class="sh-sec">Your bills</div>';
         for (const id of S.agenda) {
@@ -1245,7 +1331,7 @@ const SessionPanel = {
           // branched on `funded` alone and told a player who had just
           // enacted a revenue bill that nothing became law
           (!enacted.length
-            ? "Nothing you introduced became law."
+            ? "Nothing the campaign carried became law."
             : funded && raised >= funded
               ? "You paid for what you passed."
               : funded
@@ -1339,7 +1425,15 @@ const SessionPanel = {
           S.actionWeek = S.week;
           S.pushWeek = S.week;
           S.pushBill = b.id;
+          // pushing is inside-game work on THIS bill specifically, so it
+          // also raises the bill's own influence, on top of the one-week
+          // odds bonus — the two effects overlap in the moment (this
+          // week's roll) and then influence's gain persists after.
+          // `b` is the actual S.bills element, so mutating it in place
+          // mutates the saved state directly.
+          b.influence = clamp(b.influence + (G.pushInfluence || 4));
           S.log.push({ week: S.week, action: "push", bill: b.id });
+          const trHtml = train("procedure");
           save();
           renderHead();
           body.innerHTML =
@@ -1352,7 +1446,9 @@ const SessionPanel = {
               "</div>" : "") +
             '<div class="sd-fx"><span class="gain">Scheduling odds +' +
             Math.round((G.actionBonus || 0.15) * 100) +
-            " next week</span></div>" +
+            " next week</span><span class=\"gain\">🏛️ " + esc(b.name) +
+            "'s influence +" + (G.pushInfluence || 4) +
+            "</span></div>" + trHtml +
             '<button class="sd-done" type="button">Continue ▸</button>';
           body.querySelector(".sd-done").addEventListener("pointerdown",
             (e2) => { e2.stopPropagation(); renderHub(); });
@@ -1374,17 +1470,33 @@ const SessionPanel = {
       });
     };
 
+    /* A skilled organizer gets more out of the SAME action, not a
+       different one: session.json `scale.mods` reuses the identical
+       {from, per} shape as check mods (modOf) — e.g. Grassroots turns
+       a rally's support up and its influence cost down. Bonuses only
+       add (never subtract), same as a check bonus, so this stays
+       purely upside for the skill named. */
+    const scaledFx = (a) => {
+      const fx = Object.assign({}, a.effects || {});
+      for (const s of (a.scale || {}).mods || []) {
+        const m = modOf(s);
+        if (m.n) fx[s.on] = (fx[s.on] || 0) + m.n;
+      }
+      return fx;
+    };
+
     const runAction = (aid) => {
       const a = data.actions[aid];
       S.actionWeek = S.week;
-      const fxHtml = applyFx(a.effects);
+      const fxHtml = applyFx(scaledFx(a));
+      const trHtml = train(a.trains);
       S.log.push({ week: S.week, action: aid });
       save();
       body.innerHTML =
         '<div class="sd-speaker"><b>' + a.icon + " " + esc(a.name) +
         "</b><small>your action this week</small></div>" +
         '<div class="sd-text">' + esc(a.result) + "</div>" +
-        voiceHtml(a.voices) + fxHtml +
+        voiceHtml(a.voices) + fxHtml + trHtml +
         '<button class="sd-done" type="button">Continue ▸</button>';
       body.querySelector(".sd-done").addEventListener("pointerdown",
         (ev) => { ev.stopPropagation(); renderHub(); });
@@ -1495,21 +1607,46 @@ const SessionPanel = {
       // measured number in the model; keep it named and keep it small.
       p += G.championed || 0;
       p += disp / (G.dispositionDiv || 250);
-      p += S.metrics.influence / (G.influenceDiv || 260);
-      if (a > 0) p += S.metrics.support / (G.supportDiv || 500);
-      if (S.pushWeek === S.week && S.pushBill === bill.id) {
+      // per-bill numbers, not the campaign's global two — a bill's OWN
+      // influence gets it heard; its own support only helps here when
+      // aligned, and otherwise does its work at the dilution step below,
+      // not by making the hearing itself easier
+      p += bill.influence / (G.influenceDiv || 260);
+      if (a > 0) p += bill.support / (G.supportDiv || 500);
+      // a week-W push resolves during advanceWeek, AFTER S.week became
+      // W+1 — accept both offsets or the bought bonus never lands on
+      // the actual roll (it did not, before 2026-08-13); advanceWeek
+      // clears the push once it has been consumed
+      if (S.pushBill === bill.id && S.pushWeek >= 0 &&
+          S.week - S.pushWeek <= 1) {
         p += G.actionBonus || 0.15;
       }
       return Math.max(0.02, Math.min(0.95, p));
     };
-    const floorOdds = () => Math.max(0.05, Math.min(0.95,
+    const floorOdds = (bill) => Math.max(0.05, Math.min(0.95,
       (G.floorBase || 0.55) +
-      S.metrics.support / (G.floorSupportDiv || 300) +
-      S.metrics.influence / (G.floorInfluenceDiv || 400)));
+      bill.support / (G.floorSupportDiv || 300) +
+      bill.influence / (G.floorInfluenceDiv || 400)));
 
     const seedChairs = () => {
       for (const id of Object.keys(CH.chairs || {})) {
         if (S.chairs[id] == null) S.chairs[id] = CH.chairs[id].disposition || 0;
+      }
+    };
+    // saves from before 2026-08-13 have S.bills entries with no
+    // support/influence — startBills() no-ops once S.bills is non-empty,
+    // so those keys would stay undefined forever and turn every odds
+    // formula into NaN (Math.random() < NaN is always false — bills would
+    // silently never get heard again). Backfill using CURRENT campaign
+    // numbers, same formula as a fresh seed; not historically exact for
+    // an in-progress save, but correct going forward.
+    const migrateBills = () => {
+      for (const b of S.bills) {
+        if (b.support != null && b.influence != null) continue;
+        const tilt = (G.familyTilt || {})[b.tax] ||
+          (G.familyTilt || {})._default || {};
+        b.support = clamp(S.metrics.support + (tilt.support || 0));
+        b.influence = clamp(S.metrics.influence + (tilt.influence || 0));
       }
     };
     const liveBills = () => S.bills.filter((b) => b.status === "alive");
@@ -1527,9 +1664,19 @@ const SessionPanel = {
         // could add or skip it) is deliberately out of scope; chairs.json
         // says how to restore it.
         const route = routeFor(p.kind);
+        // Each bill gets its OWN support/influence, seeded from the
+        // campaign's current numbers plus a small editorial tilt by tax
+        // family (chairs.json gate.familyTilt) — a wealth-tax bill and a
+        // GET bill start from the same coalition but land in different
+        // places, because they draw on different bases. From here the two
+        // numbers diverge independently per bill, not as one shared pool.
+        const tilt = (G.familyTilt || {})[p.tax] ||
+          (G.familyTilt || {})._default || {};
         S.bills.push({
           id: p.id, name: p.name, kind: p.kind, amtK: p.amt, tax: p.tax,
           referral: "money",
+          support: clamp(S.metrics.support + (tilt.support || 0)),
+          influence: clamp(S.metrics.influence + (tilt.influence || 0)),
           amtScale: 1, route: route, stage: 0, enteredWeek: 1,
           status: "alive", history: [], death: null,
         });
@@ -1566,16 +1713,26 @@ const SessionPanel = {
           moved = Math.random() < weekHazard(p, window);
           if (moved) {
             events.push({ bill: b, kind: "heard", chair: ch, p });
+            // distinct failure mode: influence got it heard; support
+            // decides what survives being heard. Separate from — and can
+            // stack with — the conference dilution below, so a chronically
+            // unpopular bill can come out of committee already thin.
+            const dil = G.dilution || {};
+            if (b.support < (dil.floor != null ? dil.floor : 35)) {
+              b.amtScale = Math.max(dil.min != null ? dil.min : 0.4,
+                b.amtScale * (dil.cut != null ? dil.cut : 0.85));
+              events.push({ bill: b, kind: "diluted", support: b.support });
+            }
           }
         } else if (st.gate === "conf") {
           // conference dilutes: hold the number or take the deal
-          const r = rollCheck({ skill: "backbone", dc: G.confDC || 12,
+          const r = rollCheck({ skill: "grassroots", dc: G.confDC || 12,
             mods: [{ from: "influence", per: 30 }] });
           moved = true;
           if (!r.ok) b.amtScale = 0.5;
           events.push({ bill: b, kind: "conf", ok: r.ok, roll: r });
         } else {                                    // floor
-          p = floorOdds();
+          p = floorOdds(b);
           moved = Math.random() < weekHazard(p, window);
           if (!moved && S.week >= st.deadline) {
             b.status = "dead";
@@ -1605,6 +1762,153 @@ const SessionPanel = {
       return events;
     };
 
+    /* ---- the weekly intel report (the campaign's ears)
+       Every round the campaign hears SOMETHING about each live bill;
+       how much of it is true depends on skills, per facet
+       (session.json `intel`): Whip Count prices the chairs — below
+       `band` you get hallway rumor whose band may be off by one
+       (seeded per week+bill, wrong ON PURPOSE — don't "fix" the
+       noise), at `band` an honest band, at `exact` the live
+       percentage plus the chair's disposition (the number the paid
+       lobbyist already has). Procedure reads the clock — deadline
+       warnings before they are one week out; without it you hear
+       about deadlines when they are on top of you. Fiscal Acumen puts
+       the MEASURED hearing rate in print — it is always in the bill
+       tooltip, but tooltips don't exist on touch. The ledger's live
+       odds are gated by the same Whip tiers (bstatFor); the measured
+       base stays reachable by everyone, because it is public data. */
+    const IN = data.intel || {};
+    const hash32 = (s) => {
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    };
+    const bandOf = (p) => {
+      const bs = IN.bands || [];
+      for (let i = 0; i < bs.length; i++) {
+        if (p <= bs[i].max) return Object.assign({ i }, bs[i]);
+      }
+      return Object.assign({ i: Math.max(0, bs.length - 1) },
+        bs[bs.length - 1] || { label: "unclear", short: "?" });
+    };
+
+    const oddsIntel = (b, sid) => {
+      const ch = Object.assign({ id: sid }, chairOf(sid) || {});
+      const p = chairOdds(b, ch);
+      const o = IN.odds || {};
+      const whip = S.skills[o.skill || "whip"] || 0;
+      if (whip >= (o.exact || 5)) {
+        const disp = (S.chairs[sid] != null ? S.chairs[sid]
+          : ch.disposition) || 0;
+        return { t: esc(ch.name || "The chair") + " calendars it at <b>" +
+          Math.round(p * 100) + "%</b> this week — disposition " + disp +
+          ".", src: "the whip sheet" };
+      }
+      const band = bandOf(p);
+      if (whip >= (o.band || 3)) {
+        return { t: "A good source puts a hearing at <b>" +
+          esc(band.label) + "</b>.", src: "a good source" };
+      }
+      const bs = IN.bands || [];
+      const j = Math.max(0, Math.min(bs.length - 1,
+        band.i + (hash32(S.week + ":" + b.id) % 3) - 1));
+      return { t: "Hallway word puts a hearing at <b>" +
+        esc((bs[j] || band).label) + "</b>.",
+        src: "hallway talk — could be wrong" };
+    };
+
+    const intelHtml = () => {
+      if (S.week < 1 || S.week > data.sineDieWeek) return "";
+      const live = liveBills();
+      if (!live.length) return "";
+      const proc = S.skills[(IN.clock || {}).skill || "procedure"] || 0;
+      const fisc = S.skills[(IN.basis || {}).skill || "fiscal"] || 0;
+      let h = '<div class="sh-sec">📡 The week’s intel</div>';
+      for (const b of live) {
+        const sid = b.route[b.stage];
+        const st = stageOf(sid);
+        const lines = [];
+        let src = "around the building";
+        if (st.gate === "chair") {
+          const o = oddsIntel(b, sid);
+          lines.push(o.t);
+          src = o.src;
+          if (fisc >= ((IN.basis || {}).cite || 3)) {
+            const ch = chairOf(sid) || {};
+            const g = rateFor(ch.committee, b.kind, b.tax);
+            lines.push("The measured floor under all of it: " +
+              Math.round(g.v * 100) + "% of " +
+              (g.basis === "type"
+                ? ((TAXLABEL[b.tax] || {}).label || "such")
+                    .toLowerCase() + " measures"
+                : "its " + (b.kind === "gain" ? "tax" : "spending") +
+                  " measures") + " ever get heard.");
+          }
+        } else if (st.gate === "conf") {
+          lines.push("In conference. The number itself is on the " +
+            "table now.");
+        } else {
+          lines.push("On the floor calendar — the majority follows " +
+            "its chairs.");
+        }
+        if (st.gate !== "conf" && st.deadline != null) {
+          const left = st.deadline - S.week;
+          if (proc >= ((IN.clock || {}).warn || 3)) {
+            lines.push(left <= 0 ? "<b>Deadline week. Now or never.</b>"
+              : "Deadline week " + st.deadline + " — " + left +
+                " week" + (left === 1 ? "" : "s") + " out.");
+          } else if (left <= 1) {
+            lines.push(left <= 0
+              ? "<b>Someone mentions today is the deadline.</b>"
+              : "<b>Someone mentions the deadline is next week.</b>");
+          }
+        }
+        h += '<div class="intel-row"><span class="shname"><b>' +
+          esc(b.name) + "</b><small>" + lines.join(" ") +
+          '</small></span><span class="isrc">' + esc(src) +
+          "</span></div>";
+      }
+      h += '<div class="sh-agenda-cap">What you hear is only as good ' +
+        "as your skills: Whip Count prices the chairs, Procedure reads " +
+        "the clock, Fiscal Acumen knows the measured numbers.</div>";
+      return h;
+    };
+
+    /* the live number is insider knowledge — the ledger prices it only
+       as well as your whip network can; floor odds are your own two
+       meters, so they stay open */
+    const bstatFor = (b, sid, ch) => {
+      const st = stageOf(sid);
+      if (st.gate === "chair") {
+        const o = IN.odds || {};
+        const whip = S.skills[o.skill || "whip"] || 0;
+        const p = chairOdds(b, Object.assign({ id: sid }, ch || {}));
+        if (whip >= (o.exact || 5)) return Math.round(p * 100) + "%";
+        if (whip >= (o.band || 3)) return esc(bandOf(p).short || "?");
+        return "?";
+      }
+      if (st.gate === "floor") return Math.round(floorOdds(b) * 100) + "%";
+      return "—";
+    };
+
+    /* A bill's own support/influence explain WHY it's struggling — dying
+       unheard (influence) vs surviving thin (support) — so they ride the
+       same Whip Count tiers as the odds badge, or a player who can't see
+       the odds yet gets a free second readout that means the same thing.
+       Reuses bandOf's qualitative ladder for both 0-100 meters, same as
+       hearing probability — both answer "how is this looking." */
+    const meterNote = (b) => {
+      const o = IN.odds || {};
+      const whip = S.skills[o.skill || "whip"] || 0;
+      if (whip < (o.band || 3)) return "";
+      const fmt = (v) => whip >= (o.exact || 5)
+        ? Math.round(v) : esc(bandOf(v / 100).short || "?");
+      return " · 👪" + fmt(b.support) + " 🏛️" + fmt(b.influence);
+    };
+
     const billLedger = (reveal) => {
       if (!S.bills.length) return "";
       let h = '<div class="sh-sec">Your bills</div>';
@@ -1617,8 +1921,8 @@ const SessionPanel = {
         let line;
         if (b.status === "enacted") {
           line = "Enacted · " + billFmt(b) + "/yr" +
-            (b.amtScale < 1 ? " (cut to " + (b.amtScale * 100) + "% in " +
-              "conference)" : "");
+            (b.amtScale < 1 ? " (cut to " + Math.round(b.amtScale * 100) +
+              "% along the way)" : "");
         } else if (b.status === "dead") {
           line = "Died week " + b.death.week + " · " + stageOf(b.death.stage).label +
             " — <b>" + b.death.cause + "</b>" +
@@ -1626,16 +1930,21 @@ const SessionPanel = {
               ((S.chairs[sid] != null ? S.chairs[sid] : ch.disposition) || 0) : "");
         } else {
           line = st.label + " · deadline week " + st.deadline +
-            (ch ? " · " + esc(ch.name) : "");
+            (ch ? " · " + esc(ch.name) : "") +
+            (b.amtScale < 1 ? " · already cut to " +
+              Math.round(b.amtScale * 100) + "%" : "") +
+            meterNote(b);
         }
         h += '<div class="bill-row ' + cls + '"' +
           (ch ? ' title="' + esc(rateNote(ch.committee, b.kind, b.tax)) +
             '"' : "") +
           '><span class="shname"><b>' + esc(b.name) + "</b><small>" +
-          line + "</small></span><span class=\"bstat\">" +
+          line + '</small></span><span class="bstat" title="' +
+          (b.status === "alive" && bstatFor(b, sid, ch) === "?"
+            ? "Your whip count can&#39;t price this chair yet."
+            : "") + '">' +
           (b.status === "enacted" ? "✓" : b.status === "dead" ? "✕" :
-            Math.round(chairOdds(b, Object.assign({ id: sid }, ch || {})) * 100) +
-            "%") + "</span></div>";
+            bstatFor(b, sid, ch)) + "</span></div>";
       }
       return h;
     };
@@ -1645,6 +1954,10 @@ const SessionPanel = {
       S.week += 1;
       startBills();
       const moves = resolveBills();
+      if (S.pushWeek >= 0 && S.week > S.pushWeek) {   // push consumed
+        S.pushWeek = -1;
+        S.pushBill = null;
+      }
       save();
       renderHead();
       const cal = calFor(S.week);
@@ -1704,9 +2017,11 @@ const SessionPanel = {
       if (e.key === "Escape") overlay.classList.add("hidden");
     });
     $("sess-foot").innerHTML =
-      "One turn = one week of the legislative session. Events and " +
-      "dialogues are illustrative; the fiscal numbers they move ride " +
-      "the same FY2027 scoreboard as your policy bills. Characters are " +
+      "You are The Advocate — no seat, no vote; members carry the " +
+      "bills, you run the campaign behind them. One turn = one week of " +
+      "the legislative session. Events and dialogues are illustrative; " +
+      "the fiscal numbers they move ride the same FY2027 scoreboard as " +
+      "your policy bills. Characters are " +
       "fictional. <button id=\"sess-reset\" type=\"button\" " +
       "style=\"background:none;border:none;color:#9fb0e8;" +
       "text-decoration:underline;cursor:pointer;font:inherit;" +
@@ -1733,6 +2048,7 @@ const SessionPanel = {
 
     /* ---- boot: reflect saved revenue + enacted bills, pop an unplayed week */
     seedChairs();
+    migrateBills();
     syncScore();
     renderHead();
     const cal0 = calFor(S.week);
