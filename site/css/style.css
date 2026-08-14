@@ -566,6 +566,9 @@ html, body {
 .sd-voice.v-cons { border-left: 3px solid #86b4e8; color: #cfe2f8; }
 .sd-voice.v-cons b { color: #86b4e8; }
 
+.sd-voice.v-skill { border-left: 3px solid #f2c14e; color: #f6ecd2; }
+.sd-voice.v-skill b { color: #f2c14e; }
+
 .sd-choices { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
 .sd-choices button {
   text-align: left;
@@ -580,6 +583,137 @@ html, body {
   cursor: pointer;
 }
 .sd-choices button:hover { border-color: #f2c14e; color: #ffe9a8; }
+
+/* ---------- skill checks ---------- */
+/* The odds ride on the button on purpose: the player should watch a
+   difficulty get cheaper as their influence grows. White = retryable
+   once something changes, red = one shot, forever. */
+.sd-choices button.chk {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sd-choices button.chk .cmeta {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.sd-choices button.c-white { border-color: rgba(210,226,255,.65); }
+.sd-choices button.c-white .cmeta { color: #b9cdf2; }
+.sd-choices button.c-red {
+  border-color: rgba(255,141,128,.75);
+  background: rgba(255,141,128,.07);
+}
+.sd-choices button.c-red .cmeta { color: #ff9d90; }
+.sd-choices button.chk.spent {
+  opacity: .5;
+  cursor: default;
+  border-style: dashed;
+}
+.sd-choices button.chk.spent:hover { border-color: rgba(255,255,255,.35); color: #dfe8ff; }
+
+.sd-roll {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 4px solid;
+  background: rgba(0,0,0,.22);
+}
+.sd-roll > b {
+  display: block;
+  font-size: 11.5px;
+  letter-spacing: 1.2px;
+}
+.sd-roll small b { color: #eef2ff; }   /* the total, inline in the math */
+.sd-roll small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: #b9c4ea;
+  font-variant-numeric: tabular-nums;
+}
+.sd-roll.ok { border-color: #7ff0ae; }
+.sd-roll.ok b { color: #7ff0ae; }
+.sd-roll.no { border-color: #ff8d80; }
+.sd-roll.no b { color: #ff8d80; }
+
+/* ---------- bill ledger + sine die score ---------- */
+.bill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.bill-row:last-child { border-bottom: none; }
+.bill-row .shname { flex: 1 1 auto; min-width: 0; }
+.bill-row .shname b { display: block; color: #eef2ff; font-size: 12.5px; }
+.bill-row .shname small { display: block; color: #a8b4dd; font-size: 10.5px; line-height: 1.4; }
+.bill-row .bstat {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #ffe9a8;
+}
+.bill-row.dead .shname b { color: #9fb0e8; text-decoration: line-through; }
+.bill-row.dead .shname small b { color: #ff8d80; text-decoration: none; }
+.bill-row.dead .bstat { color: #ff8d80; }
+.bill-row.won .shname b { color: #7ff0ae; }
+.bill-row.won .bstat { color: #7ff0ae; }
+
+.sess-score {
+  margin: 6px 0 8px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.06);
+  border-left: 4px solid #f2c14e;
+  border-radius: 8px;
+}
+.sess-score b { display: block; font-size: 15px; color: #ffe9a8; }
+.sess-score small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: #cfd8f5;
+  line-height: 1.45;
+}
+
+/* ---------- skills ("your instincts") ---------- */
+.sk-grid { display: flex; flex-direction: column; }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sk-row:last-child { border-bottom: none; }
+.sk-row .skname { flex: 1 1 auto; min-width: 0; }
+.sk-row .skname b { display: block; color: #eef2ff; font-size: 12px; }
+.sk-row .skname small { display: block; color: #a8b4dd; font-size: 10px; }
+.sk-row .skpips {
+  flex: 0 0 auto;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #f2c14e;
+}
+.sk-row .skpips i { color: rgba(255,255,255,.22); font-style: normal; }
+.sk-row .skup {
+  flex: 0 0 auto;
+  width: 26px;
+  padding: 3px 0;
+  background: rgba(242,193,78,.18);
+  border: 2px solid #f2c14e;
+  border-radius: 7px;
+  color: #ffe9a8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.sk-row .skup:disabled { opacity: .35; cursor: default; }
 .sd-reply {
   margin: 8px 0;
   padding: 8px 12px;
@@ -722,8 +856,58 @@ html, body {
 #fund-chip .fc-bal.gain { color: #7ff0ae; }
 #fund-chip .fc-bal.even { color: #b9c4ea; }
 
+/* ---------- end-turn control (bottom left) ---------- */
+/* The turn clock lives on the map, not buried in the session overlay —
+   one turn = one week, so this is the game's primary verb. */
+#turn-chip {
+  position: fixed;
+  bottom: 10px; left: 12px;
+  pointer-events: auto;
+  padding: 6px 14px 8px;
+  background: linear-gradient(#2a3f9e, #16246b);
+  border: 2px solid #f8f8ff;
+  outline: 2px solid #16246b;
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+}
+#turn-chip:hover { border-color: #f2c14e; }
+#turn-chip:disabled { opacity: .55; cursor: default; }
+#turn-chip:disabled:hover { border-color: #f8f8ff; }
+#turn-chip .tc-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9fd4f0;
+}
+#turn-chip .tc-act {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #ffe9a8;
+}
+/* pending event / unused action — the nudge before you burn the week */
+#turn-chip .tc-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #ff8d80;
+  vertical-align: middle;
+  animation: tcpulse 1.4s ease-in-out infinite;
+}
+@keyframes tcpulse { 50% { opacity: .25; } }
+
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }
+  #turn-chip { bottom: 40px; padding: 5px 11px 6px; }
+  #turn-chip .tc-act { font-size: 13px; }
   #chips { top: 102px; }   /* below the 3-button toolbar row */
   #chips button { font-size: 10.5px; padding: 4px 9px; }
   #toolbar { top: 58px; left: 12px; transform: none; }

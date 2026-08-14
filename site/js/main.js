@@ -756,7 +756,7 @@ const PolicyPanel = {
    data-driven from map/session.json; the thought cabinet bolts on next. */
 const SessionPanel = {
   built: false,
-  init(budget, policies, data) {
+  init(budget, policies, data, chairData, rateData) {
     if (this.built || !budget || !policies || !data) return;
     this.built = true;
     const $ = (id) => document.getElementById(id);
@@ -770,18 +770,39 @@ const SessionPanel = {
     };
     const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-    /* ---- turn state */
+    /* ---- turn state
+       The two opinion meters are NOT halves of one bar. Public Support
+       is a stock you spend at hearings and votes; Political Influence
+       is a rate that applies to every scheduling decision in the
+       building. Same scale, different physics — that asymmetry is the
+       teaching point, so never present them as a balance. */
     const KEY = "cq-session";
+    const SK = Object.keys(data.skills || {});
+    const skStart = data.skillStart || {};
+    const baseSkills = () => {
+      const o = {};
+      for (const k of SK) o[k] = skStart.base || 1;
+      return o;
+    };
     const defaults = () => ({
       week: 0, actionWeek: -1, agendaLocked: false, agenda: [],
-      eventDone: [], talked: {}, log: [],
-      metrics: { revenueK: 0, families: 50, wealthy: 50 },
+      eventDone: [], talked: {}, log: [], flags: {}, checks: {},
+      bills: [], chairs: {}, pushWeek: -1, pushBill: null,
+      skills: baseSkills(), skillPts: skStart.points || 0,
+      metrics: { revenueK: 0, support: 50, influence: 30 },
     });
     let S = defaults();
     try {
       S = Object.assign(defaults(),
         JSON.parse(localStorage.getItem(KEY) || "{}"));
       S.metrics = Object.assign(defaults().metrics, S.metrics);
+      S.skills = Object.assign(baseSkills(), S.skills);
+      // saves written before the rename carried families/wealthy —
+      // migrate them, or an in-progress campaign silently resets
+      if (S.metrics.families != null) S.metrics.support = S.metrics.families;
+      if (S.metrics.wealthy != null) S.metrics.influence = S.metrics.wealthy;
+      delete S.metrics.families;
+      delete S.metrics.wealthy;
     } catch (e) { /* fresh campaign */ }
     const save = () => {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
@@ -822,17 +843,24 @@ const SessionPanel = {
           '">' + (fx.revenueK > 0 ? "+" : "−") +
           fmtK(Math.abs(fx.revenueK)) + "/yr revenue</span>");
       }
-      if (fx.families) {
-        S.metrics.families = clamp(S.metrics.families + fx.families);
-        parts.push('<span class="' + (fx.families > 0 ? "gain" : "cost") +
-          '">Working Families ' + (fx.families > 0 ? "+" : "") +
-          fx.families + "</span>");
+      if (fx.support) {
+        S.metrics.support = clamp(S.metrics.support + fx.support);
+        parts.push('<span class="' + (fx.support > 0 ? "gain" : "cost") +
+          '">Public Support ' + (fx.support > 0 ? "+" : "") +
+          fx.support + "</span>");
       }
-      if (fx.wealthy) {
-        S.metrics.wealthy = clamp(S.metrics.wealthy + fx.wealthy);
-        parts.push('<span class="' + (fx.wealthy > 0 ? "gain" : "cost") +
-          '">The Wealthy &amp; Businesses ' +
-          (fx.wealthy > 0 ? "+" : "") + fx.wealthy + "</span>");
+      if (fx.influence) {
+        S.metrics.influence = clamp(S.metrics.influence + fx.influence);
+        parts.push('<span class="' + (fx.influence > 0 ? "gain" : "cost") +
+          '">Political Influence ' +
+          (fx.influence > 0 ? "+" : "") + fx.influence + "</span>");
+      }
+      if (fx.flag) S.flags[fx.flag] = S.week;
+      if (fx.skill && S.skills[fx.skill] != null) {
+        S.skills[fx.skill] = Math.min(skStart.cap || 6,
+          S.skills[fx.skill] + 1);
+        parts.push('<span class="gain">' + data.skills[fx.skill].icon +
+          " " + esc(data.skills[fx.skill].name) + " +1</span>");
       }
       PolicyPanel.setExternal(S.metrics.revenueK);
       save();
@@ -854,19 +882,143 @@ const SessionPanel = {
         '<span class="met m-rev ' + (rev < 0 ? "cost" : "gain") + '">💰 ' +
         "Revenue <b>" + (rev < 0 ? "−" : "+") + fmtK(Math.abs(rev)) +
         "/yr</b></span>" +
-        '<span class="met m-fam">👪 Working Families <b>' +
-        S.metrics.families + '</b><span class="bar"><i style="width:' +
-        S.metrics.families + '%"></i></span></span>' +
-        '<span class="met m-rich">🎩 The Wealthy &amp; Businesses <b>' +
-        S.metrics.wealthy + '</b><span class="bar"><i style="width:' +
-        S.metrics.wealthy + '%"></i></span></span>';
+        '<span class="met m-fam" title="Spent at hearings and floor ' +
+        'votes — loud, but only at specific moments">👪 Public Support <b>' +
+        S.metrics.support + '</b><span class="bar"><i style="width:' +
+        S.metrics.support + '%"></i></span></span>' +
+        '<span class="met m-rich" title="Your standing inside the ' +
+        'building — applies quietly to every scheduling decision">' +
+        '🏛️ Political Influence <b>' +
+        S.metrics.influence + '</b><span class="bar"><i style="width:' +
+        S.metrics.influence + '%"></i></span></span>';
+      renderTurnBtn();
     };
 
-    /* ---- dialogue runner (trait voices chime in on every node) */
+    /* ---- the End Turn button (bottom left, always on the map)
+       One turn = one week, so this is the game's primary verb and it
+       lives on the HUD, not inside the session overlay. Week 0 is the
+       exception: its move is locking the agenda, so the button routes
+       into the overlay instead of burning the week. The dot means the
+       week still has something unspent (an unplayed event or your one
+       action) — ending the turn skips it. */
+    const renderTurnBtn = () => {
+      const btn = $("turn-chip");
+      if (!btn) return;
+      const cal = calFor(S.week);
+      const interim = S.week > data.sineDieWeek;
+      const needAgenda = cal.agenda && !S.agendaLocked;
+      const pending = !interim && !needAgenda &&
+        ((cal.event && !S.eventDone.includes(S.week)) ||
+          (!cal.noAction && S.actionWeek !== S.week));
+      btn.disabled = interim;
+      btn.querySelector(".tc-label").textContent = interim ? "Sine die" :
+        "Week " + S.week + " · " + cal.title;
+      btn.querySelector(".tc-act").innerHTML =
+        (interim ? "Session over" :
+          needAgenda ? "Set agenda ▸" :
+          S.week === data.sineDieWeek ? "Leave the building ▸" :
+          "End Turn ▸") +
+        (pending ? '<span class="tc-dot" title="This week still has ' +
+          'something unspent"></span>' : "");
+      btn.title = interim ? "The session has adjourned" :
+        needAgenda ? "Pick the bills you'll introduce, then the clock starts" :
+        "Advance to week " + (S.week + 1);
+    };
+
+    /* ---- skill checks (2d6 + skill vs DC, Disco-style)
+       Snake eyes always fail and boxcars always succeed, so the odds
+       clamp to 2.8–97.2 — nothing in this building is ever certain.
+       The odds are printed ON the button so the player can watch
+       influence buy down a difficulty; that visibility is half the
+       teaching. WHITE checks can be retried once something has
+       actually changed; RED checks are one shot, forever. */
+    const DC_NAME = { 6: "Trivial", 8: "Easy", 10: "Medium",
+      12: "Challenging", 14: "Formidable", 16: "Legendary",
+      18: "Godly", 20: "Heroic" };
+    const P2D6 = { 2: 97.2, 3: 97.2, 4: 91.7, 5: 83.3, 6: 72.2, 7: 58.3,
+      8: 41.7, 9: 27.8, 10: 16.7, 11: 8.3, 12: 2.8 };
+    const oddsFor = (need) =>
+      P2D6[Math.max(2, Math.min(12, need))];
+    const dcName = (dc) => DC_NAME[dc] ||
+      DC_NAME[Object.keys(DC_NAME).map(Number)
+        .reduce((a, b) => (Math.abs(b - dc) < Math.abs(a - dc) ? b : a))];
+
+    // one modifier line — returns {n, label} so the roll can show its work
+    const modOf = (m) => {
+      const per = m.per || 1;
+      let n = 0, label = "";
+      if (m.add != null && m.from !== "flag") { n = m.add; label = m.label || ""; }
+      switch (m.from) {
+        case "support":
+          n = Math.floor(S.metrics.support / per); label = "Public Support"; break;
+        case "influence":
+          n = Math.floor(S.metrics.influence / per); label = "Political Influence"; break;
+        case "skill":
+          n = Math.floor((S.skills[m.id] || 0) / per);
+          label = (data.skills[m.id] || {}).name || m.id; break;
+        case "flag":
+          n = S.flags[m.id] != null ? (m.add != null ? m.add : 1) : 0;
+          label = m.label || m.id; break;
+        case "chair":   // chairs land in feature 11 step 2; absent = 0
+          n = Math.floor(((S.chairs || {})[m.id] || 0) / per);
+          label = m.label || "the chair"; break;
+        default: break;
+      }
+      return { n, label };
+    };
+
+    const checkMath = (chk) => {
+      const skill = S.skills[chk.skill] || 0;
+      const mods = (chk.mods || []).map(modOf).filter((m) => m.n);
+      const bonus = skill + mods.reduce((a, m) => a + m.n, 0);
+      const need = chk.dc - bonus;
+      return { skill, mods, bonus, need, odds: oddsFor(need) };
+    };
+
+    const rollCheck = (chk) => {
+      const m = checkMath(chk);
+      const d1 = 1 + Math.floor(Math.random() * 6);
+      const d2 = 1 + Math.floor(Math.random() * 6);
+      const sum = d1 + d2;
+      const ok = sum === 12 ? true : sum === 2 ? false :
+        sum + m.bonus >= chk.dc;
+      return Object.assign(m, { d1, d2, sum, total: sum + m.bonus, ok });
+    };
+
+    // a red check is spent forever; a white one reopens when the
+    // bonus improves — "nothing has changed" is itself a lesson
+    const checkState = (key, chk) => {
+      const rec = S.checks[key];
+      if (!rec) return { done: false };
+      if (rec.ok || chk.type === "red") return { done: true, rec };
+      return { done: checkMath(chk).bonus <= rec.bonus, rec };
+    };
+
+    const rollHtml = (chk, r) => {
+      const sk = data.skills[chk.skill] || { name: chk.skill, icon: "🎲" };
+      const bits = [sk.name + " +" + r.skill].concat(
+        r.mods.map((m) => m.label + " +" + m.n));
+      return '<div class="sd-roll ' + (r.ok ? "ok" : "no") +
+        " r-" + (chk.type || "white") + '"><b>' + sk.icon + " " +
+        esc(sk.name) + " — " + (r.ok ? "SUCCESS" : "FAILURE") +
+        (r.sum === 12 ? " (double sixes)" :
+          r.sum === 2 ? " (snake eyes)" : "") + "</b>" +
+        '<small>🎲 ' + r.d1 + " + " + r.d2 + " = " + r.sum + " · " +
+        esc(bits.join(" · ")) + " · <b>" + r.total + "</b> vs " +
+        chk.dc + " " + dcName(chk.dc).toLowerCase() + "</small></div>";
+    };
+
+    /* ---- dialogue runner (trait AND skill voices chime in) */
     const voiceHtml = (voices) => (voices || []).map((v) => {
       const tr = data.traits[v.t];
-      return '<div class="sd-voice v-' + v.t + '"><b>' + tr.name +
-        " (" + tr.sub.toUpperCase() + ")</b> — " + esc(v.text) + "</div>";
+      if (tr) {
+        return '<div class="sd-voice v-' + v.t + '"><b>' + tr.name +
+          " (" + tr.sub.toUpperCase() + ")</b> — " + esc(v.text) + "</div>";
+      }
+      const sk = data.skills[v.t];
+      if (!sk) return "";
+      return '<div class="sd-voice v-skill"><b>' + sk.icon + " " +
+        sk.name.toUpperCase() + "</b> — " + esc(v.text) + "</div>";
     }).join("");
 
     const showDialogue = (dlgId, onDone) => {
@@ -875,31 +1027,65 @@ const SessionPanel = {
       const renderNode = (nodeId) => {
         const n = dlg[nodeId];
         const who = data.characters[n.speaker];
+        // choices with no `check` behave exactly as they always have
+        const btnHtml = (c, i) => {
+          if (!c.check) {
+            return '<button type="button" data-i="' + i + '">' +
+              esc(c.label) + "</button>";
+          }
+          const key = dlgId + ":" + nodeId + ":" + i;
+          const st = checkState(key, c.check);
+          const m = checkMath(c.check);
+          const sk = data.skills[c.check.skill] ||
+            { name: c.check.skill, icon: "🎲" };
+          const meta = st.done
+            ? (st.rec.ok ? "✓ passed" :
+                c.check.type === "red" ? "✗ spent — one shot only" :
+                "✗ failed · nothing has changed since")
+            : sk.icon + " " + sk.name + " · " + dcName(c.check.dc) +
+              " · " + m.odds.toFixed(0) + "%";
+          return '<button type="button" data-i="' + i + '" class="chk c-' +
+            (c.check.type || "white") + (st.done ? " spent" : "") + '"' +
+            (st.done ? " disabled" : "") + "><span>" + esc(c.label) +
+            '</span><small class="cmeta">' + meta + "</small></button>";
+        };
         let html =
           '<div class="sd-speaker"><b>' + who.icon + " " +
           esc(who.name) + "</b><small>" + esc(who.role) + "</small></div>" +
           '<div class="sd-text">' + esc(n.text) + "</div>" +
           voiceHtml(n.voices) +
           '<div class="sd-choices">' +
-          n.choices.map((c, i) =>
-            '<button type="button" data-i="' + i + '">' + esc(c.label) +
-            "</button>").join("") +
+          n.choices.map(btnHtml).join("") +
           "</div>";
         body.innerHTML = html;
         body.scrollTop = 0;
         for (const btn of body.querySelectorAll(".sd-choices button")) {
+          if (btn.disabled) continue;
           btn.addEventListener("pointerdown", (ev) => {
             ev.stopPropagation();
-            const c = n.choices[+btn.dataset.i];
-            const fxHtml = applyFx(c.effects);
-            S.log.push({ week: S.week, dlg: dlgId, choice: c.label });
+            const i = +btn.dataset.i;
+            const c = n.choices[i];
+            // roll first — the outcome branch decides everything below
+            let roll = null, out = c;
+            if (c.check) {
+              roll = rollCheck(c.check);
+              S.checks[dlgId + ":" + nodeId + ":" + i] =
+                { ok: roll.ok, week: S.week, bonus: roll.bonus };
+              out = (roll.ok ? c.success : c.failure) || {};
+            }
+            const fxHtml = applyFx(out.effects);
+            S.log.push(Object.assign(
+              { week: S.week, dlg: dlgId, choice: c.label },
+              roll ? { check: c.check.skill, dc: c.check.dc,
+                       ok: roll.ok, total: roll.total } : {}));
             save();
             body.querySelector(".sd-choices").outerHTML =
               '<div class="sd-reply">▸ ' + esc(c.label) + "</div>" +
-              (c.reply ? '<div class="sd-reply">' + esc(c.reply) +
-                "</div>" : "") + fxHtml +
-              (c.goto
-                ? '<button class="sd-done" data-goto="' + c.goto +
+              (roll ? rollHtml(c.check, roll) : "") +
+              (out.reply ? '<div class="sd-reply">' + esc(out.reply) +
+                "</div>" : "") + voiceHtml(out.voices) + fxHtml +
+              (out.goto
+                ? '<button class="sd-done" data-goto="' + out.goto +
                   '" type="button">Continue ▸</button>'
                 : '<button class="sd-done" type="button">Continue ▸' +
                   "</button>");
@@ -920,6 +1106,37 @@ const SessionPanel = {
       const cal = calFor(S.week);
       const interim = S.week > data.sineDieWeek;
       let html = "";
+
+      // your instincts — the six skills every check rolls against
+      const cap = S.skillPts > 0 && !S.agendaLocked
+        ? (skStart.creationCap || 4) : (skStart.cap || 6);
+      html += '<div class="sh-sec">Your instincts' +
+        (S.skillPts ? ' <small>' + S.skillPts + " point" +
+          (S.skillPts > 1 ? "s" : "") + " to spend</small>" : "") +
+        "</div>";
+      html += '<div class="sk-grid">';
+      for (const k of SK) {
+        const s = data.skills[k];
+        const v = S.skills[k];
+        html += '<div class="sk-row" data-skill="' + k + '">' +
+          '<span class="skname"><b>' + s.icon + " " + esc(s.name) +
+          "</b><small>" + esc(s.desc) + "</small></span>" +
+          '<span class="skpips" title="' + v + '">' +
+          "●".repeat(v) + '<i>' + "○".repeat((skStart.cap || 6) - v) +
+          "</i></span>" +
+          (S.skillPts > 0
+            ? '<button class="skup" type="button"' +
+              (v >= cap ? " disabled" : "") + ">+</button>"
+            : "") + "</div>";
+      }
+      html += "</div>";
+      if (S.skillPts > 0) {
+        html += '<div class="sh-agenda-cap">Checks roll 2d6 + skill ' +
+          "against a difficulty. Support and influence add to the roll — " +
+          "so does being the kind of legislator who noticed.</div>";
+      }
+
+      html += billLedger(interim);
 
       // this week's event
       if (cal.event) {
@@ -988,6 +1205,19 @@ const SessionPanel = {
         const used = S.actionWeek === S.week;
         html += '<div class="sh-sec">Your action (' +
           (used ? "used this week" : "one per week") + ")</div>";
+        for (const b of liveBills()) {
+          const sid = b.route[b.stage];
+          if (stageOf(sid).gate !== "chair") continue;
+          const ch = chairOf(sid);
+          if (!ch) continue;
+          html += '<div class="sh-row" data-push="' + b.id +
+            '"><span class="shname"><b>📌 Work ' + esc(ch.name) +
+            "</b><small>spend the week on " + esc(b.name) + " — " +
+            Math.round((G.actionBonus || 0.15) * 100) +
+            " points of scheduling odds</small></span>" +
+            '<button class="shgo" type="button"' + (used ? " disabled" : "") +
+            ">" + (used ? "—" : "Act ▸") + "</button></div>";
+        }
         for (const aid of Object.keys(data.actions)) {
           const a = data.actions[aid];
           html += '<div class="sh-row" data-act="' + aid +
@@ -1001,9 +1231,33 @@ const SessionPanel = {
 
       // end of week
       if (interim) {
-        html += '<div class="sh-sec">Interim</div>' +
-          '<div class="sh-agenda-cap">The session is adjourned sine die. ' +
-          "What your choices did arrives with the next module.</div>";
+        const enacted = S.bills.filter((b) => b.status === "enacted");
+        const raised = enacted.filter((b) => b.kind === "gain")
+          .reduce((s, b) => s + b.amtK * b.amtScale, 0);
+        const funded = enacted.filter((b) => b.kind === "cost")
+          .reduce((s, b) => s + b.amtK * b.amtScale, 0);
+        const unheard = S.bills.filter(
+          (b) => b.death && b.death.cause === "never heard").length;
+        html += '<div class="sh-sec">Sine die</div>' +
+          '<div class="sess-score"><b>' + fmtK(raised) + "/yr raised · " +
+          fmtK(funded) + "/yr funded</b><small>" +
+          // the verdict keys on what actually passed — an earlier version
+          // branched on `funded` alone and told a player who had just
+          // enacted a revenue bill that nothing became law
+          (!enacted.length
+            ? "Nothing you introduced became law."
+            : funded && raised >= funded
+              ? "You paid for what you passed."
+              : funded
+                ? "You funded " + fmtK(funded - raised) + "/yr more than " +
+                  "you raised — next year's problem, and it always is."
+                : "You raised the money and funded none of it. The surplus " +
+                  "is somebody else's argument now.") +
+          "</small></div>" +
+          (unheard ? '<div class="sh-agenda-cap">' + unheard + " of your bills " +
+            "died without a hearing — no vote was taken, and no record " +
+            "exists of anyone killing them. That is how most bills die." +
+            "</div>" : "");
       } else if (!(cal.agenda && !S.agendaLocked)) {
         const skipping = !cal.noAction && S.actionWeek !== S.week;
         html += '<button class="sh-week-end" id="sess-next" type="button">' +
@@ -1015,8 +1269,21 @@ const SessionPanel = {
 
       body.innerHTML = html;
       body.scrollTop = 0;
+      renderTurnBtn();
 
       // wiring
+      for (const r of body.querySelectorAll("[data-skill]")) {
+        const up = r.querySelector(".skup");
+        if (!up || up.disabled) continue;
+        up.addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          if (S.skillPts < 1) return;
+          S.skills[r.dataset.skill] += 1;
+          S.skillPts -= 1;
+          save();
+          renderHub();
+        });
+      }
       const evRow = body.querySelector('[data-ev] .shgo:not([disabled])');
       if (evRow) evRow.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
@@ -1040,6 +1307,7 @@ const SessionPanel = {
         ev.stopPropagation();
         if (!S.agenda.length) return;
         S.agendaLocked = true;
+        startBills();
         S.log.push({ week: 0, agenda: [...S.agenda] });
         save();
         renderHub();
@@ -1059,6 +1327,35 @@ const SessionPanel = {
         btn.addEventListener("pointerdown", (ev) => {
           ev.stopPropagation();
           runAction(r.dataset.act);
+        });
+      }
+      for (const r of body.querySelectorAll("[data-push]")) {
+        const btn = r.querySelector(".shgo");
+        if (btn.disabled) continue;
+        btn.addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          const b = S.bills.find((x) => x.id === r.dataset.push);
+          const ch = chairOf(b.route[b.stage]);
+          S.actionWeek = S.week;
+          S.pushWeek = S.week;
+          S.pushBill = b.id;
+          S.log.push({ week: S.week, action: "push", bill: b.id });
+          save();
+          renderHead();
+          body.innerHTML =
+            '<div class="sd-speaker"><b>📌 Working the building</b>' +
+            "<small>your action this week</small></div>" +
+            '<div class="sd-text">' + esc(
+              "You spend the week in " + ch.name + "'s outer office, on " +
+              b.name + ". You are not the only one waiting.") + "</div>" +
+            (ch.voice ? '<div class="sd-reply">' + esc(ch.voice) +
+              "</div>" : "") +
+            '<div class="sd-fx"><span class="gain">Scheduling odds +' +
+            Math.round((G.actionBonus || 0.15) * 100) +
+            " next week</span></div>" +
+            '<button class="sd-done" type="button">Continue ▸</button>';
+          body.querySelector(".sd-done").addEventListener("pointerdown",
+            (e2) => { e2.stopPropagation(); renderHub(); });
         });
       }
       const next = body.querySelector("#sess-next");
@@ -1093,14 +1390,274 @@ const SessionPanel = {
         (ev) => { ev.stopPropagation(); renderHub(); });
     };
 
+    /* Advancing can be triggered from the HUD with the overlay closed —
+       an unplayed event must pop the panel itself, or the new week's
+       dialogue would render into a hidden body. */
+    /* ---- the gauntlet (feature 11 step 2)
+       A bill does not pass or fail — it moves, or it stops moving. Every
+       committee stage is a CHAIR deciding whether to put it on a hearing
+       calendar at all, and the deadline behind that decision is the real
+       killer: miss it and the bill is dead with no vote, no roll call and
+       no record. That is the most common death in the building.
+
+       The scheduling probability starts from a MEASURED base rate —
+       map/hearing_rates.json, regenerated by the Legislative Research
+       Tool from the Legislature's own referral sheets, chamber journals
+       and hearing notices — and the editorial terms (chair disposition,
+       your influence, your support, your weekly action) are added on top.
+       Keep those halves separate: the player can read the measured number
+       in the tooltip, and it must stay honest. */
+    const CH = chairData || { chairs: {}, stages: {}, routes: {}, gate: {} };
+    const G = CH.gate || {};
+    const RATES = (rateData || {}).committees || {};
+
+    const chairOf = (id) => CH.chairs[id] || null;
+    const stageOf = (id) => CH.stages[id] || { label: id, gate: "auto" };
+    const routeFor = (kind) => (CH.routes || {})[kind] || [];
+
+    /* Measured hearing rate for THIS committee and THIS kind of tax bill.
+       A tax bill is not one thing: pooled across 2025–26 the building
+       noticed 43% of tax-credit measures and 25% of measures taxing
+       wealth. Averaging those into one "revenue" rate erases the single
+       distinction the player is meant to feel, so the bill's tax family
+       (policies.json `tax`) picks the cell. Thin cells fall back to the
+       committee's all-tax rate, then to every measure — and the export
+       records WHICH, so the tooltip never passes a borrowed number off as
+       a measured one. */
+    const rateFor = (cmte, kind, tax) => {
+      const r = RATES[cmte];
+      if (!r) return { v: 0.35, basis: "none", n: 0 };
+      const cell = tax && r.types ? r.types[tax] : null;
+      if (cell && cell.rate != null) {
+        return { v: cell.rate, basis: cell.basis, n: cell.referred,
+                 fallbackN: r.topic_referred };
+      }
+      const topic = kind === "gain" ? r.topic_rate : r.approp_rate;
+      if (topic != null) {
+        return { v: topic, basis: kind === "gain" ? "revenue" : "appropriation",
+                 n: kind === "gain" ? r.topic_referred : r.approp_referred };
+      }
+      return { v: r.rate == null ? 0.35 : r.rate, basis: "all",
+               n: r.referred };
+    };
+    const baseRate = (cmte, kind, tax) => rateFor(cmte, kind, tax).v;
+
+    const TAXLABEL = ((rateData || {}).tax_types) || {};
+    const rateNote = (cmte, kind, tax) => {
+      const r = RATES[cmte];
+      if (!r) return "";
+      const g = rateFor(cmte, kind, tax);
+      const yrs = ((rateData || {}).sessions || []).join("/");
+      const what = g.basis === "type"
+        ? (TAXLABEL[tax] || {}).label || tax
+        : g.basis === "revenue" ? "tax measures"
+        : g.basis === "appropriation" ? "spending measures" : "measures";
+      let s = (r.name || cmte) + " noticed " + Math.round(g.v * 100) +
+        "% of the " + what.toLowerCase() + " referred to it — n=" + g.n +
+        ", sessions " + yrs + ".";
+      if (g.basis !== "type" && tax) {
+        s += " (Too few " + ((TAXLABEL[tax] || {}).label || tax).toLowerCase() +
+          " bills at this committee to measure on their own, so this is its " +
+          "rate for all " + (kind === "gain" ? "tax" : "spending") +
+          " bills.)";
+      }
+      return s;
+    };
+
+    /* The measured rate is the chance a committee EVER noticed a measure
+       across its whole referral window — not a weekly chance. Rolling it
+       once a week compounds it into a far easier gate than the data says
+       (four weeks at 32% a week is an 79% chance of being heard, which is
+       not what House Finance does). Convert the window probability into a
+       per-week hazard so the cumulative odds over the stage's window come
+       out at exactly the measured number.
+
+       The window is fixed when the bill ENTERS the stage, not recomputed
+       from the weeks remaining: recomputing multiplies survival by
+       (1-p)^(1/n) · (1-p)^(1/(n-1)) · … whose exponents sum to the harmonic
+       number H_n > 1, quietly making every gate easier than measured. */
+    const weekHazard = (p, weeksLeft) =>
+      weeksLeft <= 1 ? p : 1 - Math.pow(1 - p, 1 / weeksLeft);
+
+    const align = (kind, stance) =>
+      stance === "hold" ? 0 :
+      (kind === "gain") === (stance === "raise") ? 1 : -1;
+
+    // scheduling odds for one bill at one chair
+    const chairOdds = (bill, chair) => {
+      const disp = (S.chairs[chair.id] != null ? S.chairs[chair.id]
+        : chair.disposition) || 0;
+      const a = align(bill.kind, chair.stance);
+      let p = baseRate(chair.committee, bill.kind, bill.tax);
+      // The measured base is the rate for the AVERAGE measure referred to
+      // this committee — most of which have nobody carrying them. These
+      // three have you. This is the only deliberate adjustment to a
+      // measured number in the model; keep it named and keep it small.
+      p += G.championed || 0;
+      p += disp / (G.dispositionDiv || 250);
+      p += S.metrics.influence / (G.influenceDiv || 260);
+      if (a > 0) p += S.metrics.support / (G.supportDiv || 500);
+      if (S.pushWeek === S.week && S.pushBill === bill.id) {
+        p += G.actionBonus || 0.15;
+      }
+      return Math.max(0.02, Math.min(0.95, p));
+    };
+    const floorOdds = () => Math.max(0.05, Math.min(0.95,
+      (G.floorBase || 0.55) +
+      S.metrics.support / (G.floorSupportDiv || 300) +
+      S.metrics.influence / (G.floorInfluenceDiv || 400)));
+
+    const seedChairs = () => {
+      for (const id of Object.keys(CH.chairs || {})) {
+        if (S.chairs[id] == null) S.chairs[id] = CH.chairs[id].disposition || 0;
+      }
+    };
+    const liveBills = () => S.bills.filter((b) => b.status === "alive");
+    const billFmt = (b) => fmtK(Math.round(b.amtK * b.amtScale));
+
+    const startBills = () => {
+      if (S.bills.length) return;
+      for (const id of S.agenda) {
+        const p = allPolicies.find((x) => x.id === id);
+        if (!p) continue;
+        // Module 1 routes every bill through the two MONEY committees and
+        // nothing else — every bill with a dollar figure goes through both,
+        // and they are the two hardest gates in the building. The
+        // subject-committee stage (and the leadership referral roll that
+        // could add or skip it) is deliberately out of scope; chairs.json
+        // says how to restore it.
+        const route = routeFor(p.kind);
+        S.bills.push({
+          id: p.id, name: p.name, kind: p.kind, amtK: p.amt, tax: p.tax,
+          referral: "money",
+          amtScale: 1, route: route, stage: 0, enteredWeek: 1,
+          status: "alive", history: [], death: null,
+        });
+      }
+      save();
+    };
+
+    /* Enacted bills spend or raise on the SAME FY2027 scoreboard as
+       everything else — a diluted bill simply carries fewer dollars.
+       There is no separate "how much survived" stat by design. */
+    const billsNetK = () => S.bills.reduce((s, b) =>
+      b.status !== "enacted" ? s :
+      s + (b.kind === "gain" ? 1 : -1) * b.amtK * b.amtScale, 0);
+    const syncScore = () =>
+      PolicyPanel.setExternal(S.metrics.revenueK + billsNetK());
+
+    // one week of movement, run from advanceWeek()
+    const resolveBills = () => {
+      const events = [];
+      for (const b of liveBills()) {
+        const sid = b.route[b.stage];
+        const st = stageOf(sid);
+        if (st.gate === "auto") {                  // introduction
+          b.stage += 1;
+          b.enteredWeek = S.week;
+          continue;
+        }
+        const window = Math.max(
+          1, (st.deadline || S.week) - (b.enteredWeek || S.week) + 1);
+        let moved = false, p = 0;
+        if (st.gate === "chair") {
+          const ch = Object.assign({ id: sid }, chairOf(sid) || {});
+          p = chairOdds(b, ch);
+          moved = Math.random() < weekHazard(p, window);
+          if (moved) {
+            events.push({ bill: b, kind: "heard", chair: ch, p });
+          }
+        } else if (st.gate === "conf") {
+          // conference dilutes: hold the number or take the deal
+          const r = rollCheck({ skill: "backbone", dc: G.confDC || 12,
+            mods: [{ from: "influence", per: 30 }] });
+          moved = true;
+          if (!r.ok) b.amtScale = 0.5;
+          events.push({ bill: b, kind: "conf", ok: r.ok, roll: r });
+        } else {                                    // floor
+          p = floorOdds();
+          moved = Math.random() < weekHazard(p, window);
+          if (!moved && S.week >= st.deadline) {
+            b.status = "dead";
+            b.death = { week: S.week, stage: sid, cause: "voted down" };
+            events.push({ bill: b, kind: "dead" });
+            continue;
+          }
+        }
+        b.history.push({ week: S.week, stage: sid, moved: moved,
+          p: Math.round(p * 100) });
+        if (moved) {
+          b.stage += 1;
+          b.enteredWeek = S.week;
+          if (b.stage >= b.route.length) {
+            b.status = "enacted";
+            events.push({ bill: b, kind: "enacted" });
+          }
+        } else if (S.week >= st.deadline) {
+          b.status = "dead";
+          b.death = { week: S.week, stage: sid,
+            cause: st.gate === "chair" ? "never heard" : "ran out of clock" };
+          events.push({ bill: b, kind: "dead" });
+        }
+      }
+      save();
+      syncScore();
+      return events;
+    };
+
+    const billLedger = (reveal) => {
+      if (!S.bills.length) return "";
+      let h = '<div class="sh-sec">Your bills</div>';
+      for (const b of S.bills) {
+        const sid = b.route[b.stage] || b.route[b.route.length - 1];
+        const st = stageOf(sid);
+        const ch = chairOf(sid);
+        const cls = b.status === "dead" ? "dead" :
+          b.status === "enacted" ? "won" : "";
+        let line;
+        if (b.status === "enacted") {
+          line = "Enacted · " + billFmt(b) + "/yr" +
+            (b.amtScale < 1 ? " (cut to " + (b.amtScale * 100) + "% in " +
+              "conference)" : "");
+        } else if (b.status === "dead") {
+          line = "Died week " + b.death.week + " · " + stageOf(b.death.stage).label +
+            " — <b>" + b.death.cause + "</b>" +
+            (reveal && ch ? "<br>" + esc(ch.name) + "'s disposition toward it: " +
+              ((S.chairs[sid] != null ? S.chairs[sid] : ch.disposition) || 0) : "");
+        } else {
+          line = st.label + " · deadline week " + st.deadline +
+            (ch ? " · " + esc(ch.name) : "");
+        }
+        h += '<div class="bill-row ' + cls + '"' +
+          (ch ? ' title="' + esc(rateNote(ch.committee, b.kind, b.tax)) +
+            '"' : "") +
+          '><span class="shname"><b>' + esc(b.name) + "</b><small>" +
+          line + "</small></span><span class=\"bstat\">" +
+          (b.status === "enacted" ? "✓" : b.status === "dead" ? "✕" :
+            Math.round(chairOdds(b, Object.assign({ id: sid }, ch || {})) * 100) +
+            "%") + "</span></div>";
+      }
+      return h;
+    };
+
     const advanceWeek = () => {
       if (S.week > data.sineDieWeek) return;
       S.week += 1;
+      startBills();
+      const moves = resolveBills();
       save();
       renderHead();
       const cal = calFor(S.week);
-      if (cal.event && !S.eventDone.includes(S.week)) runEvent();
-      else renderHub();
+      if (moves.length && overlay.classList.contains("hidden")) {
+        openOverlay();
+        renderHub();
+        return;                       // let the player read what happened
+      }
+      const open = !overlay.classList.contains("hidden");
+      if (cal.event && !S.eventDone.includes(S.week)) {
+        openOverlay();
+        runEvent();
+      } else if (open) renderHub();
     };
 
     /* ---- overlay plumbing */
@@ -1118,6 +1675,17 @@ const SessionPanel = {
         if (cal.event && !S.eventDone.includes(S.week)) runEvent();
         else renderHub();
       } else overlay.classList.add("hidden");
+    });
+    $("turn-chip").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const cal = calFor(S.week);
+      if (S.week > data.sineDieWeek) return;
+      if (cal.agenda && !S.agendaLocked) {   // week 0: lock the agenda first
+        openOverlay();
+        renderHub();
+        return;
+      }
+      advanceWeek();
     });
     // the other overlays' buttons close this one
     for (const id of ["tb-budget", "tb-revenue", "tb-policy",
@@ -1148,6 +1716,7 @@ const SessionPanel = {
       const b = e.target;
       if (b.dataset.arm) {
         S = defaults();
+        seedChairs();
         save();
         PolicyPanel.setExternal(0);
         renderHead();
@@ -1162,8 +1731,9 @@ const SessionPanel = {
       }
     });
 
-    /* ---- boot: reflect saved revenue, pop the week if it's unplayed */
-    PolicyPanel.setExternal(S.metrics.revenueK);
+    /* ---- boot: reflect saved revenue + enacted bills, pop an unplayed week */
+    seedChairs();
+    syncScore();
     renderHead();
     const cal0 = calFor(S.week);
     if ((cal0.event && !S.eventDone.includes(S.week)) ||
@@ -1232,6 +1802,8 @@ class BootScene extends Phaser.Scene {
     this.load.json("get_flows", "map/get_flows.json?v=1");
     this.load.json("policies", "map/policies.json?v=1");
     this.load.json("session", "map/session.json?v=1");
+    this.load.json("chairs", "map/chairs.json?v=1");
+    this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {
     const world = this.cache.json.get("world");
@@ -1288,7 +1860,8 @@ class WorldScene extends Phaser.Scene {
       this.cache.json.get("budget"), this.cache.json.get("policies"));
     SessionPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("policies"),
-      this.cache.json.get("session"));
+      this.cache.json.get("session"), this.cache.json.get("chairs"),
+      this.cache.json.get("rates"));
     IslandUI.init(this);
 
     this.setupCamera(world);

@@ -1,0 +1,290 @@
+{
+ "_note": "MECHANICS ONLY — no prose. Every string here is a label or procedural status text, not authored dialogue. Scene text, character lines and voice interjections live in session.json and are written by the author, not generated. Measured hearing rates live in hearing_rates.json (generated); chair dispositions and the gate formula live in chairs.json.",
+ "identities": {
+  "organizer": {
+   "name": "The Organizer",
+   "icon": "🪧",
+   "from": "You came up through a coalition.",
+   "capital": 25,
+   "support": 75,
+   "weakLane": "inside",
+   "signature": "pack",
+   "signatureName": "Pack the room",
+   "signatureCost": 40,
+   "signatureNote": "Once a session: force one hearing, no roll. Costs 40 support."
+  },
+  "wonk": {
+   "name": "The Wonk",
+   "icon": "📊",
+   "from": "You came up through the budget office.",
+   "capital": 55,
+   "support": 40,
+   "weakLane": "outside",
+   "signature": "trim",
+   "signatureName": "Trim the ask",
+   "signatureNote": "Once per bill: halve its dollars for a large boost at the next door."
+  }
+ },
+ "voices": {
+  "talkstory": {
+   "name": "Talk Story",
+   "icon": "🌺",
+   "lane": "outside",
+   "power": "read",
+   "powerNote": "You read what a character actually wants."
+  },
+  "rhetoric": {
+   "name": "Rhetoric",
+   "icon": "🎙️",
+   "lane": "outside",
+   "power": "room",
+   "powerNote": "Testimony protects your bill harder in the room."
+  },
+  "procedure": {
+   "name": "Procedure",
+   "icon": "📜",
+   "lane": "inside",
+   "power": "deadline",
+   "powerNote": "You see deadlines a turn early.",
+   "intel": 1
+  },
+  "fiscal": {
+   "name": "Fiscal Acumen",
+   "icon": "📊",
+   "lane": "inside",
+   "power": "odds",
+   "powerNote": "You see the true fiscal note.",
+   "intel": 1
+  },
+  "whip": {
+   "name": "Whip Count",
+   "icon": "🗳️",
+   "lane": "inside",
+   "power": "disposition",
+   "powerNote": "Chair dispositions are visible to you.",
+   "intel": 2
+  },
+  "backbone": {
+   "name": "Backbone",
+   "icon": "🪨",
+   "lane": "inside",
+   "power": "dilution",
+   "powerNote": "You hold the line on the dollars."
+  }
+ },
+ "voicePicks": 2,
+ "voiceBonus": 2,
+ "stages": [
+  {
+   "id": "setup",
+   "turn": 0,
+   "week": 0,
+   "label": "Before session",
+   "kind": "setup"
+  },
+  {
+   "id": "opening",
+   "turn": 1,
+   "week": 1,
+   "label": "Opening Day",
+   "kind": "scene",
+   "event": true
+  },
+  {
+   "id": "h-fin",
+   "turn": 2,
+   "week": 5,
+   "label": "House Finance",
+   "kind": "gate",
+   "chair": "h-fin"
+  },
+  {
+   "id": "crossover",
+   "turn": 3,
+   "week": 8,
+   "label": "Crossover",
+   "kind": "scene",
+   "event": true,
+   "blocs": true
+  },
+  {
+   "id": "s-wam",
+   "turn": 4,
+   "week": 11,
+   "label": "Ways and Means",
+   "kind": "gate",
+   "chair": "s-wam"
+  },
+  {
+   "id": "conf",
+   "turn": 5,
+   "week": 15,
+   "label": "Conference",
+   "kind": "scene",
+   "event": true,
+   "conference": true
+  },
+  {
+   "id": "sinedie",
+   "turn": 6,
+   "week": 16,
+   "label": "Sine Die",
+   "kind": "end"
+  }
+ ],
+ "capitalCost": {
+  "wealth": 18,
+  "get": 15,
+  "income": 15,
+  "exemption": 12,
+  "sin": 12,
+  "credit": 10,
+  "tourism": 8,
+  "admin": 8,
+  "_default": 12
+ },
+ "actions": {
+  "inside": [
+   {
+    "id": "work",
+    "name": "Work the building",
+    "icon": "🏛️",
+    "effect": {
+     "capital": 12
+    },
+    "note": "Time in offices. The coalition notices you were not with them."
+   },
+   {
+    "id": "push",
+    "name": "Push a bill",
+    "icon": "📌",
+    "perBill": true,
+    "spendCapital": true,
+    "doorBonus": 0.15,
+    "note": "Spend capital on one bill's next door. Hard bills cost more."
+   },
+   {
+    "id": "trade",
+    "name": "Trade on your standing",
+    "icon": "🤝",
+    "effect": {
+     "support": -15,
+     "capital": 15
+    },
+    "note": "Spend the coalition's goodwill to buy room inside. This is what playing ball costs."
+   }
+  ],
+  "outside": [
+   {
+    "id": "turnout",
+    "name": "Turn out testimony",
+    "icon": "🪧",
+    "perBill": true,
+    "effect": {
+     "support": 8
+    },
+    "roomBonus": 0.12,
+    "note": "Bodies in the room. Harder to gut a bill people showed up for."
+   },
+   {
+    "id": "public",
+    "name": "Take it public",
+    "icon": "🎙️",
+    "effect": {
+     "support": 12,
+     "capital": -7
+    },
+    "note": "A scene. Chairs remember scenes."
+   },
+   {
+    "id": "spend",
+    "name": "Spend capital in public",
+    "icon": "📣",
+    "effect": {
+     "capital": -15,
+     "support": 15
+    },
+    "note": "Call in favours to put bodies in the room."
+   }
+  ]
+ },
+ "weakLanePenalty": 4,
+ "locks": {
+  "_note": "Political capital is a WALLET, not a level. It does not passively raise door odds — if it did, hoarding would beat spending and the budget would be decorative. It buys pushes, and a push is the only thing besides the measured rate that opens a door.",
+  "doorChampioned": 0.12,
+  "pushDoorBonus": 0.25,
+  "trimDoorBonus": 0.18,
+  "roomBase": 0.15,
+  "roomSupportDiv": 140,
+  "roomTurnoutBonus": 0.12,
+  "roomBackboneBonus": 0.2,
+  "dilutedScale": 0.5,
+  "checkCapitalDiv": 20,
+  "checkSupportDiv": 20
+ },
+ "intel": {
+  "_note": "Accuracy of the per-turn status ping depends on how well the player has worked the inside game: one point per inside action spent with legislators, plus each intel-carrying voice. Text is procedural, assembled from live numbers — not authored.",
+  "tiers": [
+   {
+    "min": 0,
+    "id": "rumor",
+    "showOdds": false,
+    "showDeadline": false
+   },
+   {
+    "min": 2,
+    "id": "soft",
+    "showOdds": "band",
+    "showDeadline": true
+   },
+   {
+    "min": 4,
+    "id": "exact",
+    "showOdds": true,
+    "showDeadline": true
+   }
+  ],
+  "bands": [
+   {
+    "max": 0.15,
+    "label": "almost no chance"
+   },
+   {
+    "max": 0.3,
+    "label": "roughly one in four"
+   },
+   {
+    "max": 0.45,
+    "label": "roughly one in three"
+   },
+   {
+    "max": 0.6,
+    "label": "a coin flip"
+   },
+   {
+    "max": 1.01,
+    "label": "better than even"
+   }
+  ]
+ },
+ "blocs": {
+  "_note": "The floor is not a gate — the majority follows its chairs and the only reliable no votes are the minority caucus. The readout exists to teach that, not to kill bills.",
+  "house": {
+   "seats": 51,
+   "majority": 45,
+   "minority": 6
+  },
+  "senate": {
+   "seats": 25,
+   "majority": 22,
+   "minority": 3
+  },
+  "broadTaxDefection": {
+   "families": [
+    "get"
+   ],
+   "share": 0.18
+  }
+ },
+ "_conversion": "Conversion is deliberately 1:1 and exempt from the weak-lane penalty — it is a trade, not a skill. It is the only route from one currency to the other, so an Organizer who wants a wealth tax heard must sell down the coalition standing that would have protected the bill in the room. That trade IS the campaign."
+}

@@ -125,6 +125,73 @@ Rules that must survive edits:
 - Characters are FICTIONAL — never use real legislators' names.
 - Dialogue text is escaped (`esc()`) — keep it that way; content JSON
   is not trusted HTML.
+- **Metric keys are `support` / `influence`** (Public Support,
+  Political Influence). They are NOT two halves of one bar: support is
+  a stock spent at hearings and votes, influence is a rate applied to
+  every scheduling decision — never render them as a balance. The
+  pre-2026-08-13 keys were `families` / `wealthy`; the load-time
+  migration in `SessionPanel` must stay, or old saves reset.
+- **Skill checks** (feature 11 step 1): 2d6 + skill + mods vs DC, with
+  snake eyes/boxcars overriding. Odds are printed ON the choice button
+  — that visibility is the teaching, don't hide it. WHITE checks reopen
+  only when the bonus improves; RED checks are spent forever
+  (`S.checks`). Every checked choice needs BOTH `success` and
+  `failure` content — a failure that says nothing wastes the mechanic.
+  Choices with no `check` key must keep working unchanged.
+
+## The gauntlet: chairs, bills, base rates (feature 11 step 2)
+
+Bills are TOKENS that move through the real calendar, and the thing that
+kills them is a chair never scheduling a hearing — `cause: "never heard"`,
+no vote, no record. Rules that must survive edits:
+
+- **SCOPE: the two MONEY committees only** — House Finance and Senate Ways
+  and Means (`intro → h-fin → h-floor → s-wam → s-floor → conf → final`).
+  Every bill with a dollar figure goes through both; they take more
+  referrals than any other committee (876 and 936 in 2026) and hand back
+  the two lowest hearing rates in their chambers. Subject-matter committees
+  are deliberately out of scope — if they return, restore the
+  `singleReferral` leadership roll with them (chairs.json explains).
+
+- **`site/map/hearing_rates.json` is MEASURED and generated — never hand
+  edit it, and never paste rates into chairs.json.** Regenerate with:
+  `cd ~/repos/Legislative-Research-Tool && .venv/bin/python -m testimony
+  measures export --out ~/capitol-quest/site/map/hearing_rates.json`
+  (it reconstructs referral → hearing → report from the Legislature's own
+  referral sheets, chamber journals and hearing notices). Capitol Quest is
+  DOWNSTREAM of that repo, same as budget data is downstream of
+  BudgetPrimerFinal.
+- `site/map/chairs.json` is EDITORIAL: fictional chairs, dispositions,
+  route, deadlines. The two halves stay in separate files so the measured
+  number can be shown honestly in the bill tooltip.
+- **The rate depends on the KIND of tax bill.** `policies.json` items carry
+  a `tax` family (wealth / credit / get / income / exemption / tourism /
+  sin / admin) and the gate reads that committee's cell for that family:
+  Finance noticed 32% of tax credits and 24% of wealth-tax measures. Never
+  collapse them back to one revenue rate — that difference IS the module's
+  argument. Note the child tax credit is tagged `credit`, not an
+  appropriation: it is a tax expenditure and the building treats it like
+  one.
+- **Thin cells are borrowed, and the tooltip must say so.** Every rate
+  carries `basis`; when it is not `"type"` the bill tooltip explains that
+  the number is the committee's all-tax-bill rate, not a measured rate for
+  that family. Do not simplify that sentence away.
+- **`gate.championed` is the ONLY deliberate adjustment to a measured
+  number** (+0.12). It exists because the base rate covers every measure
+  referred — including thousands nobody carries — while the player's three
+  bills have their introducer working them. Keep it named, keep it small,
+  and never fold it into the base.
+- **The measured rate is a WINDOW probability, not a weekly one.** It is
+  converted to a per-week hazard (`weekHazard`) using the window fixed at
+  stage ENTRY. Re-deriving the window from weeks-remaining sums a harmonic
+  series and silently makes every gate easier than measured.
+- Leadership rolls `singleReferral` at introduction — the player never
+  chooses their referral, which is the point.
+- Calibrated by simulation (20k sessions/profile, see the design doc):
+  passive play enacts ~5-9% of bills, engaged ~19-31%, insider ~30-45%,
+  a tax CREDIT passes ~1.5× as often as a wealth tax at every skill level,
+  and "never heard" is the leading cause of death in every profile. If a
+  change moves those a lot, that is a finding to explain.
 
 ## Policies overlay + budget scoreboard (feature 8)
 

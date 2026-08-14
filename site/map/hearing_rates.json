@@ -1,0 +1,2275 @@
+{
+ "source": "data.capitol.hawaii.gov \u2014 referral sheets (House), chamber journal (Senate), hearing notices, committee reports",
+ "built_by": "Legislative-Research-Tool: testimony measures export",
+ "sessions": [
+  2023,
+  2024,
+  2025,
+  2026
+ ],
+ "topic": "revenue",
+ "min_cell": 15,
+ "definition": "hearing rate = of the measures referred to a committee, the share that committee ever noticed for a hearing. A measure never noticed dies with no vote and no record.",
+ "caveat": "Informational briefings are excluded. A joint notice counts for every committee named. Senate referrals are parsed from journal prose. SENATE MEASURES ARE CLASSIFIED ON TITLE ALONE \u2014 the Senate publishes no description for un-heard measures, and using hearing-notice descriptions would classify heard bills better than unheard ones and inflate every rate. See `coverage`.",
+ "coverage": {
+  "house": {
+   "classified": 380,
+   "total": 405
+  },
+  "senate": {
+   "classified": 98,
+   "total": 216
+  }
+ },
+ "tax_types": {
+  "wealth": {
+   "label": "Taxes on wealth and property transfer",
+   "direction": "raise"
+  },
+  "credit": {
+   "label": "Tax credits and rebates",
+   "direction": "cut"
+  },
+  "exemption": {
+   "label": "Exemptions, exclusions, deductions",
+   "direction": "cut"
+  },
+  "get": {
+   "label": "General excise tax",
+   "direction": "raise"
+  },
+  "tourism": {
+   "label": "Tourism and transient accommodations",
+   "direction": "raise"
+  },
+  "sin": {
+   "label": "Tobacco, alcohol, fuel, carbon",
+   "direction": "raise"
+  },
+  "income": {
+   "label": "Income tax generally",
+   "direction": "raise"
+  },
+  "admin": {
+   "label": "Tax administration and conformity",
+   "direction": "neutral"
+  }
+ },
+ "by_type": {
+  "sin": {
+   "referred": 22,
+   "heard": 5,
+   "measures": 9,
+   "rate": 0.2273
+  },
+  "income": {
+   "referred": 58,
+   "heard": 15,
+   "measures": 33,
+   "rate": 0.2586
+  },
+  "unclassified": {
+   "referred": 313,
+   "heard": 92,
+   "measures": 143,
+   "rate": 0.2939
+  },
+  "exemption": {
+   "referred": 177,
+   "heard": 55,
+   "measures": 78,
+   "rate": 0.3107
+  },
+  "wealth": {
+   "referred": 149,
+   "heard": 47,
+   "measures": 63,
+   "rate": 0.3154
+  },
+  "get": {
+   "referred": 107,
+   "heard": 37,
+   "measures": 46,
+   "rate": 0.3458
+  },
+  "credit": {
+   "referred": 561,
+   "heard": 258,
+   "measures": 220,
+   "rate": 0.4599
+  },
+  "tourism": {
+   "referred": 68,
+   "heard": 38,
+   "measures": 21,
+   "rate": 0.5588
+  },
+  "admin": {
+   "referred": 14,
+   "heard": 9,
+   "measures": 8,
+   "rate": 0.6429
+  }
+ },
+ "overall": {
+  "referred": 30290,
+  "heard": 13315,
+  "rate": 0.4396,
+  "topic_referred": 1469,
+  "topic_heard": 556,
+  "topic_rate": 0.3785
+ },
+ "committees": {
+  "LMG": {
+   "code": "LMG",
+   "name": "Legislative Management",
+   "chamber": "house",
+   "referred": 116,
+   "heard": 30,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 24,
+   "approp_heard": 4,
+   "types": {},
+   "by_session": {
+    "2023": {
+     "referred": 29,
+     "heard": 12,
+     "rate": 0.4138
+    },
+    "2024": {
+     "referred": 25,
+     "heard": 7,
+     "rate": 0.28
+    },
+    "2025": {
+     "referred": 40,
+     "heard": 5,
+     "rate": 0.125
+    },
+    "2026": {
+     "referred": 22,
+     "heard": 6,
+     "rate": 0.2727
+    }
+   },
+   "rate": 0.2586,
+   "topic_rate": null,
+   "approp_rate": 0.1667
+  },
+  "WAM": {
+   "code": "WAM",
+   "name": "Ways And Means",
+   "chamber": "senate",
+   "referred": 4116,
+   "heard": 1195,
+   "topic_referred": 261,
+   "topic_heard": 65,
+   "approp_referred": 226,
+   "approp_heard": 115,
+   "types": {
+    "credit": {
+     "referred": 69,
+     "heard": 23,
+     "rate": 0.3333,
+     "basis": "type"
+    },
+    "income": {
+     "referred": 7,
+     "heard": 2,
+     "rate": 0.249,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 4,
+     "heard": 2,
+     "rate": 0.249,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 13,
+     "heard": 3,
+     "rate": 0.249,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 23,
+     "heard": 3,
+     "rate": 0.1304,
+     "basis": "type"
+    },
+    "get": {
+     "referred": 22,
+     "heard": 4,
+     "rate": 0.1818,
+     "basis": "type"
+    },
+    "admin": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.249,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 1251,
+     "heard": 486,
+     "rate": 0.3885
+    },
+    "2024": {
+     "referred": 839,
+     "heard": 195,
+     "rate": 0.2324
+    },
+    "2025": {
+     "referred": 1090,
+     "heard": 267,
+     "rate": 0.245
+    },
+    "2026": {
+     "referred": 936,
+     "heard": 247,
+     "rate": 0.2639
+    }
+   },
+   "rate": 0.2903,
+   "topic_rate": 0.249,
+   "approp_rate": 0.5088
+  },
+  "FIN": {
+   "code": "FIN",
+   "name": "Finance",
+   "chamber": "house",
+   "referred": 4526,
+   "heard": 1486,
+   "topic_referred": 396,
+   "topic_heard": 115,
+   "approp_referred": 1144,
+   "approp_heard": 439,
+   "types": {
+    "credit": {
+     "referred": 174,
+     "heard": 62,
+     "rate": 0.3563,
+     "basis": "type"
+    },
+    "exemption": {
+     "referred": 69,
+     "heard": 17,
+     "rate": 0.2464,
+     "basis": "type"
+    },
+    "income": {
+     "referred": 26,
+     "heard": 5,
+     "rate": 0.1923,
+     "basis": "type"
+    },
+    "wealth": {
+     "referred": 43,
+     "heard": 11,
+     "rate": 0.2558,
+     "basis": "type"
+    },
+    "tourism": {
+     "referred": 18,
+     "heard": 8,
+     "rate": 0.4444,
+     "basis": "type"
+    },
+    "get": {
+     "referred": 27,
+     "heard": 6,
+     "rate": 0.2222,
+     "basis": "type"
+    },
+    "admin": {
+     "referred": 6,
+     "heard": 2,
+     "rate": 0.2904,
+     "basis": "revenue"
+    },
+    "sin": {
+     "referred": 9,
+     "heard": 1,
+     "rate": 0.2904,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 1293,
+     "heard": 396,
+     "rate": 0.3063
+    },
+    "2024": {
+     "referred": 1153,
+     "heard": 423,
+     "rate": 0.3669
+    },
+    "2025": {
+     "referred": 1204,
+     "heard": 324,
+     "rate": 0.2691
+    },
+    "2026": {
+     "referred": 876,
+     "heard": 343,
+     "rate": 0.3916
+    }
+   },
+   "rate": 0.3283,
+   "topic_rate": 0.2904,
+   "approp_rate": 0.3837
+  },
+  "EIG": {
+   "code": "EIG",
+   "name": "Energy And Intergovernmental Affairs",
+   "chamber": "senate",
+   "referred": 293,
+   "heard": 107,
+   "topic_referred": 15,
+   "topic_heard": 4,
+   "approp_referred": 6,
+   "approp_heard": 4,
+   "types": {
+    "get": {
+     "referred": 4,
+     "heard": 1,
+     "rate": 0.2667,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.2667,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 157,
+     "heard": 52,
+     "rate": 0.3312
+    },
+    "2026": {
+     "referred": 136,
+     "heard": 55,
+     "rate": 0.4044
+    }
+   },
+   "rate": 0.3652,
+   "topic_rate": 0.2667,
+   "approp_rate": 0.6667
+  },
+  "CPC": {
+   "code": "CPC",
+   "name": "Consumer Protection & Commerce",
+   "chamber": "house",
+   "referred": 1314,
+   "heard": 487,
+   "topic_referred": 52,
+   "topic_heard": 5,
+   "approp_referred": 105,
+   "approp_heard": 35,
+   "types": {
+    "credit": {
+     "referred": 26,
+     "heard": 3,
+     "rate": 0.1154,
+     "basis": "type"
+    },
+    "income": {
+     "referred": 2,
+     "heard": 0,
+     "rate": 0.0962,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 3,
+     "heard": 0,
+     "rate": 0.0962,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 8,
+     "heard": 0,
+     "rate": 0.0962,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 3,
+     "heard": 0,
+     "rate": 0.0962,
+     "basis": "revenue"
+    },
+    "sin": {
+     "referred": 7,
+     "heard": 1,
+     "rate": 0.0962,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 350,
+     "heard": 139,
+     "rate": 0.3971
+    },
+    "2024": {
+     "referred": 354,
+     "heard": 136,
+     "rate": 0.3842
+    },
+    "2025": {
+     "referred": 347,
+     "heard": 107,
+     "rate": 0.3084
+    },
+    "2026": {
+     "referred": 263,
+     "heard": 105,
+     "rate": 0.3992
+    }
+   },
+   "rate": 0.3706,
+   "topic_rate": 0.0962,
+   "approp_rate": 0.3333
+  },
+  "JDC": {
+   "code": "JDC",
+   "name": "Judiciary",
+   "chamber": "senate",
+   "referred": 2509,
+   "heard": 935,
+   "topic_referred": 19,
+   "topic_heard": 11,
+   "approp_referred": 26,
+   "approp_heard": 16,
+   "types": {
+    "get": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.5789,
+     "basis": "revenue"
+    },
+    "admin": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5789,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.5789,
+     "basis": "revenue"
+    },
+    "income": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5789,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 803,
+     "heard": 313,
+     "rate": 0.3898
+    },
+    "2024": {
+     "referred": 493,
+     "heard": 189,
+     "rate": 0.3834
+    },
+    "2025": {
+     "referred": 652,
+     "heard": 235,
+     "rate": 0.3604
+    },
+    "2026": {
+     "referred": 561,
+     "heard": 198,
+     "rate": 0.3529
+    }
+   },
+   "rate": 0.3727,
+   "topic_rate": 0.5789,
+   "approp_rate": 0.6154
+  },
+  "EDU": {
+   "code": "EDU",
+   "name": "Education",
+   "chamber": "senate",
+   "referred": 348,
+   "heard": 133,
+   "topic_referred": 5,
+   "topic_heard": 1,
+   "approp_referred": 28,
+   "approp_heard": 11,
+   "types": {
+    "credit": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.3822,
+     "basis": "all"
+    },
+    "income": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.3822,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 138,
+     "heard": 58,
+     "rate": 0.4203
+    },
+    "2024": {
+     "referred": 80,
+     "heard": 31,
+     "rate": 0.3875
+    },
+    "2025": {
+     "referred": 130,
+     "heard": 44,
+     "rate": 0.3385
+    }
+   },
+   "rate": 0.3822,
+   "topic_rate": 0.2,
+   "approp_rate": 0.3929
+  },
+  "JHA": {
+   "code": "JHA",
+   "name": "Judiciary & Hawaiian Affairs",
+   "chamber": "house",
+   "referred": 2519,
+   "heard": 1013,
+   "topic_referred": 32,
+   "topic_heard": 17,
+   "approp_referred": 182,
+   "approp_heard": 97,
+   "types": {
+    "credit": {
+     "referred": 6,
+     "heard": 2,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "income": {
+     "referred": 3,
+     "heard": 1,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 4,
+     "heard": 2,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 5,
+     "heard": 3,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 4,
+     "heard": 3,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "admin": {
+     "referred": 5,
+     "heard": 4,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "sin": {
+     "referred": 2,
+     "heard": 0,
+     "rate": 0.5312,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5312,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 657,
+     "heard": 267,
+     "rate": 0.4064
+    },
+    "2024": {
+     "referred": 613,
+     "heard": 244,
+     "rate": 0.398
+    },
+    "2025": {
+     "referred": 685,
+     "heard": 263,
+     "rate": 0.3839
+    },
+    "2026": {
+     "referred": 564,
+     "heard": 239,
+     "rate": 0.4238
+    }
+   },
+   "rate": 0.4021,
+   "topic_rate": 0.5312,
+   "approp_rate": 0.533
+  },
+  "PSM": {
+   "code": "PSM",
+   "name": "Public Safety And Military Affairs",
+   "chamber": "senate",
+   "referred": 731,
+   "heard": 302,
+   "topic_referred": 11,
+   "topic_heard": 7,
+   "approp_referred": 18,
+   "approp_heard": 12,
+   "types": {
+    "tourism": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.4131,
+     "basis": "all"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.4131,
+     "basis": "all"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.4131,
+     "basis": "all"
+    },
+    "credit": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.4131,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 272,
+     "heard": 93,
+     "rate": 0.3419
+    },
+    "2024": {
+     "referred": 178,
+     "heard": 80,
+     "rate": 0.4494
+    },
+    "2025": {
+     "referred": 138,
+     "heard": 71,
+     "rate": 0.5145
+    },
+    "2026": {
+     "referred": 143,
+     "heard": 58,
+     "rate": 0.4056
+    }
+   },
+   "rate": 0.4131,
+   "topic_rate": 0.6364,
+   "approp_rate": 0.6667
+  },
+  "CPN": {
+   "code": "CPN",
+   "name": "Commerce And Consumer Protection",
+   "chamber": "senate",
+   "referred": 1308,
+   "heard": 560,
+   "topic_referred": 28,
+   "topic_heard": 15,
+   "approp_referred": 14,
+   "approp_heard": 12,
+   "types": {
+    "credit": {
+     "referred": 9,
+     "heard": 8,
+     "rate": 0.5357,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5357,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 3,
+     "heard": 1,
+     "rate": 0.5357,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 373,
+     "heard": 174,
+     "rate": 0.4665
+    },
+    "2024": {
+     "referred": 282,
+     "heard": 131,
+     "rate": 0.4645
+    },
+    "2025": {
+     "referred": 364,
+     "heard": 138,
+     "rate": 0.3791
+    },
+    "2026": {
+     "referred": 289,
+     "heard": 117,
+     "rate": 0.4048
+    }
+   },
+   "rate": 0.4281,
+   "topic_rate": 0.5357,
+   "approp_rate": 0.8571
+  },
+  "EDT": {
+   "code": "EDT",
+   "name": "Economic Development And Tourism",
+   "chamber": "senate",
+   "referred": 204,
+   "heard": 90,
+   "topic_referred": 16,
+   "topic_heard": 5,
+   "approp_referred": 7,
+   "approp_heard": 6,
+   "types": {
+    "tourism": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.3125,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.3125,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.3125,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 4,
+     "heard": 2,
+     "rate": 0.3125,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 101,
+     "heard": 41,
+     "rate": 0.4059
+    },
+    "2026": {
+     "referred": 103,
+     "heard": 49,
+     "rate": 0.4757
+    }
+   },
+   "rate": 0.4412,
+   "topic_rate": 0.3125,
+   "approp_rate": 0.8571
+  },
+  "HHS": {
+   "code": "HHS",
+   "name": "Health And Human Services",
+   "chamber": "senate",
+   "referred": 1258,
+   "heard": 569,
+   "topic_referred": 55,
+   "topic_heard": 17,
+   "approp_referred": 57,
+   "approp_heard": 46,
+   "types": {
+    "credit": {
+     "referred": 8,
+     "heard": 3,
+     "rate": 0.3091,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 10,
+     "heard": 5,
+     "rate": 0.3091,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 7,
+     "heard": 2,
+     "rate": 0.3091,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 5,
+     "heard": 1,
+     "rate": 0.3091,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 433,
+     "heard": 202,
+     "rate": 0.4665
+    },
+    "2024": {
+     "referred": 220,
+     "heard": 105,
+     "rate": 0.4773
+    },
+    "2025": {
+     "referred": 329,
+     "heard": 142,
+     "rate": 0.4316
+    },
+    "2026": {
+     "referred": 276,
+     "heard": 120,
+     "rate": 0.4348
+    }
+   },
+   "rate": 0.4523,
+   "topic_rate": 0.3091,
+   "approp_rate": 0.807
+  },
+  "HLT": {
+   "code": "HLT",
+   "name": "Health",
+   "chamber": "house",
+   "referred": 835,
+   "heard": 384,
+   "topic_referred": 33,
+   "topic_heard": 15,
+   "approp_referred": 133,
+   "approp_heard": 77,
+   "types": {
+    "exemption": {
+     "referred": 16,
+     "heard": 5,
+     "rate": 0.3125,
+     "basis": "type"
+    },
+    "credit": {
+     "referred": 11,
+     "heard": 6,
+     "rate": 0.4545,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.4545,
+     "basis": "revenue"
+    },
+    "income": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.4545,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.4545,
+     "basis": "revenue"
+    },
+    "sin": {
+     "referred": 3,
+     "heard": 2,
+     "rate": 0.4545,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 274,
+     "heard": 132,
+     "rate": 0.4818
+    },
+    "2024": {
+     "referred": 149,
+     "heard": 89,
+     "rate": 0.5973
+    },
+    "2025": {
+     "referred": 230,
+     "heard": 81,
+     "rate": 0.3522
+    },
+    "2026": {
+     "referred": 182,
+     "heard": 82,
+     "rate": 0.4505
+    }
+   },
+   "rate": 0.4599,
+   "topic_rate": 0.4545,
+   "approp_rate": 0.5789
+  },
+  "HSG": {
+   "code": "HSG",
+   "name": "Housing",
+   "chamber": "senate",
+   "referred": 688,
+   "heard": 342,
+   "topic_referred": 68,
+   "topic_heard": 33,
+   "approp_referred": 60,
+   "approp_heard": 42,
+   "types": {
+    "exemption": {
+     "referred": 7,
+     "heard": 3,
+     "rate": 0.4853,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 22,
+     "heard": 18,
+     "rate": 0.8182,
+     "basis": "type"
+    },
+    "wealth": {
+     "referred": 22,
+     "heard": 9,
+     "rate": 0.4091,
+     "basis": "type"
+    },
+    "get": {
+     "referred": 3,
+     "heard": 0,
+     "rate": 0.4853,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.4853,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 209,
+     "heard": 88,
+     "rate": 0.4211
+    },
+    "2024": {
+     "referred": 146,
+     "heard": 73,
+     "rate": 0.5
+    },
+    "2025": {
+     "referred": 230,
+     "heard": 107,
+     "rate": 0.4652
+    },
+    "2026": {
+     "referred": 103,
+     "heard": 74,
+     "rate": 0.7184
+    }
+   },
+   "rate": 0.4971,
+   "topic_rate": 0.4853,
+   "approp_rate": 0.7
+  },
+  "WLA": {
+   "code": "WLA",
+   "name": "Water, Land, Culture And The Arts",
+   "chamber": "senate",
+   "referred": 2,
+   "heard": 1,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 0,
+   "approp_heard": 0,
+   "types": {},
+   "by_session": {
+    "2026": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.5
+    }
+   },
+   "rate": 0.5,
+   "topic_rate": null,
+   "approp_rate": null
+  },
+  "ECD": {
+   "code": "ECD",
+   "name": "Economic Development & Technology",
+   "chamber": "house",
+   "referred": 536,
+   "heard": 272,
+   "topic_referred": 179,
+   "topic_heard": 73,
+   "approp_referred": 79,
+   "approp_heard": 49,
+   "types": {
+    "credit": {
+     "referred": 96,
+     "heard": 46,
+     "rate": 0.4792,
+     "basis": "type"
+    },
+    "exemption": {
+     "referred": 32,
+     "heard": 10,
+     "rate": 0.3125,
+     "basis": "type"
+    },
+    "income": {
+     "referred": 12,
+     "heard": 2,
+     "rate": 0.4078,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 5,
+     "heard": 3,
+     "rate": 0.4078,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 18,
+     "heard": 7,
+     "rate": 0.3889,
+     "basis": "type"
+    },
+    "wealth": {
+     "referred": 10,
+     "heard": 4,
+     "rate": 0.4078,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 134,
+     "heard": 59,
+     "rate": 0.4403
+    },
+    "2024": {
+     "referred": 43,
+     "heard": 20,
+     "rate": 0.4651
+    },
+    "2025": {
+     "referred": 167,
+     "heard": 65,
+     "rate": 0.3892
+    },
+    "2026": {
+     "referred": 192,
+     "heard": 128,
+     "rate": 0.6667
+    }
+   },
+   "rate": 0.5075,
+   "topic_rate": 0.4078,
+   "approp_rate": 0.6203
+  },
+  "EDN": {
+   "code": "EDN",
+   "name": "Education",
+   "chamber": "house",
+   "referred": 785,
+   "heard": 420,
+   "topic_referred": 11,
+   "topic_heard": 7,
+   "approp_referred": 138,
+   "approp_heard": 100,
+   "types": {
+    "credit": {
+     "referred": 5,
+     "heard": 3,
+     "rate": 0.535,
+     "basis": "all"
+    },
+    "exemption": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.535,
+     "basis": "all"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.535,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 140,
+     "heard": 96,
+     "rate": 0.6857
+    },
+    "2024": {
+     "referred": 152,
+     "heard": 88,
+     "rate": 0.5789
+    },
+    "2025": {
+     "referred": 175,
+     "heard": 104,
+     "rate": 0.5943
+    },
+    "2026": {
+     "referred": 318,
+     "heard": 132,
+     "rate": 0.4151
+    }
+   },
+   "rate": 0.535,
+   "topic_rate": 0.6364,
+   "approp_rate": 0.7246
+  },
+  "LGO": {
+   "code": "LGO",
+   "name": null,
+   "chamber": "house",
+   "referred": 343,
+   "heard": 188,
+   "topic_referred": 7,
+   "topic_heard": 3,
+   "approp_referred": 37,
+   "approp_heard": 19,
+   "types": {
+    "credit": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5481,
+     "basis": "all"
+    },
+    "income": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.5481,
+     "basis": "all"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.5481,
+     "basis": "all"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.5481,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 187,
+     "heard": 95,
+     "rate": 0.508
+    },
+    "2024": {
+     "referred": 156,
+     "heard": 93,
+     "rate": 0.5962
+    }
+   },
+   "rate": 0.5481,
+   "topic_rate": 0.4286,
+   "approp_rate": 0.5135
+  },
+  "LBT": {
+   "code": "LBT",
+   "name": "Labor And Technology",
+   "chamber": "senate",
+   "referred": 587,
+   "heard": 322,
+   "topic_referred": 19,
+   "topic_heard": 11,
+   "approp_referred": 14,
+   "approp_heard": 12,
+   "types": {
+    "credit": {
+     "referred": 8,
+     "heard": 4,
+     "rate": 0.5789,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 178,
+     "heard": 89,
+     "rate": 0.5
+    },
+    "2024": {
+     "referred": 138,
+     "heard": 84,
+     "rate": 0.6087
+    },
+    "2025": {
+     "referred": 144,
+     "heard": 77,
+     "rate": 0.5347
+    },
+    "2026": {
+     "referred": 127,
+     "heard": 72,
+     "rate": 0.5669
+    }
+   },
+   "rate": 0.5486,
+   "topic_rate": 0.5789,
+   "approp_rate": 0.8571
+  },
+  "WTL": {
+   "code": "WTL",
+   "name": null,
+   "chamber": "senate",
+   "referred": 563,
+   "heard": 310,
+   "topic_referred": 11,
+   "topic_heard": 3,
+   "approp_referred": 25,
+   "approp_heard": 18,
+   "types": {
+    "wealth": {
+     "referred": 8,
+     "heard": 2,
+     "rate": 0.5506,
+     "basis": "all"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.5506,
+     "basis": "all"
+    },
+    "credit": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.5506,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 242,
+     "heard": 150,
+     "rate": 0.6198
+    },
+    "2024": {
+     "referred": 147,
+     "heard": 87,
+     "rate": 0.5918
+    },
+    "2025": {
+     "referred": 174,
+     "heard": 73,
+     "rate": 0.4195
+    }
+   },
+   "rate": 0.5506,
+   "topic_rate": 0.2727,
+   "approp_rate": 0.72
+  },
+  "CMV": {
+   "code": "CMV",
+   "name": null,
+   "chamber": "house",
+   "referred": 76,
+   "heard": 42,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 9,
+   "approp_heard": 6,
+   "types": {},
+   "by_session": {
+    "2023": {
+     "referred": 43,
+     "heard": 17,
+     "rate": 0.3953
+    },
+    "2024": {
+     "referred": 33,
+     "heard": 25,
+     "rate": 0.7576
+    }
+   },
+   "rate": 0.5526,
+   "topic_rate": null,
+   "approp_rate": 0.6667
+  },
+  "HED": {
+   "code": "HED",
+   "name": "Higher Education",
+   "chamber": "house",
+   "referred": 208,
+   "heard": 115,
+   "topic_referred": 4,
+   "topic_heard": 3,
+   "approp_referred": 52,
+   "approp_heard": 37,
+   "types": {
+    "sin": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5529,
+     "basis": "all"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5529,
+     "basis": "all"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5529,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 142,
+     "heard": 68,
+     "rate": 0.4789
+    },
+    "2026": {
+     "referred": 66,
+     "heard": 47,
+     "rate": 0.7121
+    }
+   },
+   "rate": 0.5529,
+   "topic_rate": 0.75,
+   "approp_rate": 0.7115
+  },
+  "EET": {
+   "code": "EET",
+   "name": null,
+   "chamber": "senate",
+   "referred": 255,
+   "heard": 142,
+   "topic_referred": 23,
+   "topic_heard": 12,
+   "approp_referred": 4,
+   "approp_heard": 4,
+   "types": {
+    "credit": {
+     "referred": 11,
+     "heard": 5,
+     "rate": 0.5217,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.5217,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 144,
+     "heard": 70,
+     "rate": 0.4861
+    },
+    "2024": {
+     "referred": 111,
+     "heard": 72,
+     "rate": 0.6486
+    }
+   },
+   "rate": 0.5569,
+   "topic_rate": 0.5217,
+   "approp_rate": 1.0
+  },
+  "WAL": {
+   "code": "WAL",
+   "name": "Water & Land ________________________________________________________________________________________",
+   "chamber": "house",
+   "referred": 1085,
+   "heard": 606,
+   "topic_referred": 40,
+   "topic_heard": 23,
+   "approp_referred": 161,
+   "approp_heard": 86,
+   "types": {
+    "wealth": {
+     "referred": 15,
+     "heard": 11,
+     "rate": 0.7333,
+     "basis": "type"
+    },
+    "tourism": {
+     "referred": 5,
+     "heard": 2,
+     "rate": 0.575,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 14,
+     "heard": 9,
+     "rate": 0.575,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 2,
+     "heard": 0,
+     "rate": 0.575,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 297,
+     "heard": 151,
+     "rate": 0.5084
+    },
+    "2024": {
+     "referred": 310,
+     "heard": 197,
+     "rate": 0.6355
+    },
+    "2025": {
+     "referred": 229,
+     "heard": 111,
+     "rate": 0.4847
+    },
+    "2026": {
+     "referred": 249,
+     "heard": 147,
+     "rate": 0.5904
+    }
+   },
+   "rate": 0.5585,
+   "topic_rate": 0.575,
+   "approp_rate": 0.5342
+  },
+  "HSH": {
+   "code": "HSH",
+   "name": "Human Services & Homelessness",
+   "chamber": "house",
+   "referred": 282,
+   "heard": 158,
+   "topic_referred": 18,
+   "topic_heard": 7,
+   "approp_referred": 72,
+   "approp_heard": 43,
+   "types": {
+    "wealth": {
+     "referred": 4,
+     "heard": 1,
+     "rate": 0.3889,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 3,
+     "heard": 0,
+     "rate": 0.3889,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 9,
+     "heard": 5,
+     "rate": 0.3889,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.3889,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 150,
+     "heard": 75,
+     "rate": 0.5
+    },
+    "2026": {
+     "referred": 132,
+     "heard": 83,
+     "rate": 0.6288
+    }
+   },
+   "rate": 0.5603,
+   "topic_rate": 0.3889,
+   "approp_rate": 0.5972
+  },
+  "AEN": {
+   "code": "AEN",
+   "name": "Agriculture And Environment",
+   "chamber": "senate",
+   "referred": 731,
+   "heard": 423,
+   "topic_referred": 30,
+   "topic_heard": 22,
+   "approp_referred": 53,
+   "approp_heard": 44,
+   "types": {
+    "credit": {
+     "referred": 12,
+     "heard": 10,
+     "rate": 0.7333,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.7333,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.7333,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 249,
+     "heard": 152,
+     "rate": 0.6104
+    },
+    "2024": {
+     "referred": 146,
+     "heard": 95,
+     "rate": 0.6507
+    },
+    "2025": {
+     "referred": 196,
+     "heard": 116,
+     "rate": 0.5918
+    },
+    "2026": {
+     "referred": 140,
+     "heard": 60,
+     "rate": 0.4286
+    }
+   },
+   "rate": 0.5787,
+   "topic_rate": 0.7333,
+   "approp_rate": 0.8302
+  },
+  "LAB": {
+   "code": "LAB",
+   "name": "Labor",
+   "chamber": "house",
+   "referred": 305,
+   "heard": 182,
+   "topic_referred": 10,
+   "topic_heard": 4,
+   "approp_referred": 40,
+   "approp_heard": 23,
+   "types": {
+    "exemption": {
+     "referred": 4,
+     "heard": 1,
+     "rate": 0.5967,
+     "basis": "all"
+    },
+    "income": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.5967,
+     "basis": "all"
+    },
+    "credit": {
+     "referred": 4,
+     "heard": 2,
+     "rate": 0.5967,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 150,
+     "heard": 84,
+     "rate": 0.56
+    },
+    "2026": {
+     "referred": 155,
+     "heard": 98,
+     "rate": 0.6323
+    }
+   },
+   "rate": 0.5967,
+   "topic_rate": 0.4,
+   "approp_rate": 0.575
+  },
+  "TCA": {
+   "code": "TCA",
+   "name": null,
+   "chamber": "senate",
+   "referred": 477,
+   "heard": 286,
+   "topic_referred": 8,
+   "topic_heard": 4,
+   "approp_referred": 7,
+   "approp_heard": 7,
+   "types": {
+    "exemption": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.5996,
+     "basis": "all"
+    },
+    "credit": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.5996,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 198,
+     "heard": 119,
+     "rate": 0.601
+    },
+    "2024": {
+     "referred": 111,
+     "heard": 74,
+     "rate": 0.6667
+    },
+    "2025": {
+     "referred": 168,
+     "heard": 93,
+     "rate": 0.5536
+    }
+   },
+   "rate": 0.5996,
+   "topic_rate": 0.5,
+   "approp_rate": 1.0
+  },
+  "HWN": {
+   "code": "HWN",
+   "name": "Hawaiian Affairs",
+   "chamber": "senate",
+   "referred": 188,
+   "heard": 114,
+   "topic_referred": 2,
+   "topic_heard": 2,
+   "approp_referred": 5,
+   "approp_heard": 2,
+   "types": {
+    "exemption": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6064,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 61,
+     "heard": 40,
+     "rate": 0.6557
+    },
+    "2024": {
+     "referred": 40,
+     "heard": 28,
+     "rate": 0.7
+    },
+    "2025": {
+     "referred": 47,
+     "heard": 29,
+     "rate": 0.617
+    },
+    "2026": {
+     "referred": 40,
+     "heard": 17,
+     "rate": 0.425
+    }
+   },
+   "rate": 0.6064,
+   "topic_rate": 1.0,
+   "approp_rate": 0.4
+  },
+  "HRE": {
+   "code": "HRE",
+   "name": null,
+   "chamber": "senate",
+   "referred": 139,
+   "heard": 86,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 18,
+   "approp_heard": 14,
+   "types": {},
+   "by_session": {
+    "2023": {
+     "referred": 89,
+     "heard": 58,
+     "rate": 0.6517
+    },
+    "2024": {
+     "referred": 50,
+     "heard": 28,
+     "rate": 0.56
+    }
+   },
+   "rate": 0.6187,
+   "topic_rate": null,
+   "approp_rate": 0.7778
+  },
+  "PBS": {
+   "code": "PBS",
+   "name": "Public Safety",
+   "chamber": "house",
+   "referred": 206,
+   "heard": 130,
+   "topic_referred": 4,
+   "topic_heard": 0,
+   "approp_referred": 26,
+   "approp_heard": 17,
+   "types": {
+    "credit": {
+     "referred": 4,
+     "heard": 0,
+     "rate": 0.6311,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2025": {
+     "referred": 113,
+     "heard": 67,
+     "rate": 0.5929
+    },
+    "2026": {
+     "referred": 93,
+     "heard": 63,
+     "rate": 0.6774
+    }
+   },
+   "rate": 0.6311,
+   "topic_rate": 0.0,
+   "approp_rate": 0.6538
+  },
+  "TRN": {
+   "code": "TRN",
+   "name": "Transportation",
+   "chamber": "house",
+   "referred": 641,
+   "heard": 408,
+   "topic_referred": 19,
+   "topic_heard": 12,
+   "approp_referred": 35,
+   "approp_heard": 26,
+   "types": {
+    "credit": {
+     "referred": 6,
+     "heard": 5,
+     "rate": 0.6316,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 4,
+     "heard": 3,
+     "rate": 0.6316,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 3,
+     "heard": 2,
+     "rate": 0.6316,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6316,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 105,
+     "heard": 64,
+     "rate": 0.6095
+    },
+    "2024": {
+     "referred": 111,
+     "heard": 76,
+     "rate": 0.6847
+    },
+    "2025": {
+     "referred": 165,
+     "heard": 123,
+     "rate": 0.7455
+    },
+    "2026": {
+     "referred": 260,
+     "heard": 145,
+     "rate": 0.5577
+    }
+   },
+   "rate": 0.6365,
+   "topic_rate": 0.6316,
+   "approp_rate": 0.7429
+  },
+  "HOU": {
+   "code": "HOU",
+   "name": "Housing",
+   "chamber": "senate",
+   "referred": 84,
+   "heard": 54,
+   "topic_referred": 5,
+   "topic_heard": 3,
+   "approp_referred": 2,
+   "approp_heard": 2,
+   "types": {
+    "credit": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.6429,
+     "basis": "all"
+    },
+    "wealth": {
+     "referred": 2,
+     "heard": 0,
+     "rate": 0.6429,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2026": {
+     "referred": 84,
+     "heard": 54,
+     "rate": 0.6429
+    }
+   },
+   "rate": 0.6429,
+   "topic_rate": 0.6,
+   "approp_rate": 1.0
+  },
+  "EEP": {
+   "code": "EEP",
+   "name": "Energy & Environmental Protection",
+   "chamber": "house",
+   "referred": 567,
+   "heard": 370,
+   "topic_referred": 36,
+   "topic_heard": 22,
+   "approp_referred": 97,
+   "approp_heard": 69,
+   "types": {
+    "credit": {
+     "referred": 29,
+     "heard": 17,
+     "rate": 0.5862,
+     "basis": "type"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6111,
+     "basis": "revenue"
+    },
+    "tourism": {
+     "referred": 3,
+     "heard": 3,
+     "rate": 0.6111,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6111,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 132,
+     "heard": 102,
+     "rate": 0.7727
+    },
+    "2024": {
+     "referred": 149,
+     "heard": 83,
+     "rate": 0.557
+    },
+    "2025": {
+     "referred": 156,
+     "heard": 95,
+     "rate": 0.609
+    },
+    "2026": {
+     "referred": 130,
+     "heard": 90,
+     "rate": 0.6923
+    }
+   },
+   "rate": 0.6526,
+   "topic_rate": 0.6111,
+   "approp_rate": 0.7113
+  },
+  "GVO": {
+   "code": "GVO",
+   "name": "Government Operations",
+   "chamber": "senate",
+   "referred": 398,
+   "heard": 264,
+   "topic_referred": 2,
+   "topic_heard": 1,
+   "approp_referred": 10,
+   "approp_heard": 8,
+   "types": {
+    "tourism": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6633,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 116,
+     "heard": 78,
+     "rate": 0.6724
+    },
+    "2024": {
+     "referred": 104,
+     "heard": 78,
+     "rate": 0.75
+    },
+    "2025": {
+     "referred": 91,
+     "heard": 58,
+     "rate": 0.6374
+    },
+    "2026": {
+     "referred": 87,
+     "heard": 50,
+     "rate": 0.5747
+    }
+   },
+   "rate": 0.6633,
+   "topic_rate": 0.5,
+   "approp_rate": 0.8
+  },
+  "TOU": {
+   "code": "TOU",
+   "name": "Tourism",
+   "chamber": "house",
+   "referred": 117,
+   "heard": 78,
+   "topic_referred": 23,
+   "topic_heard": 15,
+   "approp_referred": 22,
+   "approp_heard": 13,
+   "types": {
+    "tourism": {
+     "referred": 16,
+     "heard": 11,
+     "rate": 0.6875,
+     "basis": "type"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.6522,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 1,
+     "rate": 0.6522,
+     "basis": "revenue"
+    },
+    "credit": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.6522,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 2,
+     "heard": 1,
+     "rate": 0.6522,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 30,
+     "heard": 21,
+     "rate": 0.7
+    },
+    "2024": {
+     "referred": 17,
+     "heard": 12,
+     "rate": 0.7059
+    },
+    "2025": {
+     "referred": 37,
+     "heard": 22,
+     "rate": 0.5946
+    },
+    "2026": {
+     "referred": 33,
+     "heard": 23,
+     "rate": 0.697
+    }
+   },
+   "rate": 0.6667,
+   "topic_rate": 0.6522,
+   "approp_rate": 0.5909
+  },
+  "CAI": {
+   "code": "CAI",
+   "name": null,
+   "chamber": "house",
+   "referred": 91,
+   "heard": 61,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 10,
+   "approp_heard": 8,
+   "types": {},
+   "by_session": {
+    "2023": {
+     "referred": 59,
+     "heard": 37,
+     "rate": 0.6271
+    },
+    "2024": {
+     "referred": 32,
+     "heard": 24,
+     "rate": 0.75
+    }
+   },
+   "rate": 0.6703,
+   "topic_rate": null,
+   "approp_rate": 0.8
+  },
+  "CAA": {
+   "code": "CAA",
+   "name": "Culture & Arts",
+   "chamber": "house",
+   "referred": 77,
+   "heard": 56,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 11,
+   "approp_heard": 8,
+   "types": {},
+   "by_session": {
+    "2025": {
+     "referred": 40,
+     "heard": 27,
+     "rate": 0.675
+    },
+    "2026": {
+     "referred": 37,
+     "heard": 29,
+     "rate": 0.7838
+    }
+   },
+   "rate": 0.7273,
+   "topic_rate": null,
+   "approp_rate": 0.7273
+  },
+  "AGR": {
+   "code": "AGR",
+   "name": "Agriculture & Food Systems",
+   "chamber": "house",
+   "referred": 430,
+   "heard": 325,
+   "topic_referred": 17,
+   "topic_heard": 14,
+   "approp_referred": 115,
+   "approp_heard": 95,
+   "types": {
+    "credit": {
+     "referred": 11,
+     "heard": 10,
+     "rate": 0.8235,
+     "basis": "revenue"
+    },
+    "income": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.8235,
+     "basis": "revenue"
+    },
+    "exemption": {
+     "referred": 2,
+     "heard": 2,
+     "rate": 0.8235,
+     "basis": "revenue"
+    },
+    "wealth": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.8235,
+     "basis": "revenue"
+    },
+    "get": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.8235,
+     "basis": "revenue"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 122,
+     "heard": 93,
+     "rate": 0.7623
+    },
+    "2024": {
+     "referred": 116,
+     "heard": 84,
+     "rate": 0.7241
+    },
+    "2025": {
+     "referred": 110,
+     "heard": 87,
+     "rate": 0.7909
+    },
+    "2026": {
+     "referred": 82,
+     "heard": 61,
+     "rate": 0.7439
+    }
+   },
+   "rate": 0.7558,
+   "topic_rate": 0.8235,
+   "approp_rate": 0.8261
+  },
+  "HUS": {
+   "code": "HUS",
+   "name": null,
+   "chamber": "house",
+   "referred": 208,
+   "heard": 159,
+   "topic_referred": 6,
+   "topic_heard": 3,
+   "approp_referred": 59,
+   "approp_heard": 41,
+   "types": {
+    "credit": {
+     "referred": 5,
+     "heard": 3,
+     "rate": 0.7644,
+     "basis": "all"
+    },
+    "exemption": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.7644,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 113,
+     "heard": 91,
+     "rate": 0.8053
+    },
+    "2024": {
+     "referred": 95,
+     "heard": 68,
+     "rate": 0.7158
+    }
+   },
+   "rate": 0.7644,
+   "topic_rate": 0.5,
+   "approp_rate": 0.6949
+  },
+  "HET": {
+   "code": "HET",
+   "name": null,
+   "chamber": "house",
+   "referred": 143,
+   "heard": 110,
+   "topic_referred": 4,
+   "topic_heard": 2,
+   "approp_referred": 41,
+   "approp_heard": 32,
+   "types": {
+    "credit": {
+     "referred": 4,
+     "heard": 2,
+     "rate": 0.7692,
+     "basis": "all"
+    }
+   },
+   "by_session": {
+    "2023": {
+     "referred": 77,
+     "heard": 57,
+     "rate": 0.7403
+    },
+    "2024": {
+     "referred": 66,
+     "heard": 53,
+     "rate": 0.803
+    }
+   },
+   "rate": 0.7692,
+   "topic_rate": 0.5,
+   "approp_rate": 0.7805
+  },
+  "CPC. FIN": {
+   "code": "CPC. FIN",
+   "name": null,
+   "chamber": "house",
+   "referred": 1,
+   "heard": 0,
+   "topic_referred": 0,
+   "topic_heard": 0,
+   "approp_referred": 0,
+   "approp_heard": 0,
+   "types": {},
+   "by_session": {
+    "2023": {
+     "referred": 1,
+     "heard": 0,
+     "rate": 0.0
+    }
+   },
+   "rate": 0.0,
+   "topic_rate": null,
+   "approp_rate": null
+  }
+ }
+}

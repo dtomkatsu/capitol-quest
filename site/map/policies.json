@@ -1,57 +1,62 @@
 {
-  "fy": 2027,
-  "unit": "thousands",
-  "note": "Hand-curated (2026-08-13). amt = $ thousands per year. Priorities spend from the budget; revenue policies add to it. Sources per item; keep amounts defensible and cite where each number comes from.",
-  "priorities": [
-    {
-      "id": "ufsm",
-      "name": "Universal free school meals",
-      "icon": "🍱",
-      "amt": 32551,
-      "who": "Free breakfast and lunch for every public-school student — the state picks up all meal co-payments at expected participation. Act 139 (2025) already covers families under 300% of the poverty line; this finishes the job.",
-      "src": "Hawaiʻi Appleseed UFSM analysis / DOE School Food Services Branch FY2025 ($32.6M at projected participation)"
-    },
-    {
-      "id": "ctc",
-      "name": "Create a state child tax credit",
-      "icon": "🧒",
-      "amt": 184600,
-      "who": "A $650 refundable credit per keiki aged 0–18. Twelve states already have one; the 2021 federal expansion cut child poverty nearly in half while it lasted.",
-      "src": "Hawaiʻi Appleseed proposal ($650/child); cost modeled as $650 × ~284,000 keiki (ACS under-18), before any income cap"
-    }
-  ],
-  "revenue": [
-    {
-      "id": "get-half",
-      "name": "Raise the GET by half a point",
-      "icon": "🛒",
-      "amt": 586408,
-      "who": "4% → 4.5% on nearly every transaction. The biggest single lever the state has — but the GET raises the cost of living and hits low-income families hardest.",
-      "src": "Computed: FY2027 projected general-fund GET $4.69B ÷ 8 (half of the 4% rate)"
-    },
-    {
-      "id": "conveyance",
-      "name": "Modernize the conveyance tax",
-      "icon": "🏠",
-      "amt": 75000,
-      "who": "Rates haven't moved since 2009. Marginal rates cut the tax for most residents while raising it on high-value investment property and out-of-state buyers (HB 2049-style).",
-      "src": "Hawaiʻi Budget Primer FY2026-27 tax-fairness section: $70–80M/yr (midpoint used)"
-    },
-    {
-      "id": "capgains",
-      "name": "Tax investment profits like paychecks",
-      "icon": "📈",
-      "amt": 110000,
-      "who": "Capital gains are taxed at 7.25% while wages pay up to 13%. Taxing them as ordinary income raises $85–132M a year — 88% of it from the top 1%.",
-      "src": "Hawaiʻi Budget Primer FY2026-27 / ITEP: $85–132M/yr (midpoint used)"
-    },
-    {
-      "id": "wwcr",
-      "name": "Close corporate loopholes",
-      "icon": "🏢",
-      "amt": 85000,
-      "who": "Worldwide combined reporting stops multinationals from shifting the profits they earn in Hawaiʻi offshore — the same standard small local businesses already meet.",
-      "src": "Hawaiʻi Budget Primer FY2026-27 / ITEP: +$85M/yr"
-    }
-  ]
+ "fy": 2027,
+ "unit": "thousands",
+ "note": "Hand-curated (2026-08-13). amt = $ thousands per year. Priorities spend from the budget; revenue policies add to it. Sources per item; keep amounts defensible and cite where each number comes from.",
+ "priorities": [
+  {
+   "id": "ufsm",
+   "name": "Universal free school meals",
+   "icon": "🍱",
+   "amt": 32551,
+   "who": "Free breakfast and lunch for every public-school student — the state picks up all meal co-payments at expected participation. Act 139 (2025) already covers families under 300% of the poverty line; this finishes the job.",
+   "src": "Hawaiʻi Appleseed UFSM analysis / DOE School Food Services Branch FY2025 ($32.6M at projected participation)"
+  },
+  {
+   "id": "ctc",
+   "name": "Create a state child tax credit",
+   "icon": "🧒",
+   "amt": 184600,
+   "who": "A $650 refundable credit per keiki aged 0–18. Twelve states already have one; the 2021 federal expansion cut child poverty nearly in half while it lasted.",
+   "src": "Hawaiʻi Appleseed proposal ($650/child); cost modeled as $650 × ~284,000 keiki (ACS under-18), before any income cap",
+   "tax": "credit"
+  }
+ ],
+ "revenue": [
+  {
+   "id": "get-half",
+   "name": "Raise the GET by half a point",
+   "icon": "🛒",
+   "amt": 586408,
+   "who": "4% → 4.5% on nearly every transaction. The biggest single lever the state has — but the GET raises the cost of living and hits low-income families hardest.",
+   "src": "Computed: FY2027 projected general-fund GET $4.69B ÷ 8 (half of the 4% rate)",
+   "tax": "get"
+  },
+  {
+   "id": "conveyance",
+   "name": "Modernize the conveyance tax",
+   "icon": "🏠",
+   "amt": 75000,
+   "who": "Rates haven't moved since 2009. Marginal rates cut the tax for most residents while raising it on high-value investment property and out-of-state buyers (HB 2049-style).",
+   "src": "Hawaiʻi Budget Primer FY2026-27 tax-fairness section: $70–80M/yr (midpoint used)",
+   "tax": "wealth"
+  },
+  {
+   "id": "capgains",
+   "name": "Tax investment profits like paychecks",
+   "icon": "📈",
+   "amt": 110000,
+   "who": "Capital gains are taxed at 7.25% while wages pay up to 13%. Taxing them as ordinary income raises $85–132M a year — 88% of it from the top 1%.",
+   "src": "Hawaiʻi Budget Primer FY2026-27 / ITEP: $85–132M/yr (midpoint used)",
+   "tax": "wealth"
+  },
+  {
+   "id": "wwcr",
+   "name": "Close corporate loopholes",
+   "icon": "🏢",
+   "amt": 85000,
+   "who": "Worldwide combined reporting stops multinationals from shifting the profits they earn in Hawaiʻi offshore — the same standard small local businesses already meet.",
+   "src": "Hawaiʻi Budget Primer FY2026-27 / ITEP: +$85M/yr",
+   "tax": "income"
+  }
+ ]
 }
