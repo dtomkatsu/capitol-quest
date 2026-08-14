@@ -1,0 +1,247 @@
+{
+  "traits": {
+    "prog": { "name": "PROGRESSIVE", "sub": "Pro-Tax" },
+    "cons": { "name": "CONSERVATIVE", "sub": "Anti-Tax" }
+  },
+  "characters": {
+    "nalani": { "name": "Nālani Chun", "role": "your chief of staff", "icon": "📋" },
+    "fonoti": { "name": "Rep. Ellis Fonoti", "role": "House money chair", "icon": "🏛" },
+    "grange": { "name": "Curtis Grange", "role": "business-roundtable lobbyist", "icon": "💼" },
+    "malia": { "name": "Malia Reyes", "role": "coalition organizer", "icon": "🌺" }
+  },
+  "actions": {
+    "rally": {
+      "name": "Hold a rally",
+      "icon": "📣",
+      "desc": "Pack the rotunda. Sign-waving, testimony trainings, kūpuna in matching shirts.",
+      "effects": { "families": 6, "wealthy": -2 },
+      "result": "The rotunda echoes for an hour. A senator's aide films it from the balcony, expressionless. Coverage runs at six and ten.",
+      "voices": [
+        { "t": "prog", "text": "THIS is the building's real acoustics test. Let them hear who the budget is for." },
+        { "t": "cons", "text": "Noise is not arithmetic. The people upstairs vote on arithmetic. Usually." }
+      ]
+    },
+    "lobby": {
+      "name": "Work the building",
+      "icon": "🤝",
+      "desc": "Office to office, floor by floor. Coffee, one-pagers, favors remembered.",
+      "effects": { "families": 1, "wealthy": 3 },
+      "result": "Four offices, two commitments, one 'send me the language.' The building runs on exactly this.",
+      "voices": [
+        { "t": "cons", "text": "Quiet rooms. Reasonable voices. This is where taxes get trimmed into something survivable." },
+        { "t": "prog", "text": "Fine — but count who's already IN those quiet rooms every day. It isn't the folks from the rally." }
+      ]
+    }
+  },
+  "calendar": [
+    { "week": 0, "title": "The Week Before Session", "phase": "Pre-session", "event": "w0-intro", "agenda": true, "noAction": true, "talks": { "nalani": "w0-nalani" } },
+    { "week": 1, "title": "Opening Day", "phase": "Session", "event": "w1-opening", "talks": { "nalani": "talk-nalani", "fonoti": "w1-fonoti", "grange": "w1-grange", "malia": "talk-malia" } },
+    { "week": 5, "title": "First Lateral", "phase": "Session" },
+    { "week": 8, "title": "First Crossover", "phase": "Session" },
+    { "week": 11, "title": "Second Lateral", "phase": "Session" },
+    { "week": 13, "title": "Second Crossover", "phase": "Session" },
+    { "week": 14, "title": "Conference Season", "phase": "Conference" },
+    { "week": 15, "title": "Conference Crunch", "phase": "Conference" },
+    { "week": 16, "title": "Sine Die", "phase": "Adjournment", "event": "w16-sinedie", "noAction": true }
+  ],
+  "weekTitles": ["", "Opening Day", "First Hearings", "Money Committee Week",
+    "Testimony Piles Up", "First Lateral", "Floor Votes", "Crossover Eve",
+    "First Crossover", "The Other Chamber", "Hearings, Again",
+    "Second Lateral", "Money Committees, Again", "Second Crossover",
+    "Conference Season", "Conference Crunch", "Sine Die"],
+  "genericEvents": ["ev-forecast", "ev-emergency", "ev-oped", "ev-testimony", "ev-potluck"],
+  "talkDefaults": { "nalani": "talk-nalani", "fonoti": "talk-fonoti", "grange": "talk-grange", "malia": "talk-malia" },
+  "sineDieWeek": 16,
+  "dialogues": {
+
+    "w0-intro": { "start": {
+      "speaker": "nalani",
+      "text": "Session opens Wednesday. Here's the picture: the Council on Revenues says $9.8 billion in general-fund taxes next year. The budget spends $10.6 billion of general funds. The gap is savings and prayer. Whatever bills you introduce this week ARE your session — so choose like it.",
+      "voices": [
+        { "t": "prog", "text": "A gap means the wealthiest state economy in the Pacific is UNDERTAXED at the top. You know the list: conveyance, capital gains, the loopholes. Introduce all of it." },
+        { "t": "cons", "text": "A gap means spending grew faster than a shrinking tax base. Families are already paying the highest cost of living in America. Introduce restraint." }
+      ],
+      "choices": [
+        { "label": "\"We lead with the kids — meals, credits. Then we show how to pay for it.\"", "effects": { "families": 4 }, "reply": "Nālani nods once. \"Then the revenue bills aren't optional. They're the ending of the story you just picked.\"" },
+        { "label": "\"We lead with the math. Nothing moves unless it balances.\"", "effects": { "wealthy": 4 }, "reply": "\"The money chairs will love you,\" she says. \"The coalition will want to know the math includes people.\"" },
+        { "label": "Say nothing. Look at the numbers again.", "effects": {}, "reply": "She waits. The numbers do not improve under observation. \"Okay. Pick your bills — the calendar won't.\"" }
+      ]
+    } },
+
+    "w0-nalani": { "start": {
+      "speaker": "nalani",
+      "text": "Ground rules while it's quiet. Each week you get the room — talk to whoever you want — and ONE real move: a rally or a walk through the building. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
+      "voices": [
+        { "t": "cons", "text": "One move a week. Scarcity. Finally, a mechanic this office understands." },
+        { "t": "prog", "text": "Then never waste it on a week where nobody's watching." }
+      ],
+      "choices": [
+        { "label": "\"Understood.\"", "effects": {}, "reply": "\"Good. Sleep this week. You won't later.\"" }
+      ]
+    } },
+
+    "w1-opening": { "start": {
+      "speaker": "nalani",
+      "text": "Opening Day. Lei on every railing, three governors in the gallery, and every member gets one floor minute that the cameras will actually air. Yours is at 11:40. What's the minute?",
+      "voices": [
+        { "t": "prog", "text": "Say the quiet number LOUD: seventy percent of capital gains go to people making over $400K. One minute is plenty." },
+        { "t": "cons", "text": "Say nothing that becomes an attack mailer. Praise the kūpuna, thank the staff, sit down." }
+      ],
+      "choices": [
+        { "label": "\"Tax fairness, by name. The register pays more than the penthouse.\"", "effects": { "families": 5, "wealthy": -4 }, "reply": "The gallery claps. Two members study their desks. Grange, in the back, writes one word on a legal pad." },
+        { "label": "\"Cost of living. Discipline. A budget that doesn't wobble.\"", "effects": { "wealthy": 5, "families": -3 }, "reply": "The chamber murmurs approval. Somewhere upstairs, a coalition text thread goes quiet." },
+        { "label": "One minute of pure aloha — thank everyone, promise nothing.", "effects": { "families": 1, "wealthy": 1 }, "reply": "Warm, safe, forgettable. Three members ask to co-sponsor 'whatever that was.'" }
+      ]
+    } },
+
+    "w1-fonoti": { "start": {
+      "speaker": "fonoti",
+      "text": "Fonoti doesn't look up from the committee referral sheet. \"I schedule what can pass. Your revenue bills — I can hear one of them early, IF the ask is trimmed to something the floor survives. Or you keep the full number and wait for me to find a week. Maybe I find one.\"",
+      "voices": [
+        { "t": "cons", "text": "Take the trim. A smaller bill that PASSES beats a poster that dies in committee." },
+        { "t": "prog", "text": "The 'trim' is how a hundred million becomes a press release. Make him find the week." }
+      ],
+      "choices": [
+        { "label": "Trim the ask. Get the early hearing.", "effects": { "revenueK": -25000, "wealthy": 3 }, "reply": "\"Smart.\" He initials the sheet. Your bill just got $25M/yr lighter — and a hearing date." },
+        { "label": "Hold the number. \"Find the week, chair.\"", "effects": { "families": 3 }, "reply": "A long pause. \"Bold.\" It is not clear that 'bold' is a compliment on this floor." }
+      ]
+    } },
+
+    "w1-grange": { "start": {
+      "speaker": "grange",
+      "text": "Grange finds you by the koa doors, all smiles. \"Big session, yeah? Our members can live with a lot — but the conveyance thing reads like a tax on selling your own house. Help me help you: carve out everything under three million, we stay neutral. Testify friendly, even.\"",
+      "voices": [
+        { "t": "cons", "text": "Neutral-to-friendly from the roundtable is worth actual votes. Carve-outs are the price of oxygen here." },
+        { "t": "prog", "text": "The bill ALREADY exempts normal homes — that's the design. He's negotiating against a version that doesn't exist. Say so. Smile back." }
+      ],
+      "choices": [
+        { "label": "\"It already exempts owner-occupied homes. Read the bill, Curtis.\"", "effects": { "families": 2, "wealthy": -2 }, "reply": "The smile holds, one degree cooler. \"Then our testimony will read the bill very... closely.\"" },
+        { "label": "\"Send me your carve-out language. No promises.\"", "effects": { "wealthy": 3 }, "reply": "\"That's all I ask.\" It is never all he asks." }
+      ]
+    } },
+
+    "ev-forecast": { "start": {
+      "speaker": "nalani",
+      "text": "Rumor from the tax department: the Council on Revenues may shave the forecast at its next meeting. If it's true, every bill with a price tag gets harder. The caucus wants to know your posture before the papers ask.",
+      "voices": [
+        { "t": "cons", "text": "A softer forecast is the floor telling you the ceiling is lower. Get ahead of it: pause the spending bills, look prudent." },
+        { "t": "prog", "text": "A softer forecast is the ARGUMENT for revenue bills. You don't fix a leak by drinking less water." }
+      ],
+      "choices": [
+        { "label": "Go public first: \"This is exactly why we fix revenue.\"", "effects": { "families": 4, "wealthy": -2 }, "reply": "You beat the rumor to the microphone. The clip travels. So does your name, attached to the word 'taxes.'" },
+        { "label": "Brief the caucus quietly. Keep powder dry.", "effects": { "wealthy": 3 }, "reply": "Doors close, voices lower. The caucus appreciates a member who doesn't make weather." }
+      ]
+    } },
+
+    "ev-emergency": { "start": {
+      "speaker": "nalani",
+      "text": "Health department's in the hallway with a real one: a federal reimbursement fell through and a rural clinic network needs a $40M emergency appropriation to stay open through the fiscal year. Money committee wants co-signers by Friday.",
+      "voices": [
+        { "t": "prog", "text": "Forty million to keep clinics open in places with one doctor per island district. This is what the general fund is FOR." },
+        { "t": "cons", "text": "Every 'emergency' signed in February is a structural deficit by June. Where exactly is the forty coming from?" }
+      ],
+      "choices": [
+        { "label": "Co-sign. Clinics stay open.", "effects": { "revenueK": -40000, "families": 4 }, "reply": "Your name goes second on the list. The clinic director cries in the hallway. The fiscal note does not." },
+        { "label": "Ask for a scrubbed budget first. Defer.", "effects": { "families": -3, "wealthy": 3 }, "reply": "Prudent, defensible — and the neighbor-island papers run 'LAWMAKERS STALL CLINIC RESCUE' anyway." }
+      ]
+    } },
+
+    "ev-oped": { "start": {
+      "speaker": "nalani",
+      "text": "Morning paper, page A1 turn: an op-ed titled 'The Last Tax Hike Hawaiʻi Can Afford,' signed by three retired executives. It names your bills. It is, annoyingly, well written.",
+      "voices": [
+        { "t": "cons", "text": "They're not wrong about the cost of living. They're only wrong about who's causing it. Which is... a nuance op-eds reward." },
+        { "t": "prog", "text": "Three retired executives against school meals. Print THAT sentence and you win the week." }
+      ],
+      "choices": [
+        { "label": "Write the response yourself. Name the stakes, name the kids.", "effects": { "families": 4, "wealthy": -2 }, "reply": "Your reply runs Sunday. The coalition shares it 400 times. One executive writes again; nobody reads the sequel." },
+        { "label": "Let it breathe. Op-eds don't vote.", "effects": { "wealthy": 2 }, "reply": "By Thursday it's fish wrap. The building respects a member who doesn't chase every ball." }
+      ]
+    } },
+
+    "ev-testimony": { "start": {
+      "speaker": "malia",
+      "text": "Hearing day. Malia's got forty testifiers signed up — teachers, a school cook, two ranchers, a hotel housekeeper with her whole shift outside. Two minutes each. The chair is already checking his watch. She asks: who leads?",
+      "voices": [
+        { "t": "prog", "text": "The cook. Nobody explains a food budget like the person who stretches one for four hundred kids." },
+        { "t": "cons", "text": "The ranchers. When the committee hears 'small business supports this,' the math gets a passport." }
+      ],
+      "choices": [
+        { "label": "The school cook goes first.", "effects": { "families": 4 }, "reply": "Two minutes, no notes. The chair stops checking his watch. Twitter does the rest." },
+        { "label": "The ranchers go first.", "effects": { "wealthy": 3, "families": 1 }, "reply": "'We're not anti-business — we ARE the business.' Two committee skeptics visibly recalibrate." }
+      ]
+    } },
+
+    "ev-potluck": { "start": {
+      "speaker": "nalani",
+      "text": "Friday caucus potluck. Someone brought squid lūʻau, someone brought Costco chicken bake, the Senate side brought a rumor about conference chairs. Attendance is, technically, optional.",
+      "voices": [
+        { "t": "cons", "text": "Half the real appropriations of the decade were settled over paper plates. Go. Bring something store-bought and humble." },
+        { "t": "prog", "text": "Go — but talk story with the STAFF. They know which bills are actually moving. Also the squid lūʻau will be gone by 12:15." }
+      ],
+      "choices": [
+        { "label": "Go. Eat. Listen twice as much as you talk.", "effects": { "families": 1, "wealthy": 1 }, "reply": "You learn two referral rumors and one recipe. The week ends warmer than it started." },
+        { "label": "Skip it. The inbox is a crime scene.", "effects": {}, "reply": "Productive, lonely. Monday, everyone else shares an inside joke about the chicken bake." }
+      ]
+    } },
+
+    "w16-sinedie": { "start": {
+      "speaker": "nalani",
+      "text": "Sine die. Lei on the podiums again, and the building exhales all at once. Whatever you moved this session is moving; whatever you didn't is next January's problem. Interim starts tomorrow — that's when we count what it all did.",
+      "voices": [
+        { "t": "prog", "text": "Rest. Then back to it — the gap doesn't adjourn." },
+        { "t": "cons", "text": "Adequate. Nobody bankrupted the place, which around here counts as a triumph." }
+      ],
+      "choices": [
+        { "label": "Walk out through the rotunda one more time.", "effects": {}, "reply": "The Capitol is open to the sky in the middle — by design. Money in, money out, and the weather gets a vote too." }
+      ]
+    } },
+
+    "talk-nalani": { "start": {
+      "speaker": "nalani",
+      "text": "\"Status check: your bills are alive until a deadline says otherwise. Watch the calendar chips — lateral and crossover weeks are where bills go to die quietly. Spend your action where a week actually turns.\"",
+      "voices": [
+        { "t": "cons", "text": "She schedules your optimism. Keep her." }
+      ],
+      "choices": [
+        { "label": "\"Thanks. Back to it.\"", "effects": {}, "reply": "\"Drink water. Sessions are cardio.\"" }
+      ]
+    } },
+
+    "talk-fonoti": { "start": {
+      "speaker": "fonoti",
+      "text": "\"Every member thinks their bill is the one the ceiling bends for.\" He taps the referral sheet. \"Bring me something the floor survives, and we'll talk about ceilings.\"",
+      "voices": [
+        { "t": "prog", "text": "The ceiling is a CHOICE. Someone typed it into a spreadsheet." },
+        { "t": "cons", "text": "The man guards the arithmetic. You will need him more than he needs you." }
+      ],
+      "choices": [
+        { "label": "\"Noted, chair.\"", "effects": {}, "reply": "He almost smiles. Almost." }
+      ]
+    } },
+
+    "talk-grange": { "start": {
+      "speaker": "grange",
+      "text": "\"Nothing personal, ever — that's the first rule of this hallway.\" He offers macadamia candy from a tin. \"Our members just want predictability. Tax bills are weather. We sell umbrellas.\"",
+      "voices": [
+        { "t": "cons", "text": "Predictability IS worth money. He's the most honest person on this floor, in the way a price tag is honest." },
+        { "t": "prog", "text": "Take the candy. Audit the metaphor. Weather doesn't hire three lobbyists per raindrop." }
+      ],
+      "choices": [
+        { "label": "Take the candy. Keep walking.", "effects": {}, "reply": "It's good candy. It is always good candy." }
+      ]
+    } },
+
+    "talk-malia": { "start": {
+      "speaker": "malia",
+      "text": "\"The coalition count: 61 orgs on the meals bill, 40 on the credit, 'it's complicated' on everything with the word conveyance. We can turn out bodies for one big moment per month — tell me early which moment matters.\"",
+      "voices": [
+        { "t": "prog", "text": "This is your actual caucus. The one that shows up in matching shirts." },
+        { "t": "cons", "text": "Sixty-one organizations, one shared printer. Respect the logistics." }
+      ],
+      "choices": [
+        { "label": "\"You'll get two weeks' notice. Promise.\"", "effects": { "families": 1 }, "reply": "\"Two weeks is luxury. Deal.\"" }
+      ]
+    } }
+  }
+}

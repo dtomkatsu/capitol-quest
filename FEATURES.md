@@ -234,6 +234,38 @@ cross the channels from Hilo, Kahului and Līhuʻe into the Capitol.
 - Next: per-island stories (county budgets, the TAT), Molokini, quest
   hooks on neighbor islands.
 
+## 10. The session: turns, dialogues, trait voices — ✅ framework shipped (2026-08-13)
+
+**The teaching point:** a session is sixteen weeks of choices under a
+clock. Disco-Elysium-style: your inner voices argue about taxes while
+the calendar eats your options.
+
+- **Turns**: one turn = one week. Week 0 is the week before session —
+  pick up to 3 bills from policies.json to introduce; that agenda IS
+  your session. Weeks 1–16 run Opening Day → laterals → crossovers →
+  conference → Sine Die, then interim. Each week: an event dialogue
+  pops (auto-opens when unplayed), unlimited "talk story" with
+  characters, and exactly ONE action (📣 rally / 🤝 work the building).
+- **Traits** chime in on every event, dialogue and action:
+  PROGRESSIVE (Pro-Tax) in warm rose, CONSERVATIVE (Anti-Tax) in cool
+  steel — DE-style interjections with distinct voices. More traits and
+  the thought cabinet bolt on next.
+- **Metrics**: Revenue ($K/yr — wired into the same FY2027 budget
+  scoreboard as policy bills via `PolicyPanel.setExternal`), Working
+  Families and The Wealthy & Businesses (0–100 opinion meters with
+  bars). Every choice shows its deltas inline.
+- **Content is data**: `site/map/session.json` — characters (fictional:
+  Nālani Chun, Rep. Fonoti, Curtis Grange, Malia Reyes), calendar,
+  scripted weeks (0, 1, 16) + a generic-event cycle (forecast rumor,
+  emergency appropriation, hostile op-ed, testimony day, caucus
+  potluck), repeatable default talks. Dialogue nodes support goto
+  chains. State persists in localStorage `cq-session` ("Restart
+  session" in the overlay footer, double-tap armed).
+- The Session toolbar tab tracks the week (W0…) and reopens the
+  overlay any time.
+- Next: thought cabinet, trait levels/checks, bill outcomes at Sine Die
+  driven by the opinion metrics + actions taken.
+
 ## Visual language rules (all features)
 
 - Flows are ambient, never diagrammatic: motes, not arrows; alpha < 0.6;

@@ -562,6 +562,11 @@ const MoneyPanel = {
    listeners here run in addition to (not instead of) MoneyPanel's. */
 const PolicyPanel = {
   built: false,
+  external: 0,                 // $K/yr from session decisions (SessionPanel)
+  setExternal(k) {
+    this.external = k || 0;
+    if (this._updateChip) this._updateChip();
+  },
   init(budget, data) {
     if (this.built || !budget || !data) return;
     this.built = true;
@@ -596,12 +601,13 @@ const PolicyPanel = {
     const updateChip = () => {
       const spent = sum(data.priorities);
       const raised = sum(data.revenue);
-      const delta = (raised - spent) * 1e3;          // dollars
+      const sess = PolicyPanel.external;             // session decisions, $K
+      const delta = (raised - spent + sess) * 1e3;   // dollars
       chip.innerHTML =
         '<span class="fc-label">FY' + budget.fy + " budget</span>" +
         '<span class="fc-amt">' + fmtB(budget.total + delta) + "</span>" +
         // the consequence line: balance vs the enacted Act 175 figure
-        (spent || raised ? '<span class="fc-bal ' +
+        (spent || raised || sess ? '<span class="fc-bal ' +
           (delta < 0 ? "cost" : delta > 0 ? "gain" : "even") + '">' +
           (delta < 0 ? "▼ " + fmtK(-delta / 1e3) + " deficit" :
            delta > 0 ? "▲ " + fmtK(delta / 1e3) + " surplus" :
@@ -609,15 +615,19 @@ const PolicyPanel = {
       chip.title =
         "Act 175 (2026): " + fmtB(budget.op) + " operating + " +
         fmtB(budget.cip) + " capital = " + fmtB(budget.total) + "." +
-        (spent || raised
+        (spent || raised || sess
           ? "\nYour policies: −" + fmtK(spent) + "/yr invested, +" +
-            fmtK(raised) + "/yr new revenue → " +
+            fmtK(raised) + "/yr new revenue." +
+            (sess ? "\nSession decisions: " + (sess > 0 ? "+" : "−") +
+              fmtK(Math.abs(sess)) + "/yr." : "") +
+            "\n→ " +
             (delta < 0 ? "a " + fmtK(-delta / 1e3) + " hole to fill." :
              delta > 0 ? fmtK(delta / 1e3) + " left over." :
              "exactly balanced.")
           : "\nOpen Policies to invest in priorities — and to raise " +
             "the revenue that pays for them.");
     };
+    this._updateChip = updateChip;
 
     const updateHeros = () => {
       const spent = sum(data.priorities);
@@ -733,6 +743,438 @@ const PolicyPanel = {
   },
 };
 
+/* -------------------------------------------------------- session panel */
+/* The disco-flavored core loop. Time passes in TURNS — one turn = one
+   week of the legislative session. Each week: an event dialogue pops
+   (the two tax traits, PROGRESSIVE and CONSERVATIVE, chime in on
+   everything), you can talk story with characters freely, and you get
+   exactly ONE action (rally / lobby). Week 0 is the week before session:
+   pick up to three bills from policies.json to introduce — that agenda
+   IS your session. Decisions move three metrics: Revenue ($K/yr, wired
+   into the budget scoreboard via PolicyPanel.setExternal), Working
+   Families and The Wealthy & Businesses (0–100 opinion). All content is
+   data-driven from map/session.json; the thought cabinet bolts on next. */
+const SessionPanel = {
+  built: false,
+  init(budget, policies, data) {
+    if (this.built || !budget || !policies || !data) return;
+    this.built = true;
+    const $ = (id) => document.getElementById(id);
+    const overlay = $("session-overlay");
+    const body = $("sess-body");
+    const fmtK = (v) => {
+      if (!v) return "$0";
+      const d = Math.abs(v) * 1e3;
+      return d >= 995e6 ? "$" + (d / 1e9).toFixed(1) + "B" :
+        "$" + Math.round(d / 1e6) + "M";
+    };
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+    /* ---- turn state */
+    const KEY = "cq-session";
+    const defaults = () => ({
+      week: 0, actionWeek: -1, agendaLocked: false, agenda: [],
+      eventDone: [], talked: {}, log: [],
+      metrics: { revenueK: 0, families: 50, wealthy: 50 },
+    });
+    let S = defaults();
+    try {
+      S = Object.assign(defaults(),
+        JSON.parse(localStorage.getItem(KEY) || "{}"));
+      S.metrics = Object.assign(defaults().metrics, S.metrics);
+    } catch (e) { /* fresh campaign */ }
+    const save = () => {
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+    };
+    const allPolicies = [
+      ...policies.priorities.map((p) => ({ ...p, kind: "cost" })),
+      ...policies.revenue.map((p) => ({ ...p, kind: "gain" })),
+    ];
+
+    /* ---- calendar */
+    const calFor = (w) => {
+      const hit = data.calendar.find((c) => c.week === w) || {};
+      return {
+        week: w,
+        title: hit.title || data.weekTitles[w] || "Interim",
+        phase: hit.phase || (w === 0 ? "Pre-session" :
+          w >= data.sineDieWeek ? "Adjournment" :
+          w >= 14 ? "Conference" : "Session"),
+        event: hit.event !== undefined ? hit.event :
+          (w >= 2 && w < data.sineDieWeek
+            ? data.genericEvents[(w - 2) % data.genericEvents.length]
+            : null),
+        agenda: !!hit.agenda,
+        noAction: !!hit.noAction || w > data.sineDieWeek,
+        talks: hit.talks ||
+          (w >= 1 && w <= data.sineDieWeek ? data.talkDefaults : {}),
+      };
+    };
+
+    /* ---- metrics */
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    const applyFx = (fx) => {
+      if (!fx) return "";
+      const parts = [];
+      if (fx.revenueK) {
+        S.metrics.revenueK += fx.revenueK;
+        parts.push('<span class="' + (fx.revenueK > 0 ? "gain" : "cost") +
+          '">' + (fx.revenueK > 0 ? "+" : "−") +
+          fmtK(Math.abs(fx.revenueK)) + "/yr revenue</span>");
+      }
+      if (fx.families) {
+        S.metrics.families = clamp(S.metrics.families + fx.families);
+        parts.push('<span class="' + (fx.families > 0 ? "gain" : "cost") +
+          '">Working Families ' + (fx.families > 0 ? "+" : "") +
+          fx.families + "</span>");
+      }
+      if (fx.wealthy) {
+        S.metrics.wealthy = clamp(S.metrics.wealthy + fx.wealthy);
+        parts.push('<span class="' + (fx.wealthy > 0 ? "gain" : "cost") +
+          '">The Wealthy &amp; Businesses ' +
+          (fx.wealthy > 0 ? "+" : "") + fx.wealthy + "</span>");
+      }
+      PolicyPanel.setExternal(S.metrics.revenueK);
+      save();
+      renderHead();
+      return parts.length ? '<div class="sd-fx">' +
+        parts.join(" · ") + "</div>" : "";
+    };
+
+    /* ---- header + metrics bar */
+    const renderHead = () => {
+      const cal = calFor(S.week);
+      $("session-title").textContent = "Session · Week " + S.week;
+      $("tb-week-badge").textContent = "W" + S.week;
+      $("sess-week").innerHTML =
+        "<b>Week " + S.week + " — " + esc(cal.title) + "</b>" +
+        "<small>" + esc(cal.phase) + " · one action per week</small>";
+      const rev = S.metrics.revenueK;
+      $("sess-metrics").innerHTML =
+        '<span class="met m-rev ' + (rev < 0 ? "cost" : "gain") + '">💰 ' +
+        "Revenue <b>" + (rev < 0 ? "−" : "+") + fmtK(Math.abs(rev)) +
+        "/yr</b></span>" +
+        '<span class="met m-fam">👪 Working Families <b>' +
+        S.metrics.families + '</b><span class="bar"><i style="width:' +
+        S.metrics.families + '%"></i></span></span>' +
+        '<span class="met m-rich">🎩 The Wealthy &amp; Businesses <b>' +
+        S.metrics.wealthy + '</b><span class="bar"><i style="width:' +
+        S.metrics.wealthy + '%"></i></span></span>';
+    };
+
+    /* ---- dialogue runner (trait voices chime in on every node) */
+    const voiceHtml = (voices) => (voices || []).map((v) => {
+      const tr = data.traits[v.t];
+      return '<div class="sd-voice v-' + v.t + '"><b>' + tr.name +
+        " (" + tr.sub.toUpperCase() + ")</b> — " + esc(v.text) + "</div>";
+    }).join("");
+
+    const showDialogue = (dlgId, onDone) => {
+      const dlg = data.dialogues[dlgId];
+      if (!dlg) { onDone(); return; }
+      const renderNode = (nodeId) => {
+        const n = dlg[nodeId];
+        const who = data.characters[n.speaker];
+        let html =
+          '<div class="sd-speaker"><b>' + who.icon + " " +
+          esc(who.name) + "</b><small>" + esc(who.role) + "</small></div>" +
+          '<div class="sd-text">' + esc(n.text) + "</div>" +
+          voiceHtml(n.voices) +
+          '<div class="sd-choices">' +
+          n.choices.map((c, i) =>
+            '<button type="button" data-i="' + i + '">' + esc(c.label) +
+            "</button>").join("") +
+          "</div>";
+        body.innerHTML = html;
+        body.scrollTop = 0;
+        for (const btn of body.querySelectorAll(".sd-choices button")) {
+          btn.addEventListener("pointerdown", (ev) => {
+            ev.stopPropagation();
+            const c = n.choices[+btn.dataset.i];
+            const fxHtml = applyFx(c.effects);
+            S.log.push({ week: S.week, dlg: dlgId, choice: c.label });
+            save();
+            body.querySelector(".sd-choices").outerHTML =
+              '<div class="sd-reply">▸ ' + esc(c.label) + "</div>" +
+              (c.reply ? '<div class="sd-reply">' + esc(c.reply) +
+                "</div>" : "") + fxHtml +
+              (c.goto
+                ? '<button class="sd-done" data-goto="' + c.goto +
+                  '" type="button">Continue ▸</button>'
+                : '<button class="sd-done" type="button">Continue ▸' +
+                  "</button>");
+            const done = body.querySelector(".sd-done");
+            done.addEventListener("pointerdown", (ev2) => {
+              ev2.stopPropagation();
+              if (done.dataset.goto) renderNode(done.dataset.goto);
+              else onDone();
+            });
+          });
+        }
+      };
+      renderNode("start");
+    };
+
+    /* ---- the week hub */
+    const renderHub = () => {
+      const cal = calFor(S.week);
+      const interim = S.week > data.sineDieWeek;
+      let html = "";
+
+      // this week's event
+      if (cal.event) {
+        const done = S.eventDone.includes(S.week);
+        html += '<div class="sh-sec">This week</div>';
+        html += '<div class="sh-row' + (done ? " done" : "") +
+          '" data-ev="1"><span class="shname"><b>📰 ' +
+          (done ? "The week's event — handled" :
+            "Something needs your attention") +
+          "</b><small>" + (done ? "Choices made. The week rolls on." :
+            "An event is waiting — the traits have opinions.") +
+          "</small></span>" +
+          '<button class="shgo" type="button"' + (done ? " disabled" : "") +
+          ">" + (done ? "✓ Done" : "Open ▸") + "</button></div>";
+      }
+
+      // week-0 agenda picker (up to 3 bills)
+      if (cal.agenda && !S.agendaLocked) {
+        html += '<div class="sh-sec">Your bill package</div>' +
+          '<div class="sh-agenda-cap">Choose up to 3 bills to introduce ' +
+          "— this agenda is your session.</div>";
+        for (const p of allPolicies) {
+          const on = S.agenda.includes(p.id);
+          html += '<div class="sh-row" data-pol="' + p.id +
+            '"><span class="shname"><b>' + p.icon + " " + esc(p.name) +
+            '</b></span><span class="shtag ' + p.kind + '">' +
+            (p.kind === "cost" ? "−" : "+") + fmtK(p.amt) + "/yr</span>" +
+            '<button class="shgo" type="button">' +
+            (on ? "✓ In" : "Add") + "</button></div>";
+        }
+        html += '<button class="sh-week-end" id="sess-lock" type="button"' +
+          (S.agenda.length ? "" : " disabled") + ">Introduce " +
+          (S.agenda.length || "your") + " bill" +
+          (S.agenda.length === 1 ? "" : "s") + " ▸</button>";
+      } else if (S.agendaLocked && S.agenda.length) {
+        html += '<div class="sh-sec">Your bills</div>';
+        for (const id of S.agenda) {
+          const p = allPolicies.find((q) => q.id === id);
+          if (p) {
+            html += '<div class="sh-row"><span class="shname"><b>' +
+              p.icon + " " + esc(p.name) + '</b></span><span class="shtag ' +
+              p.kind + '">' + (p.kind === "cost" ? "−" : "+") +
+              fmtK(p.amt) + "/yr</span></div>";
+          }
+        }
+      }
+
+      // talk story
+      const talkIds = Object.keys(cal.talks || {});
+      if (talkIds.length) {
+        html += '<div class="sh-sec">Talk story (free)</div>';
+        for (const cid of talkIds) {
+          const who = data.characters[cid];
+          const talked = (S.talked[S.week] || []).includes(cid);
+          html += '<div class="sh-row' + (talked ? " done" : "") +
+            '" data-talk="' + cid + '"><span class="shname"><b>' +
+            who.icon + " " + esc(who.name) + "</b><small>" +
+            esc(who.role) + "</small></span>" +
+            '<button class="shgo" type="button">' +
+            (talked ? "Again ▸" : "Talk ▸") + "</button></div>";
+        }
+      }
+
+      // the one action
+      if (!cal.noAction && !interim) {
+        const used = S.actionWeek === S.week;
+        html += '<div class="sh-sec">Your action (' +
+          (used ? "used this week" : "one per week") + ")</div>";
+        for (const aid of Object.keys(data.actions)) {
+          const a = data.actions[aid];
+          html += '<div class="sh-row" data-act="' + aid +
+            '"><span class="shname"><b>' + a.icon + " " + esc(a.name) +
+            "</b><small>" + esc(a.desc) + "</small></span>" +
+            '<button class="shgo" type="button"' +
+            (used ? " disabled" : "") + ">" +
+            (used ? "—" : "Act ▸") + "</button></div>";
+        }
+      }
+
+      // end of week
+      if (interim) {
+        html += '<div class="sh-sec">Interim</div>' +
+          '<div class="sh-agenda-cap">The session is adjourned sine die. ' +
+          "What your choices did arrives with the next module.</div>";
+      } else if (!(cal.agenda && !S.agendaLocked)) {
+        const skipping = !cal.noAction && S.actionWeek !== S.week;
+        html += '<button class="sh-week-end" id="sess-next" type="button">' +
+          (S.week === data.sineDieWeek ? "Leave the building ▸" :
+            "End Week " + S.week + " ▸") + "</button>" +
+          (skipping ? '<div class="sh-agenda-cap">Your action is ' +
+            "unused — ending the week skips it.</div>" : "");
+      }
+
+      body.innerHTML = html;
+      body.scrollTop = 0;
+
+      // wiring
+      const evRow = body.querySelector('[data-ev] .shgo:not([disabled])');
+      if (evRow) evRow.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        runEvent();
+      });
+      for (const r of body.querySelectorAll("[data-pol]")) {
+        r.querySelector(".shgo").addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          const id = r.dataset.pol;
+          if (S.agenda.includes(id)) {
+            S.agenda = S.agenda.filter((x) => x !== id);
+          } else if (S.agenda.length < 3) {
+            S.agenda.push(id);
+          }
+          save();
+          renderHub();
+        });
+      }
+      const lock = body.querySelector("#sess-lock");
+      if (lock) lock.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        if (!S.agenda.length) return;
+        S.agendaLocked = true;
+        S.log.push({ week: 0, agenda: [...S.agenda] });
+        save();
+        renderHub();
+      });
+      for (const r of body.querySelectorAll("[data-talk]")) {
+        r.querySelector(".shgo").addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          const cid = r.dataset.talk;
+          (S.talked[S.week] = S.talked[S.week] || []).push(cid);
+          save();
+          showDialogue(cal.talks[cid], renderHub);
+        });
+      }
+      for (const r of body.querySelectorAll("[data-act]")) {
+        const btn = r.querySelector(".shgo");
+        if (btn.disabled) continue;
+        btn.addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          runAction(r.dataset.act);
+        });
+      }
+      const next = body.querySelector("#sess-next");
+      if (next) next.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        advanceWeek();
+      });
+    };
+
+    const runEvent = () => {
+      const cal = calFor(S.week);
+      showDialogue(cal.event, () => {
+        if (!S.eventDone.includes(S.week)) S.eventDone.push(S.week);
+        save();
+        renderHub();
+      });
+    };
+
+    const runAction = (aid) => {
+      const a = data.actions[aid];
+      S.actionWeek = S.week;
+      const fxHtml = applyFx(a.effects);
+      S.log.push({ week: S.week, action: aid });
+      save();
+      body.innerHTML =
+        '<div class="sd-speaker"><b>' + a.icon + " " + esc(a.name) +
+        "</b><small>your action this week</small></div>" +
+        '<div class="sd-text">' + esc(a.result) + "</div>" +
+        voiceHtml(a.voices) + fxHtml +
+        '<button class="sd-done" type="button">Continue ▸</button>';
+      body.querySelector(".sd-done").addEventListener("pointerdown",
+        (ev) => { ev.stopPropagation(); renderHub(); });
+    };
+
+    const advanceWeek = () => {
+      if (S.week > data.sineDieWeek) return;
+      S.week += 1;
+      save();
+      renderHead();
+      const cal = calFor(S.week);
+      if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+      else renderHub();
+    };
+
+    /* ---- overlay plumbing */
+    const openOverlay = () => {
+      $("money-overlay").classList.add("hidden");
+      $("policy-overlay").classList.add("hidden");
+      overlay.classList.remove("hidden");
+      Dialog.hide();
+    };
+    $("tb-session").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      if (overlay.classList.contains("hidden")) {
+        openOverlay();
+        const cal = calFor(S.week);
+        if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+        else renderHub();
+      } else overlay.classList.add("hidden");
+    });
+    // the other overlays' buttons close this one
+    for (const id of ["tb-budget", "tb-revenue", "tb-policy",
+                      "fund-chip"]) {
+      $(id).addEventListener("pointerdown", () =>
+        overlay.classList.add("hidden"));
+    }
+    $("session-close").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      overlay.classList.add("hidden");
+    });
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") overlay.classList.add("hidden");
+    });
+    $("sess-foot").innerHTML =
+      "One turn = one week of the legislative session. Events and " +
+      "dialogues are illustrative; the fiscal numbers they move ride " +
+      "the same FY2027 scoreboard as your policy bills. Characters are " +
+      "fictional. <button id=\"sess-reset\" type=\"button\" " +
+      "style=\"background:none;border:none;color:#9fb0e8;" +
+      "text-decoration:underline;cursor:pointer;font:inherit;" +
+      "padding:0\">Restart session</button>";
+    $("sess-reset").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const b = e.target;
+      if (b.dataset.arm) {
+        S = defaults();
+        save();
+        PolicyPanel.setExternal(0);
+        renderHead();
+        runEvent();
+      } else {
+        b.dataset.arm = "1";
+        b.textContent = "Really restart? (tap again)";
+        setTimeout(() => {
+          b.dataset.arm = "";
+          b.textContent = "Restart session";
+        }, 2500);
+      }
+    });
+
+    /* ---- boot: reflect saved revenue, pop the week if it's unplayed */
+    PolicyPanel.setExternal(S.metrics.revenueK);
+    renderHead();
+    const cal0 = calFor(S.week);
+    if ((cal0.event && !S.eventDone.includes(S.week)) ||
+        (cal0.agenda && !S.agendaLocked)) {
+      openOverlay();
+      if (cal0.event && !S.eventDone.includes(S.week)) runEvent();
+      else renderHub();
+    }
+  },
+};
+
 /* -------------------------------------------------------- island fly-to */
 /* The "· Oʻahu ▾" tag on the title chip opens a list of all eight
    islands; picking one flies the camera there — it's ONE continuous map,
@@ -789,6 +1231,7 @@ class BootScene extends Phaser.Scene {
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
     this.load.json("policies", "map/policies.json?v=1");
+    this.load.json("session", "map/session.json?v=1");
   }
   create() {
     const world = this.cache.json.get("world");
@@ -843,6 +1286,9 @@ class WorldScene extends Phaser.Scene {
       this.cache.json.get("budget"), this.cache.json.get("revenue"));
     PolicyPanel.init(
       this.cache.json.get("budget"), this.cache.json.get("policies"));
+    SessionPanel.init(
+      this.cache.json.get("budget"), this.cache.json.get("policies"),
+      this.cache.json.get("session"));
     IslandUI.init(this);
 
     this.setupCamera(world);

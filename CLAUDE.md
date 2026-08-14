@@ -107,6 +107,25 @@ Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
 nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
 revenue.json tax names exactly (fallback: first word, no icon).
 
+## Session overlay — turns + trait voices (feature 10)
+
+`SessionPanel` in main.js + `site/map/session.json` (ALL content is
+data: characters, calendar, dialogues, actions — write content there,
+not in JS). One turn = one week; state in localStorage `cq-session`.
+Rules that must survive edits:
+- Every dialogue node, event and action carries trait `voices`
+  (PROGRESSIVE/CONSERVATIVE chime-ins) — that's the Disco identity.
+- Revenue effects (`revenueK`, $ thousands/yr) flow into the budget
+  scoreboard via `PolicyPanel.setExternal(S.metrics.revenueK)` — call
+  it after EVERY metric change and once on boot, or the chip drifts.
+- One action per week (`S.actionWeek === S.week` gate); week 0 has no
+  action — its move is locking the ≤3-bill agenda (`S.agendaLocked`).
+- The weekly overlay auto-pops only while the week's event is
+  unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
+- Characters are FICTIONAL — never use real legislators' names.
+- Dialogue text is escaped (`esc()`) — keep it that way; content JSON
+  is not trusted HTML.
+
 ## Policies overlay + budget scoreboard (feature 8)
 
 `PolicyPanel` in main.js must init AFTER MoneyPanel: it registers extra
