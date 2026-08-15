@@ -402,7 +402,8 @@ def finish(img):
                         dither=Image.FLOYDSTEINBERG).convert("RGB")
 
 
-def paintify(img, radius=4, strength=0.55, working_scale=2):
+def paintify(img, radius=4, strength=0.55, working_scale=2,
+             soften=None, soften_radius=None, soften_strength=0.6):
     """Nudge a photograph toward PAINTED, not just colour-graded.
 
     Requires opencv-contrib (`pip3 install opencv-contrib-python-headless`
@@ -423,7 +424,19 @@ def paintify(img, radius=4, strength=0.55, working_scale=2):
     stroke SHAPE while letting photographic detail show through, which
     is what "mild painterly" actually means. Radius 4 + strength ~0.5
     is a light touch; strength 1.0 at radius 8 is the full poster-paint
-    effect, which flattens far too much for this use."""
+    effect, which flattens far too much for this use.
+
+    `soften` is a box (x0, y0, x1, y1) in FRACTIONS OF THIS FRAME that
+    gets a much heavier pass of the SAME brush, feathered in through an
+    ellipse. It exists for the one case the house "no faces in focus"
+    rule cannot dodge: a named character who has to be looking at the
+    player. Painting the face harder is not the same as blurring it —
+    blur reads as a redaction bar and destroys the head/shoulder
+    separation the figure depends on, whereas a bigger brush keeps the
+    features' PLACEMENT and light while dissolving the identity, which
+    is what the rest of the banner is already doing to every crowd
+    figure. Feather radius is tied to the box width so it scales with
+    however big the face lands in frame."""
     import cv2
 
     ow, oh = W * DISPLAY, H * DISPLAY
@@ -433,11 +446,34 @@ def paintify(img, radius=4, strength=0.55, working_scale=2):
     out = Image.fromarray(cv2.cvtColor(painted, cv2.COLOR_BGR2RGB))
     if strength < 1.0:
         out = Image.blend(work, out, max(0.0, strength))
+
+    if soften:
+        # judged against the frame, like `radius` itself: the brush has
+        # to be a real fraction of the FACE, not of the photograph
+        fw, fh = work.size
+        x0, y0, x1, y1 = (f * d for f, d in zip(soften, (fw, fh, fw, fh)))
+        r = soften_radius or max(radius * 2, int((x1 - x0) * 0.07), 6)
+        heavy = cv2.xphoto.oilPainting(bgr, r, 1)
+        heavy = Image.fromarray(cv2.cvtColor(heavy, cv2.COLOR_BGR2RGB))
+        # peak alpha BELOW 1 is what keeps this a face. Composited at
+        # full strength the brush does not soften the features, it
+        # deletes them — the head goes to a blank oval, which is more
+        # uncanny than the sharp face was and destroys the silhouette
+        # that makes him read as a person at all. ~0.6 leaves eyes and
+        # mouth as suggestions: placement and light survive, identity
+        # does not.
+        mask = Image.new("L", work.size, 0)
+        ImageDraw.Draw(mask).ellipse([x0, y0, x1, y1],
+                                     fill=int(255 * soften_strength))
+        mask = mask.filter(ImageFilter.GaussianBlur((x1 - x0) * 0.24))
+        out = Image.composite(heavy, out, mask)
+
     return out.resize((ow, oh), Image.LANCZOS)
 
 
 def from_photo(path, center=0.42, grade=None, colors=None, paint=None,
-              dither=None, noise=None, paint_strength=0.55):
+              dither=None, noise=None, paint_strength=0.55, soften=None,
+              soften_radius=None, soften_strength=0.6):
     """Bring a PHOTOGRAPH into the banner style.
 
     The procedural scenes below can nail perspective but cannot paint;
@@ -463,7 +499,11 @@ def from_photo(path, center=0.42, grade=None, colors=None, paint=None,
     the stylisation that made the procedural version look wrong — and
     when painted, oilPainting is already doing most of that work.
     `center` picks which horizontal band of the source survives the
-    letterbox crop (0 = top, 1 = bottom)."""
+    letterbox crop (0 = top, 1 = bottom).
+
+    `soften` is given in fractions of the SOURCE photograph and mapped
+    through the crop here, so that pointing at a face is a fact about
+    the photo and survives any later change to `center`."""
     if grade is None:
         grade = 0.05 if paint else 0.16
     heavy = bool(paint) and paint_strength >= 0.85
@@ -488,7 +528,13 @@ def from_photo(path, center=0.42, grade=None, colors=None, paint=None,
     x0 = (src.width - cw) // 2
     y0 = int(round((src.height - ch) * min(1.0, max(0.0, center))))
     img = src.crop((x0, y0, x0 + cw, y0 + ch))
-    img = (paintify(img, paint, paint_strength) if paint else
+    if soften:                                # source fractions -> crop
+        sx0, sy0, sx1, sy1 = soften
+        soften = ((sx0 * src.width - x0) / cw, (sy0 * src.height - y0) / ch,
+                  (sx1 * src.width - x0) / cw, (sy1 * src.height - y0) / ch)
+    img = (paintify(img, paint, paint_strength, soften=soften,
+                    soften_radius=soften_radius,
+                    soften_strength=soften_strength) if paint else
            img.resize((OW, OH), Image.LANCZOS))
 
     # a few percent toward the overlay's own ground so the banner sits
@@ -517,6 +563,11 @@ def from_photo(path, center=0.42, grade=None, colors=None, paint=None,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", default="w1-opening", choices=sorted(SCENES))
+    ap.add_argument("--id", metavar="EVENT_ID",
+                    help="output as site/assets/events/<EVENT_ID>.png. "
+                         "Required for a --photo banner of a NEW event: "
+                         "the filename otherwise comes from --scene, "
+                         "which would overwrite an existing banner.")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--preview", type=int, default=0,
                     help="also write a Nx nearest-neighbour preview")
@@ -547,26 +598,48 @@ def main():
                          "this is what makes it look PAINTED rather "
                          "than a colour-graded photo. Needs "
                          "opencv-contrib-python-headless.")
+    ap.add_argument("--soften", metavar="X0,Y0,X1,Y1",
+                    help="--paint: give this box a much heavier pass of "
+                         "the same brush, feathered through an ellipse. "
+                         "Four fractions of the SOURCE photo (0-1). For "
+                         "a named character's face, where the 'no faces "
+                         "in focus' rule cannot be met by turning them "
+                         "away. Blur would read as a redaction bar; a "
+                         "bigger brush dissolves the identity while "
+                         "keeping the features' placement and light.")
+    ap.add_argument("--soften-radius", type=int, default=None,
+                    help="--soften: brush radius for that box (default "
+                         "scales with the box's width)")
+    ap.add_argument("--soften-strength", type=float, default=0.6,
+                    metavar="0-1",
+                    help="--soften: peak opacity of the heavy pass. Keep "
+                         "it BELOW 1: at full strength the brush deletes "
+                         "the features instead of softening them and the "
+                         "head becomes a blank oval.")
     ap.add_argument("--no-dither", action="store_true",
                     help="--photo: skip Floyd-Steinberg (default off "
                          "already when --paint is set)")
     a = ap.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
+    eid = a.id or a.scene
     if a.photo:
         dither = False if a.no_dither else None
+        soften = tuple(float(v) for v in a.soften.split(",")) if a.soften else None
         img = from_photo(a.photo, a.center, a.grade, a.colors, a.paint,
-                         dither=dither, paint_strength=a.paint_strength)
+                         dither=dither, paint_strength=a.paint_strength,
+                         soften=soften, soften_radius=a.soften_radius,
+                         soften_strength=a.soften_strength)
     else:
         img = finish(SCENES[a.scene](random.Random(a.seed)))
-    p = OUT / f"{a.scene}.png"
+    p = OUT / f"{eid}.png"
     img.save(p)
     print(f"wrote {p.relative_to(ROOT)}  {img.width}x{img.height}"
           f"  (design {W}x{H} @{DISPLAY}x)")
 
     if a.preview:
         n = a.preview
-        q = OUT / f"{a.scene}@{n}x.png"
+        q = OUT / f"{eid}@{n}x.png"
         img.resize((img.width * n, img.height * n), Image.NEAREST).save(q)
         print(f"wrote {q.relative_to(ROOT)}  {img.width * n}x{img.height * n}")
 

@@ -243,6 +243,27 @@ Rules that must survive edits:
       busy, which reads as a noisy photo rather than a gentle painting.
       Full strength at radius 8 flattens everything into poster paint —
       it was tried and is far too extreme for this.
+    - **`--soften X0,Y0,X1,Y1` for a named character's FACE.** Four
+      fractions of the SOURCE photo (mapped through the crop in code,
+      so it survives a later `--center` change). It gives that ellipse
+      a heavier pass of the SAME brush, feathered in. Reach for it when
+      the "no faces in focus" rule can't be met by turning the
+      character away — Kawaguchi has to be looking at the player.
+      Do NOT blur instead: blur reads as a redaction bar and eats the
+      head/shoulder silhouette, the same failure the w1 crowd hit.
+      `--soften-strength` must stay BELOW 1 (default 0.6): composited
+      at full opacity the brush doesn't soften the features, it deletes
+      them, and a blank oval is more uncanny than the sharp face was.
+      Radius 6 @ 0.65 over the face INTERIOR (brow to chin, inside the
+      hairline — not the head outline) is the worked example, on
+      `w2-finance-office`.
+    - **A near-monochrome photo needs `--colors 96`, not the 32
+      default.** An adaptive 32-colour palette on a room that is 90%
+      brown wood spends every entry on browns, so smooth wall gradients
+      posterize into blotches that read as artifacts, and the one
+      saturated object in frame (an aloha shirt) goes grey. Both w2
+      banners ship at 96. 32 is only right for a photo whose colours
+      are already spread out.
     - A FULLY painted image (strength ≥ 0.85) has flat colour regions
       that dithering would muddy back toward "filtered photo", so it
       switches to no-dither + a 96-colour palette. A mild blend still
