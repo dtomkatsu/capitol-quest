@@ -1197,6 +1197,7 @@ const SessionPanel = {
     const showDialogue = (dlgId, onDone) => {
       const dlg = data.dialogues[dlgId];
       if (!dlg) { onDone(); return; }
+      overlay.classList.remove("creating");   // a scene is never the select screen
       const renderNode = (nodeId) => {
         const n = dlg[nodeId];
         // no `speaker` = a faceless narrative injection (the campaign,
@@ -1290,8 +1291,166 @@ const SessionPanel = {
       renderNode("start");
     };
 
+    /* ---- creation: SELECT INSTINCTS, Disco archetype-screen style.
+       Six glyph cards instead of three painted archetypes — same 5-point
+       spend underneath (the wiring below targets [data-skill] .skup
+       either way). Symbols are inline SVG, duotone: the pole color via
+       currentColor, one gold accent per glyph (the overlay's #f2c14e).
+       No faces, per the house art rule — the glyphs are the portrait. */
+    const GLYPH = {
+      fiscal:
+        '<svg viewBox="0 0 120 84"><g fill="currentColor">' +
+        '<rect x="16" y="48" width="15" height="24" opacity=".5"/>' +
+        '<rect x="39" y="36" width="15" height="36" opacity=".7"/>' +
+        '<rect x="62" y="22" width="15" height="50" opacity=".9"/>' +
+        "</g>" +
+        '<polyline points="14,54 46,38 72,24 96,13" fill="none" ' +
+        'stroke="#f2c14e" stroke-width="4.5" stroke-linecap="round"/>' +
+        '<circle cx="99" cy="12" r="7" fill="#f2c14e"/></svg>',
+      procedure:
+        '<svg viewBox="0 0 120 84"><path d="M10,74 L110,74 L110,10 ' +
+        'L10,10 L10,58 L94,58 L94,26 L26,26 L26,44 L72,44" fill="none" ' +
+        'stroke="currentColor" stroke-width="5" stroke-linejoin="miter"/>' +
+        '<circle cx="78" cy="44" r="5.5" fill="#f2c14e"/></svg>',
+      educator:
+        '<svg viewBox="0 0 120 84">' +
+        '<path d="M60,66 L18,57 L18,27 L60,36 Z" fill="currentColor" ' +
+        'opacity=".35" stroke="currentColor" stroke-width="4" ' +
+        'stroke-linejoin="round"/>' +
+        '<path d="M60,66 L102,57 L102,27 L60,36 Z" fill="currentColor" ' +
+        'opacity=".65" stroke="currentColor" stroke-width="4" ' +
+        'stroke-linejoin="round"/>' +
+        '<g stroke="#f2c14e" stroke-width="4" stroke-linecap="round">' +
+        '<line x1="60" y1="26" x2="60" y2="8"/>' +
+        '<line x1="41" y1="28" x2="30" y2="12"/>' +
+        '<line x1="79" y1="28" x2="90" y2="12"/></g></svg>',
+      talkstory:
+        '<svg viewBox="0 0 120 84">' +
+        '<rect x="12" y="12" width="58" height="34" rx="9" ' +
+        'fill="currentColor" opacity=".3"/>' +
+        '<path d="M26,44 L20,60 L42,46" fill="currentColor" opacity=".3"/>' +
+        '<rect x="50" y="28" width="58" height="34" rx="9" fill="none" ' +
+        'stroke="currentColor" stroke-width="4.5"/>' +
+        '<path d="M94,61 L100,76 L78,62" fill="none" ' +
+        'stroke="currentColor" stroke-width="4.5" ' +
+        'stroke-linejoin="round"/>' +
+        '<g fill="#f2c14e"><circle cx="56" cy="37" r="3.6"/>' +
+        '<circle cx="66" cy="37" r="3.6"/>' +
+        '<circle cx="76" cy="37" r="3.6"/></g></svg>',
+      mobilizing:
+        '<svg viewBox="0 0 120 84">' +
+        '<rect x="12" y="34" width="10" height="18" rx="2" ' +
+        'fill="currentColor" opacity=".6"/>' +
+        '<path d="M22,36 L22,50 L58,64 L58,22 Z" fill="currentColor" ' +
+        'opacity=".9"/>' +
+        '<g fill="none" stroke-linecap="round">' +
+        '<path d="M68,32 a14,14 0 0 1 0,22" stroke="currentColor" ' +
+        'stroke-width="4.5"/>' +
+        '<path d="M78,24 a24,24 0 0 1 0,38" stroke="currentColor" ' +
+        'stroke-width="4.5" opacity=".65"/>' +
+        '<path d="M88,16 a34,34 0 0 1 0,54" stroke="#f2c14e" ' +
+        'stroke-width="4.5"/></g></svg>',
+      basebuilding:
+        '<svg viewBox="0 0 120 84">' +
+        '<path d="M30,34 A30,26 0 1 1 90,34 L82,38 L38,38 Z" ' +
+        'fill="currentColor" opacity=".45" stroke="currentColor" ' +
+        'stroke-width="4" stroke-linejoin="round"/>' +
+        '<rect x="56" y="34" width="8" height="8" fill="currentColor"/>' +
+        '<line x1="12" y1="42" x2="108" y2="42" stroke="currentColor" ' +
+        'stroke-width="4" stroke-linecap="round"/>' +
+        '<g fill="none" stroke="#f2c14e" stroke-width="4" ' +
+        'stroke-linecap="round">' +
+        '<path d="M60,42 C52,52 40,56 32,64"/>' +
+        '<path d="M60,42 C60,56 59,64 58,72"/>' +
+        '<path d="M60,42 C68,52 80,56 88,64"/>' +
+        '<path d="M56,50 C48,54 44,60 42,70"/>' +
+        '<path d="M64,50 C72,54 76,60 78,70"/></g>' +
+        '<g fill="#f2c14e"><circle cx="32" cy="66" r="4"/>' +
+        '<circle cx="58" cy="74" r="4"/><circle cx="88" cy="66" r="4"/>' +
+        '<circle cx="42" cy="72" r="3"/><circle cx="78" cy="72" r="3"/>' +
+        "</g></svg>",
+    };
+
+    const skSelectHtml = (cap, PO, order) => {
+      let h = '<div class="sk-select">' +
+        '<div class="sk-title">Select instincts</div>' +
+        '<div class="sk-ptchip"><b>' + S.skillPts + "</b> point" +
+        (S.skillPts === 1 ? "" : "s") + " to spend · nothing above " +
+        cap + ' to start</div><div class="skc-grid">';
+      for (const p of order) {
+        for (const k of SK.filter(
+          (q) => (data.skills[q].pole || "bridge") === p)) {
+          const s = data.skills[k];
+          const v = S.skills[k];
+          const at = v >= cap;
+          h += '<div class="skc p-' + p + (at ? " capped" : "") +
+            '" data-skill="' + k + '">' +
+            '<div class="skc-art">' + (GLYPH[k] || "") + "</div>" +
+            '<div class="skc-name">' + esc(s.name) + "</div>" +
+            '<div class="skc-desc">' + esc(s.desc) + "</div>" +
+            '<div class="skc-foot"><span class="skc-pole">' +
+            esc((PO[p] || {}).name || p) + "</span>" +
+            '<span class="skpip">' + v + "</span>" +
+            '<button class="skup" type="button"' +
+            (at ? " disabled" : "") + ">+</button></div></div>";
+        }
+      }
+      return h + "</div></div>";
+    };
+
+    /* ---- creation is its OWN screen, and it comes first. Every entry
+       point into the overlay funnels through renderHub, so one early
+       bail here is what guarantees a fresh campaign opens on SELECT
+       INSTINCTS and nothing else — no intel, no agenda, no event —
+       until the points are spent and Continue is pressed. Bumps
+       re-render THIS screen (preserving scroll); Continue is the only
+       door out, and it stays shut while points remain. */
+    const renderSelect = () => {
+      // `creating` strips the session panel down to nothing but this
+      // screen — week header, timeline, metrics, title chip, close X
+      // and footer caption all go (CSS), and the panel goes full-bleed.
+      // The class is removed in renderHub, which is the only way out.
+      overlay.classList.add("creating");
+      const cap = skStart.creationCap || 4;
+      const PO = data.poles || {};
+      const order = (PO.order || []).filter((p) => PO[p]);
+      const left = S.skillPts;
+      let html = skSelectHtml(cap, PO, order);
+      html += '<button class="sk-begin" id="sk-begin" type="button"' +
+        (left > 0 ? " disabled" : "") + ">" +
+        (left > 0
+          ? "Spend your " + left + " point" + (left > 1 ? "s" : "") +
+            " to continue"
+          : "Continue ▸") + "</button>";
+      const keep = body.scrollTop;         // bumps shouldn't jump the page
+      body.innerHTML = html;
+      body.scrollTop = keep;
+      renderTurnBtn();
+      for (const r of body.querySelectorAll(".skc")) {
+        const up = r.querySelector(".skup");
+        if (!up || up.disabled) continue;
+        const bump = (ev) => {
+          ev.stopPropagation();
+          if (S.skillPts < 1) return;
+          S.skills[r.dataset.skill] += 1;
+          S.skillPts -= 1;
+          save();
+          renderSelect();
+        };
+        up.addEventListener("pointerdown", bump);
+        r.addEventListener("pointerdown", bump);
+      }
+      const go = body.querySelector("#sk-begin");
+      if (go && !go.disabled) go.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        renderHub();
+      });
+    };
+
     /* ---- the week hub */
     const renderHub = () => {
+      if (S.skillPts > 0 && !S.agendaLocked) { renderSelect(); return; }
+      overlay.classList.remove("creating");
       const cal = calFor(S.week);
       const interim = S.week > data.sineDieWeek;
       let html = "";
@@ -1306,9 +1465,12 @@ const SessionPanel = {
       // the week's intel — what the campaign heard, as well as it can hear
       html += intelHtml();
 
-      // your instincts — the six skills every check rolls against
-      const cap = S.skillPts > 0 && !S.agendaLocked
-        ? (skStart.creationCap || 4) : (skStart.cap || 6);
+      // your instincts — the six skills every check rolls against.
+      // Creation never reaches here (renderHub bails to renderSelect
+      // above); the only way skillPts > 0 lands on this sheet is an
+      // old save that locked its agenda with points still unspent, so
+      // the cap is always the campaign cap.
+      const cap = skStart.cap || 6;
       html += '<div class="sh-sec">Your instincts' +
         (S.skillPts ? ' <small>' + S.skillPts + " point" +
           (S.skillPts > 1 ? "s" : "") + " to spend</small>" : "") +

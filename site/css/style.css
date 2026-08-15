@@ -921,6 +921,233 @@ html, body {
   line-height: 1.35;
 }
 
+/* ---------- creation mode: the session overlay becomes ONLY this ----
+   Disco's archetype screen is a screen, not a section of one. While
+   `.creating` is on #session-overlay, every piece of session chrome is
+   gone — the "The Campaign · Week N" chip, the close X, the week
+   header + mini timeline + metrics row, and the footer caption — and
+   the panel goes full-bleed on a near-opaque ground. renderSelect adds
+   the class, renderHub and showDialogue remove it. */
+#session-overlay.creating { background: rgba(4, 7, 20, .97); }
+#session-overlay.creating .ovl-title,
+#session-overlay.creating .ovl-close,
+#session-overlay.creating #sess-head,
+#session-overlay.creating .ovl-foot { display: none; }
+#session-overlay.creating .ovl-panel {
+  /* 880px, not the viewport: three cards across a 1440px monitor makes
+     each one a poster and pushes CONTINUE off the fold */
+  width: min(880px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  padding: 20px 24px 24px;
+  background: none;
+  border: none;
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---------- creation: SELECT INSTINCTS ----------
+   The Disco archetype screen, translated: a stenciled title plate,
+   glyph cards instead of painted portraits (house rule: no faces),
+   the level as a hard black stat box. Condensed heavy caps do the
+   stencil work — no webfont, so lean on Avenir Next Condensed /
+   Arial Narrow and letterspacing. Renders ONLY while creating
+   (points to spend, agenda unlocked); the compact .sk-sheet is the
+   every-other-week view. */
+.sk-select { margin: 14px 0 4px; }
+.sk-title {
+  display: inline-block;
+  padding: 6px 18px 5px;
+  background: #f4f1e8;
+  color: #10131c;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  transform: rotate(-1.2deg);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, .5);
+}
+.sk-ptchip {
+  display: inline-block;
+  margin: 10px 0 2px 10px;
+  padding: 4px 10px;
+  background: #10131c;
+  border: 1px solid rgba(242, 193, 78, .8);
+  color: #d6ddf5;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  transform: rotate(-.6deg);
+}
+.sk-ptchip b { color: #f2c14e; font-size: 13px; }
+.skc-grid {
+  /* fallback on the PARENT so it inherits instead of competing —
+     .p-* and .skc are equal specificity, and a --pole here on .skc
+     would win by source order and paint every card gold (same trap
+     documented at .sk-sheet above) */
+  --pole: #f2c14e;
+  display: grid;
+  /* EXACTLY three, so the six cards break 3+3 — one clean row per
+     pole, wonk over organizer. auto-fill was tried and is wrong here:
+     the creation screen is full-bleed, so the column count tracked the
+     viewport and gave a ragged 5+1 on a wide monitor. */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+@media (max-width: 640px) {
+  .skc-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+.skc {
+  position: relative;
+  min-width: 0;             /* grid items default to auto — a long word
+                                in .skc-desc or .skc-name was forcing
+                                the column past its track and overflowing
+                                the grid horizontally on a 375px phone */
+  display: flex;
+  flex-direction: column;
+  background: #10131c;
+  border: 1px solid rgba(244, 241, 232, .35);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease,
+    border-color .12s ease;
+}
+.skc:hover:not(.capped) {
+  transform: translateY(-3px);
+  border-color: var(--pole);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, .55),
+    0 0 0 1px var(--pole);
+}
+.skc.capped { cursor: default; }
+.skc-art {
+  color: var(--pole);
+  aspect-ratio: 10 / 5.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 30% 0%,
+      color-mix(in srgb, var(--pole) 26%, transparent), transparent 60%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--pole) 14%, #0a0e18),
+      #0a0e18 70%);
+  border-bottom: 2px solid var(--pole);
+}
+.skc-art svg { width: 78%; height: 78%; }
+.skc-name {
+  padding: 7px 8px 5px;
+  background: #05070d;
+  color: #f4f1e8;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+}
+.skc-desc {
+  flex: 1 1 auto;
+  padding: 6px 9px 8px;
+  background: #05070d;
+  color: #cdc9ba;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: center;
+}
+.skc-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  background: #10131c;
+  border-top: 1px solid rgba(244, 241, 232, .18);
+}
+.skc-pole {
+  flex: 1 1 auto;
+  color: var(--pole);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.skc-foot .skpip {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070d;
+  border: 2px solid #f4f1e8;
+  color: #f4f1e8;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.skc.capped .skc-foot .skpip {
+  border-color: var(--pole);
+  color: var(--pole);
+}
+.skc-foot .skup {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: none;
+  border: 2px dashed var(--pole);
+  color: var(--pole);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.skc:hover:not(.capped) .skc-foot .skup {
+  background: color-mix(in srgb, var(--pole) 24%, transparent);
+  border-style: solid;
+}
+.skc-foot .skup:disabled { opacity: .25; cursor: default; }
+/* the CONTINUE plate — the only door out of the select screen, so it
+   sticks to the bottom of the scroller: on a short viewport the cards
+   scroll under it rather than pushing it off the fold */
+.sk-begin {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 11px 0 10px;
+  background: #c2502f;
+  border: 2px solid #f4f1e8;
+  color: #f4f1e8;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .5);
+}
+.sk-begin:hover:not(:disabled) { background: #d95f3a; }
+.sk-begin:disabled {
+  background: #10131c;
+  border-color: rgba(244, 241, 232, .3);
+  color: #8b95bb;
+  box-shadow: none;
+  cursor: default;
+}
+/* sticky needs an opaque run to the panel edge, or cards scrolling
+   under it read through the gap below the plate */
+#session-overlay.creating #sess-body {
+  padding-bottom: 0;
+  scrollbar-width: thin;
+}
+
 /* ---------- the advocate + weekly intel ---------- */
 .adv-card {
   display: flex;

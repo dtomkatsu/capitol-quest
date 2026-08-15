@@ -122,6 +122,44 @@ Rules that must survive edits:
   Organizer/Wonk + voice-picks + capital-wallet sketch, deleted —
   superseded by these decisions; its intel bands moved into
   session.json).
+- **Creation is its OWN screen and it comes FIRST** — renderSelect
+  (skSelectHtml + GLYPH in main.js, `.sk-select`/`.creating` CSS), the
+  Disco archetype-screen treatment: glyph cards, nothing else visible,
+  a CONTINUE plate (`.sk-begin`) disabled until every point is spent.
+  "Its own screen" means the session overlay's OWN CHROME disappears
+  too, not just the hub content below it — a `.creating` class on
+  `#session-overlay` (added by renderSelect, removed by renderHub and
+  showDialogue) hides the "The Campaign · Week N" title chip, the
+  close X, the week/timeline/metrics header and the footer caption via
+  CSS, and the panel goes borderless and full-bleed on a near-opaque
+  ground. A version that only cleared `#sess-body` still had the week
+  chip and header showing through — that's a section of the hub, not a
+  screen; don't regress to that.
+  The gate is ONE early bail at the top of renderHub (`skillPts > 0 &&
+  !agendaLocked` → renderSelect) — every entry point (boot auto-open,
+  Session tab, HUD timeline, turn chip) already funnels through
+  renderHub, so don't add per-entry checks; don't remove the bail
+  thinking it's redundant, it IS the whole flow. Card bumps re-render
+  the select screen preserving scrollTop. Every other week keeps the
+  compact `.sk-sheet`.
+  Glyphs are inline SVG, duotone: body in the pole color via
+  currentColor, ONE gold #f2c14e accent each (the trend line, the
+  maze's goal dot, the root-tip leader nodes). No faces, same as the
+  banners.
+  Layout is a FIXED 3-column grid (`repeat(3, 1fr)`, 2 under 640px),
+  not `auto-fill` — the screen is full-bleed now, so a viewport-tracked
+  column count gave a ragged 5+1 on a wide monitor instead of the
+  intended 3+3 (one row per pole, wonk over organizer). The `--pole`
+  fallback must live on `.skc-grid`, not `.skc` (equal specificity
+  with `.p-*`, so a default on the card wins by source order and
+  paints every card gold — same trap documented at `.sk-sheet`). Every
+  `.skc` needs `min-width: 0` — grid items default to auto-sized by
+  their content, and without it a long description forces its column
+  past the track and overflows the grid horizontally; hit this once on
+  a 375px phone. CONTINUE is `position: sticky; bottom: 0` inside the
+  scrolling `#sess-body`, so a short viewport scrolls cards under a
+  reachable button instead of pushing it off the fold. The whole card
+  is a tap target, not just the + box.
 - **Skills are chosen at week 1 (Opening Day) and honed by doing**
   (`train()` in main.js): every action names the skill it exercises
   (session.json `trains`; the bill-push action exercises Procedure)
