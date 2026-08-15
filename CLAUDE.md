@@ -140,8 +140,9 @@ Rules that must survive edits:
   Session tab, HUD timeline, turn chip) already funnels through
   renderHub, so don't add per-entry checks; don't remove the bail
   thinking it's redundant, it IS the whole flow. Card bumps re-render
-  the select screen preserving scrollTop. Every other week keeps the
-  compact `.sk-sheet`.
+  the select screen preserving scrollTop. The compact `.sk-sheet` now
+  lives on the Instincts toolbar tab (see the 2026-08-15 bullets
+  below), not on the weekly hub.
   Glyphs are inline SVG, duotone: body in the pole color via
   currentColor, ONE gold #f2c14e accent each (the trend line, the
   maze's goal dot, the root-tip leader nodes). No faces, same as the
@@ -224,12 +225,15 @@ Rules that must survive edits:
   `v-cons` CSS) — it read as the player having a preassigned ideology
   rather than the player's own instincts arguing with each other. The
   Disco identity is now carried by skill voices alone.
-- **Only two named individuals exist as dialogue speakers**: Kawaguchi
-  (House money chair) and Grange (lobbyist) — external actors the
-  player negotiates or contends with. A third character, **Souza**
-  (Senate money chair), is named but never speaks and has no talk slot:
-  w3-souza is entirely his scheduler, his committee members and a
-  closed door. That asymmetry is the content, not an omission — House
+- **Named dialogue speakers are the two EXTERNAL actors** — Kawaguchi
+  (House money chair) and Grange (lobbyist), people the player
+  negotiates or contends with — **plus the player's own two
+  introducers**, Rep. X and Sen. X (see the introducers section below;
+  a bill carries a member's name in the real world, so they are the one
+  documented exception to the faceless-campaign rule). A further
+  character, **Souza** (Senate money chair), is named but never speaks
+  and has no talk slot: `w4-souza` is entirely his scheduler, his
+  committee members and a closed door. That asymmetry is the content, not an omission — House
   money you can catch in a breezeway, Senate money you cannot — so do
   not "finish" him by adding a talk-souza. Both chairs are ALSO named
   in `chairs.json` (`h-fin`, `s-wam`, linked back by `char`); renaming
@@ -382,20 +386,90 @@ Rules that must survive edits:
 - Revenue effects (`revenueK`, $ thousands/yr) flow into the budget
   scoreboard via `PolicyPanel.setExternal(S.metrics.revenueK)` — call
   it after EVERY metric change and once on boot, or the chip drifts.
-- One action per week (`S.actionWeek === S.week` gate). There is no
-  week 0 — the session starts at week 1 (Opening Day), whose calendar
-  entry carries `agenda: true` so the same turn also locks the ≤3-bill
-  agenda (`S.agendaLocked`) that lined-up members will introduce.
+- **Talk story and actions are OPENINGS the week's event grants — NOT
+  a weekly allowance** (changed 2026-08-15, user's call). Nothing is
+  owed to the player: an unplayed event means a hub with no talk rows
+  and no action rows at all. An event dialogue carries
+  `unlocks: {talks: {charId: dialogueId}, actions: [actionId]}`, applied
+  once when the event completes (`runEvent` → `grantUnlocks`); a
+  CHOICE may also carry `effects.unlock` in the same shape, so how a
+  scene goes decides which doors open. Action id `"push"` opens the
+  work-the-chair rows. A calendar entry may still hard-wire `talks` /
+  `actions` for a scripted week, merged on top of the event's grants.
+  Rules that must survive edits:
+  - `S.unlocks` is `{week, talks, actions}` and is PER-WEEK — a stale
+    `week` reads as nothing open, so advancing the turn closes every
+    door automatically. Don't add a "carry over unused openings" path;
+    an opening expiring is the mechanic.
+  - `data.talkDefaults` is GONE, and `calFor` no longer falls back to
+    it. Week 1's old calendar `talks` moved into `w1-opening.unlocks`.
+  - Every generic event must grant SOMETHING or its week is dead air.
+    `renderHub` prints an explicit "the week didn't open any doors"
+    caption when an event grants nothing, so a bare week reads as a
+    closed building rather than a broken render.
+  - The ONE-action-per-week cap still applies on top
+    (`S.actionWeek === S.week`); openings decide WHICH moves exist,
+    the cap decides how many you spend.
+  There is no week 0 — the session starts at week 1 (Opening Day),
+  whose calendar entry carries `agenda: true` so the same turn also
+  locks the ≤3-bill agenda (`S.agendaLocked`) that lined-up members
+  will introduce.
+- **Creation is a TWO-screen funnel** (2026-08-15): SELECT INSTINCTS
+  (`renderSelect`) then the bill package (`renderAgendaSelect`) — both
+  full-bleed `.creating` screens in the same archetype-screen language
+  (stencil title plate, glyph cards, one `.sk-begin` plate out). The
+  hub NEVER shows an agenda picker any more. The gate is the single
+  early bail at the top of renderHub (`!agendaLocked` → skillPts > 0 ?
+  select : agenda); every entry point funnels through renderHub, so
+  don't add per-entry checks. Agenda cards color by direction: raise =
+  gold, invest = green (`.agc` `--pc`), glyphs from SYM by policy id.
+  - **The package screen is itself TWO STEPS** (same day, user's call):
+    step 1 "Choose your priorities" (policies.json `priorities` — ufsm,
+    ctc, retitc), step 2 "Choose how to pay" (`revenue`), with a
+    numbered step rail (`.ag-rail`, clickable), the policy's `who` case
+    ON the card in the reader serif (`.agc-desc` — tooltips don't exist
+    on touch), a sticky running tally of picks (`.ag-tally`) and a
+    back/forward nav plate. The ≤3-bill cap is SHARED across both
+    steps — step 2 can open with the budget already spent, which is
+    the module's argument; don't give each step its own cap.
+    `agendaStep` is view state, deliberately NOT in S: a reload lands
+    on step 1 with picks intact rather than resuming a half-wizard.
+    The mobile `.agc-art` flattening MUST stay after the base rule —
+    a media query adds no specificity, and a copy placed earlier in
+    the file silently lost on source order (found live 2026-08-15).
+  - `retitc` (renewable energy credit expansion) is a MODELED number
+    (~$42M/yr, storage add-on + refundability), not a fiscal note —
+    its `src` says so; replace when a real note exists. Tagged
+    `credit`, so it rides the tax-credit hearing-rate cell.
+- **The instincts sheet is NOT on the week hub** (2026-08-15, user's
+  call): it has its own toolbar tab (`#tb-instincts` → `renderSheet`,
+  toggling via `body.dataset.view === "sheet"`), and the hub only shows
+  the sheet when points are actually spendable (an old save with
+  unspent points). The "The Advocate" identity card was removed from
+  the hub the same day (`data.identity` is now only used by the footer
+  copy). During creation, tb-instincts routes back through renderHub so
+  the funnel stays the only door.
+- **Custom symbols, not stock emoji** (2026-08-15): `SYM`/`sym(id)` at
+  the top of main.js is a monoline 24×24 inline-SVG set drawn in
+  `currentColor`, so a glyph takes the color of the row, pole or metric
+  it sits in (`.sym` in CSS sizes it off the font). Skills, characters,
+  actions, policies (keyed by policy id), metrics and the HUD all route
+  through it; the `icon` keys still in session.json / policies.json are
+  only the fallback for anything unmapped. Add new drawings to `SYM` —
+  never paste an emoji into main.js.
 - The weekly overlay auto-pops only while the week's event is
   unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
   Pinning a scripted event to a week SHIFTS that cycle rather than
-  dropping anything — weeks 2 and 3 got `w2-kawaguchi`/`w3-souza`, so
-  ev-forecast and ev-emergency simply first appear at weeks 7 and 8.
-  Check the whole rotation after pinning a week; a generic that lands
-  only on pinned weeks would vanish from the session entirely.
-- **The scripted opening is weeks 1–3, and it is a chain.** Opening Day
+  dropping anything — weeks 2, 3 and 4 are scripted
+  (`w2-kawaguchi` / `w3-federal` / `w4-souza`), so the six generics run
+  weeks 5–15 at indices 3,4,5,0,1,2,3,4,5,0,1 and all six still appear.
+  **Re-check the whole rotation after pinning a week or adding a
+  generic** (`ev-introducer` made it six on 2026-08-15); a generic that
+  only lands on pinned weeks would vanish from the session entirely.
+- **The scripted opening is weeks 1–4, and it is a chain.** Opening Day
   (the caucus, `kawaguchi-date`) → week 2 the courtesy call in
-  Kawaguchi's office (`souza-intro`) → week 3 failing to reach Souza,
+  Kawaguchi's office (`souza-intro`) → **week 3 `w3-federal`, the HR1
+  safety-net briefing** → week 4 failing to reach Souza (`w4-souza`),
   where `souza-intro` is worth +3 on the hallway roll (58% → 92% at the
   same skills). Flags are the only cross-week memory the engine has —
   there is no node-level `req`/`if`, so a past choice can change a
@@ -412,6 +486,56 @@ Rules that must survive edits:
   Sine Die…) across the session and marks the current week — keep
   `data.calendar` as the single source of both the intel/deadline copy
   and the timeline's waypoints, don't fork a second milestone list.
+  Rebuilt 2026-08-15; four things must not regress:
+  - **The session panel is WIDER than the other overlays on purpose**
+    (`#session-overlay .ovl-panel`, 1040px vs the shared 680px). The
+    strip is a fixed 940px — that width is what keeps eleven milestone
+    labels from colliding — so at 680px only ~634px of it was ever on
+    screen and everything past Second Lateral sat in scroll the player
+    had no reason to know existed. 1040 − 40px panel padding − 32px
+    strip inset clears 940, so a normal window shows Opening Day
+    through Sine Die at once. Narrow windows fall back to scrolling,
+    which is why the 940px floor and the centering logic both stay.
+    The strip also needs its horizontal inset: the first and last dots
+    sit at 0% and 100% and are translated −50%, so their labels
+    overhang the track and "Opening Day" gets shaved without it.
+  - Structure is a scrolling strip (`.stl-scroll`, fixed 940px inner)
+    plus a NON-scrolling readout line (`.stl-read`) under it. Milestone
+    detail goes in the readout, never a floating popover — a popover
+    inside an `overflow-x` box gets sliced — and never `title=`, which
+    is unstyled, slow and nonexistent on touch. Milestones are
+    `<button>`s: hover/focus previews a week, tap pins it, tap again
+    releases (touch has no hover). Their pointerdown MUST
+    stopPropagation or the overlay's backdrop handler closes the panel.
+  - **At rest exactly ONE label is drawn** — `.cur-stage`, the latest
+    milestone at or before the current week (on a milestone week that
+    is the current dot; between milestones it is the phase you are
+    still inside, so week 6 reads "First Lateral"). Eleven labels at
+    once is a wall nobody reads, and the readout already answers "where
+    am I". The rest fade in together on `:hover` or on `.reveal`, which
+    a tap anywhere on the strip toggles — that class exists purely so a
+    phone can read the calendar, since touch has no hover. Animate
+    OPACITY only: `.edge-l`/`.edge-r` override `transform` to anchor the
+    end labels, so a transform-based reveal fights them.
+  - The scroll box needs real vertical PADDING. The old
+    `overflow-y: hidden` on a 46px inner clipped the outer edge of
+    every label and the glow ring on the current dot.
+  - **Centering must bail while the overlay is hidden.** `renderHead`
+    runs on boot, and a `display:none` scroll box reports `clientWidth`
+    0 (just padding), so the centering math wrote a nonsense
+    `scrollLeft` that then stuck — the current week's label sat
+    half-clipped off the left edge. `centerTimeline()` bails under
+    40px and is re-run from `openOverlay()`; same class of bug as the
+    hidden-boot 0×0 canvas in WorldScene. Also set `scrollLeft`
+    directly rather than `scrollIntoView`, which scrolls the overlay
+    (nearest scrollable ancestor) and yanks the whole panel.
+- **`esc()` is for TEXT; attributes need `escA()`.** esc() deliberately
+  leaves quotes alone, and this content is full of dialogue in
+  quotation marks — interpolating it into a `title=` breaks straight
+  out of the attribute. Hit live 2026-08-15 on the introducer strip
+  (chairs.json `voice` opens with a double quote) and it sprayed junk
+  attributes across the element. Every attribute interpolation goes
+  through escA.
 - Characters are FICTIONAL — never use real legislators' names.
 - Dialogue text is escaped (`esc()`) — keep it that way; content JSON
   is not trusted HTML.
@@ -439,6 +563,169 @@ Rules that must survive edits:
   (`S.checks`). Every checked choice needs BOTH `success` and
   `failure` content — a failure that says nothing wastes the mechanic.
   Choices with no `check` key must keep working unchanged.
+
+## Your two introducers (2026-08-15)
+
+The Advocate has no seat, so two members carry the package. Rules:
+
+- **One per chamber, and who is on point is DERIVED from the stage's
+  chamber** (`chairs.json` `stages.*.chamber` → `carrierFor()`), never
+  stored per bill: every module-1 bill runs the same House-first route,
+  so a per-bill introducer field would be duplicated state that drifts.
+  House carries intro/h-fin/h-floor, Senate carries s-wam/s-floor;
+  `conf`/`final` are `"both"` and answer with whichever rapport is
+  higher (both members are in the room by then).
+- **Names are PLACEHOLDERS** — Rep. X / Sen. X, in chairs.json
+  `introducers` with `char` links to session.json `characters`
+  (`rep-x`, `sen-x`), exactly the way chairs link. Renaming one means
+  renaming both files.
+- **They are the ONLY named characters on the player's own side.** The
+  faceless-campaign rule (2026-08-14) covers staff and coalition, not
+  legislators: a bill carries a member's name in the real world and
+  pretending otherwise would teach the wrong thing.
+- **Rapport (0-100) enters the odds ZERO-CENTRED on
+  `gate.introBaseline`**: `(rapport - baseline) / div`, added in
+  `chairOdds` (`introDiv` 400 → ±0.125) and `floorOdds`
+  (`introFloorDiv` 500 → ±0.10). At the starting value the term is
+  exactly 0, so the simulation-calibrated enact-rate bands still hold
+  for a player who never works the relationship — only the swing is
+  new. NEVER simplify this to a plain `rapport/div` term: that pays
+  out at baseline and silently re-tunes every band in the design doc.
+  `floorOdds(bill, sid)` needs the stage id — a call without it drops
+  the carrier's floor edge silently.
+- Effects author as `"rapport": {"house": n, "senate": n}` in any
+  dialogue `effects` block (`applyFx`). State is `S.intro`, seeded by
+  `seedIntroducers()` from chairs.json, so old saves land at baseline.
+- Content: the Opening Day handoff (`w1-opening` node `carriers`),
+  `talk-rep` / `talk-sen`, and the generic event `ev-introducer` (a
+  leadership squeeze on the member, not a favour — rapport buys someone
+  absorbing risk for you). Adding `ev-introducer` made genericEvents 6,
+  which reshuffles the `(week-2) % n` rotation; all six still appear in
+  weeks 4-15 — re-check that if the list changes again.
+- UI: `introStrip()` under the bill ledger (rapport bar + how many
+  bills each is carrying right now) and a "carried by …" clause on
+  every live bill row.
+
+## Legible failure: movement report + post-mortem (2026-08-15)
+
+The gauntlet used to resolve invisibly — a bill went from "alive" to a
+struck-through "never heard" with no account. Now:
+
+- **`chairOddsParts()` is the one source of both the number and its
+  explanation** — it itemises measured floor + every editorial term and
+  `chairOdds()` is a thin wrapper. Never fork a second breakdown; the
+  post-mortem can only stay honest if it reads the same parts list the
+  roll used.
+- **`resolveBills` keeps the DRAW, not just the verdict**: a miss with
+  `draw < hazard × gate.nearFactor` (1.6) records a `near` event —
+  "the chair pulled the file and put it back" — the only time the
+  player ever feels how close "never heard" ran.
+- **`S.moves` = {week, list}** of serialisable movement records
+  (heard/near/diluted/conf/enacted/dead), rendered by `movesHtml()` at
+  the TOP of the hub for one week ("Since you ended the week"), then
+  dropped.
+- **Death snapshots its odds** (`b.death.odds` = the `chairOddsParts`
+  output at the moment of death, plus rolls count and whether it was
+  ever pushed). `postMortem()` renders it: measured floor with n and
+  sessions, each term signed, the final %, and ONE counterfactual line
+  naming the biggest unpulled lever (never worked the chair → the
+  action's +15; low influence → the influence lesson; worked it anyway
+  → "that is the ordinary outcome here"). Snapshot at death, never
+  recompute — the campaign's numbers move on and a recompute would lie.
+  In the ledger it sits behind a "Why it died ▸" toggle; sine die
+  renders it open.
+
+## Dialogue reader = running transcript (2026-08-15)
+
+`showDialogue` no longer replaces content — beats accumulate in
+`.sd-log`, and on every advance `agePast()` marks all prior beats
+`.sd-past` (opacity + grayscale on the WHOLE beat, so colored names dim
+with their text — the one bright block is always "now"). Choices live
+in `.sd-play` under the log: they are UI, not transcript; the picked
+one re-enters the log as YOUR line. Banner art appends as a beat once
+per distinct image (`shownArt`), so a node-level override (w2's
+office) lands mid-scene; only a transcript-opening image bleeds to the
+top edge (`.sd-beat:first-child` rule). `settle()` pins the view to
+the top of the newest beat rather than the bottom of the log, so a
+long beat reads from its start. Continue is deliberately a QUIET
+plate — gold CTAs are reserved for real spends (End Week, Act).
+
+## Animation pass, phase 1 (2026-08-15)
+
+All CSS keyframes + class toggles; the only JS sequencing is the staged
+roll. Rules that must survive edits:
+
+- **The staged roll**: picking a checked choice appends the card in
+  `.rolling` (dice cycling via a 75ms interval, "the dice are out",
+  choice strip EMPTIED so nothing is clickable), then after ~780ms the
+  card is replaced with `rollHtml` (`.settled` — dice land, verdict
+  stamps in via `.sd-stamp`), the scene gets a `wash-ok`/`wash-no`
+  verdict wash, and only THEN do effects apply and the outcome beat
+  append. **Effects apply at settle, not at pick** — the metric cards
+  sit above the scene, and a support tick landing before the stamp
+  spoils the verdict. Boxcars = `.jack` (gold burst), snake eyes =
+  `.snake` (shake); both get an extra beat before the outcome.
+- **Reduced motion is a real path, not a CSS afterthought**: the JS
+  checks `prefers-reduced-motion` at pick time and resolves instantly
+  (old behavior), and one CSS media block kills every animation. Any
+  new animation goes in that block too. Autoplay tests use this path
+  (override matchMedia) so they don't race the tumble.
+- Voices stagger in via inline `animation-delay` from `voiceHtml`
+  (~110ms apart) — the instincts pipe up one after another.
+- One-shot pulses only in content: the near-miss card gets a single
+  amber heartbeat, `hone` fx text one glint. The only loop anywhere is
+  the honing pip's slow glint in the hub — the READER never loops
+  (the grey-past/bright-now contrast needs stillness).
+
+Phase 2 (same day):
+- **`renderMetrics()` builds the three meters ONCE and updates them in
+  place** (`#sess-metrics[data-built]`). The old version rebuilt the
+  innerHTML on every renderHead, which is why bars snapped and numbers
+  could never count — a freshly inserted element has no previous width
+  to transition from. Changed values count up (`countTo`), bars slide,
+  and the card flashes `bump-up`/`bump-down`, so an fx line in the
+  dialogue and the scoreboard above it read as one system. Do not go
+  back to re-rendering this block.
+- **`countTo` force-lands its final value on a wall-clock timer** as
+  well as rAF: rAF does not fire in a hidden tab and a meter frozen on
+  its OLD number is worse than no animation.
+- Red checks: hover heartbeats (`red-dread`), and committing one adds
+  `.hush` to the scene so the transcript drops to 12% while the dice
+  are out — cleared with the wash. White checks get neither.
+- Post-mortem rows cascade via `:nth-child` delays; `countPm()` runs
+  the final percentage up whenever a card becomes visible (both the
+  death card and the ledger toggle). `display:none → block` restarts
+  the CSS cascade for free.
+- `.mv-row.enacted` gets its own class + one gold sweep — becoming law
+  looked identical to a committee hearing before.
+- Panel bookends: `.leaving` (240ms) before the week beat, `.arriving`
+  on open — but ONLY when the overlay was actually closed, or every
+  re-render would re-animate the frame.
+- **Every `b` rule under `.bill-row .shname` uses the CHILD combinator.**
+  The post-mortem renders inside that `<small>`, so descendant
+  selectors reached its whole odds ledger and repainted it in the
+  dead-bill colours (found live: every term rendered grey-blue, then
+  red). Three rules were fixed; keep the `>` if you touch them.
+
+## Map jobs A + B: the week beat (2026-08-15)
+
+Ending a turn runs THROUGH the map: overlay drops, the camera makes
+one slow move (`WorldScene.weekBeat`, ~1.6s + a 450ms held breath) to
+wherever the new week happens, then the week opens. The map is the
+CLOCK between turns, not scenery behind a panel.
+
+- Target = the incoming event's `at` key (session.json): absent →
+  Capitol; `{island}` → frame the island (ev-emergency → Hawaiʻi);
+  `{island, px:[x,y]}` → a point in that island's BAKE pixels through
+  anchor+scale — the same transform chain as landmarks, never world px.
+  Most events correctly have NO address: the campaign happens at the
+  Capitol. Give one only when the scene genuinely is elsewhere.
+- **The ritual must never strand the game**: `weekBeat` wraps
+  everything in try/onDone-once, and a 4s `setTimeout` fallback fires
+  even if the tween clock is throttled in a hidden tab. `beating`
+  gates `advanceWeek` re-entry (the turn chip is live during the move).
+- After the beat the week ALWAYS opens the overlay (report, event, or
+  hub) — the rhythm is close → travel → open, every turn.
 
 ## The gauntlet: chairs, bills, base rates (feature 11 step 2)
 

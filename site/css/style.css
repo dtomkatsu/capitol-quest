@@ -187,6 +187,23 @@ html, body {
   box-shadow: 0 8px 0 rgba(0,0,0,.35);
 }
 
+/* panel bookends: the week's panel falls away as the camera ritual
+   takes over and rises back when it lands, so overlay and map read as
+   one continuous motion rather than two hard cuts */
+.ovl-panel.leaving {
+  animation: panel-out .24s ease both;
+}
+@keyframes panel-out {
+  to { opacity: 0; transform: translateY(10px) scale(.985); }
+}
+.ovl-panel.arriving {
+  animation: panel-in .26s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
 .ovl-title {
   position: absolute;
   top: -14px; left: 18px;
@@ -482,6 +499,36 @@ html, body {
 .prow.on .pname b { color: #ffe9a8; }
 
 /* ---------- session overlay (turns, dialogues, trait voices) ---------- */
+
+/* custom symbol set (main.js SYM/sym) — monoline SVGs that ride the
+   current text color, replacing stock emoji throughout the campaign UI */
+.sym {
+  width: 1.05em;
+  height: 1.05em;
+  display: inline-block;
+  vertical-align: -0.16em;
+  flex: 0 0 auto;
+}
+
+/* The campaign panel gets its own ground — deeper and duskier than the
+   JRPG-blue money overlays, halfway to the dialogue reader's dark — and
+   its own WIDTH. 1040 is not decoration: the session strip is a fixed
+   940px (that width is what keeps eleven milestone labels from
+   colliding), and at the shared 680px panel only ~634px of it was ever
+   on screen, so everything past Second Lateral sat in scroll the player
+   had no reason to know was there. 1040 − 40px padding − 12px strip
+   padding clears 940, so the whole session is visible at once on a
+   normal window and the strip only scrolls on genuinely narrow ones. */
+#session-overlay .ovl-panel {
+  width: min(1040px, calc(100vw - 28px));
+  background:
+    radial-gradient(120% 70% at 50% -10%,
+      rgba(242, 193, 78, .10), transparent 55%),
+    linear-gradient(165deg, #1b2452 0%, #111740 48%, #0b1030 100%);
+  border-color: #e9e6da;
+  outline-color: #0b1030;
+}
+
 .wk-badge {
   display: inline-block;
   margin-left: 4px;
@@ -493,120 +540,341 @@ html, body {
   text-shadow: none;
 }
 
-#sess-head { margin: 10px 0 4px; }
-#sess-week b {
+#sess-head { margin: 12px 0 4px; }
+
+/* masthead: stamped week plate + title, campaign-poster energy */
+#sess-week {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#sess-week .wk-no {
+  flex: 0 0 auto;
+  min-width: 46px;
+  padding: 4px 8px 5px;
+  text-align: center;
+  background: rgba(0, 0, 0, .35);
+  border: 1.5px solid #f2c14e;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .4);
+  transform: rotate(-1.2deg);
+}
+#sess-week .wk-no small {
+  display: block;
+  color: #d9b356;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#sess-week .wk-no b {
+  display: block;
+  color: #ffe9a8;
+  font-size: 21px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 #000;
+}
+#sess-week .wk-t { min-width: 0; }
+#sess-week .wk-t b {
   display: block;
   color: #ffe9a8;
   font-size: 19px;
+  letter-spacing: .3px;
   text-shadow: 1px 1px 0 #000;
 }
-#sess-week small {
+#sess-week .wk-t small {
+  display: block;
+  margin-top: 1px;
   color: #9fb0e8;
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
 
-.sess-timeline {
+/* The session strip: a horizontally scrolling milestone rail plus a
+   NON-scrolling readout line beneath it. Two things the old version got
+   wrong and this must not regress:
+   (1) the scroll box needs vertical ROOM, not `overflow-y: hidden` — a
+       46px inner clipped the outer edge of every label and the glow
+       ring on the current dot;
+   (2) hover detail lives in the readout, never a floating popover — a
+       popover inside an overflow-x box gets sliced, and `title=` is
+       unstyled, slow, and nonexistent on touch. */
+.sess-timeline { margin: 16px 0 14px; }
+.sess-timeline .stl-scroll {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  margin: 16px 0 22px;
-  padding: 0 4px;
+  /* Vertical: room for labels + the now-dot's glow ring. Horizontal:
+     the first and last dots sit at x=0 and x=100% of the inner track
+     and are translated -50%, so their labels overhang the track on
+     both ends — without this inset the "Opening Day" label is shaved
+     off at the left edge even when nothing is scrolled. */
+  padding: 14px 16px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.22) transparent;
+}
+.sess-timeline .stl-scroll::-webkit-scrollbar { height: 5px; }
+.sess-timeline .stl-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18);
+  border-radius: 3px;
 }
 .sess-timeline .stl-inner {
   position: relative;
-  height: 46px;
-  min-width: 620px;
+  height: 44px;
+  /* 620 was too tight: "Money Committee Week" and "Opening Day" sit two
+     weeks apart and their labels overlapped at the strip's left end.
+     The strip scrolls (renderTimeline centers on the current week), so
+     buying width here costs nothing but reading room. */
+  min-width: 940px;
 }
 .sess-timeline .stl-track {
   position: absolute;
   top: 50%; left: 0; right: 0;
-  height: 2px;
-  background: rgba(255,255,255,.16);
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.13);
   transform: translateY(-50%);
 }
 .sess-timeline .stl-fill {
   position: absolute;
   top: 50%; left: 0;
-  height: 2px;
-  background: #e3b64b;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #8a6a24, #e3b64b 70%, #ffd166);
+  box-shadow: 0 0 10px rgba(227,182,75,.4);
   transform: translateY(-50%);
+  transition: width .35s ease;
 }
 .sess-timeline .stl-m {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  z-index: 1;
+}
+/* a generous invisible hit area — a 7px dot is not a tap target */
+.sess-timeline .stl-hit {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 34px; height: 30px;
+  transform: translate(-50%, -50%);
 }
 .sess-timeline .stl-dot {
   display: block;
-  width: 7px; height: 7px;
+  position: relative;
+  width: 9px; height: 9px;
   margin: 0 auto;
   border-radius: 50%;
-  background: #2a3364;
+  background: #1a2148;
   border: 2px solid #6f7fb8;
+  transition: transform .14s ease, box-shadow .14s ease,
+    background-color .14s ease, border-color .14s ease;
 }
 .sess-timeline .stl-m.past .stl-dot {
-  background: #6f7fb8;
-  border-color: #6f7fb8;
+  background: #8b9bd4;
+  border-color: #8b9bd4;
 }
 .sess-timeline .stl-m.now .stl-dot {
-  width: 9px; height: 9px;
+  width: 13px; height: 13px;
   background: #ffd166;
-  border-color: #ffd166;
-  box-shadow: 0 0 0 4px rgba(255,209,102,.25);
+  border-color: #fff3d0;
+  box-shadow: 0 0 0 5px rgba(255,209,102,.22),
+    0 0 12px rgba(255,209,102,.55);
 }
+.sess-timeline .stl-m:hover .stl-dot,
+.sess-timeline .stl-m.hot .stl-dot,
+.sess-timeline .stl-m:focus-visible .stl-dot {
+  transform: scale(1.45);
+  border-color: #ffe9a8;
+  box-shadow: 0 0 0 5px rgba(255,233,168,.18);
+}
+.sess-timeline .stl-m:focus { outline: none; }
+/* At rest ONLY the current stage is labelled — eleven labels at once is
+   a wall of text nobody reads, and the readout line below already
+   answers "where am I". The rest fade in together on hover (mouse) or
+   on `.reveal`, which a tap sets (touch has no hover). Opacity only:
+   `.edge-l`/`.edge-r` override `transform` to anchor the end labels, so
+   animating transform here would fight them. */
 .sess-timeline .stl-lbl {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 8.5px;
+  font-size: 9px;
+  letter-spacing: .4px;
   line-height: 1.2;
   color: #8fa0d8;
   white-space: nowrap;
+  opacity: 0;
+  transition: opacity .18s ease, color .14s ease;
 }
-.sess-timeline .stl-m.lbl-t .stl-lbl { bottom: 13px; }
-.sess-timeline .stl-m.lbl-b .stl-lbl { top: 13px; }
+.sess-timeline .stl-m.lbl-t .stl-lbl { bottom: 14px; }
+.sess-timeline .stl-m.lbl-b .stl-lbl { top: 14px; }
+.sess-timeline .stl-m.past .stl-lbl { color: #7c88b4; }
+.sess-timeline .stl-m.cur-stage .stl-lbl {
+  opacity: 1;
+  color: #ffe9a8;
+  font-weight: 700;
+}
+.sess-timeline:hover .stl-lbl,
+.sess-timeline.reveal .stl-lbl { opacity: 1; }
 .sess-timeline .stl-m.now .stl-lbl { color: #ffe9a8; font-weight: 700; }
+.sess-timeline .stl-m:hover .stl-lbl,
+.sess-timeline .stl-m.hot .stl-lbl,
+.sess-timeline .stl-m:focus-visible .stl-lbl { color: #fff; }
 .sess-timeline .stl-m.edge-l .stl-lbl { left: 0; transform: none; }
 .sess-timeline .stl-m.edge-r .stl-lbl { left: auto; right: 0; transform: none; }
 .sess-timeline .stl-cursor {
   position: absolute;
   top: 50%;
-  width: 10px; height: 10px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
+  width: 11px; height: 11px;
+  transform: translate(-50%, -50%) rotate(45deg);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(255,255,255,.3);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.22), 0 0 10px rgba(255,255,255,.5);
   z-index: 2;
 }
-
-#sess-metrics {
+/* the readout: one line that answers "what am I looking at" for the
+   current week by default, and for whatever the pointer is over */
+.sess-timeline .stl-read {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-top: 7px;
-  font-size: 11px;
+  gap: 3px 9px;
+  margin-top: 2px;
+  padding: 5px 9px 6px;
+  min-height: 32px;
+  box-sizing: border-box;
+  background: rgba(0,0,0,.2);
+  border-left: 2px solid #e3b64b;
+  border-radius: 5px;
+  transition: border-color .14s ease, background-color .14s ease;
+}
+.sess-timeline .stl-read b {
+  color: #ffe9a8;
+  font-size: 12px;
+  letter-spacing: .3px;
+}
+.sess-timeline .stl-read span {
+  color: #9fb0e8;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+/* previewing another week reads visibly different from "you are here" */
+.sess-timeline .stl-read.preview {
+  background: rgba(255,255,255,.05);
+  border-left-color: #8fa0d8;
+}
+.sess-timeline .stl-read.preview b { color: #eef2ff; }
+
+/* the three campaign meters as cards: icon + label eyebrow + value,
+   support/influence with their fill bars. Same scale, different physics
+   — cards, never one shared balance bar. */
+#sess-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+@media (max-width: 520px) {
+  #sess-metrics { grid-template-columns: 1fr; }
+}
+#sess-metrics .metc {
+  position: relative;
+  min-width: 0;
+  padding: 7px 10px 8px 30px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-left: 3px solid var(--mc, #9fb0e8);
+  border-radius: 8px;
   color: #dfe8ff;
 }
-#sess-metrics .met { white-space: nowrap; }
-#sess-metrics .met b { font-variant-numeric: tabular-nums; }
-#sess-metrics .met .bar {
-  display: inline-block;
-  width: 52px; height: 7px;
-  margin-left: 5px;
-  background: rgba(255,255,255,.14);
-  border-radius: 4px;
-  vertical-align: 1px;
+#sess-metrics .metc > .sym {
+  position: absolute;
+  left: 8px; top: 9px;
+  width: 15px; height: 15px;
+  color: var(--mc, #9fb0e8);
+}
+#sess-metrics .metc .ml {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: #9fb0e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sess-metrics .metc .mv {
+  display: block;
+  margin-top: 1px;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #eef2ff;
+  text-shadow: 1px 1px 0 #000;
+}
+#sess-metrics .metc .bar {
+  display: block;
+  height: 5px;
+  margin-top: 5px;
+  background: rgba(255, 255, 255, .12);
+  border-radius: 3px;
   overflow: hidden;
 }
-#sess-metrics .met .bar i { display: block; height: 100%; }
-#sess-metrics .m-fam .bar i { background: #e3b64b; }
-#sess-metrics .m-rich .bar i { background: #63a6f0; }
-#sess-metrics .m-rev.gain b { color: #7ff0ae; }
-#sess-metrics .m-rev.cost b { color: #ff8d80; }
+#sess-metrics .metc .bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: var(--mc, #9fb0e8);
+  /* the cards are built once and updated in place (renderMetrics), so
+     a width change genuinely transitions instead of snapping */
+  transition: width .55s cubic-bezier(.25, .9, .3, 1);
+}
+#sess-metrics .metc .mv { font-variant-numeric: tabular-nums; }
+/* an effect landing in the dialogue flashes the meter it moved, so the
+   fx line and the scoreboard read as one system */
+#sess-metrics .metc.bump-up   { animation: metc-up .75s ease; }
+#sess-metrics .metc.bump-down { animation: metc-down .75s ease; }
+@keyframes metc-up {
+  0%, 100% { box-shadow: none; }
+  25% { box-shadow: 0 0 0 1px var(--mc), 0 0 20px -4px var(--mc);
+        transform: translateY(-2px); }
+}
+@keyframes metc-down {
+  0%, 100% { box-shadow: none; }
+  25% { box-shadow: 0 0 0 1px #d96a5e, 0 0 18px -6px #d96a5e;
+        transform: translateY(2px); }
+}
+#sess-metrics .m-rev { --mc: #e3b64b; }
+#sess-metrics .m-sup { --mc: #e3b64b; }
+#sess-metrics .m-inf { --mc: #63a6f0; }
+#sess-metrics .m-rev.gain .mv { color: #7ff0ae; }
+#sess-metrics .m-rev.gain { --mc: #59c98b; }
+#sess-metrics .m-rev.cost .mv { color: #ff8d80; }
+#sess-metrics .m-rev.cost { --mc: #d96a5e; }
 
-#sess-body { margin-top: 8px; }
+#sess-body {
+  margin-top: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 241, 232, .25) transparent;
+}
+#sess-body::-webkit-scrollbar { width: 6px; }
+#sess-body::-webkit-scrollbar-thumb {
+  background: rgba(244, 241, 232, .22);
+  border-radius: 3px;
+}
+#sess-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(242, 193, 78, .45);
+}
 
 /* ---------- dialogue view: the Disco Elysium reader ----------
    The rest of the game is a bright pixel-art JRPG panel; the dialogue
@@ -617,14 +885,54 @@ html, body {
    every voice owns a color, and choices are numbered in signal red. */
 .sd-scene {
   --de-ink: #ddd6c6;
-  --de-dim: #9c9584;
+  --de-dim: #97917f;
   margin: 6px -6px 0;
-  padding: 12px 14px 10px;
-  background: rgba(8, 9, 14, .60);
-  border-left: 2px solid rgba(242,193,78,.30);
-  border-radius: 4px;
+  padding: 14px 18px 12px;
+  background:
+    linear-gradient(180deg, rgba(10, 11, 16, .92), rgba(6, 7, 11, .88));
+  border: 1px solid rgba(244, 241, 232, .07);
+  border-left: 2px solid rgba(242, 193, 78, .28);
+  border-radius: 6px;
   font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
     "Times New Roman", serif;
+}
+
+/* ---- the transcript: beats accumulate, the past goes grey ----
+   New beats slide up into place; everything older desaturates and dims
+   TOGETHER (opacity + grayscale on the whole beat), so a colored skill
+   name fades with its line instead of glowing out of a grey page — the
+   one bright block on screen is always "now". */
+.sd-beat { animation: sd-in .32s ease both; }
+@keyframes sd-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+.sd-beat.sd-past {
+  opacity: .48;
+  filter: grayscale(.45);
+  transition: opacity .45s ease, filter .45s ease;
+}
+.sd-beat.sd-past:hover { opacity: .8; filter: grayscale(.15); }
+
+/* choices live under the log in their own strip — UI, not transcript */
+.sd-play { position: relative; }
+
+/* one escape hatch for all of it — the staged roll's JS side checks the
+   same media query and resolves instantly */
+@media (prefers-reduced-motion: reduce) {
+  .sd-beat, .sd-voice, .sd-roll, .sd-roll .die, .sd-roll .sd-stamp,
+  .sd-roll.jack::after, .sd-roll.snake, .sd-scene.wash-ok,
+  .sd-scene.wash-no, .mv-row, .mv-row.near, .sd-fx .hone,
+  .sk-row .skpip.honing::after, .sd-roll.rolling .sd-wait,
+  /* phase 2 */
+  #sess-metrics .metc.bump-up, #sess-metrics .metc.bump-down,
+  .sd-choices button.c-red:not(.spent):hover,
+  .pm-row, .pm-lesson, .mv-row.enacted::after,
+  .ovl-panel.leaving, .ovl-panel.arriving {
+    animation: none !important;
+  }
+  #sess-metrics .metc .bar i { transition: none !important; }
+  .sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
 }
 
 /* event banner — designed at 320x92, SHIPPED pre-upscaled to 640x184 by
@@ -636,7 +944,7 @@ html, body {
    crispness comes from the baked-in nearest upscale, not from this. */
 .sd-art {
   display: block;
-  width: calc(100% + 28px);
+  width: calc(100% + 36px);
   height: auto;
   /* Clamp against the VIEWPORT rather than shipping a shorter file, so
      a short window crops to the middle of the composition instead of
@@ -650,48 +958,78 @@ html, body {
   max-height: 32vh;
   object-fit: cover;
   object-position: center 45%;
-  margin: -12px -14px 11px;
-  border-radius: 3px 3px 0 0;
+  /* beats own their art now: horizontal bleed to the scene edge always,
+     top bleed only when the art opens the whole transcript — a mid-scene
+     banner (w2's office) sits in the flow with breathing room instead */
+  margin: 10px -18px 12px;
+  border-radius: 3px;
+}
+.sd-beat:first-child > .sd-art:first-child {
+  margin-top: -14px;
+  border-radius: 5px 5px 0 0;
 }
 
 /* a spoken line — hanging indent keeps the names in a readable column */
 .sd-said, .sd-voice, .sd-narr {
-  margin: 0 0 11px;
-  padding-left: 18px;
-  text-indent: -18px;
+  margin: 0 0 12px;
+  padding-left: 19px;
+  text-indent: -19px;
   font-size: 14.5px;
-  line-height: 1.52;
+  line-height: 1.6;
   color: var(--de-ink, #ddd6c6);
+  text-rendering: optimizeLegibility;
 }
 .sd-said:last-child, .sd-voice:last-child { margin-bottom: 4px; }
 .sd-who {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: .6px;
+  letter-spacing: 1px;
   color: #f0e3bd;
 }
 .sd-role {
-  font-size: 11.5px;
+  font-size: 11px;
   font-style: italic;
-  color: var(--de-dim, #9c9584);
-  margin-left: 5px;
+  letter-spacing: .2px;
+  color: var(--de-dim, #97917f);
+  margin-left: 6px;
 }
-.sd-dash { color: var(--de-dim, #9c9584); margin: 0 7px; }
-.sd-said.sd-you .sd-who { color: #9ec2e0; }        /* YOU, pale blue */
+.sd-dash { color: var(--de-dim, #97917f); margin: 0 8px; }
+/* YOUR line: cool against the room's warmth, with a hairline lead-in */
+.sd-said.sd-you .sd-who { color: #a9c6e8; }
+.sd-said.sd-you {
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(244, 241, 232, .08);
+}
 .sd-narr { color: #b6afa0; font-style: italic; }   /* unattributed prose */
 
-/* voices: italic body, upright colored name, a rule in the same color */
+/* voices: italic body, upright colored name, a rule in the same color.
+   Each voice re-runs the entrance on its own inline delay (voiceHtml),
+   so the instincts pipe up one after another instead of as a block. */
 .sd-voice {
   font-style: italic;
   margin-left: 2px;
   padding-left: 24px;
   text-indent: -18px;
   border-left: 2px solid currentColor;
+  animation: sd-in .3s ease both;
 }
 .sd-voice b {
   font-style: normal;
   font-size: 12.5px;
   letter-spacing: 1.3px;
+}
+/* symbols inside the dialogue reader: sized off the serif line, and
+   never allowed to force the hanging indent open */
+.sd-voice b .sym, .sd-who .sym { width: 14px; height: 14px; }
+.sd-who .sym { margin-right: 6px; color: var(--de-dim, #9c9584); }
+.sd-roll > b .sym { width: 13px; height: 13px; }
+.sd-roll small .sym { width: 12px; height: 12px; opacity: .8; }
+.sd-fx .sym { width: 13px; height: 13px; }
+.sd-choices button .cmeta .sym {
+  width: 12px; height: 12px;
+  vertical-align: -.15em;
+  margin-right: 3px;
 }
 /* skills speak in their POLE's color — see .p-* below */
 .sd-voice.v-skill { color: var(--de-ink); border-color: var(--pole, #f2c14e); }
@@ -706,40 +1044,48 @@ html, body {
 .sd-choices {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   margin: 14px 0 2px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: 12px;
+  /* the rule between story and options carries a faint gold fade —
+     the strip reads as the machine's edge, not more prose */
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, rgba(242,193,78,.4),
+    rgba(244,241,232,.1) 40%, transparent) 1;
 }
 .sd-choices button {
   display: flex;
   align-items: baseline;
-  gap: 9px;
+  gap: 10px;
   text-align: left;
-  padding: 7px 8px;
+  padding: 8px 10px;
   background: none;
   border: none;
   border-left: 2px solid transparent;
-  border-radius: 3px;
+  border-radius: 4px;
   color: #d9503f;
   font-family: inherit;
   font-size: 14px;
-  line-height: 1.42;
+  line-height: 1.45;
   cursor: pointer;
+  transition: background-color .13s ease, border-color .13s ease,
+    color .13s ease, transform .13s ease;
 }
 .sd-choices button .sd-num {
   flex: 0 0 auto;
   color: #8d8672;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color .13s ease;
 }
 .sd-choices button .sd-lbl { flex: 1 1 auto; min-width: 0; }
 .sd-choices button:hover {
-  background: rgba(216,80,63,.10);
+  background: linear-gradient(90deg, rgba(216,80,63,.14), transparent 75%);
   border-left-color: #d9503f;
-  color: #ff7a63;
+  color: #ff8a72;
+  transform: translateX(2px);
 }
-.sd-choices button:hover .sd-num { color: #d9503f; }
-.sd-choices button:hover { border-color: #f2c14e; color: #ffe9a8; }
+.sd-choices button:hover .sd-num { color: #ff8a72; }
 
 /* ---------- skill checks ---------- */
 /* The odds ride on the button on purpose: the player should watch a
@@ -767,6 +1113,26 @@ html, body {
   content: " · one shot";
   opacity: .75;
 }
+/* dread: hovering a one-shot gives it a slow heartbeat, so the weight
+   of the choice is felt BEFORE it is spent rather than after */
+.sd-choices button.c-red:not(.spent):hover {
+  animation: red-dread 1.3s ease infinite;
+}
+@keyframes red-dread {
+  0%, 100% { border-left-color: rgba(255, 141, 128, .55);
+             background: rgba(255, 141, 128, .05); }
+  50% { border-left-color: #ff8d80;
+        background: rgba(255, 141, 128, .13); }
+}
+/* …and the room goes quiet while its dice are out: the transcript
+   drops back so the only lit thing is the roll you can't take back */
+.sd-scene.hush .sd-log > .sd-beat:not(:last-child) {
+  opacity: .12;
+  filter: grayscale(.8);
+}
+.sd-scene.hush .sd-log > .sd-beat {
+  transition: opacity .35s ease, filter .35s ease;
+}
 .sd-choices button.chk.spent {
   opacity: .45;
   cursor: default;
@@ -780,11 +1146,11 @@ html, body {
 .sd-choices button.chk.spent:hover .sd-num { color: #8d8672; }
 
 .sd-roll {
-  margin: 2px 0 11px 18px;
-  padding: 8px 12px;
-  border-radius: 4px;
+  margin: 2px 0 12px 19px;
+  padding: 9px 13px;
+  border-radius: 5px;
   border-left: 3px solid;
-  background: rgba(0,0,0,.30);
+  background: linear-gradient(90deg, rgba(0,0,0,.42), rgba(0,0,0,.18));
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
 }
 .sd-roll > b {
@@ -805,6 +1171,256 @@ html, body {
 .sd-roll.no { border-color: #ff8d80; }
 .sd-roll.no b { color: #ff8d80; }
 
+/* ---------- the staged roll: tumble → land → stamp ----------
+   While `.rolling`, the two dice cycle and shudder and there is no
+   verdict on screen — that beat of real uncertainty is the point.
+   `.settled` replaces the card: dice slam down, then the verdict
+   stamps in like a rubber stamp. Boxcars (.jack) gets a gold burst,
+   snake eyes (.snake) a shake — rare enough to be loud. */
+.sd-roll .die {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 4px;
+  text-align: center;
+  font-weight: 800;
+  color: #eef2ff;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 4px;
+}
+.sd-roll.rolling { border-color: #b9c4ea; }
+.sd-roll.rolling b { color: #d6ddf5; }
+.sd-roll.rolling .sd-wait {
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: .4px;
+  color: #97917f;
+  animation: wait-breathe 1s ease infinite;
+}
+@keyframes wait-breathe { 50% { opacity: .45; } }
+.sd-roll.rolling .die { animation: die-tumble .38s ease infinite; }
+.sd-roll.rolling .die:last-of-type { animation-delay: .12s; }
+@keyframes die-tumble {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-2.5px) rotate(-8deg); }
+  60% { transform: translateY(1.5px) rotate(6deg); }
+}
+.sd-roll.settled .die {
+  animation: die-land .38s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.sd-roll.settled .die:last-of-type { animation-delay: .07s; }
+@keyframes die-land {
+  from { transform: scale(1.7) rotate(10deg); opacity: .3; }
+  to   { transform: none; opacity: 1; }
+}
+.sd-roll .sd-stamp {
+  display: inline-block;
+  letter-spacing: 1.8px;
+}
+.sd-roll.settled .sd-stamp {
+  animation: stamp-in .34s cubic-bezier(.2, 1.5, .4, 1) .22s both;
+}
+@keyframes stamp-in {
+  0%   { transform: scale(2) rotate(-7deg); opacity: 0; }
+  60%  { transform: scale(.93) rotate(1.5deg); opacity: 1; }
+  100% { transform: none; }
+}
+.sd-roll .sd-spec {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  opacity: .85;
+}
+.sd-roll.jack { position: relative; overflow: hidden; }
+.sd-roll.jack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(70% 130% at 22% 50%,
+    rgba(242, 193, 78, .38), transparent 70%);
+  animation: jack-burst 1s ease .25s both;
+}
+@keyframes jack-burst {
+  0%   { opacity: 0; transform: scale(.4); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+.sd-roll.snake { animation: snake-shake .5s ease .2s both; }
+@keyframes snake-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+/* the verdict washes over the whole scene — success breathes warm,
+   failure drains the color out for a blink */
+.sd-scene.wash-ok { animation: wash-ok .85s ease; }
+@keyframes wash-ok {
+  0%   { box-shadow: inset 0 0 0 rgba(127, 240, 174, 0); }
+  30%  { box-shadow: inset 0 0 48px rgba(127, 240, 174, .17);
+         border-left-color: rgba(127, 240, 174, .75); }
+  100% { box-shadow: inset 0 0 0 rgba(127, 240, 174, 0); }
+}
+.sd-scene.wash-no { animation: wash-no .75s ease; }
+@keyframes wash-no {
+  0%, 100% { filter: none; }
+  25% { filter: grayscale(.6) brightness(.9);
+        box-shadow: inset 0 0 44px rgba(255, 141, 128, .15);
+        border-left-color: rgba(255, 141, 128, .7); }
+}
+
+/* ---------- weekly movement report + the post-mortem ----------
+   "Since you ended the week" leads the hub: heard/near/diluted/dead,
+   each a left-ruled card in the verdict's color. The post-mortem under
+   a death itemises the odds as they stood — the module's central
+   lesson, rendered as arithmetic the player can argue with. */
+.mv-row {
+  margin: 0 0 6px;
+  padding: 8px 12px 9px;
+  background: rgba(0, 0, 0, .22);
+  border-left: 3px solid #8fa0d8;
+  border-radius: 7px;
+  animation: sd-in .3s ease both;
+}
+.mv-row.won  { border-left-color: #7ff0ae; }
+.mv-row.near {
+  border-left-color: #ffb43a;
+  /* the near-miss gets one amber heartbeat as it lands — the week's
+     most emotional news, one pulse, then still */
+  animation: sd-in .3s ease both, near-pulse 1.1s ease .35s 1;
+}
+@keyframes near-pulse {
+  0%, 100% { background: rgba(0, 0, 0, .22); }
+  35% { background: rgba(255, 180, 58, .14); border-left-color: #ffd166; }
+}
+.mv-row.dead { border-left-color: #ff8d80; }
+/* a bill becoming law is the rarest event in the game — one gold sweep
+   across the card, once, and then it behaves like everything else */
+.mv-row.enacted {
+  position: relative;
+  overflow: hidden;
+}
+.mv-row.enacted::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%,
+    rgba(255, 233, 168, .30) 50%, transparent 65%);
+  animation: enact-sweep 1.5s ease .3s 1;
+}
+@keyframes enact-sweep {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(110%); }
+}
+.mv-row > b {
+  display: block;
+  color: #eef2ff;
+  font-size: 12.5px;
+}
+.mv-row .mv-what {
+  margin-left: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.mv-row.won  .mv-what { color: #7ff0ae; }
+.mv-row.near .mv-what { color: #ffb43a; }
+.mv-row.dead .mv-what { color: #ff8d80; }
+.mv-row > small {
+  display: block;
+  margin-top: 2px;
+  color: #a8b4dd;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.pm {
+  margin-top: 8px;
+  padding: 8px 10px 9px;
+  background: rgba(0, 0, 0, .28);
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+/* the cascade: rows arrive top to bottom so the arithmetic reads as an
+   argument being built, and the final percentage counts up to meet it.
+   display:none → block restarts these for free on the ledger toggle. */
+.pm-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2.5px 0;
+  font-size: 10.5px;
+  color: #c3cdf0;
+  animation: pm-in .34s ease both;
+}
+@keyframes pm-in {
+  from { opacity: 0; transform: translateX(-7px); }
+  to   { opacity: 1; transform: none; }
+}
+.pm-row:nth-child(1) { animation-delay: .04s; }
+.pm-row:nth-child(2) { animation-delay: .12s; }
+.pm-row:nth-child(3) { animation-delay: .20s; }
+.pm-row:nth-child(4) { animation-delay: .28s; }
+.pm-row:nth-child(5) { animation-delay: .36s; }
+.pm-row:nth-child(6) { animation-delay: .44s; }
+.pm-row:nth-child(7) { animation-delay: .52s; }
+.pm-row:nth-child(8) { animation-delay: .60s; }
+.pm-lesson { animation: pm-in .4s ease .68s both; }
+.pm-row span { min-width: 0; }
+.pm-row b { flex: 0 0 auto; color: #eef2ff; font-size: 11px; }
+.pm-row.gain b { color: #7ff0ae; }
+.pm-row.cost b { color: #ff8d80; }
+.pm-row small {
+  flex-basis: 100%;
+  color: #8b95bb;
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+.pm-row.pm-base, .pm-row.pm-final {
+  flex-wrap: wrap;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, .09);
+  margin-bottom: 3px;
+}
+.pm-row.pm-final {
+  border-bottom: none;
+  border-top: 1px solid rgba(255, 255, 255, .09);
+  margin: 3px 0 0;
+  padding-top: 5px;
+}
+.pm-row.pm-base b, .pm-row.pm-final b { color: #ffe9a8; font-size: 12px; }
+.pm-lesson {
+  margin-top: 7px;
+  padding: 7px 9px;
+  background: rgba(242, 193, 78, .07);
+  border-left: 2px solid #e3b64b;
+  border-radius: 4px;
+  color: #e8dfc4;
+  font-size: 10.5px;
+  line-height: 1.55;
+  font-style: italic;
+}
+.pm-tgl {
+  display: inline-block;
+  margin-left: 8px;
+  color: #9fb0e8;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pm-tgl:hover { color: #ffe9a8; }
+.pm-body { display: block; }
+.pm-body.hidden { display: none; }
+
 /* ---------- bill ledger + sine die score ---------- */
 .bill-row {
   display: flex;
@@ -815,7 +1431,23 @@ html, body {
 }
 .bill-row:last-child { border-bottom: none; }
 .bill-row .shname { flex: 1 1 auto; min-width: 0; }
-.bill-row .shname b { display: block; color: #eef2ff; font-size: 12.5px; }
+/* Every `b` rule in this block uses the CHILD combinator on purpose.
+   The post-mortem card renders INSIDE .shname's <small>, so a
+   descendant selector here silently restyles its whole odds ledger —
+   it painted every term in the dead-bill grey, turned the +/- values
+   into blocks and flattened their sizes. Keep the `>`. */
+.bill-row .shname > b { display: block; color: #eef2ff; font-size: 12.5px; }
+/* …but the bill NAME is the only block-level b here. The status line
+   under it carries inline <b>s (the deadline, the death cause), and the
+   rule above was breaking each onto its own line — invisible while the
+   line was short, obvious once the carrier and chair joined it. The
+   intel rows have carried the same fix since they were written. */
+/* CHILD combinator, not descendant: the post-mortem card nests inside
+   this same <small>, and a descendant selector reaches every <b> in it
+   — which silently repainted the whole odds ledger in the death colour
+   and flattened its font sizes. Both rules here mean the status line's
+   OWN bolds (deadline, cause), nothing deeper. */
+.bill-row .shname small > b { display: inline; font-size: inherit; }
 .bill-row .shname small { display: block; color: #a8b4dd; font-size: 10.5px; line-height: 1.4; }
 .bill-row .bstat {
   flex: 0 0 auto;
@@ -826,10 +1458,10 @@ html, body {
 }
 .bill-row .shname small .dl-soon,
 .sh-row .shname small .dl-soon { color: #ffb43a; }
-.bill-row.dead .shname b { color: #9fb0e8; text-decoration: line-through; }
-.bill-row.dead .shname small b { color: #ff8d80; text-decoration: none; }
+.bill-row.dead .shname > b { color: #9fb0e8; text-decoration: line-through; }
+.bill-row.dead .shname small > b { color: #ff8d80; text-decoration: none; }
 .bill-row.dead .bstat { color: #ff8d80; }
-.bill-row.won .shname b { color: #7ff0ae; }
+.bill-row.won .shname > b { color: #7ff0ae; }
 .bill-row.won .bstat { color: #7ff0ae; }
 
 .sess-score {
@@ -906,14 +1538,38 @@ html, body {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-/* mid-practice: the box is filling in, one more week of this buys the pip */
+/* mid-practice: the box is filling in, one more week of this buys the
+   pip — a slow glint sweeps it so "in progress" reads at a glance */
 .sk-row .skpip.honing {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(to top,
     color-mix(in srgb, var(--pole) 40%, transparent) 50%,
     rgba(0,0,0,.25) 50%);
 }
+.sk-row .skpip.honing::after {
+  content: "";
+  position: absolute;
+  top: -40%; bottom: -40%; left: -70%;
+  width: 55%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent,
+    rgba(255, 233, 168, .4), transparent);
+  animation: pip-glint 3s ease 1.2s infinite;
+}
+@keyframes pip-glint {
+  0%   { left: -70%; }
+  35%, 100% { left: 130%; }
+}
 .sk-row .skname { flex: 1 1 auto; min-width: 0; }
-.sk-row .skname b { display: block; color: #eef2ff; font-size: 12px; }
+.sk-row .skname b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #eef2ff;
+  font-size: 12px;
+}
+.sk-row .skname b .sym { width: 14px; height: 14px; color: var(--pole); }
 .sk-row .skname small {
   display: block;
   color: #a8b4dd;
@@ -1148,26 +1804,343 @@ html, body {
   scrollbar-width: thin;
 }
 
-/* ---------- the advocate + weekly intel ---------- */
-.adv-card {
+/* ---------- creation screen two: BUILD YOUR PACKAGE ----------
+   Two steps — priorities, then how you pay for them — in the same
+   plate-and-cards language as SELECT INSTINCTS. The accent color comes
+   from what the bill DOES: raise (gold) or invest (green), the same
+   directions the scoreboard uses. */
+
+/* step rail: numbered plates joined by a rule, the current one lit */
+.ag-rail {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  margin: 6px 0 2px;
-  padding: 8px 12px;
-  background: rgba(242,193,78,.08);
-  border-left: 4px solid #f2c14e;
+  margin-bottom: 14px;
+}
+.ag-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  opacity: .5;
+  transition: opacity .12s ease;
+}
+.ag-step.now { opacity: 1; }
+.ag-step.past { opacity: .8; }
+.ag-step:hover { opacity: 1; }
+.ag-step + .ag-step::before {
+  content: "";
+  width: 34px;
+  height: 1px;
+  margin-right: 3px;
+  background: rgba(244, 241, 232, .35);
+}
+.ag-num {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070d;
+  border: 1.5px solid rgba(244, 241, 232, .5);
+  color: #f4f1e8;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ag-step.now .ag-num {
+  background: #f2c14e;
+  border-color: #fff;
+  color: #10131c;
+}
+.ag-step.past .ag-num { border-color: #f2c14e; color: #f2c14e; }
+.ag-lbl {
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #d6ddf5;
+}
+.ag-step.now .ag-lbl { color: #ffe9a8; }
+.ag-lede {
+  max-width: 62ch;
+  margin: 10px 0 0;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #b9c4ea;
+}
+
+.agc-grid {
+  --pc: #f2c14e;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+@media (max-width: 640px) {
+  .agc-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+@media (max-width: 420px) {
+  .agc-grid { grid-template-columns: 1fr; }
+}
+.agc {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #10131c;
+  border: 1px solid rgba(244, 241, 232, .35);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease,
+    border-color .12s ease;
+}
+.agc.gain { --pc: #f2c14e; }
+.agc.cost { --pc: #59c98b; }
+.agc:hover:not(.full) {
+  transform: translateY(-3px);
+  border-color: var(--pc);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, .55), 0 0 0 1px var(--pc);
+}
+.agc.on {
+  border-color: var(--pc);
+  box-shadow: 0 0 0 1px var(--pc), 0 6px 18px rgba(0, 0, 0, .55);
+}
+.agc.full { opacity: .45; cursor: default; }
+.agc-art {
+  color: var(--pc);
+  aspect-ratio: 10 / 4.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 30% 0%,
+      color-mix(in srgb, var(--pc) 24%, transparent), transparent 60%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--pc) 13%, #0a0e18), #0a0e18 70%);
+  border-bottom: 2px solid var(--pc);
+}
+.agc-art .sym { width: 44px; height: 44px; }
+/* At one column the art band spans the full card width, so its aspect
+   ratio turns into ~140px of empty gradient above every card. This
+   override MUST sit after the base `.agc-art` rule: a media query adds
+   no specificity, so the copy of this that lived up beside the
+   `.agc-grid` breakpoints was silently losing to the base rule on
+   source order alone. */
+@media (max-width: 420px) {
+  .agc-art { aspect-ratio: 10 / 2.4; }
+  .agc-art .sym { width: 34px; height: 34px; }
+}
+.agc-name {
+  padding: 8px 9px 7px;
+  background: #05070d;
+  color: #f4f1e8;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  line-height: 1.25;
+  text-transform: uppercase;
+  text-align: center;
+}
+/* the case for the bill, in the reader's serif — the pick screen is
+   where the player learns what these policies actually are, so the
+   copy belongs on the card rather than in a tooltip no phone can open */
+.agc-desc {
+  flex: 1 1 auto;
+  padding: 7px 10px 8px;
+  background: #05070d;
+  color: #cdc9ba;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.agc-src {
+  padding: 0 10px 9px;
+  background: #05070d;
+  color: #6f7796;
+  font-size: 8.5px;
+  line-height: 1.4;
+  letter-spacing: .2px;
+}
+.agc-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  background: #10131c;
+  border-top: 1px solid rgba(244, 241, 232, .18);
+}
+.agc-kind {
+  flex: 1 1 auto;
+  color: var(--pc);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.agc-amt {
+  color: #f4f1e8;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.agc-pick {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--pc);
+  color: var(--pc);
+  font-size: 13px;
+  font-weight: 800;
+}
+.agc.on .agc-pick {
+  background: var(--pc);
+  border-style: solid;
+  color: #10131c;
+}
+
+/* running package ledger — sticky with the plate so the picks you made
+   on step 1 stay visible while you shop for the money on step 2 */
+.ag-tally {
+  position: sticky;
+  bottom: 52px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 9px 10px;
+  background: #080b14;
+  border: 1px solid rgba(244, 241, 232, .22);
+}
+.agt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.agt .sym { width: 12px; height: 12px; }
+.agt.gain { color: #f2c14e; }
+.agt.cost { color: #59c98b; }
+.ag-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.ag-nav .sk-begin { margin-top: 16px; }
+.ag-back {
+  margin-top: 16px;
+  flex: 0 0 auto;
+  padding: 11px 16px 10px;
+  background: #10131c;
+  border: 2px solid rgba(244, 241, 232, .45);
+  color: #d6ddf5;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .5);
+}
+.ag-back:hover { border-color: #f2c14e; color: #ffe9a8; }
+
+/* ---------- your introducers (the two members carrying the package) */
+.intro-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+@media (max-width: 520px) {
+  .intro-strip { grid-template-columns: 1fr; }
+}
+.introc {
+  min-width: 0;
+  padding: 8px 10px 9px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-left: 3px solid #6f7fb8;
   border-radius: 8px;
 }
-.adv-card b { color: #ffe9a8; font-size: 13px; }
-.adv-card small { color: #b9c4ea; font-size: 10.5px; letter-spacing: .4px; }
+.introc.active { border-left-color: #f2c14e; }
+.introc .ic-top b {
+  display: block;
+  color: #eef2ff;
+  font-size: 12.5px;
+}
+.introc.active .ic-top b { color: #ffe9a8; }
+.introc .ic-top span {
+  display: block;
+  color: #8b95bb;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.introc .ic-bar {
+  height: 5px;
+  margin: 6px 0 5px;
+  background: rgba(255, 255, 255, .12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.introc .ic-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #6f7fb8;
+}
+.introc.active .ic-bar i { background: #e3b64b; }
+.introc .ic-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9.5px;
+  color: #9fb0e8;
+}
+.introc .ic-foot b {
+  color: #eef2ff;
+  font-variant-numeric: tabular-nums;
+}
+.introc .ic-on {
+  color: #ffd166;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.introc .ic-off { color: #6f7796; font-style: italic; }
 
+/* ---------- weekly intel ---------- */
 .intel-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  margin: 0 -8px;
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.intel-row .shname small .sym {
+  width: 12px; height: 12px;
+  vertical-align: -.14em;
+  opacity: .85;
 }
 .intel-row:last-of-type { border-bottom: none; }
 .intel-row .shname { flex: 1 1 auto; min-width: 0; }
@@ -1191,7 +2164,14 @@ html, body {
   line-height: 1.3;
 }
 
-.sd-fx .hone { color: #e3b64b; }
+.sd-fx .hone {
+  color: #e3b64b;
+  animation: hone-glow 1.3s ease .25s 1;
+}
+@keyframes hone-glow {
+  0%, 100% { text-shadow: none; }
+  40% { text-shadow: 0 0 9px rgba(227, 182, 75, .85); color: #ffd166; }
+}
 .sk-row .skup {
   flex: 0 0 auto;
   width: 22px;
@@ -1231,41 +2211,111 @@ html, body {
 }
 .sd-fx .gain { color: #7ff0ae; }
 .sd-fx .cost { color: #ff8d80; }
+/* Continue is navigation, not an action — a quiet full-width plate that
+   reads as "the scene breathes out", not a gold CTA competing with the
+   prose. Gold stays reserved for real spends (End Week, Act). */
 .sd-done {
-  margin-top: 6px;
-  align-self: flex-start;
-  padding: 7px 16px;
-  background: #f2c14e;
-  border: 2px solid #fff;
-  border-radius: 8px;
-  color: #3a2c05;
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 0 8px;
+  background: rgba(244, 241, 232, .04);
+  border: 1px solid rgba(242, 193, 78, .35);
+  border-radius: 5px;
+  color: #e6c35c;
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: .8px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
   cursor: pointer;
+  transition: background-color .13s ease, border-color .13s ease,
+    color .13s ease;
+}
+.sd-done:hover {
+  background: rgba(242, 193, 78, .14);
+  border-color: #f2c14e;
+  color: #ffe9a8;
 }
 
-/* hub view */
+/* ---------- action result view ----------
+   runAction() and the bill push render outside .sd-scene (they are a
+   receipt, not a dialogue), and had no styling at all until 2026-08-15 —
+   they inherited the panel's bare defaults and read as unstyled text. */
+.sd-speaker {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin: 10px 0 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(242, 193, 78, .35);
+}
+.sd-speaker b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffe9a8;
+  font-size: 15px;
+  letter-spacing: .6px;
+  text-shadow: 1px 1px 0 #000;
+}
+.sd-speaker b .sym { width: 17px; height: 17px; color: #f2c14e; }
+.sd-speaker small {
+  color: #9fb0e8;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.sd-text {
+  margin: 8px 0;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #dfe8ff;
+}
+
+/* hub view — section headers carry a gold rule out to the right edge,
+   so the hub reads as a stack of titled plates instead of a wall */
 .sh-sec {
-  margin: 9px 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 5px;
   font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
-  color: #9fb0e8;
+  color: #c8b06a;
+}
+.sh-sec .sym { color: #e3b64b; width: 13px; height: 13px; }
+.sh-sec::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(242,193,78,.45), transparent);
 }
 .sh-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  margin: 0 -8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
+.sh-row:hover { background: rgba(255, 255, 255, .045); }
 .sh-row:last-child { border-bottom: none; }
 .sh-row .shname { flex: 1 1 auto; min-width: 0; }
-.sh-row .shname b { display: block; color: #eef2ff; font-size: 12.5px; }
+.sh-row .shname b {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #eef2ff;
+  font-size: 12.5px;
+}
+.sh-row .shname b .sym { color: #f2c14e; width: 15px; height: 15px; }
 .sh-row .shname small { display: block; color: #a8b4dd; font-size: 10.5px; }
 .sh-row .shgo {
   flex: 0 0 auto;
@@ -1288,23 +2338,39 @@ html, body {
   border-color: rgba(255,255,255,.25);
 }
 .sh-row.done .shname b { color: #9fb0e8; }
+.sh-row.done .shname b .sym { color: #7c88b4; }
 .sh-week-end {
-  margin-top: 12px;
+  margin-top: 14px;
   width: 100%;
-  padding: 9px 0;
-  background: #f2c14e;
+  padding: 11px 0 10px;
+  background: linear-gradient(#f6cd62, #e0a92f);
   border: 2px solid #fff;
   border-radius: 8px;
   color: #3a2c05;
   font-family: inherit;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .38);
 }
-.sh-week-end:disabled { opacity: .45; cursor: default; }
-.sh-agenda-cap { font-size: 10.5px; color: #9fb0e8; margin: 2px 0 4px; }
+.sh-week-end:hover:not(:disabled) {
+  background: linear-gradient(#ffdc7c, #eab73c);
+}
+/* ending the week presses like a stamp — the panel drops away right
+   after, so the press is the first frame of the hand-off to the map */
+.sh-week-end:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, .38);
+}
+.sh-week-end:disabled { opacity: .45; cursor: default; box-shadow: none; }
+.sh-agenda-cap {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #9fb0e8;
+  margin: 4px 0 4px;
+}
 .sh-row .shtag {
   font-variant-numeric: tabular-nums;
   font-weight: 800;

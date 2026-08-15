@@ -19,6 +19,15 @@
    "who": "A $650 refundable credit per keiki aged 0–18. Twelve states already have one; the 2021 federal expansion cut child poverty nearly in half while it lasted.",
    "src": "Hawaiʻi Appleseed proposal ($650/child); cost modeled as $650 × ~284,000 keiki (ACS under-18), before any income cap",
    "tax": "credit"
+  },
+  {
+   "id": "retitc",
+   "name": "Expand the renewable energy tax credit",
+   "icon": "☀️",
+   "amt": 42000,
+   "who": "The rooftop-solar credit (HRS 235-12.5) is only partly refundable, so the households with the highest power bills get the least of it and renters get none. This adds battery storage and makes it fully refundable below the state median income.",
+   "src": "DOTAX Tax Credits Claimed by Hawaii Taxpayers (RETITC runs ~$60-90M/yr recently); MODELED expansion, not the existing credit's cost",
+   "tax": "credit"
   }
  ],
  "revenue": [

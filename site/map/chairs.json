@@ -19,16 +19,46 @@
   },
   "familyTilt": {
    "_note": "EDITORIAL, not measured — same standard as `championed` above: named, small, a judgment call about who a tax family's natural base is, not survey data. Seeds a bill's OWN support/influence away from the campaign's global numbers at introduction: wealth taxes poll well and lack institutional access; GET is the reverse (broad, visible, unpopular — but the lever leadership reaches for precisely because it avoids concentrated opposition); credits and tourism/admin sit closest to the measured hearing-rate story (session's easiest gates). Deltas are added to S.metrics.support/influence at seed time, then clamped 0-100 — they do not touch the measured base rate in baseRate(), which stays untouched by design.",
-   "wealth": { "support": 12, "influence": -10 },
-   "income": { "support": 6, "influence": -6 },
-   "get": { "support": -10, "influence": 6 },
-   "exemption": { "support": 6, "influence": 2 },
-   "credit": { "support": 8, "influence": 8 },
-   "sin": { "support": 4, "influence": -2 },
-   "tourism": { "support": 4, "influence": 6 },
-   "admin": { "support": -4, "influence": 8 },
-   "_default": { "support": 0, "influence": 0 }
-  }
+   "wealth": {
+    "support": 12,
+    "influence": -10
+   },
+   "income": {
+    "support": 6,
+    "influence": -6
+   },
+   "get": {
+    "support": -10,
+    "influence": 6
+   },
+   "exemption": {
+    "support": 6,
+    "influence": 2
+   },
+   "credit": {
+    "support": 8,
+    "influence": 8
+   },
+   "sin": {
+    "support": 4,
+    "influence": -2
+   },
+   "tourism": {
+    "support": 4,
+    "influence": 6
+   },
+   "admin": {
+    "support": -4,
+    "influence": 8
+   },
+   "_default": {
+    "support": 0,
+    "influence": 0
+   }
+  },
+  "introBaseline": 50,
+  "introDiv": 400,
+  "introFloorDiv": 500
  },
  "chairs": {
   "h-fin": {
@@ -80,37 +110,44 @@
   "intro": {
    "label": "Introduced",
    "gate": "auto",
-   "deadline": 2
+   "deadline": 2,
+   "chamber": "house"
   },
   "h-fin": {
    "label": "House Finance",
    "gate": "chair",
-   "deadline": 5
+   "deadline": 5,
+   "chamber": "house"
   },
   "h-floor": {
    "label": "House third reading",
    "gate": "floor",
-   "deadline": 8
+   "deadline": 8,
+   "chamber": "house"
   },
   "s-wam": {
    "label": "Ways and Means",
    "gate": "chair",
-   "deadline": 11
+   "deadline": 11,
+   "chamber": "senate"
   },
   "s-floor": {
    "label": "Senate third reading",
    "gate": "floor",
-   "deadline": 13
+   "deadline": 13,
+   "chamber": "senate"
   },
   "conf": {
    "label": "Conference committee",
    "gate": "conf",
-   "deadline": 15
+   "deadline": 15,
+   "chamber": "both"
   },
   "final": {
    "label": "Final reading",
    "gate": "floor",
-   "deadline": 16
+   "deadline": 16,
+   "chamber": "both"
   }
  },
  "causes": {
@@ -118,5 +155,24 @@
   "voted down": "It got a vote and lost.",
   "died in conference": "The two chambers could not agree on a final version before the deadline.",
   "ran out of clock": "The deadline passed while it was still waiting."
+ },
+ "introducers": {
+  "_note": "YOUR TWO MEMBERS — the people who actually introduce and carry the bills, because the player never can (The Advocate has no seat and no vote). One per chamber: the House introducer files the package and carries it through Finance and House floor; the Senate introducer picks it up at crossover and carries it through Ways and Means and Senate floor. Which one is 'on point' is derived from the STAGE's chamber (stages.*.chamber), never stored per bill — every bill in module 1 runs the same House-first route, so a per-bill introducer field would be duplicated state that can drift. NAMES ARE PLACEHOLDERS (Rep. X / Sen. X) pending the real fictional names; `char` links to session.json characters exactly the way chairs do, so renaming one means renaming both files. RAPPORT is 0-100 and starts at gate.introBaseline: the odds term is ZERO-CENTRED ((rapport - baseline) / div), so a player who never touches the relationship gets EXACTLY the pre-2026-08-15 numbers and the simulation-calibrated enact-rate bands still hold. Only the swing away from baseline is new. Keep it that way — a rapport term that pays out at baseline would silently re-tune every band in the design doc.",
+  "house": {
+   "name": "Rep. X",
+   "chamber": "house",
+   "role": "your House introducer",
+   "char": "rep-x",
+   "rapport": 50,
+   "voice": "\"I'll file it. Filing it is the easy part.\""
+  },
+  "senate": {
+   "name": "Sen. X",
+   "chamber": "senate",
+   "role": "your Senate introducer",
+   "char": "sen-x",
+   "rapport": 50,
+   "voice": "\"It reaches me in April with the House's fingerprints all over it.\""
+  }
  }
 }

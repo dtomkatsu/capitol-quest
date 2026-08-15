@@ -7,20 +7,54 @@
  },
  "intel": {
   "_note": "The weekly intel report. Each FACET is gated by the skill that would really buy it: Talk Story prices the chairs (live scheduling odds — rumor below `band`, honest band at `band`, exact odds + disposition at `exact` — folded in from the retired Whip Count skill 2026-08-14, since reading a chair's real disposition was always the same read as reading a coalition partner's), Procedure reads the clock (deadline warnings before they are one week out), Policy Brain puts the MEASURED hearing rate in print (it is always in the bill tooltip, but tooltips don't exist on touch). Rumor-tier odds are seeded per week+bill and may be off by one band — wrong on purpose; do not 'fix' the noise.",
-  "odds": { "skill": "talkstory", "band": 3, "exact": 5 },
-  "clock": { "skill": "procedure", "warn": 3 },
-  "basis": { "skill": "fiscal", "cite": 3 },
+  "odds": {
+   "skill": "talkstory",
+   "band": 3,
+   "exact": 5
+  },
+  "clock": {
+   "skill": "procedure",
+   "warn": 3
+  },
+  "basis": {
+   "skill": "fiscal",
+   "cite": 3
+  },
   "bands": [
-   { "max": 0.15, "label": "almost no chance", "short": "no shot" },
-   { "max": 0.3, "label": "roughly one in four", "short": "~1 in 4" },
-   { "max": 0.45, "label": "roughly one in three", "short": "~1 in 3" },
-   { "max": 0.6, "label": "a coin flip", "short": "coin flip" },
-   { "max": 1.01, "label": "better than even", "short": "even+" }
+   {
+    "max": 0.15,
+    "label": "almost no chance",
+    "short": "no shot"
+   },
+   {
+    "max": 0.3,
+    "label": "roughly one in four",
+    "short": "~1 in 4"
+   },
+   {
+    "max": 0.45,
+    "label": "roughly one in three",
+    "short": "~1 in 3"
+   },
+   {
+    "max": 0.6,
+    "label": "a coin flip",
+    "short": "coin flip"
+   },
+   {
+    "max": 1.01,
+    "label": "better than even",
+    "short": "even+"
+   }
   ]
  },
  "poles": {
   "_note": "Display grouping for the skill sheet — Disco groups skills under their parent attribute and colors them by it; ours group under the campaign function they serve. Order here is the order they render, and each pole's color lives in CSS as .p-<id>.",
-  "order": ["wonk", "bridge", "organizer"],
+  "order": [
+   "wonk",
+   "bridge",
+   "organizer"
+  ],
   "wonk": {
    "name": "Wonk",
    "sub": "The numbers and the rules"
@@ -100,6 +134,17 @@
    "name": "Check in with the coalition",
    "role": "",
    "icon": "🌺"
+  },
+  "_introducersNote": "rep-x / sen-x are YOUR TWO INTRODUCERS — the members who carry the package, since the player has no seat. They are the only named characters on the player's OWN side; the faceless-campaign rule (2026-08-14) covers staff and coalition, not legislators, because a bill has a member's name on it in the real world and pretending otherwise would teach the wrong thing. NAMES ARE PLACEHOLDERS. Their gameplay record (rapport, chamber, odds terms) lives in chairs.json `introducers`, linked by `char`, exactly the way chairs are.",
+  "rep-x": {
+   "name": "Rep. X",
+   "role": "your House introducer",
+   "icon": "🗳"
+  },
+  "sen-x": {
+   "name": "Sen. X",
+   "role": "your Senate introducer",
+   "icon": "🗳"
   }
  },
  "actions": {
@@ -115,8 +160,18 @@
    "scale": {
     "_note": "Mobilizing turns the SAME rally into a bigger, cheaper one — more support per point of skill, less political cost. Reuses the identical skill/per math as check mods (modOf), just applied to an action's effects instead of a roll.",
     "mods": [
-     { "on": "support", "from": "skill", "id": "mobilizing", "per": 2 },
-     { "on": "influence", "from": "skill", "id": "mobilizing", "per": 3 }
+     {
+      "on": "support",
+      "from": "skill",
+      "id": "mobilizing",
+      "per": 2
+     },
+     {
+      "on": "influence",
+      "from": "skill",
+      "id": "mobilizing",
+      "per": 3
+     }
     ]
    },
    "result": "The rotunda echoes for an hour. A senator's aide films it from the balcony, expressionless. Coverage runs at six and ten.",
@@ -142,7 +197,12 @@
    },
    "scale": {
     "mods": [
-     { "on": "support", "from": "skill", "id": "basebuilding", "per": 2 }
+     {
+      "on": "support",
+      "from": "skill",
+      "id": "basebuilding",
+      "per": 2
+     }
     ]
    },
    "result": "Eleven people in a living room in Kalihi, folding chairs, one whiteboard. Three of them will testify for the first time next month. None of it makes the news.",
@@ -186,13 +246,7 @@
    "title": "Opening Day",
    "phase": "Session",
    "event": "w1-opening",
-   "agenda": true,
-   "talks": {
-    "office": "w0-briefing",
-    "kawaguchi": "w1-kawaguchi",
-    "grange": "w1-grange",
-    "coalition": "talk-coalition"
-   }
+   "agenda": true
   },
   {
    "week": 2,
@@ -202,9 +256,15 @@
   },
   {
    "week": 3,
+   "title": "What Washington Left",
+   "phase": "Session",
+   "event": "w3-federal"
+  },
+  {
+   "week": 4,
    "title": "Money Committee Week",
    "phase": "Session",
-   "event": "w3-souza"
+   "event": "w4-souza"
   },
   {
    "week": 5,
@@ -248,8 +308,8 @@
   "",
   "Opening Day",
   "First Hearings",
+  "What Washington Left",
   "Money Committee Week",
-  "Testimony Piles Up",
   "First Lateral",
   "Floor Votes",
   "Crossover Eve",
@@ -268,27 +328,22 @@
   "ev-emergency",
   "ev-oped",
   "ev-testimony",
-  "ev-potluck"
+  "ev-potluck",
+  "ev-introducer"
  ],
- "talkDefaults": {
-  "office": "talk-office",
-  "kawaguchi": "talk-kawaguchi",
-  "grange": "talk-grange",
-  "coalition": "talk-coalition"
- },
  "sineDieWeek": 16,
  "dialogues": {
   "w0-briefing": {
    "start": {
-    "text": "Ground rules while it's quiet. Each week you get the room — talk to whoever you want — and ONE real move: a rally or a walk through the building. And what you spend your weeks doing, you get better at doing. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
+    "text": "Ground rules while it's quiet. Nothing in this building is owed to you — not a meeting, not a slot, not a microphone. Each week something happens, and the week is whatever that opens: a chair with fifteen minutes, a room worth packing, a door left ajar. When it opens, you get ONE real move — spend it or lose it. And what you spend your weeks doing, you get better at doing. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
     "voices": [
      {
       "t": "procedure",
-      "text": "One move a week. Scarcity. Finally, a mechanic this campaign understands."
+      "text": "No standing appointments. Openings only — and openings expire Friday. Finally, a calendar as honest as the real one."
      },
      {
       "t": "talkstory",
-      "text": "Then never waste it on a week where nobody's watching."
+      "text": "Then read every room fast. The week that opens a door rarely announces which one."
      }
     ],
     "choices": [
@@ -302,26 +357,26 @@
   },
   "w1-opening": {
    "art": "w1-opening",
-   "_note": "Grounded in ~/HawaiiAppleseed/snap-medicaid-timeline (repo dtomkatsu/Hawaii-Appleseed-website, medicaidData/snapData arrays) — federal HR1 SNAP/Medicaid cuts, all already in effect by this session's Jan 2027 start. Figures: SNAP-Ed eliminated 2025-10-01 (-$2.5M/yr); ABAWD work-req age 18-54→18-64 2026-10-01 hits 16,570 adults 55-64 + 10,303 households w/ teens 14-18; Medicaid narrower immigrant eligibility + 6-month (was 12) recert already dropped an est. 1,200-2,400 people. Refresh these if the timeline's data updates.",
+   "_note": "Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.",
    "start": {
-    "text": "Session opens today under weight that wasn't here two years ago. Congress's HR1 already went through the safety net once: SNAP-Ed is gone — over $2.5 million a year the state used to spend on nutrition classes and farmers'-market programs. Work requirements now reach 16,570 adults age 55–64 and 10,300 households with teenagers who were exempt before. On Medicaid, narrower eligibility and twice-yearly recertification have already dropped an estimated 1,200 to 2,400 people from the rolls — not because they stopped qualifying, but because they missed a form. None of that shows up as a federal line item anymore. It shows up here: the Council on Revenues says $9.8 billion in general-fund taxes next year against a $10.6 billion budget. That gap was already there. This session, it has a name.",
+    "text": "Session opens today. Lei on every railing, the koa doors propped wide, somebody's grandmother already asleep in the gallery — and under all of it the arithmetic that will run this building until May. The Council on Revenues says $9.8 billion in general-fund taxes next year against a $10.6 billion budget. Everyone in the rotunda knows that number. Nobody has said out loud yet whose year it comes out of.",
     "voices": [
      {
       "t": "fiscal",
-      "text": "Read the caseload numbers, not just the caseload story. 16,570 and 10,300 are Hawaiʻi's own numbers — DHS ran them, not a national estimate."
+      "text": "Eight hundred million is not a rounding error and it is not a crisis either — it is a choice, and it gets made in about nine weeks."
      },
      {
-      "t": "basebuilding",
-      "text": "Every family that loses coverage over a missed form, not a change in income, just learned exactly how fragile 'eligible' really is. That's an organizing conversation, not just a caseload stat."
+      "t": "talkstory",
+      "text": "Read the room today, not the spreadsheet. Half these people have already decided how this session goes and are waiting to see if you noticed."
      }
     ],
     "choices": [
      {
-      "label": "\"We lead with what Washington already took — SNAP-Ed, the caseload rolls. Then we show how to pay for it.\"",
+      "label": "\"We lead with who pays for it. Frame the gap as a choice, not weather.\"",
       "effects": {
        "support": 4
       },
-      "reply": "The choice sets the terms. The revenue bills aren't optional now — they're how the state answers a cut it didn't vote for.",
+      "reply": "The choice sets the terms. A gap is an accident; a choice has an author — and authors can be asked questions in public.",
       "goto": "presser"
      },
      {
@@ -333,9 +388,9 @@
       "goto": "presser"
      },
      {
-      "label": "Say nothing. Look at the numbers again.",
+      "label": "Say nothing. Watch who talks to whom.",
       "effects": {},
-      "reply": "The numbers do not improve under observation. Pick the package — the calendar won't.",
+      "reply": "Two committee chairs and a lobbyist, in that order, in under a minute. The numbers do not improve under observation, but the room tells you things.",
       "goto": "presser"
      }
     ]
@@ -359,7 +414,8 @@
        "support": 5,
        "influence": -4
       },
-      "reply": "The crowd claps. Upstairs, two office doors close quietly. Grange, at the edge of the steps, writes one word on a legal pad."
+      "reply": "The crowd claps. Upstairs, two office doors close quietly. Grange, at the edge of the steps, writes one word on a legal pad.",
+      "goto": "carriers"
      },
      {
       "label": "\"Cost of living. Discipline. A budget that doesn't wobble.\"",
@@ -367,7 +423,8 @@
        "influence": 5,
        "support": -3
       },
-      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet."
+      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet.",
+      "goto": "carriers"
      },
      {
       "label": "Four minutes of pure aloha — thank everyone, promise nothing.",
@@ -375,7 +432,99 @@
        "support": 1,
        "influence": 1
       },
-      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'"
+      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'",
+      "goto": "carriers"
+     }
+    ]
+   },
+   "unlocks": {
+    "_note": "Opening Day opens the whole ground floor: the scripted week-1 talks (these used to live on the calendar entry) plus a first walk through the building.",
+    "talks": {
+     "office": "w0-briefing",
+     "kawaguchi": "w1-kawaguchi",
+     "grange": "w1-grange",
+     "coalition": "talk-coalition",
+     "rep-x": "talk-rep",
+     "sen-x": "talk-sen"
+    },
+    "actions": [
+     "lobby"
+    ]
+   },
+   "carriers": {
+    "_note": "The bills are already chosen when this plays (agenda lock -> runEvent), so this is the handoff, not a pitch. It exists to put two faces on the sentence 'members carry the bills' before the gauntlet starts.",
+    "text": "Room 312, after the cameras leave. Two members are waiting for you, and between them they are the only reason your package exists as paper rather than opinion. Rep. X will file in the House this week and walk it through Finance. Sen. X gets it in April, if it lives that long, and has read exactly none of it yet. \"So,\" Rep. X says, pulling the introduction forms over, \"whose name goes first, and what do we do when Finance asks us to cut it?\"",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Introduction is the one step that cannot fail. Everything after it can. Use the free step to set the terms."
+     },
+     {
+      "t": "talkstory",
+      "text": "Two members, two chambers, one package — and they have not talked to each other about it once. That is your job now, not theirs."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Both names on both bills. You two are a team before Finance is a problem.\"",
+      "effects": {
+       "rapport": {
+        "house": 6,
+        "senate": 6
+       },
+       "influence": -2
+      },
+      "reply": "Sen. X raises an eyebrow at being volunteered, then signs anyway. It costs you something upstairs — leadership notices members pairing off early — and buys you two people who now have to call each other."
+     },
+     {
+      "label": "\"Rep. X leads. Sen. X, stay clean until crossover.\"",
+      "effects": {
+       "rapport": {
+        "house": 10,
+        "senate": -4
+       },
+       "influence": 2
+      },
+      "reply": "A conventional, competent split. Rep. X takes the weight and the credit. Sen. X gets a package in April with somebody else's fingerprints on it, and remembers that."
+     },
+     {
+      "label": "\"We cut nothing. Tell Finance the number is the bill.\"",
+      "check": {
+       "skill": "basebuilding",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "support",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "talkstory",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Rep. X looks at the forms for a while. \"If I say that in Finance, I own it — and if you leave me out there alone, I don't get it back.\" You tell them who is standing behind them, by name and by number. They file it whole.",
+       "effects": {
+        "rapport": {
+         "house": 12,
+         "senate": 4
+        },
+        "support": 3,
+        "flag": "held-the-number"
+       }
+      },
+      "failure": {
+       "reply": "\"That's a great line for a rally,\" Rep. X says, not unkindly, \"and I'm the one who has to say it to a chair who signs my committee assignments.\" The forms get filed. A trim is already implied.",
+       "effects": {
+        "rapport": {
+         "house": -6
+        },
+        "support": -2
+       }
+      }
      }
     ]
    }
@@ -562,80 +711,16 @@
       }
      }
     ]
-   }
-  },
-  "w3-souza": {
-   "_note": "NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (House money you can walk up to in a breezeway; Senate money you cannot). The red check reads `souza-intro` from w2-kawaguchi — a player who spent Kawaguchi's phone call gets +3 here, and a player who never got in his office is rolling this cold.",
-   "start": {
-    "text": "Money Committee Week. Ways and Means posts its notices Tuesday at four, and by twenty past, every advocate in the building has read them off a phone in the same hallway. You have called Souza's office six times. His scheduler is unfailingly warm, remembers your name without being told, and has nothing — not this week, not next, and the week after that is holding for the chair. Room 211 is the same koa as every other door on the floor. It is closed.",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "Ways and Means is the last gate before conference and its deadline is week eleven. You have time. What you don't have is a way in."
-     },
-     {
-      "t": "talkstory",
-      "text": "Six calls and she still says your name warmly. That's a scheduler protecting a chair, not one brushing off a stranger — and the difference is worth something."
-     },
-     {
-      "t": "basebuilding",
-      "text": "There are twelve other members on that committee, and not one of them has a scheduler holding weeks. A chair is not the only person in a room."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Take whatever she offers. Any slot, any hour.",
-      "effects": {
-       "influence": 2
-      },
-      "reply": "7:40 on a Friday morning, three weeks out, fifteen minutes, subject to the chair's floor schedule. You take it and you write it in pen."
-     },
-     {
-      "label": "Stop chasing the chair. Work the other twelve members.",
-      "effects": {
-       "support": 3,
-       "influence": -1
-      },
-      "reply": "Four offices in a day, two of them freshmen nobody has ever asked for anything. Thursday, a WAM member you have never met asks a question in a hearing that came straight off your one-pager."
-     },
-     {
-      "label": "Catch him in the hallway when the notices post.",
-      "check": {
-       "skill": "talkstory",
-       "dc": 12,
-       "type": "red",
-       "mods": [
-        {
-         "from": "flag",
-         "id": "souza-intro",
-         "add": 3,
-         "label": "Kawaguchi's phone call"
-        },
-        {
-         "from": "influence",
-         "per": 25
-        },
-        {
-         "from": "skill",
-         "id": "procedure",
-         "per": 4
-        }
-       ]
-      },
-      "success": {
-       "reply": "Ninety seconds between the elevator and the stairwell, and he never once stops walking. But he answers. \"Your problem isn't me. Your problem is the House sends me things in April and expects a miracle in May.\" The elevator takes him. You write the whole thing down on the back of the notice, standing up.",
-       "effects": {
-        "influence": 3,
-        "flag": "souza-ninety-seconds"
-       }
-      },
-      "failure": {
-       "reply": "He is polite, which is worse. \"Talk to my office.\" He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.",
-       "effects": {
-        "influence": -3
-       }
-      }
-     }
+   },
+   "unlocks": {
+    "talks": {
+     "kawaguchi": "talk-kawaguchi",
+     "office": "talk-office",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "lobby",
+     "push"
     ]
    }
   },
@@ -763,6 +848,17 @@
       }
      }
     ]
+   },
+   "unlocks": {
+    "talks": {
+     "office": "talk-office",
+     "kawaguchi": "talk-kawaguchi",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "lobby",
+     "push"
+    ]
    }
   },
   "ev-emergency": {
@@ -796,7 +892,21 @@
       "reply": "Prudent, defensible — and the neighbor-island papers run 'LAWMAKERS STALL CLINIC RESCUE' anyway."
      }
     ]
-   }
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "rally",
+     "bench"
+    ]
+   },
+   "at": {
+    "island": "hawaii"
+   },
+   "_atNote": "`at` (map job B): the week-beat camera flies here before the event opens — rural clinic network, so the beat crosses to Hawaiʻi island. Spec: {island} frames the island; {island, px:[x,y]} targets a point in that island's BAKE pixels (anchor+scale transform, same as landmarks — never world px directly); absent = the Capitol. Most events correctly stay at the Capitol — the campaign happens there; give an event an address only when its scene genuinely is somewhere else."
   },
   "ev-oped": {
    "start": {
@@ -855,6 +965,17 @@
        }
       }
      }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "grange": "talk-grange",
+     "coalition": "talk-coalition",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "rally",
+     "lobby"
     ]
    }
   },
@@ -915,6 +1036,17 @@
       }
      }
     ]
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "kawaguchi": "talk-kawaguchi",
+     "sen-x": "talk-sen"
+    },
+    "actions": [
+     "rally",
+     "push"
+    ]
    }
   },
   "ev-potluck": {
@@ -944,6 +1076,16 @@
       "effects": {},
       "reply": "Productive, lonely. Monday, everyone else shares an inside joke about the chicken bake."
      }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "grange": "talk-grange",
+     "office": "talk-office"
+    },
+    "actions": [
+     "bench",
+     "lobby"
     ]
    }
   },
@@ -1076,6 +1218,339 @@
      }
     ]
    }
+  },
+  "talk-rep": {
+   "start": {
+    "speaker": "rep-x",
+    "text": "\"Everyone thinks introducing a bill is the hard part.\" They gesture at a shelf of binders, none of them yours. \"Forty-one measures have my name on them this session. Three of them I'd take a bad meeting for. Tell me again why yours is one of the three.\"",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Forty-one introductions, and a member's real currency is which ones they spend a chair's patience on. You are asking for that, not for a signature."
+     },
+     {
+      "t": "basebuilding",
+      "text": "They want to know the people behind it are real. Give them a district and a name, not a coalition letterhead."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Give them the district numbers. Their district.",
+      "effects": {
+       "rapport": {
+        "house": 4
+       }
+      },
+      "reply": "They read it twice. \"Eleven hundred households in my precincts alone?\" It goes in the top folder, which is a smaller folder than it sounds."
+     },
+     {
+      "label": "\"Because you'll be the one who passed it.\"",
+      "effects": {
+       "rapport": {
+        "house": 2
+       },
+       "influence": 1
+      },
+      "reply": "\"Flattery.\" A pause. \"Effective flattery, but flattery.\""
+     }
+    ]
+   }
+  },
+  "talk-sen": {
+   "start": {
+    "speaker": "sen-x",
+    "text": "\"I'll be honest with you — I have not read it.\" Sen. X says this without embarrassment, because it is week one and reading it now would be a waste of a good afternoon. \"Send it when the House has finished doing whatever the House is going to do to it. I'll read the version that actually reaches me.\"",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Cold, but correct. The Senate reads the bill that crosses over, not the one that was filed — those are frequently different documents."
+     },
+     {
+      "t": "talkstory",
+      "text": "'I have not read it' is not a brush-off, it's a schedule. Ask what would make them read it early."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Then read the fiscal note. Four pages, and it won't change.\"",
+      "effects": {
+       "rapport": {
+        "senate": 4
+       }
+      },
+      "reply": "\"Four pages I can do.\" They take it. Somewhere in the building that is a substantial commitment."
+     },
+     {
+      "label": "\"Fair. I'll see you in April.\"",
+      "effects": {
+       "rapport": {
+        "senate": 1
+       }
+      },
+      "reply": "\"You will.\" It is not warmth, exactly, but it is not nothing — most advocates argue with that sentence and lose the afternoon."
+     }
+    ]
+   }
+  },
+  "ev-introducer": {
+   "_note": "The introducer-relationship event. Reachable from week 4 on via genericEvents. Deliberately a squeeze rather than a favour: the member is carrying real risk and asking the player to absorb some of it, which is what rapport actually buys.",
+   "start": {
+    "speaker": "rep-x",
+    "text": "They catch you before the elevator, holding a marked-up copy of your own bill. \"Leadership's office called. Not about your bill — about me.\" A committee assignment, a district project, a favour owed; the specifics don't matter and they don't offer them. \"They'd like to know if I'm carrying this all the way or just filing it. I have to give them an answer this week, and whatever I say, I have to live in this building afterward.\"",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "This is the pressure that never appears in a journal entry. No vote, no record — just a member deciding how much of their own year to spend on you."
+     },
+     {
+      "t": "talkstory",
+      "text": "They came to you first. That is the whole tell. Somebody who had already folded would have sent an email on Friday."
+     },
+     {
+      "t": "basebuilding",
+      "text": "If the answer is 'you're on your own,' you don't get a second one of these. Members talk to each other more than they talk to us."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Tell them you're carrying it. We'll put people in your district behind you.\"",
+      "effects": {
+       "rapport": {
+        "house": 10
+       },
+       "support": 2,
+       "influence": -3
+      },
+      "reply": "They exhale. \"Then I'll say yes.\" You have just promised turnout in a district you do not organize yet, which is a problem for a future week and a real one."
+     },
+     {
+      "label": "\"Say whatever keeps you safe. I'd rather have you in April.\"",
+      "effects": {
+       "rapport": {
+        "house": 4
+       },
+       "influence": 2
+      },
+      "reply": "\"...Thank you.\" Nobody in this hallway says that to a member, and it costs the bill something this week — but they will still be picking up the phone in April, which is more than most advocates can say."
+     },
+     {
+      "label": "\"Ask them to put that request in writing.\"",
+      "check": {
+       "skill": "procedure",
+       "dc": 13,
+       "type": "red",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "talkstory",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Rep. X actually laughs. \"They will never do that.\" Which is the point, and they see it a beat later: a request nobody will write down is a request nobody can enforce. The call is not returned, and the bill keeps its number.",
+       "effects": {
+        "rapport": {
+         "house": 8
+        },
+        "influence": 3,
+        "flag": "nothing-in-writing"
+       }
+      },
+      "failure": {
+       "reply": "\"That's how you talk to an agency, not to the people who set my committee.\" They put the marked-up copy back in their bag. \"I'll handle it my way.\" You do not learn what their way was.",
+       "effects": {
+        "rapport": {
+         "house": -8
+        },
+        "influence": -2
+       }
+      }
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "rep-x": "talk-rep",
+     "sen-x": "talk-sen",
+     "office": "talk-office"
+    },
+    "actions": [
+     "lobby",
+     "push"
+    ]
+   }
+  },
+  "w3-federal": {
+   "_note": "The federal safety-net cuts, moved out of w1-opening 2026-08-15 so the material has a scene of its own. Grounded in ~/HawaiiAppleseed/snap-medicaid-timeline (repo dtomkatsu/Hawaii-Appleseed-website, medicaidData/snapData arrays) — federal HR1 SNAP/Medicaid cuts, all already in effect by this session's Jan 2027 start. Figures: SNAP-Ed eliminated 2025-10-01 (-$2.5M/yr); ABAWD work-req age 18-54 -> 18-64 2026-10-01 hits 16,570 adults 55-64 + 10,303 households w/ teens 14-18; Medicaid narrower immigrant eligibility + 6-month (was 12) recert already dropped an est. 1,200-2,400 people. Refresh these if the timeline's data updates. NOTE the player's own bills have not been heard yet (h-fin deadline is week 5) — nothing here may imply a hearing on them.",
+   "start": {
+    "text": "The joint briefing runs in a hearing room too small for it, which is how you can tell the department expected fewer people. What Congress did to the safety net in HR1 is no longer a forecast — every piece of it is already law and most of it is already running.\n\nSNAP-Ed is gone: over $2.5 million a year the state used to spend on nutrition classes and farmers'-market programs, zeroed out in October 2025. Work requirements now reach ages 55 to 64 — 16,570 adults in Hawaiʻi who were exempt a year ago — plus 10,300 households with teenagers. On Medicaid, narrower eligibility and twice-yearly recertification have already dropped an estimated 1,200 to 2,400 people from the rolls, not because they stopped qualifying but because they missed a form.\n\nNone of it appears as a federal line item anymore. It appears here, in a state budget that is already $800 million short.",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "Read the caseload numbers, not just the caseload story. 16,570 and 10,300 are Hawaiʻi's own — DHS ran them, not a national estimate."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Every family that lost coverage over a missed form, not a change in income, just learned exactly how fragile 'eligible' really is. That is an organizing conversation, not a caseload stat."
+     },
+     {
+      "t": "educator",
+      "text": "Nobody in this room disputes the numbers. What they don't have is a sentence that connects a missed recertification form to a tax bill. That sentence is the entire job."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Then our bills are the answer to this. Say it that way, every time.\"",
+      "effects": {
+       "support": 4,
+       "influence": -1
+      },
+      "reply": "You watch it land. By afternoon two other organizations have picked up the framing, and one of them is a group that has never testified on a tax bill in its life."
+     },
+     {
+      "label": "\"Get me the recertification data. How many were actually still eligible?\"",
+      "check": {
+       "skill": "fiscal",
+       "dc": 11,
+       "type": "white",
+       "mods": [
+        {
+         "from": "skill",
+         "id": "educator",
+         "per": 4
+        },
+        {
+         "from": "influence",
+         "per": 30
+        }
+       ]
+      },
+      "success": {
+       "reply": "It takes three calls and a very patient analyst, but the answer comes back: the overwhelming majority of the people dropped were still eligible when they were dropped. That is not a caseload decline. That is a paperwork failure with a body count, and now you can say so with a citation.",
+       "effects": {
+        "support": 3,
+        "influence": 3,
+        "flag": "recert-data"
+       }
+      },
+      "failure": {
+       "reply": "What comes back is a summary table with the eligibility field aggregated away — technically responsive, practically useless. You can say 'many were still eligible.' You cannot say how many, and in this building the difference between those two sentences is everything.",
+       "effects": {
+        "influence": -1
+       }
+      }
+     },
+     {
+      "label": "Sit with it. Take the room's temperature before saying anything.",
+      "effects": {
+       "influence": 2
+      },
+      "reply": "Three department staff, two providers and a health-center director, and not one of them says the word 'taxes.' They have been told not to. It is useful to know exactly who is not allowed to make your argument for you."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "office": "talk-office",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "bench",
+     "rally"
+    ]
+   }
+  },
+  "w4-souza": {
+   "_note": "NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3; the w2 souza-intro flag payoff is unchanged, just a week later) (House money you can walk up to in a breezeway; Senate money you cannot). The red check reads `souza-intro` from w2-kawaguchi — a player who spent Kawaguchi's phone call gets +3 here, and a player who never got in his office is rolling this cold.",
+   "start": {
+    "text": "Money Committee Week. Ways and Means posts its notices Tuesday at four, and by twenty past, every advocate in the building has read them off a phone in the same hallway. You have called Souza's office six times. His scheduler is unfailingly warm, remembers your name without being told, and has nothing — not this week, not next, and the week after that is holding for the chair. Room 211 is the same koa as every other door on the floor. It is closed.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Ways and Means is the last gate before conference and its deadline is week eleven. You have time. What you don't have is a way in."
+     },
+     {
+      "t": "talkstory",
+      "text": "Six calls and she still says your name warmly. That's a scheduler protecting a chair, not one brushing off a stranger — and the difference is worth something."
+     },
+     {
+      "t": "basebuilding",
+      "text": "There are twelve other members on that committee, and not one of them has a scheduler holding weeks. A chair is not the only person in a room."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Take whatever she offers. Any slot, any hour.",
+      "effects": {
+       "influence": 2
+      },
+      "reply": "7:40 on a Friday morning, three weeks out, fifteen minutes, subject to the chair's floor schedule. You take it and you write it in pen."
+     },
+     {
+      "label": "Stop chasing the chair. Work the other twelve members.",
+      "effects": {
+       "support": 3,
+       "influence": -1
+      },
+      "reply": "Four offices in a day, two of them freshmen nobody has ever asked for anything. Thursday, a WAM member you have never met asks a question in a hearing that came straight off your one-pager."
+     },
+     {
+      "label": "Catch him in the hallway when the notices post.",
+      "check": {
+       "skill": "talkstory",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "flag",
+         "id": "souza-intro",
+         "add": 3,
+         "label": "Kawaguchi's phone call"
+        },
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Ninety seconds between the elevator and the stairwell, and he never once stops walking. But he answers. \"Your problem isn't me. Your problem is the House sends me things in April and expects a miracle in May.\" The elevator takes him. You write the whole thing down on the back of the notice, standing up.",
+       "effects": {
+        "influence": 3,
+        "flag": "souza-ninety-seconds"
+       }
+      },
+      "failure": {
+       "reply": "He is polite, which is worse. \"Talk to my office.\" He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.",
+       "effects": {
+        "influence": -3
+       }
+      }
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "office": "talk-office",
+     "coalition": "talk-coalition",
+     "sen-x": "talk-sen"
+    },
+    "actions": [
+     "lobby",
+     "push"
+    ]
+   }
   }
  },
  "skillStart": {
@@ -1084,5 +1559,6 @@
   "creationCap": 4,
   "cap": 6,
   "honeEvery": 2
- }
+ },
+ "_unlocksNote": "Talk story and actions are NOT a weekly allowance (changed 2026-08-15). Each event dialogue carries `unlocks` = {talks: {charId: dialogueId}, actions: [actionId]} applied when the event completes; a choice's effects may also carry `unlock` (same shape) for outcome-dependent doors. Action id 'push' opens the work-the-chair rows. A week whose event grants nothing is a closed building — renderHub says so explicitly. talkDefaults was removed with this change; the old week-1 calendar `talks` moved into w1-opening.unlocks. Keep every generic event granting SOMETHING or its week is dead air, and check the rotation after pinning a scripted week (see CLAUDE.md)."
 }
