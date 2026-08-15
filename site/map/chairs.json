@@ -32,7 +32,7 @@
  },
  "chairs": {
   "h-fin": {
-   "name": "Rep. Ellis Fonoti",
+   "name": "Rep. Jon Kawaguchi",
    "icon": "💼",
    "chamber": "house",
    "committee": "FIN",
@@ -40,11 +40,11 @@
    "gates": "money",
    "stance": "hold",
    "disposition": -8,
-   "char": "fonoti",
+   "char": "kawaguchi",
    "voice": "\"I schedule what can pass. Everything else waits for a week I never find.\""
   },
   "s-wam": {
-   "name": "Sen. Roy Kamaka",
+   "name": "Sen. Chris Souza",
    "icon": "💼",
    "chamber": "senate",
    "committee": "WAM",
@@ -52,6 +52,7 @@
    "gates": "money",
    "stance": "hold",
    "disposition": -6,
+   "char": "souza",
    "voice": "\"Everything comes to me eventually. Very little leaves.\""
   }
  },

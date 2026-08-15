@@ -186,9 +186,16 @@ Rules that must survive edits:
   `v-cons` CSS) — it read as the player having a preassigned ideology
   rather than the player's own instincts arguing with each other. The
   Disco identity is now carried by skill voices alone.
-- **Only two named individuals exist as dialogue speakers**: Fonoti
+- **Only two named individuals exist as dialogue speakers**: Kawaguchi
   (House money chair) and Grange (lobbyist) — external actors the
-  player negotiates or contends with. The player's OWN campaign is
+  player negotiates or contends with. A third character, **Souza**
+  (Senate money chair), is named but never speaks and has no talk slot:
+  w3-souza is entirely his scheduler, his committee members and a
+  closed door. That asymmetry is the content, not an omission — House
+  money you can catch in a breezeway, Senate money you cannot — so do
+  not "finish" him by adding a talk-souza. Both chairs are ALSO named
+  in `chairs.json` (`h-fin`, `s-wam`, linked back by `char`); renaming
+  one means renaming both files. The player's OWN campaign is
   deliberately faceless, per the same 2026-08-14 change that retired
   the traits: Nālani Chun ("your policy director") and Malia Reyes
   ("your field organizer") are gone from `characters`. A dialogue node
@@ -343,6 +350,22 @@ Rules that must survive edits:
   agenda (`S.agendaLocked`) that lined-up members will introduce.
 - The weekly overlay auto-pops only while the week's event is
   unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
+  Pinning a scripted event to a week SHIFTS that cycle rather than
+  dropping anything — weeks 2 and 3 got `w2-kawaguchi`/`w3-souza`, so
+  ev-forecast and ev-emergency simply first appear at weeks 7 and 8.
+  Check the whole rotation after pinning a week; a generic that lands
+  only on pinned weeks would vanish from the session entirely.
+- **The scripted opening is weeks 1–3, and it is a chain.** Opening Day
+  (the caucus, `kawaguchi-date`) → week 2 the courtesy call in
+  Kawaguchi's office (`souza-intro`) → week 3 failing to reach Souza,
+  where `souza-intro` is worth +3 on the hallway roll (58% → 92% at the
+  same skills). Flags are the only cross-week memory the engine has —
+  there is no node-level `req`/`if`, so a past choice can change a
+  later scene ONLY as a `{"from": "flag"}` check mod. Write for that.
+- **The player's own bills are not heard until week 5** (`h-fin`
+  deadline in chairs.json) — nothing in weeks 1–4 may be written as
+  though a hearing on them has happened or been scheduled, other than
+  the February 14th date Kawaguchi may name in w1.
 - **Real calendar dates**: `data.sessionStart` (session.json, the 3rd
   Wednesday in January) anchors week 1; `dateRangeFor(w)` in main.js
   derives every other week's date range by +7 days, no per-week dates
