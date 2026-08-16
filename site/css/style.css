@@ -204,6 +204,79 @@ html, body {
   to   { opacity: 1; transform: none; }
 }
 
+/* ---------- a WEEK ARRIVING (`.wk-open`, added by weekArrive() in
+   main.js for the first week on boot and for every week the turn ritual
+   lands). Deliberately bigger than `.arriving`: the scrim fades up under
+   it, the panel rises further and slower, one sheen crosses it, and the
+   masthead / strip / meters / content stagger in behind the frame. The
+   plain rise is what an ordinary reopen gets — if this played on every
+   open, the actual week would stop feeling like an event.
+   Every rule is scoped to #session-overlay.wk-open, so it outranks the
+   `.arriving` shorthand on the same panel and the money/policy overlays
+   never pick it up. */
+#session-overlay.wk-open {
+  animation: wk-scrim .42s ease both;
+}
+@keyframes wk-scrim {
+  from { background-color: rgba(6, 10, 32, 0); }
+}
+#session-overlay.wk-open .ovl-panel {
+  animation: wk-panel .5s cubic-bezier(.16, .84, .28, 1) both;
+}
+@keyframes wk-panel {
+  from { opacity: 0; transform: translateY(26px) scale(.965); }
+  to   { opacity: 1; transform: none; }
+}
+/* the sheen: ONE pass of low-opacity light across the panel. Absolutely
+   positioned, so it is out of the panel's flex flow; matched radius so
+   it doesn't square off the rounded corners; pointer-events none so it
+   can sit above the content it crosses without eating a tap. */
+#session-overlay.wk-open .ovl-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 10px;
+  pointer-events: none;
+  background: linear-gradient(104deg,
+    rgba(255, 233, 168, 0) 38%,
+    rgba(255, 233, 168, .13) 50%,
+    rgba(255, 233, 168, 0) 62%);
+  animation: wk-sheen .72s cubic-bezier(.3, .5, .3, 1) .12s both;
+}
+@keyframes wk-sheen {
+  from { transform: translateX(-115%); opacity: 0; }
+  22%  { opacity: 1; }
+  to   { transform: translateX(115%); opacity: 0; }
+}
+/* the pieces land in reading order — the masthead plate first, then the
+   calendar, the meters, the week's content, the footer */
+#session-overlay.wk-open .ovl-title,
+#session-overlay.wk-open #sess-timeline,
+#session-overlay.wk-open #sess-metrics,
+#session-overlay.wk-open #sess-body,
+#session-overlay.wk-open .ovl-foot {
+  animation: wk-rise .44s cubic-bezier(.16, .84, .28, 1) both;
+}
+@keyframes wk-rise {
+  from { opacity: 0; transform: translateY(14px); }
+}
+/* the masthead carries a resting rotation, so it needs its own keyframe
+   — the shared one would interpolate through an unrotated matrix and
+   the plate would visibly straighten as it lands */
+#session-overlay.wk-open .ovl-title.mast {
+  animation-name: wk-rise-mast;
+}
+@keyframes wk-rise-mast {
+  from { opacity: 0; transform: translateY(14px) rotate(-.7deg); }
+  to   { opacity: 1; transform: rotate(-.7deg); }
+}
+#session-overlay.wk-open .ovl-title     { animation-delay: .06s; }
+#session-overlay.wk-open #sess-timeline { animation-delay: .14s; }
+#session-overlay.wk-open #sess-metrics  { animation-delay: .20s; }
+#session-overlay.wk-open #sess-body     { animation-delay: .26s; }
+#session-overlay.wk-open .ovl-foot      { animation-delay: .32s; }
+
 .ovl-title {
   position: absolute;
   top: -14px; left: 18px;
@@ -540,68 +613,144 @@ html, body {
   text-shadow: none;
 }
 
-#sess-head { margin: 12px 0 4px; }
+/* The header is a masthead + strip + meters stacked above a scrolling
+   #sess-body in a flex column, so every pixel trimmed here is a pixel
+   the dialogue gets. Tightened 2026-08-15 alongside the compact meters
+   and the removal of the timeline readout. */
+#sess-head { margin: 8px 0 3px; }
+/* the session footer is just the reset link now — no prose to lead
+   into, so it gets a tighter rule than the other overlays' captions */
+#sess-foot { margin-top: 6px; padding-top: 5px; }
 
-/* masthead: stamped week plate + title, campaign-poster energy */
-#sess-week {
+/* ---------- the session masthead: ONE plate in the panel's top-left
+   corner carrying the week numeral, the week's name and its dates.
+   It rides the panel's top border the way the old title chip did — a
+   tab on the frame, not a box floating inside it — which is what keeps
+   the corner reading as a masthead rather than a first row of content.
+   Overriding .ovl-title rather than living in flow is deliberate: the
+   chip slot is ALREADY the corner, so the plate inherits the corner
+   position for free and the money/policy overlays keep the plain chip.
+   Because it is out of flow, #sess-head must reserve the height the
+   plate reaches into the panel (see #session-overlay #sess-head). */
+#session-overlay .ovl-title.mast {
+  top: -19px;
+  left: 16px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  background: linear-gradient(168deg, #202a5e 0%, #10163c 100%);
+  border: 2px solid #f2c14e;
+  border-radius: 9px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .5);
+  color: #ffe9a8;
+  font-weight: 400;
+  letter-spacing: 0;
+  transform: rotate(-.7deg);
 }
-#sess-week .wk-no {
+/* the numeral is a stamped block, gold on gold — it is the one number
+   on this screen that never changes meaning, so it gets the solid fill
+   and the rest of the plate stays dark behind it */
+#session-overlay .ovl-title.mast .mast-no {
   flex: 0 0 auto;
-  min-width: 46px;
-  padding: 4px 8px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 52px;
+  padding: 5px 9px 6px;
   text-align: center;
-  background: rgba(0, 0, 0, .35);
-  border: 1.5px solid #f2c14e;
-  border-radius: 6px;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, .4);
-  transform: rotate(-1.2deg);
+  background: linear-gradient(#f2c14e, #d9a72f);
+  border-right: 2px solid #f2c14e;
+  border-radius: 7px 0 0 7px;
 }
-#sess-week .wk-no small {
+#session-overlay .ovl-title.mast .mast-no small {
   display: block;
-  color: #d9b356;
+  color: #6b5210;
   font-size: 8px;
   font-weight: 800;
-  letter-spacing: 2px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
 }
-#sess-week .wk-no b {
+#session-overlay .ovl-title.mast .mast-no b {
   display: block;
-  color: #ffe9a8;
-  font-size: 21px;
-  line-height: 1.05;
+  margin-top: -1px;
+  color: #2b2105;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.02;
   font-variant-numeric: tabular-nums;
-  text-shadow: 1px 1px 0 #000;
 }
-#sess-week .wk-t { min-width: 0; }
-#sess-week .wk-t b {
+#session-overlay .ovl-title.mast .mast-t {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 5px 15px 6px 12px;
+}
+#session-overlay .ovl-title.mast .mast-t b {
   display: block;
   color: #ffe9a8;
-  font-size: 19px;
-  letter-spacing: .3px;
-  text-shadow: 1px 1px 0 #000;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-#sess-week .wk-t small {
+#session-overlay .ovl-title.mast .mast-t small {
   display: block;
-  margin-top: 1px;
+  margin-top: 2px;
   color: #9fb0e8;
-  font-size: 10.5px;
+  font-size: 9.5px;
+  font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* the plate is absolutely positioned, so the head has to reserve the
+   part of it that reaches INTO the panel, or the timeline slides under
+   it. The plate bottoms out ~39px below the panel's top edge and the
+   strip adds its own 10px, so 30 here leaves a ~17px breathing gap.
+   Net it still costs ~43px LESS than the old chip + masthead row. */
+#session-overlay #sess-head { margin: 30px 0 3px; }
+/* a narrow panel can't hold the full plate beside the close button, so
+   the type steps down and the tracking tightens — the DATE has to fit
+   whole, an ellipsised "Feb 2, 2…" is worse than no date at all */
+@media (max-width: 560px) {
+  #session-overlay #sess-head { margin: 24px 0 3px; }
+  #session-overlay .ovl-title.mast { left: 12px; max-width: calc(100% - 60px); }
+  #session-overlay .ovl-title.mast .mast-t { padding: 4px 12px 5px 10px; }
+  #session-overlay .ovl-title.mast .mast-t b {
+    font-size: 17px;
+    letter-spacing: 1.1px;
+  }
+  #session-overlay .ovl-title.mast .mast-t small {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  #session-overlay .ovl-title.mast .mast-no { min-width: 44px; }
+  #session-overlay .ovl-title.mast .mast-no b { font-size: 20px; }
 }
 
-/* The session strip: a horizontally scrolling milestone rail plus a
-   NON-scrolling readout line beneath it. Two things the old version got
-   wrong and this must not regress:
-   (1) the scroll box needs vertical ROOM, not `overflow-y: hidden` — a
-       46px inner clipped the outer edge of every label and the glow
-       ring on the current dot;
-   (2) hover detail lives in the readout, never a floating popover — a
-       popover inside an overflow-x box gets sliced, and `title=` is
-       unstyled, slow, and nonexistent on touch. */
-.sess-timeline { margin: 16px 0 14px; }
+/* The session strip: a horizontally scrolling milestone rail. The
+   readout line that used to sit beneath it was removed 2026-08-15 to
+   free vertical space for the dialogue. One thing the old version got
+   wrong that must not regress: the scroll box needs vertical ROOM, not
+   `overflow-y: hidden` — a 46px inner clipped the outer edge of every
+   label and the glow ring on the current dot. Detail on hover still
+   must never be a floating popover (an overflow-x box slices it) nor
+   `title=` (unstyled, slow, nonexistent on touch) — the labels
+   themselves are the readout now. */
+.sess-timeline { margin: 10px 0 6px; }
 .sess-timeline .stl-scroll {
   overflow-x: auto;
   overflow-y: hidden;
@@ -738,49 +887,19 @@ html, body {
   box-shadow: 0 0 0 3px rgba(255,255,255,.22), 0 0 10px rgba(255,255,255,.5);
   z-index: 2;
 }
-/* the readout: one line that answers "what am I looking at" for the
-   current week by default, and for whatever the pointer is over */
-.sess-timeline .stl-read {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 3px 9px;
-  margin-top: 2px;
-  padding: 5px 9px 6px;
-  min-height: 32px;
-  box-sizing: border-box;
-  background: rgba(0,0,0,.2);
-  border-left: 2px solid #e3b64b;
-  border-radius: 5px;
-  transition: border-color .14s ease, background-color .14s ease;
-}
-.sess-timeline .stl-read b {
-  color: #ffe9a8;
-  font-size: 12px;
-  letter-spacing: .3px;
-}
-.sess-timeline .stl-read span {
-  color: #9fb0e8;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-}
-/* previewing another week reads visibly different from "you are here" */
-.sess-timeline .stl-read.preview {
-  background: rgba(255,255,255,.05);
-  border-left-color: #8fa0d8;
-}
-.sess-timeline .stl-read.preview b { color: #eef2ff; }
-
 /* the three campaign meters as cards: icon + label eyebrow + value,
    support/influence with their fill bars. Same scale, different physics
-   — cards, never one shared balance bar. */
+   — cards, never one shared balance bar.
+   Compacted 2026-08-15 (user's call): label and value share ONE baseline
+   row instead of stacking, so the header gives the dialogue below it
+   back ~30px. The card is a 2-column grid — label left, value right,
+   bar spanning both — and .sym stays absolutely positioned, out of the
+   grid entirely. */
 #sess-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 7px;
 }
 @media (max-width: 520px) {
   #sess-metrics { grid-template-columns: 1fr; }
@@ -788,24 +907,28 @@ html, body {
 #sess-metrics .metc {
   position: relative;
   min-width: 0;
-  padding: 7px 10px 8px 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 6px;
+  padding: 4px 8px 5px 25px;
   background: rgba(0, 0, 0, .22);
   border: 1px solid rgba(255, 255, 255, .12);
   border-left: 3px solid var(--mc, #9fb0e8);
-  border-radius: 8px;
+  border-radius: 7px;
   color: #dfe8ff;
 }
 #sess-metrics .metc > .sym {
   position: absolute;
-  left: 8px; top: 9px;
-  width: 15px; height: 15px;
+  left: 7px; top: 5px;
+  width: 13px; height: 13px;
   color: var(--mc, #9fb0e8);
 }
 #sess-metrics .metc .ml {
-  display: block;
+  grid-column: 1;
   font-size: 8.5px;
   font-weight: 800;
-  letter-spacing: 1.3px;
+  letter-spacing: 1.1px;
   text-transform: uppercase;
   color: #9fb0e8;
   white-space: nowrap;
@@ -813,9 +936,8 @@ html, body {
   text-overflow: ellipsis;
 }
 #sess-metrics .metc .mv {
-  display: block;
-  margin-top: 1px;
-  font-size: 14px;
+  grid-column: 2;
+  font-size: 13px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: #eef2ff;
@@ -823,8 +945,9 @@ html, body {
 }
 #sess-metrics .metc .bar {
   display: block;
-  height: 5px;
-  margin-top: 5px;
+  grid-column: 1 / -1;
+  height: 4px;
+  margin-top: 3px;
   background: rgba(255, 255, 255, .12);
   border-radius: 3px;
   overflow: hidden;
@@ -928,10 +1051,45 @@ html, body {
   #sess-metrics .metc.bump-up, #sess-metrics .metc.bump-down,
   .sd-choices button.c-red:not(.spent):hover,
   .pm-row, .pm-lesson, .mv-row.enacted::after,
-  .ovl-panel.leaving, .ovl-panel.arriving {
+  .ovl-panel.leaving, .ovl-panel.arriving,
+  /* the creation corridor — screenSwap() checks the same query in JS
+     and renders the next screen instantly, so these classes should
+     never land, but kill them here too in case one slips through */
+  .cr-out-l, .cr-out-r, .cr-in-r, .cr-in-l,
+  .cr-in-r .skc-grid > *, .cr-in-l .skc-grid > *,
+  .cr-in-r .agc-grid > *, .cr-in-l .agc-grid > *,
+  /* the week arrival — openOverlay() skips it under this query, same
+     belt-and-braces as above */
+  #session-overlay.wk-open, #session-overlay.wk-open .ovl-panel,
+  #session-overlay.wk-open .ovl-panel::after,
+  #session-overlay.wk-open .ovl-title,
+  #session-overlay.wk-open #sess-timeline,
+  #session-overlay.wk-open #sess-metrics,
+  #session-overlay.wk-open #sess-body,
+  #session-overlay.wk-open .ovl-foot {
+    animation: none !important;
+  }
+  /* …and the sheen must not park itself across the panel */
+  #session-overlay.wk-open .ovl-panel::after { display: none; }
+  /* the living glyphs on the select screen — one selector catches every
+     g-* loop, and their resting attribute states are the full drawing */
+  .skc-art svg * { animation: none !important; }
+  /* the opening deal — renderSelect also skips adding .deal under this
+     query, same belt-and-braces as the rest */
+  .skc-grid.deal > .skc { animation: none !important; }
+  /* the roll tray — popTray never mounts under RM (the staged roll
+     resolves instantly upstream), but if it ever did, it must sit
+     still; its JS timers remove it regardless */
+  .sd-tray, .sd-tray .tray-card, .sd-tray .tdie, .sd-tray .tray-math,
+  .sd-tray .tray-stamp, .sd-tray .tray-card::after,
+  /* the character card's entrance */
+  .sd-card.in {
     animation: none !important;
   }
   #sess-metrics .metc .bar i { transition: none !important; }
+  .ag-back, .ag-back::before, .ag-back .agb-ar {
+    transition: none !important;
+  }
   .sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
 }
 
@@ -969,25 +1127,125 @@ html, body {
   border-radius: 5px 5px 0 0;
 }
 
-/* a spoken line — hanging indent keeps the names in a readable column */
+/* ---------- the character card: who you are talking to, pinned at the
+   top of the scene for the length of the conversation. Sticky rather
+   than a first beat — the point is that they stay in front of you.
+   The PORTRAIT IS FACELESS by house rule (see PORTRAIT in main.js);
+   the plate reads as an office and a posture, not a likeness. */
+.sd-card {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  gap: 13px;
+  margin: 0 0 14px;
+  padding: 11px 14px 12px;
+  background:
+    linear-gradient(103deg, rgba(242, 193, 78, .12), transparent 62%),
+    linear-gradient(#161d47, #0e1332);
+  border: 1px solid rgba(242, 193, 78, .38);
+  border-radius: 11px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+}
+.sd-card.on { display: flex; }
+.sd-card.in { animation: cc-in .38s cubic-bezier(.16, .84, .28, 1) both; }
+@keyframes cc-in {
+  from { opacity: 0; transform: translateY(-8px); }
+}
+.sd-card .cc-art {
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: linear-gradient(158deg, #2b3670, #0d1234 72%);
+  border: 1px solid rgba(242, 193, 78, .45);
+  color: #8fa0d8;                       /* the silhouette's own ink */
+}
+.sd-card .cc-art svg { display: block; width: 100%; height: 100%; }
+.sd-card .cc-body { min-width: 0; }
+.sd-card .cc-name {
+  color: #ffe9a8;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .5);
+}
+.sd-card .cc-role {
+  margin-top: 1px;
+  color: #9fb0e8;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.sd-card .cc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+.sd-card .cc-tags span {
+  padding: 2px 8px 3px;
+  background: rgba(242, 193, 78, .13);
+  border: 1px solid rgba(242, 193, 78, .34);
+  border-radius: 999px;
+  color: #ffe9a8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.sd-card .cc-note {
+  margin-top: 8px;
+  color: #c3cdf0;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.sd-card .cc-quote {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  color: #e9dfc4;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .sd-card { gap: 10px; padding: 9px 11px 10px; }
+  .sd-card .cc-art { width: 52px; height: 52px; }
+  .sd-card .cc-name { font-size: 16px; }
+  .sd-card .cc-note { display: none; }   /* the quote carries it */
+}
+
+/* a spoken line — hanging indent keeps the names in a readable column.
+   Body size was raised 14.5 → 16.5px (2026-08-15, user's call): this is
+   a reading game, the transcript is the whole interface, and the serif
+   at 14.5 was doing too much work. Leading went with it. */
 .sd-said, .sd-voice, .sd-narr {
-  margin: 0 0 12px;
+  margin: 0 0 13px;
   padding-left: 19px;
   text-indent: -19px;
-  font-size: 14.5px;
-  line-height: 1.6;
+  font-size: 16.5px;
+  line-height: 1.68;
   color: var(--de-ink, #ddd6c6);
   text-rendering: optimizeLegibility;
 }
 .sd-said:last-child, .sd-voice:last-child { margin-bottom: 4px; }
 .sd-who {
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 1px;
   color: #f0e3bd;
 }
 .sd-role {
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   letter-spacing: .2px;
   color: var(--de-dim, #97917f);
@@ -1003,15 +1261,14 @@ html, body {
 }
 .sd-narr { color: #b6afa0; font-style: italic; }   /* unattributed prose */
 
-/* voices: italic body, upright colored name, a rule in the same color.
-   Each voice re-runs the entrance on its own inline delay (voiceHtml),
-   so the instincts pipe up one after another instead of as a block. */
+/* voices: italic body, upright colored name. Each voice re-runs the
+   entrance on its own inline delay (voiceHtml), so the instincts pipe
+   up one after another instead of as a block. */
 .sd-voice {
   font-style: italic;
   margin-left: 2px;
   padding-left: 24px;
   text-indent: -18px;
-  border-left: 2px solid currentColor;
   animation: sd-in .3s ease both;
 }
 .sd-voice b {
@@ -1031,9 +1288,63 @@ html, body {
   vertical-align: -.15em;
   margin-right: 3px;
 }
-/* skills speak in their POLE's color — see .p-* below */
-.sd-voice.v-skill { color: var(--de-ink); border-color: var(--pole, #f2c14e); }
-.sd-voice.v-skill b { color: var(--pole, #f2c14e); }
+/* ---------- an instinct CHIMING IN (redesigned 2026-08-15, user's
+   call). It used to be a left accent rule in the pole color — the same
+   device the bill rows, the meters and the post-mortem all use, so the
+   one voice that is supposed to interrupt you read as another list
+   item. Now it is a CARD: a soft pole-tinted wash fading to nothing on
+   the right, a hairline in the same pole, and the skill's name as a
+   solid nameplate badge instead of coloured text. No left border
+   anywhere — the tint and the badge carry the pole. */
+.sd-voice.v-skill {
+  position: relative;
+  margin: 0 0 9px;
+  padding: 9px 14px 10px;
+  padding-left: 14px;                 /* the badge replaces the hang */
+  text-indent: 0;
+  color: var(--de-ink);
+  border: 1px solid color-mix(in srgb, var(--pole, #f2c14e) 30%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(101deg,
+      color-mix(in srgb, var(--pole, #f2c14e) 15%, transparent) 0%,
+      color-mix(in srgb, var(--pole, #f2c14e) 5%, transparent) 55%,
+      transparent 100%),
+    rgba(0, 0, 0, .22);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .3),
+    inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+/* the nameplate: dark ink on solid pole colour, so the instinct's name
+   is the loudest thing in the beat without shouting in body text */
+.sd-voice.v-skill b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 9px;
+  padding: 2px 9px 3px;
+  border-radius: 999px;
+  background: var(--pole, #f2c14e);
+  color: #10131c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  line-height: 1.35;
+  vertical-align: 1px;
+  box-shadow: 0 1px 4px color-mix(in srgb,
+    var(--pole, #f2c14e) 45%, transparent);
+}
+/* the glyph rides inside the plate, so it inherits the dark ink */
+.sd-voice.v-skill b .sym { width: 12px; height: 12px; }
+/* the en-dash was a separator between a name and its line; a nameplate
+   already separates them */
+.sd-voice.v-skill .sd-dash { display: none; }
+/* each voice arrives from the left as well as up — it is an
+   interruption, so it should enter across the column, not rise into it */
+.sd-voice.v-skill { animation-name: sd-chime; }
+@keyframes sd-chime {
+  from { opacity: 0; transform: translate3d(-10px, 5px, 0); }
+  to   { opacity: 1; transform: none; }
+}
 
 /* pole palette — one family per campaign function, used by both the
    skill sheet and the voices so a color means the same thing in both */
@@ -1065,8 +1376,8 @@ html, body {
   border-radius: 4px;
   color: #d9503f;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15.5px;
+  line-height: 1.5;
   cursor: pointer;
   transition: background-color .13s ease, border-color .13s ease,
     color .13s ease, transform .13s ease;
@@ -1254,6 +1565,176 @@ html, body {
   60% { transform: translateX(-3px); }
   80% { transform: translateX(2px); }
 }
+
+/* ---------- the roll TRAY: the theatre, popped out over the whole
+   panel while the inline card above stays as the receipt. Mounted on
+   `.ovl-panel` (not `.sd-scene`) so it is centered on the panel and
+   immune to the transcript's scrolling.
+   `pointer-events: none` on purpose — the choice strip is already
+   emptied while the dice are out, so there is nothing to guard, and a
+   tray that outlived its timers must never be able to trap the player.
+   Every step is driven by a JS timer (popTray), so a frozen animation
+   clock in a hidden tab costs the look and nothing else. */
+.sd-tray {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(4, 7, 20, .58);
+  animation: tray-veil .22s ease both;
+}
+@keyframes tray-veil { from { opacity: 0; } }
+.sd-tray.out { animation: tray-veil .3s ease reverse both; }
+.sd-tray .tray-card {
+  min-width: 268px;
+  max-width: min(420px, calc(100vw - 56px));
+  padding: 20px 26px 22px;
+  text-align: center;
+  background: linear-gradient(165deg, #1b2452 0%, #0d1234 100%);
+  border: 3px solid #f4f1e8;
+  outline: 3px solid #05070d;
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .6);
+  animation: tray-pop .34s cubic-bezier(.2, 1.35, .35, 1) both;
+}
+@keyframes tray-pop {
+  from { opacity: 0; transform: translateY(16px) scale(.86) rotate(-2deg); }
+}
+.sd-tray.out .tray-card {
+  animation: tray-gone .3s cubic-bezier(.5, 0, .9, .4) both;
+}
+@keyframes tray-gone {
+  to { opacity: 0; transform: translateY(-14px) scale(1.06); }
+}
+.sd-tray .tray-skill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #b9c4ea;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.sd-tray .tray-skill .sym { width: 15px; height: 15px; }
+/* a RED check is spent forever — its tray is lit in the same danger
+   colour the choice button carries */
+.sd-tray.r-red .tray-card { border-color: #ff8d80; }
+.sd-tray.r-red .tray-skill { color: #ff8d80; }
+
+/* real pip faces, 3x3. The die is the one thing on this screen worth
+   drawing properly — a numeral in a box reads as a form field. */
+.sd-tray .tray-dice {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 16px 0 12px;
+}
+.sd-tray .tdie {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  width: 58px;
+  height: 58px;
+  padding: 8px;
+  box-sizing: border-box;
+  background: linear-gradient(155deg, #f8f6ee, #ddd8c4);
+  border-radius: 11px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18),
+    0 5px 12px rgba(0, 0, 0, .45);
+}
+.sd-tray .tdie i {
+  border-radius: 50%;
+  background: transparent;
+}
+.sd-tray .tdie i.on {
+  background: #10131c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+/* in the air: the whole tray's dice tumble, offset so they never read
+   as one object moving */
+.sd-tray .tdie { animation: tdie-air .42s ease-in-out infinite; }
+.sd-tray .tdie:last-child { animation-delay: .14s; }
+@keyframes tdie-air {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-9px) rotate(7deg); }
+}
+/* landed: slam down, stagger, and stop */
+.sd-tray.landed .tdie {
+  animation: tdie-land .42s cubic-bezier(.2, 1.7, .35, 1) both;
+}
+.sd-tray.landed .tdie:last-child { animation-delay: .11s; }
+@keyframes tdie-land {
+  from { transform: translateY(-26px) scale(1.28) rotate(12deg); }
+  to   { transform: none; }
+}
+.sd-tray .tray-dc {
+  color: #8b95bb;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.sd-tray .tray-math {
+  min-height: 15px;
+  margin-top: 9px;
+  color: #b9c4ea;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.sd-tray .tray-math b { color: #eef2ff; }
+.sd-tray.landed .tray-math { animation: tray-math-in .3s ease both; }
+@keyframes tray-math-in { from { opacity: 0; transform: translateY(5px); } }
+/* the verdict, slammed down like a rubber stamp */
+.sd-tray .tray-stamp {
+  min-height: 0;
+  font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
+    sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.sd-tray .tray-stamp small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: .85;
+}
+.sd-tray.ok .tray-stamp, .sd-tray.no .tray-stamp {
+  margin-top: 12px;
+  animation: tray-stamp .4s cubic-bezier(.2, 1.5, .35, 1) both;
+}
+.sd-tray.ok .tray-stamp { color: #7ff0ae; text-shadow: 0 0 22px rgba(127, 240, 174, .5); }
+.sd-tray.no .tray-stamp { color: #ff8d80; text-shadow: 0 0 22px rgba(255, 141, 128, .45); }
+.sd-tray.ok .tray-card { border-color: #7ff0ae; }
+.sd-tray.no .tray-card { border-color: #ff8d80; }
+@keyframes tray-stamp {
+  0%   { opacity: 0; transform: scale(2.6) rotate(-9deg); }
+  55%  { opacity: 1; transform: scale(.92) rotate(2deg); }
+  100% { transform: none; }
+}
+/* the two loud ones, same vocabulary as the inline card */
+.sd-tray.jack .tray-card {
+  overflow: hidden;
+  position: relative;
+}
+.sd-tray.jack.ok .tray-card::after,
+.sd-tray.jack.no .tray-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 90% at 50% 55%,
+    rgba(242, 193, 78, .5), transparent 70%);
+  animation: jack-burst 1.1s ease both;
+}
+.sd-tray.snake.no .tray-card { animation: snake-shake .5s ease both; }
 
 /* the verdict washes over the whole scene — success breathes warm,
    failure drains the color out for a blink */
@@ -1638,6 +2119,26 @@ html, body {
   transform: rotate(-.6deg);
 }
 .sk-ptchip b { color: #f2c14e; font-size: 13px; }
+/* deliberately QUIET — an escape hatch beside the point chip, not a
+   third call to action competing with CONTINUE and the cards. Disabled
+   whenever nothing has been spent, so it never offers a no-op. */
+.sk-reset {
+  margin: 10px 0 2px 8px;
+  padding: 4px 9px;
+  background: none;
+  border: 1px solid rgba(244, 241, 232, .32);
+  color: #a8b4dd;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transform: rotate(-.6deg);
+  transition: border-color .12s ease, color .12s ease;
+}
+.sk-reset:hover:not(:disabled) { border-color: #f4f1e8; color: #f4f1e8; }
+.sk-reset:disabled { opacity: .3; cursor: default; }
 .skc-grid {
   /* fallback on the PARENT so it inherits instead of competing —
      .p-* and .skc are equal specificity, and a --pole here on .skc
@@ -1693,6 +2194,114 @@ html, body {
   border-bottom: 2px solid var(--pole);
 }
 .skc-art svg { width: 78%; height: 78%; }
+
+/* ---------- the instincts are ALIVE (2026-08-15, user's call): each
+   glyph's signature part loops on the select screen. One motion per
+   glyph, slow and quiet — six cards animate at once, so anything fast
+   reads as a slot machine. All loops are phase-shifted so keyframe 0%
+   is the resting DRAWN state (a hidden document freezes the animation
+   clock at 0, and a loop that opens on "invisible" screenshots as a
+   missing limb); stagger uses NEGATIVE delays for the same reason.
+   Scoped to .skc-art — the GLYPH set renders nowhere else. */
+.skc-art svg g, .skc-art svg rect, .skc-art svg circle,
+.skc-art svg line, .skc-art svg path, .skc-art svg polyline {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Policy Brain: the thought pulses under the numbers, the bars breathe,
+   the trend line redraws itself, its endpoint beats */
+.skc-art .g-brain { animation: gl-brain 4.4s ease-in-out infinite; }
+@keyframes gl-brain {
+  0%, 100% { opacity: .14; transform: scale(1); }
+  50%      { opacity: .28; transform: scale(1.025); }
+}
+.skc-art .g-bars rect {
+  transform-origin: center bottom;
+  animation: gl-bar 3s ease-in-out infinite;
+}
+.skc-art .g-bars rect:nth-child(2) { animation-delay: -.55s; }
+.skc-art .g-bars rect:nth-child(3) { animation-delay: -1.1s; }
+@keyframes gl-bar {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(.93); }
+}
+/* draw-loop strokes: hold drawn, retract to the start, draw back out.
+   Retracting instead of cutting is what keeps the loop seamless —
+   0% and 100% are the same fully-drawn frame. pathLength="100" in the
+   markup is what lets one dasharray fit every path. */
+.skc-art .g-line {
+  stroke-dasharray: 100;
+  animation: gl-redraw 5.5s cubic-bezier(.45, 0, .25, 1) infinite;
+}
+.skc-art .g-maze {
+  stroke-dasharray: 100;
+  animation: gl-redraw 7.5s cubic-bezier(.45, 0, .25, 1) infinite;
+}
+@keyframes gl-redraw {
+  /* mostly HOLD — the redraw is a flourish, not the resting state; at
+     45% transition the Procedure card looked half-built half the time */
+  0%, 68% { stroke-dashoffset: 0; }
+  78%     { stroke-dashoffset: 100; }
+  81%     { stroke-dashoffset: 100; }
+  97%, 100% { stroke-dashoffset: 0; }
+}
+.skc-art .g-dot { animation: gl-dot 2.4s ease-in-out infinite; }
+@keyframes gl-dot {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.3); }
+}
+/* Educator: the rays glint one after another */
+.skc-art .g-rays line { animation: gl-ray 2.2s ease-in-out infinite; }
+.skc-art .g-rays line:nth-child(2) { animation-delay: -.73s; }
+.skc-art .g-rays line:nth-child(3) { animation-delay: -1.46s; }
+@keyframes gl-ray {
+  0%, 100% { opacity: 1; transform: none; }
+  50%      { opacity: .35; transform: translateY(2px) scale(.94); }
+}
+/* Talk Story: the classic typing indicator — someone is always about
+   to say something. Positive delays are fine here: the base state is
+   at-rest, so nothing pops when the wave starts. */
+.skc-art .g-type circle { animation: gl-type 1.4s ease-in-out infinite; }
+.skc-art .g-type circle:nth-child(2) { animation-delay: .16s; }
+.skc-art .g-type circle:nth-child(3) { animation-delay: .32s; }
+@keyframes gl-type {
+  0%, 55%, 100% { transform: none; }
+  25%           { transform: translateY(-3.5px); }
+}
+/* Mobilizing: sound pushes outward through the arcs. transform only —
+   the middle arc carries its own opacity attribute for depth, and a
+   CSS opacity animation would flatten it. */
+.skc-art .g-waves path { animation: gl-wave 2.2s ease-in-out infinite; }
+.skc-art .g-waves path:nth-child(1) { animation-delay: -1.4s; }
+.skc-art .g-waves path:nth-child(2) { animation-delay: -.7s; }
+@keyframes gl-wave {
+  0%, 100% { transform: none; }
+  50%      { transform: translateX(3px); }
+}
+/* Base Building: the roots regrow, the leader nodes glint in turn */
+.skc-art .g-roots path {
+  stroke-dasharray: 100;
+  animation: gl-root 5s ease-in-out infinite;
+}
+.skc-art .g-roots path:nth-child(2) { animation-delay: -.18s; }
+.skc-art .g-roots path:nth-child(3) { animation-delay: -.36s; }
+.skc-art .g-roots path:nth-child(4) { animation-delay: -.54s; }
+.skc-art .g-roots path:nth-child(5) { animation-delay: -.72s; }
+@keyframes gl-root {
+  0%, 62% { stroke-dashoffset: 0; }
+  74%     { stroke-dashoffset: 100; }
+  77%     { stroke-dashoffset: 100; }
+  96%, 100% { stroke-dashoffset: 0; }
+}
+.skc-art .g-nodes circle { animation: gl-node 2.6s ease-in-out infinite; }
+.skc-art .g-nodes circle:nth-child(2) { animation-delay: -.5s; }
+.skc-art .g-nodes circle:nth-child(3) { animation-delay: -1s; }
+.skc-art .g-nodes circle:nth-child(4) { animation-delay: -1.5s; }
+.skc-art .g-nodes circle:nth-child(5) { animation-delay: -2s; }
+@keyframes gl-node {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
 .skc-name {
   padding: 7px 8px 5px;
   background: #05070d;
@@ -1715,10 +2324,14 @@ html, body {
   line-height: 1.45;
   text-align: center;
 }
+/* pole name · rank word · [− value +]. The stepper is one nowrap unit
+   pushed right by the pole's flex; on a card too narrow for all three
+   the whole group wraps to its own line rather than crushing the words. */
 .skc-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 4px 7px;
   padding: 7px 9px;
   background: #10131c;
   border-top: 1px solid rgba(244, 241, 232, .18);
@@ -1730,6 +2343,25 @@ html, body {
   font-weight: 800;
   letter-spacing: 1.6px;
   text-transform: uppercase;
+}
+/* the level in words — a bare "3" is not a self-explanatory quantity.
+   Kept cream rather than the pole color so it reads as a reading of the
+   number beside it, not as a second pole label. */
+.skc-rank {
+  flex: 0 0 auto;
+  color: #cdc9ba;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 11px;
+  font-style: italic;
+  white-space: nowrap;
+}
+.skc.capped .skc-rank { color: var(--pole); }
+.skc-step {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
 }
 .skc-foot .skpip {
   width: 26px;
@@ -1748,7 +2380,8 @@ html, body {
   border-color: var(--pole);
   color: var(--pole);
 }
-.skc-foot .skup {
+.skc-foot .skup,
+.skc-foot .skdn {
   width: 26px;
   height: 26px;
   padding: 0;
@@ -1761,11 +2394,23 @@ html, body {
   line-height: 1;
   cursor: pointer;
 }
+/* − is the undo, not a second way to play: it stays outlined in the
+   card's neutral ink so the eye still lands on + */
+.skc-foot .skdn {
+  border-color: rgba(244, 241, 232, .4);
+  color: #cdc9ba;
+}
 .skc:hover:not(.capped) .skc-foot .skup {
   background: color-mix(in srgb, var(--pole) 24%, transparent);
   border-style: solid;
 }
-.skc-foot .skup:disabled { opacity: .25; cursor: default; }
+.skc-foot .skdn:hover:not(:disabled) {
+  background: rgba(244, 241, 232, .14);
+  border-style: solid;
+  color: #f4f1e8;
+}
+.skc-foot .skup:disabled,
+.skc-foot .skdn:disabled { opacity: .25; cursor: default; }
 /* the CONTINUE plate — the only door out of the select screen, so it
    sticks to the bottom of the scroller: on a short viewport the cards
    scroll under it rather than pushing it off the fold */
@@ -2044,10 +2689,20 @@ html, body {
   align-items: stretch;
 }
 .ag-nav .sk-begin { margin-top: 16px; }
+/* the way back up the corridor. Same plate language as CONTINUE but in
+   the panel's own ink rather than the orange — going back is never the
+   loud choice — with a gold wash that wipes in from the left and an
+   arrow that steps out ahead of it on hover, so the button previews the
+   direction it is about to send you. */
 .ag-back {
+  position: relative;
+  overflow: hidden;
   margin-top: 16px;
   flex: 0 0 auto;
-  padding: 11px 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px 10px 14px;
   background: #10131c;
   border: 2px solid rgba(244, 241, 232, .45);
   color: #d6ddf5;
@@ -2059,8 +2714,171 @@ html, body {
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, .5);
+  transition: border-color .16s ease, color .16s ease,
+    transform .16s cubic-bezier(.2, .8, .3, 1),
+    box-shadow .16s ease;
 }
-.ag-back:hover { border-color: #f2c14e; color: #ffe9a8; }
+/* the wash is a pseudo-element, not a background-position trick — it has
+   to sit UNDER the label, and the label is real text, not a background */
+.ag-back::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    rgba(242, 193, 78, .26), rgba(242, 193, 78, 0) 78%);
+  transform: translateX(-100%);
+  transition: transform .34s cubic-bezier(.16, .84, .28, 1);
+}
+.ag-back .agb-ar {
+  position: relative;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1);
+}
+.ag-back:hover {
+  border-color: #f2c14e;
+  color: #ffe9a8;
+  transform: translateX(-2px);
+  box-shadow: 6px 4px 0 rgba(0, 0, 0, .5);
+}
+.ag-back:hover::before { transform: translateX(0); }
+.ag-back:hover .agb-ar { transform: translateX(-4px); }
+.ag-back:active { transform: translateX(1px) translateY(2px); }
+
+/* ---------- the creation corridor: Instincts → Priorities → Revenue.
+   Moving between those screens is TRAVEL, so it animates like travel —
+   out the way you came, in from the way you are going, cards rising
+   behind the frame in a short stagger. The classes are applied by
+   screenSwap() in main.js to `#sess-body`'s CHILDREN (never the
+   scroller itself), which the next `innerHTML` throws away — that is
+   what stops a bump or a policy pick from replaying the slide. */
+@keyframes cr-out-l {
+  to { opacity: 0; transform: translate3d(-46px, 0, 0); }
+}
+@keyframes cr-out-r {
+  to { opacity: 0; transform: translate3d(46px, 0, 0); }
+}
+@keyframes cr-in-r {
+  from { opacity: 0; transform: translate3d(54px, 0, 0); }
+}
+@keyframes cr-in-l {
+  from { opacity: 0; transform: translate3d(-54px, 0, 0); }
+}
+@keyframes cr-rise {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+}
+.cr-out-l, .cr-out-r {
+  animation: cr-out-l .17s cubic-bezier(.4, 0, 1, 1) both;
+}
+.cr-out-r { animation-name: cr-out-r; }
+.cr-in-r, .cr-in-l {
+  animation: cr-in-r .3s cubic-bezier(.16, .84, .28, 1) both;
+}
+.cr-in-l { animation-name: cr-in-l; }
+/* the cards ride a second, softer motion INSIDE the sliding frame — the
+   stagger is what reads as "modern" rather than one flat pane moving */
+.cr-in-r .skc-grid > *, .cr-in-l .skc-grid > *,
+.cr-in-r .agc-grid > *, .cr-in-l .agc-grid > * {
+  animation: cr-rise .38s cubic-bezier(.16, .84, .28, 1) both;
+}
+.cr-in-r .skc-grid > *:nth-child(1), .cr-in-l .skc-grid > *:nth-child(1),
+.cr-in-r .agc-grid > *:nth-child(1), .cr-in-l .agc-grid > *:nth-child(1) {
+  animation-delay: .05s;
+}
+.cr-in-r .skc-grid > *:nth-child(2), .cr-in-l .skc-grid > *:nth-child(2),
+.cr-in-r .agc-grid > *:nth-child(2), .cr-in-l .agc-grid > *:nth-child(2) {
+  animation-delay: .09s;
+}
+.cr-in-r .skc-grid > *:nth-child(3), .cr-in-l .skc-grid > *:nth-child(3),
+.cr-in-r .agc-grid > *:nth-child(3), .cr-in-l .agc-grid > *:nth-child(3) {
+  animation-delay: .13s;
+}
+.cr-in-r .skc-grid > *:nth-child(4), .cr-in-l .skc-grid > *:nth-child(4),
+.cr-in-r .agc-grid > *:nth-child(4), .cr-in-l .agc-grid > *:nth-child(4) {
+  animation-delay: .17s;
+}
+.cr-in-r .skc-grid > *:nth-child(5), .cr-in-l .skc-grid > *:nth-child(5),
+.cr-in-r .agc-grid > *:nth-child(5), .cr-in-l .agc-grid > *:nth-child(5) {
+  animation-delay: .21s;
+}
+.cr-in-r .skc-grid > *:nth-child(n+6),
+.cr-in-l .skc-grid > *:nth-child(n+6),
+.cr-in-r .agc-grid > *:nth-child(n+6),
+.cr-in-l .agc-grid > *:nth-child(n+6) {
+  animation-delay: .25s;
+}
+
+/* ---------- the opening deal: when the SELECT INSTINCTS screen arrives
+   (renderSelect marks the grid `.deal` only when the grid wasn't
+   already on stage), the six cards start gathered in a loose center
+   stack and spread to their seats, first card first. `both` fill plus
+   the positive delays IS the stack — every card holds its gathered
+   from-state until its turn to fly. The class is stripped on a wall
+   clock (DEAL_MS in main.js), the house frozen-clock rule.
+   These rules sit AFTER the corridor block on purpose: same elements,
+   equal-or-higher specificity, so the deal beats cr-rise when the
+   screen arrives via screenSwap (the ag-skills back plate). The
+   per-seat from-state rides a custom property so the mobile 2-column
+   grid only has to re-aim the travel, not redeclare the animation. */
+.skc-grid.deal > .skc {
+  animation: sk-deal .55s cubic-bezier(.22, .9, .27, 1.08) both;
+}
+@keyframes sk-deal {
+  from {
+    transform: var(--deal-from, scale(.94));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .6);
+  }
+}
+/* one seat of travel ≈ one card + gap, so corner seats pull in a full
+   column and half a row; the slight rotations are the deck's mess.
+   z-index keeps the next card to fly on top of the pile (grid items
+   honor z-index without position). */
+.skc-grid.deal > .skc:nth-child(1) {
+  --deal-from: translate(108%, 56%) rotate(-5deg) scale(.94);
+  animation-delay: 0s; z-index: 6;
+}
+.skc-grid.deal > .skc:nth-child(2) {
+  --deal-from: translate(0, 56%) rotate(3deg) scale(.94);
+  animation-delay: .07s; z-index: 5;
+}
+.skc-grid.deal > .skc:nth-child(3) {
+  --deal-from: translate(-108%, 56%) rotate(-2deg) scale(.94);
+  animation-delay: .14s; z-index: 4;
+}
+.skc-grid.deal > .skc:nth-child(4) {
+  --deal-from: translate(108%, -56%) rotate(4deg) scale(.94);
+  animation-delay: .21s; z-index: 3;
+}
+.skc-grid.deal > .skc:nth-child(5) {
+  --deal-from: translate(0, -56%) rotate(-3deg) scale(.94);
+  animation-delay: .28s; z-index: 2;
+}
+.skc-grid.deal > .skc:nth-child(6) {
+  --deal-from: translate(-108%, -56%) rotate(5deg) scale(.94);
+  animation-delay: .35s; z-index: 1;
+}
+/* the 2-column grid re-seats the stack: center is between the columns,
+   in the middle row */
+@media (max-width: 640px) {
+  .skc-grid.deal > .skc:nth-child(1) {
+    --deal-from: translate(54%, 108%) rotate(-5deg) scale(.94);
+  }
+  .skc-grid.deal > .skc:nth-child(2) {
+    --deal-from: translate(-54%, 108%) rotate(3deg) scale(.94);
+  }
+  .skc-grid.deal > .skc:nth-child(3) {
+    --deal-from: translate(54%, 0) rotate(-2deg) scale(.94);
+  }
+  .skc-grid.deal > .skc:nth-child(4) {
+    --deal-from: translate(-54%, 0) rotate(4deg) scale(.94);
+  }
+  .skc-grid.deal > .skc:nth-child(5) {
+    --deal-from: translate(54%, -108%) rotate(-3deg) scale(.94);
+  }
+  .skc-grid.deal > .skc:nth-child(6) {
+    --deal-from: translate(-54%, -108%) rotate(5deg) scale(.94);
+  }
+}
 
 /* ---------- your introducers (the two members carrying the package) */
 .intro-strip {
@@ -2478,13 +3296,14 @@ html, body {
 }
 @keyframes tcpulse { 50% { opacity: .25; } }
 
-/* mini session timeline, HUD-mounted above the End Turn button — same
-   data as .sess-timeline, shrunk to a tappable dot strip (no labels,
-   no room; each dot's title carries the milestone name + date) */
+/* session progress, HUD-mounted above the End Turn button — the same
+   calendar as .sess-timeline reduced to "how much session is left".
+   The overlay's full strip is still where you go to read the milestone
+   names; this chip is a glance, and a tap into the overlay. */
 #hud-timeline {
   position: relative;
   width: 168px;
-  height: 20px;
+  height: 22px;
   background: linear-gradient(#2a3f9e, #16246b);
   border: 2px solid #f8f8ff;
   outline: 2px solid #16246b;
@@ -2492,39 +3311,73 @@ html, body {
   cursor: pointer;
 }
 #hud-timeline:hover { border-color: #f2c14e; }
-#hud-timeline .htl-inner {
-  position: absolute;
-  top: 0; bottom: 0; left: 9px; right: 9px;
+/* a PROGRESS BAR, not a dot strip (2026-08-15): at this width the old
+   5px milestone dots read as lint. Milestones survive as ticks in the
+   track — which is what they are, marks along the run — and the "2/15"
+   readout gives the number the dots never could. Laid out as a flex
+   row so the bar takes the slack and the readout keeps its own column
+   instead of overlapping the fill. */
+#hud-timeline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  box-sizing: border-box;
 }
-#hud-timeline .htl-track {
-  position: absolute;
-  top: 50%; left: 0; right: 0;
-  height: 2px;
-  background: rgba(255,255,255,.2);
-  transform: translateY(-50%);
+#hud-timeline .htl-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 5px;
+  background: rgba(4, 7, 20, .55);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+  overflow: hidden;
 }
 #hud-timeline .htl-fill {
   position: absolute;
-  top: 50%; left: 0;
-  height: 2px;
-  background: #e3b64b;
-  transform: translateY(-50%);
+  top: 0; bottom: 0; left: 0;
+  width: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #d9a72f, #ffd166 70%, #ffe9a8);
+  /* built once and updated in place (renderHudTimeline), so a new week
+     genuinely slides the fill instead of snapping it */
+  transition: width .55s cubic-bezier(.25, .9, .3, 1);
 }
-#hud-timeline .htl-dot {
+/* milestone marks, sitting IN the track — dim ahead of you, dark once
+   the fill has passed over them so they read against the gold */
+#hud-timeline .htl-tick {
   position: absolute;
-  top: 50%; left: 0;
-  width: 5px; height: 5px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #2a3364;
-  border: 1.5px solid #7481bb;
+  /* inset vertically and kept faint on purpose: full-height bright bars
+     read as segment dividers chopping the run into chapters, which is
+     the opposite of a continuous progress read */
+  top: 2px; bottom: 2px;
+  width: 1.5px;
+  margin-left: -.75px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, .2);
 }
-#hud-timeline .htl-dot.past { background: #7481bb; border-color: #7481bb; }
-#hud-timeline .htl-dot.now {
-  width: 7px; height: 7px;
-  background: #ffd166;
-  border-color: #ffd166;
-  box-shadow: 0 0 0 3px rgba(255,209,102,.3);
+#hud-timeline .htl-tick.past { background: rgba(43, 33, 5, .38); }
+/* the leading edge: a bright cap so the current position is findable
+   even where the fill and a tick land together */
+#hud-timeline .htl-head {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  left: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #fff6d8;
+  box-shadow: 0 0 6px rgba(255, 233, 168, .9);
+  transition: left .55s cubic-bezier(.25, .9, .3, 1);
+}
+#hud-timeline .htl-read {
+  flex: 0 0 auto;
+  color: #ffe9a8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .6);
 }
 
 @media (max-width: 600px) {

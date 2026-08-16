@@ -4,7 +4,24 @@
 
 "use strict";
 
-const DEEP_BLUE = "#1d4f8c";
+/* PRE-LOAD fallback only. The real sea colour is read at runtime from
+   world.json's `deep`, which build_world copies out of the island bakes
+   — see WorldScene.create(). This constant only paints the canvas
+   before any JSON has loaded, so it just needs to be close; it can
+   never be right for both art styles at once, because `--style pixel`
+   bakes a different blue than `--style painterly`. */
+const DEEP_BLUE = "#185ba0";
+
+/* ONE cache token for everything render_map/build_world bake together:
+   the tile PNGs, overview.png, world.json and every <slug>.json. They
+   are produced by the same run and are only ever valid as a SET — a
+   world.json paired with last bake's tiles is exactly the kind of
+   mismatch that spent three rounds looking like a rendering bug.
+   The pre-commit cache-bump hook only rewrites `?v=` inside HTML, so
+   anything loaded from JS is bumped BY HAND: after re-baking the map,
+   raise this ONE number. Content JSON (session/policies/chairs) keeps
+   its own token — it changes on a different clock. */
+const MAP_V = 6;
 
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
@@ -259,8 +276,11 @@ const MoneyPanel = {
         }
       });
     };
+    // ONE toolbar button for both halves of the money story: it opens on
+    // "↑ Money out" and the tabs carry the player to "↓ Money in". The
+    // separate Revenue button was removed 2026-08-15 (user's call) as a
+    // duplicate door into the same overlay.
     wireToolbar("tb-budget", "budget");
-    wireToolbar("tb-revenue", "revenue");
     $("money-close").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       overlay.classList.add("hidden");
@@ -558,7 +578,7 @@ const MoneyPanel = {
    hand-curated with a per-item source shown as the row tooltip). Enacted
    policies move the FY2027 budget scoreboard in the bottom-right corner:
    priorities spend from it, revenue policies add to it. Choices persist
-   in localStorage. Must init AFTER MoneyPanel so the tb-budget/tb-revenue
+   in localStorage. Must init AFTER MoneyPanel so the tb-budget
    listeners here run in addition to (not instead of) MoneyPanel's. */
 const PolicyPanel = {
   built: false,
@@ -720,9 +740,9 @@ const PolicyPanel = {
       e.stopPropagation();
       open();
     });
-    // the money-overlay toolbar buttons close this overlay (their own
-    // handlers stopPropagation, but same-element listeners still run)
-    for (const id of ["tb-budget", "tb-revenue"]) {
+    // the money-overlay toolbar button closes this overlay (its own
+    // handler stopPropagation's, but same-element listeners still run)
+    for (const id of ["tb-budget"]) {
       $(id).addEventListener("pointerdown", () =>
         overlay.classList.add("hidden"));
     }
@@ -846,7 +866,8 @@ const SYM = (() => {
   S.ufsm = S.meal;
   S.ctc = S.child;
   S.retitc = S.solar;
-  S["get-half"] = S.cart;
+  // `cart` has no policy pointing at it since get-half was removed
+  // 2026-08-15 — the drawing stays for whenever a GET measure returns
   S.conveyance = S.house;
   S.capgains = S.chart;
   S.wwcr = S.building;
@@ -951,6 +972,20 @@ const SessionPanel = {
       const o = {};
       for (const k of SK) o[k] = skStart.base || 1;
       return o;
+    };
+    /* A bare number is not a self-explanatory quantity — "3" only means
+       something once you know the ladder runs to 6. session.json
+       `skillStart.ranks` names every level (indexed BY THE VALUE, so
+       ranks[1] is what a 1 is called); this is the fallback for a data
+       file that predates the list. Content belongs in the JSON.
+       The ladder runs to 6, so "Average" names the MIDDLE (3), not the
+       floor: every skill starts at 1, Very weak, and is bought up. */
+    const RANKS = ["None", "Very weak", "Weak", "Average", "Good",
+                   "Great", "Formidable"];
+    const rankOf = (v) => {
+      const list = skStart.ranks && skStart.ranks.length
+        ? skStart.ranks : RANKS;
+      return list[Math.max(0, Math.min(list.length - 1, v | 0))] || "";
     };
     const defaults = () => ({
       week: 1, actionWeek: -1, agendaLocked: false, agenda: [],
@@ -1232,42 +1267,21 @@ const SessionPanel = {
           '%" title="Week ' + S.week + '"></div>';
       }
       /* Structure: a horizontally scrolling strip (fixed min-width, so
-         nine milestone labels never collide on a narrow overlay) plus a
-         NON-scrolling readout line under it. The readout replaces the
-         old `title=` tooltips: a native tooltip is slow, unstyled and
-         simply does not exist on touch, and a floating popover would be
-         clipped by the strip's own overflow. Hover/focus previews a
-         milestone; the readout falls back to the current week. */
+         nine milestone labels never collide on a narrow overlay). The
+         readout line that used to sit under it was removed 2026-08-15
+         (user's call) to give the dialogue back its vertical space —
+         the masthead above already names the current week, and
+         hovering/tapping a milestone surfaces its own label. */
       el.innerHTML = '<div class="stl-scroll"><div class="stl-inner">' +
-        h + '</div></div><div class="stl-read" id="stl-read"></div>';
+        h + "</div></div>";
 
-      const readEl = $("stl-read");
-      const readFor = (w) => {
-        const hit = data.calendar.find((c) => c.week === w);
-        const d = dateRangeFor(w);
-        const rel = w === S.week ? "this week" :
-          w < S.week ? (S.week - w) + " week" +
-            (S.week - w === 1 ? "" : "s") + " ago" :
-          "in " + (w - S.week) + " week" + (w - S.week === 1 ? "" : "s");
-        return '<b>' + esc(hit ? hit.title : (data.weekTitles[w] || "Week " + w)) +
-          "</b><span>Week " + w + (d ? " · " + esc(d) : "") + " · " +
-          rel + "</span>";
-      };
-      const showRead = (w) => {
-        readEl.innerHTML = readFor(w);
-        readEl.classList.toggle("preview", w !== S.week);
-      };
-      showRead(S.week);
       for (const m of el.querySelectorAll(".stl-m")) {
-        const w = +m.dataset.week;
         const on = () => {
-          showRead(w);
           for (const o of el.querySelectorAll(".stl-m")) {
             o.classList.toggle("hot", o === m);
           }
         };
         const off = () => {
-          showRead(S.week);
           m.classList.remove("hot");
         };
         m.addEventListener("pointerenter", on);
@@ -1320,32 +1334,53 @@ const SessionPanel = {
         cur.offsetLeft - box.clientWidth / 2));
     };
 
-    /* ---- the same session-progress read, shrunk to a dot strip that
-       sits on the map HUD above the End Turn button — always visible,
-       not just inside the overlay. No text labels (no room); each dot's
-       title carries the milestone name + date, same data as the full
-       timeline. */
+    /* ---- session progress on the map HUD, above the End Turn button —
+       always visible, not just inside the overlay.
+       A PROGRESS BAR since 2026-08-15 (user's call), not the old dot
+       strip: at 168px the nine milestone dots were 5px each and read as
+       lint. The milestones survive as ticks IN the track, which is what
+       they actually are — marks along the run — and the readout gives
+       the number the dots could never show. The overlay's full strip is
+       still where you go to READ the calendar; this answers "how much
+       session is left" at a glance.
+       Built ONCE and updated in place (`data-built`), the same lesson
+       as renderMetrics: replacing the innerHTML gives the fill no
+       previous width to transition from, so it would snap on every
+       week instead of sliding. */
     const renderHudTimeline = () => {
       const el = $("hud-timeline");
       if (!el) return;
       const span = Math.max(1, data.sineDieWeek - 1);
       const pctOf = (w) => Math.max(0, Math.min(100,
         ((w - 1) / span) * 100));
+      if (!el.dataset.built) {
+        let ticks = "";
+        data.calendar.forEach((c) => {
+          ticks += '<span class="htl-tick" data-week="' + c.week +
+            '" style="left:' + pctOf(c.week) + '%"></span>';
+        });
+        el.innerHTML = '<span class="htl-bar">' +
+          '<span class="htl-fill"></span>' + ticks +
+          '<span class="htl-head"></span></span>' +
+          '<span class="htl-read"></span>';
+        el.dataset.built = "1";
+      }
       const curPct = pctOf(S.week);
-      let h = '<div class="htl-track"></div>' +
-        '<div class="htl-fill" style="width:' + curPct + '%"></div>';
-      data.calendar.forEach((c) => {
-        const state = c.week < S.week ? "past" :
-          c.week === S.week ? "now" : "future";
-        h += '<span class="htl-dot ' + state + '" style="left:' +
-          pctOf(c.week) + '%" title="' + escA(c.title) + " — Week " +
-          c.week + (dateRangeFor(c.week) ?
-            " · " + escA(dateRangeFor(c.week)) : "") + '"></span>';
-      });
-      // the padded outer chip isn't itself the percentage frame — an
-      // inset inner div is, so 0%/100% land on the track's ends, not
-      // the chip's outer border
-      el.innerHTML = '<div class="htl-inner">' + h + "</div>";
+      el.querySelector(".htl-fill").style.width = curPct + "%";
+      el.querySelector(".htl-head").style.left = curPct + "%";
+      for (const t of el.querySelectorAll(".htl-tick")) {
+        t.classList.toggle("past", +t.dataset.week <= S.week);
+      }
+      const last = data.sineDieWeek;
+      el.querySelector(".htl-read").textContent =
+        Math.min(S.week, last) + "/" + last;
+      // the chip is a button into the overlay; the tooltip carries what
+      // the labels used to, since a bar has no room for nine names
+      const cal = calFor(S.week);
+      el.title = "Week " + S.week + " of " + last +
+        (cal.title ? " · " + cal.title : "") +
+        (dateRangeFor(S.week) ? " · " + dateRangeFor(S.week) : "") +
+        " — open the session";
     };
 
     /* ---- the three campaign meters.
@@ -1408,17 +1443,19 @@ const SessionPanel = {
     const renderHead = () => {
       const cal = calFor(S.week);
       const dateStr = dateRangeFor(S.week);
-      $("session-title").textContent = "The Campaign · Week " + S.week;
       $("tb-week-badge").textContent = "W" + S.week;
       $("tb-week-badge").title = dateStr;
-      /* masthead: the week number as a stamped plate, title + phase
-         beside it — the "one action per week" caption is gone with the
-         weekly allowance; what the week offers is event-dependent now */
-      $("sess-week").innerHTML =
-        '<div class="wk-no"><small>Week</small><b>' + S.week + "</b></div>" +
-        '<div class="wk-t"><b>' + esc(cal.title) + "</b><small>" +
+      /* ONE masthead, in the panel's top-left corner: the stamped week
+         numeral, the week's name, its phase and real dates. This is the
+         old #sess-week row promoted INTO the title-chip slot — the two
+         used to sit stacked, both naming the week, and the chip's own
+         "The Campaign · Week N" said nothing the plate didn't. */
+      $("session-title").innerHTML =
+        '<span class="mast-no"><small>Week</small><b>' + S.week +
+        "</b></span>" +
+        '<span class="mast-t"><b>' + esc(cal.title) + "</b><small>" +
         esc(cal.phase) + (dateStr ? " · " + esc(dateStr) : "") +
-        "</small></div>";
+        "</small></span>";
       renderTimeline();
       renderHudTimeline();
       renderMetrics();
@@ -1551,6 +1588,113 @@ const SessionPanel = {
         chk.dc + " " + dcName(chk.dc).toLowerCase() + "</small></div>";
     };
 
+    /* ---- the roll POPS OUT (2026-08-15, user's call).
+       The inline card stays and is still the RECEIPT — the thing the
+       player scrolls back to, and the thing that greys out with the
+       rest of the transcript. The TRAY is the theatre: a dice tray
+       centered over the whole panel, real pip faces tumbling, landing
+       in a stagger, the arithmetic ticking in under them and the
+       verdict slamming down as a stamp.
+       Engineering rules that must survive edits:
+       - **JS timers own the state machine; CSS owns only the look.** A
+         hidden document freezes the animation clock dead, so no step
+         may hang off `animationend` — the tray would never leave and
+         would sit on top of the game forever. Same frozen-clock rule
+         as screenSwap / wk-open / the deal, but load-bearing here.
+       - **The tray never takes input** (`pointer-events: none` on the
+         wrapper). The choice strip is already emptied while the dice
+         are out, so there is nothing to guard, and a tray that somehow
+         outlived its timers must not be able to trap the player.
+       - `kill()` is idempotent and ALSO runs on a long safety timeout,
+         so the tray is removed and `finish()` runs exactly once even if
+         a step is missed. Never make finish() reachable only through
+         the happy path. */
+    const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
+                   5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const pipHtml = (n) => {
+      const on = PIPS[n] || PIPS[1];
+      let h = "";
+      for (let i = 0; i < 9; i++) {
+        h += "<i" + (on.indexOf(i) > -1 ? ' class="on"' : "") + "></i>";
+      }
+      return h;
+    };
+    const setFace = (el, n) => {
+      el.innerHTML = pipHtml(n);
+      el.dataset.n = n;
+    };
+    const T_TUMBLE = 820, T_STAMP = 380, T_HOLD = 560, T_OUT = 300;
+    const popTray = (chk, r, onLand, onGone) => {
+      const panel = overlay.querySelector(".ovl-panel");
+      if (!panel) { onLand(); onGone(); return; }   // no stage, no show
+      const sk = data.skills[chk.skill] || { name: chk.skill };
+      const bits = [sk.name + " +" + r.skill].concat(
+        r.mods.map((m) => m.label + " +" + m.n));
+      const spec = r.sum === 12 ? " jack" : r.sum === 2 ? " snake" : "";
+      const wrap = document.createElement("div");
+      wrap.className = "sd-tray in r-" + (chk.type || "white") + spec;
+      wrap.innerHTML =
+        '<div class="tray-card">' +
+        '<div class="tray-skill">' + (sym(chk.skill) || sym("dice")) +
+        " " + esc(sk.name) + "</div>" +
+        '<div class="tray-dice"><span class="tdie"></span>' +
+        '<span class="tdie"></span></div>' +
+        '<div class="tray-dc">vs ' + chk.dc + " · " +
+        esc(dcName(chk.dc).toLowerCase()) + "</div>" +
+        '<div class="tray-math"></div>' +
+        '<div class="tray-stamp"></div></div>';
+      panel.appendChild(wrap);
+      const dice = wrap.querySelectorAll(".tdie");
+      for (const d of dice) setFace(d, 1 + Math.floor(Math.random() * 6));
+      const iv = setInterval(() => {
+        for (const d of dice) {
+          setFace(d, 1 + Math.floor(Math.random() * 6));
+        }
+      }, 75);
+      let dead = false, landed = false;
+      const timers = [];
+      const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+      // idempotent, and kill() runs it if it somehow hasn't — otherwise
+      // an early teardown would leave the receipt reading "the dice are
+      // out" forever with the outcome already appended under it
+      const land = () => {
+        if (landed) return;
+        landed = true;
+        onLand();
+      };
+      const kill = () => {
+        if (dead) return;
+        dead = true;
+        clearInterval(iv);
+        for (const t of timers) clearTimeout(t);
+        land();
+        if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        onGone();
+      };
+      at(T_TUMBLE, () => {
+        clearInterval(iv);
+        setFace(dice[0], r.d1);
+        setFace(dice[1], r.d2);
+        wrap.classList.add("landed");
+        wrap.querySelector(".tray-math").innerHTML =
+          "<b>" + r.d1 + "</b> + <b>" + r.d2 + "</b> · " +
+          esc(bits.join(" · ")) + " · <b>" + r.total + "</b>";
+      });
+      at(T_TUMBLE + T_STAMP, () => {
+        wrap.classList.add(r.ok ? "ok" : "no");
+        wrap.querySelector(".tray-stamp").innerHTML =
+          (r.ok ? "SUCCESS" : "FAILURE") +
+          (r.sum === 12 ? '<small>double sixes</small>' :
+            r.sum === 2 ? '<small>snake eyes</small>' : "");
+        land();                         // settle the receipt behind it
+      });
+      const hold = T_HOLD + (spec ? 420 : 0);
+      at(T_TUMBLE + T_STAMP + hold, () => wrap.classList.add("out"));
+      at(T_TUMBLE + T_STAMP + hold + T_OUT, kill);
+      // …and a backstop, in case any step above was missed
+      at(T_TUMBLE + T_STAMP + hold + T_OUT + 4000, kill);
+    };
+
     // the card while the dice are still out — same frame, no verdict
     const rollingHtml = (chk) => {
       const sk = data.skills[chk.skill] || { name: chk.skill };
@@ -1584,6 +1728,74 @@ const SessionPanel = {
         esc(v.text) + "</div>";
     }).join("");
 
+    /* ---- the character card: who you are actually talking to, pinned
+       at the top of the scene the way the reference keeps a portrait up
+       for the length of a conversation (2026-08-15, user's call).
+       PORTRAITS ARE FACELESS — the same house rule as the event banners
+       and the skill glyphs. A committee desk, a nameplate, shoulders
+       and a head in silhouette; no features, ever. The character reads
+       as an office and a posture, which is what they are to the player.
+       Only characters with a `card` in session.json get one, so an
+       incidental speaker doesn't get a dossier. */
+    const PORTRAIT = {
+      chairdesk:
+        '<svg viewBox="0 0 80 80" aria-hidden="true">' +
+        // the room behind him: a committee wall and a high window
+        '<rect x="0" y="0" width="80" height="80" fill="none"/>' +
+        '<g opacity=".26" fill="currentColor">' +
+        '<rect x="7" y="9" width="20" height="26" rx="2"/>' +
+        '<rect x="53" y="9" width="20" height="26" rx="2"/></g>' +
+        // shoulders and head — silhouette only, no features
+        '<path d="M22,62 C22,49 30,42 40,42 C50,42 58,49 58,62 Z" ' +
+        'fill="currentColor"/>' +
+        '<circle cx="40" cy="28" r="12" fill="currentColor"/>' +
+        // the collar, cut in the panel ground so it reads as a suit
+        '<path d="M34,44 L40,53 L46,44" fill="none" stroke="#0d1234" ' +
+        'stroke-width="3" stroke-linejoin="round"/>' +
+        // the desk he schedules from, and the nameplate on it. The
+        // nameplate is the ONE gold accent — house rule is one per
+        // drawing, and a chair IS his nameplate. A gavel was tried and
+        // cut: it collided with the desk edge and made two accents.
+        '<rect x="2" y="61" width="76" height="19" rx="2" ' +
+        'fill="currentColor" opacity=".55"/>' +
+        '<rect x="2" y="61" width="76" height="2.5" fill="currentColor"/>' +
+        '<rect x="24" y="65" width="32" height="10" rx="2" ' +
+        'fill="#f2c14e"/>' +
+        '<rect x="28" y="69" width="24" height="2.4" rx="1.2" ' +
+        'fill="#8a6a15"/></svg>',
+    };
+    /* The quote is NOT duplicated into session.json — it is read live
+       from chairs.json `voice` through the chair whose `char` points
+       back at this character, so a chair's own words can never drift
+       between the two files. CH is declared later in this same closure
+       but only ever READ at call time, long after init has run. */
+    const chairVoiceFor = (sid) => {
+      const chairs = (typeof CH !== "undefined" && CH.chairs) || {};
+      for (const id of Object.keys(chairs)) {
+        if (chairs[id].char === sid && chairs[id].voice) {
+          return chairs[id].voice;
+        }
+      }
+      return "";
+    };
+    const charCardHtml = (sid, who) => {
+      const c = who.card || {};
+      const quote = chairVoiceFor(sid);
+      return '<div class="cc-art">' +
+        (PORTRAIT[c.art] || sym(sid) || "") + "</div>" +
+        '<div class="cc-body"><div class="cc-name">' +
+        esc(who.name || "") + "</div>" +
+        '<div class="cc-role">' + esc(c.title || who.role || "") +
+        "</div>" +
+        ((c.tags || []).length
+          ? '<div class="cc-tags">' + c.tags.map((t) =>
+            "<span>" + esc(t) + "</span>").join("") + "</div>"
+          : "") +
+        (c.note ? '<div class="cc-note">' + esc(c.note) + "</div>" : "") +
+        (quote ? '<div class="cc-quote">' + esc(quote) + "</div>" : "") +
+        "</div>";
+    };
+
     // one spoken line, DE format — speaker in caps and color, role
     // dimmed. `sid` (the character key) picks the custom glyph; the
     // data icon is only a fallback for unmapped characters.
@@ -1609,10 +1821,29 @@ const SessionPanel = {
       overlay.classList.remove("creating");   // a scene is never the select screen
       body.dataset.view = "";
       body.innerHTML = '<div class="sd-scene">' +
+        '<div class="sd-card" id="sd-card"></div>' +
         '<div class="sd-log"></div><div class="sd-play"></div></div>';
       const logEl = body.querySelector(".sd-log");
       const play = body.querySelector(".sd-play");
+      const cardEl = body.querySelector("#sd-card");
       let shownArt = "";
+      /* The card follows whoever is SPEAKING, and a node with no
+         speaker (narration, the room, your own campaign) leaves it
+         alone — you are still standing in front of the same person
+         while the prose describes the hallway. */
+      let cardWho = "";
+      const showCard = (sid) => {
+        if (!sid || sid === cardWho) return;
+        const who = data.characters[sid];
+        if (!who || !who.card) return;
+        cardWho = sid;
+        cardEl.innerHTML = charCardHtml(sid, who);
+        cardEl.classList.add("on");
+        // restart the entrance when the card swaps mid-scene
+        cardEl.classList.remove("in");
+        void cardEl.offsetWidth;
+        cardEl.classList.add("in");
+      };
       const agePast = () => {
         for (const el of logEl.children) el.classList.add("sd-past");
       };
@@ -1642,6 +1873,7 @@ const SessionPanel = {
         // the coalition, the room) rather than a named individual —
         // rendered as unattributed prose, same as a choice's `reply`
         const who = n.speaker ? data.characters[n.speaker] : null;
+        showCard(n.speaker);
         // choices with no `check` behave exactly as they always have
         const btnHtml = (c, i) => {
           const num = '<span class="sd-num">' + (i + 1) + ".</span>";
@@ -1765,7 +1997,14 @@ const SessionPanel = {
                 d.textContent = 1 + Math.floor(Math.random() * 6);
               }
             }, 75);
-            setTimeout(() => {
+            /* The tray drives the whole beat now. Its stamp is the
+               moment the verdict becomes true, so the receipt settles
+               and the scene washes THERE — not when the tray leaves,
+               or the transcript would lag the announcement. `finish()`
+               waits for the tray to be gone, so effects still land
+               after the verdict is shown (the documented rule: a
+               support tick before the stamp spoils it). */
+            popTray(c.check, roll, () => {
               clearInterval(iv);
               const rollEl = beatEl.querySelector(".sd-roll");
               if (rollEl) rollEl.outerHTML = rollHtml(c.check, roll);
@@ -1776,10 +2015,7 @@ const SessionPanel = {
                 void scene.offsetWidth;
                 scene.classList.add(roll.ok ? "wash-ok" : "wash-no");
               }
-              // boxcars/snake eyes get their extra beat of theatre
-              setTimeout(finish,
-                roll.sum === 12 || roll.sum === 2 ? 700 : 420);
-            }, 780);
+            }, finish);
           });
         }
       };
@@ -1792,21 +2028,44 @@ const SessionPanel = {
        either way). Symbols are inline SVG, duotone: the pole color via
        currentColor, one gold accent per glyph (the overlay's #f2c14e).
        No faces, per the house art rule — the glyphs are the portrait. */
+    /* Each glyph's moving parts carry `g-*` classes so the select screen
+       can ANIMATE them (CSS, `.skc-art` scope — the glyphs render nowhere
+       else). Draw-loop strokes carry pathLength="100" so one shared
+       dasharray works for every path regardless of true length. The
+       loops are phase-shifted so keyframe 0% is the RESTING drawn state:
+       a hidden document freezes the animation clock at currentTime 0,
+       and a loop that starts from "invisible" would screenshot as a
+       missing limb (same clock rule as screenSwap/countTo). */
     const GLYPH = {
       fiscal:
-        '<svg viewBox="0 0 120 84"><g fill="currentColor">' +
+        '<svg viewBox="0 0 120 84">' +
+        // the brain BEHIND the chart — faint currentColor outline, so it
+        // reads as the thought under the numbers, not a second subject
+        '<g class="g-brain" fill="none" stroke="currentColor" ' +
+        'stroke-width="3" stroke-linecap="round" opacity=".18">' +
+        '<path d="M24,52 C14,50 12,38 20,32 C16,22 26,12 36,16 ' +
+        'C40,6 56,4 62,12 C72,4 88,8 90,20 C100,24 102,38 94,44 ' +
+        'C96,54 86,62 76,58 C68,68 52,68 46,60 C38,64 28,60 24,52 Z"/>' +
+        '<path d="M46,14 C48,26 44,34 50,44"/>' +
+        '<path d="M64,12 C60,26 66,36 60,50"/>' +
+        '<path d="M78,18 C74,28 80,38 74,50"/></g>' +
+        '<g class="g-bars" fill="currentColor">' +
         '<rect x="16" y="48" width="15" height="24" opacity=".5"/>' +
         '<rect x="39" y="36" width="15" height="36" opacity=".7"/>' +
         '<rect x="62" y="22" width="15" height="50" opacity=".9"/>' +
         "</g>" +
-        '<polyline points="14,54 46,38 72,24 96,13" fill="none" ' +
+        '<polyline class="g-line" pathLength="100" ' +
+        'points="14,54 46,38 72,24 96,13" fill="none" ' +
         'stroke="#f2c14e" stroke-width="4.5" stroke-linecap="round"/>' +
-        '<circle cx="99" cy="12" r="7" fill="#f2c14e"/></svg>',
+        '<circle class="g-dot" cx="99" cy="12" r="7" fill="#f2c14e"/>' +
+        "</svg>",
       procedure:
-        '<svg viewBox="0 0 120 84"><path d="M10,74 L110,74 L110,10 ' +
+        '<svg viewBox="0 0 120 84"><path class="g-maze" ' +
+        'pathLength="100" d="M10,74 L110,74 L110,10 ' +
         'L10,10 L10,58 L94,58 L94,26 L26,26 L26,44 L72,44" fill="none" ' +
         'stroke="currentColor" stroke-width="5" stroke-linejoin="miter"/>' +
-        '<circle cx="78" cy="44" r="5.5" fill="#f2c14e"/></svg>',
+        '<circle class="g-dot" cx="78" cy="44" r="5.5" fill="#f2c14e"/>' +
+        "</svg>",
       educator:
         '<svg viewBox="0 0 120 84">' +
         '<path d="M60,66 L18,57 L18,27 L60,36 Z" fill="currentColor" ' +
@@ -1815,7 +2074,8 @@ const SessionPanel = {
         '<path d="M60,66 L102,57 L102,27 L60,36 Z" fill="currentColor" ' +
         'opacity=".65" stroke="currentColor" stroke-width="4" ' +
         'stroke-linejoin="round"/>' +
-        '<g stroke="#f2c14e" stroke-width="4" stroke-linecap="round">' +
+        '<g class="g-rays" stroke="#f2c14e" stroke-width="4" ' +
+        'stroke-linecap="round">' +
         '<line x1="60" y1="26" x2="60" y2="8"/>' +
         '<line x1="41" y1="28" x2="30" y2="12"/>' +
         '<line x1="79" y1="28" x2="90" y2="12"/></g></svg>',
@@ -1829,7 +2089,8 @@ const SessionPanel = {
         '<path d="M94,61 L100,76 L78,62" fill="none" ' +
         'stroke="currentColor" stroke-width="4.5" ' +
         'stroke-linejoin="round"/>' +
-        '<g fill="#f2c14e"><circle cx="56" cy="37" r="3.6"/>' +
+        '<g class="g-type" fill="#f2c14e">' +
+        '<circle cx="56" cy="37" r="3.6"/>' +
         '<circle cx="66" cy="37" r="3.6"/>' +
         '<circle cx="76" cy="37" r="3.6"/></g></svg>',
       mobilizing:
@@ -1838,7 +2099,7 @@ const SessionPanel = {
         'fill="currentColor" opacity=".6"/>' +
         '<path d="M22,36 L22,50 L58,64 L58,22 Z" fill="currentColor" ' +
         'opacity=".9"/>' +
-        '<g fill="none" stroke-linecap="round">' +
+        '<g class="g-waves" fill="none" stroke-linecap="round">' +
         '<path d="M68,32 a14,14 0 0 1 0,22" stroke="currentColor" ' +
         'stroke-width="4.5"/>' +
         '<path d="M78,24 a24,24 0 0 1 0,38" stroke="currentColor" ' +
@@ -1853,31 +2114,44 @@ const SessionPanel = {
         '<rect x="56" y="34" width="8" height="8" fill="currentColor"/>' +
         '<line x1="12" y1="42" x2="108" y2="42" stroke="currentColor" ' +
         'stroke-width="4" stroke-linecap="round"/>' +
-        '<g fill="none" stroke="#f2c14e" stroke-width="4" ' +
-        'stroke-linecap="round">' +
-        '<path d="M60,42 C52,52 40,56 32,64"/>' +
-        '<path d="M60,42 C60,56 59,64 58,72"/>' +
-        '<path d="M60,42 C68,52 80,56 88,64"/>' +
-        '<path d="M56,50 C48,54 44,60 42,70"/>' +
-        '<path d="M64,50 C72,54 76,60 78,70"/></g>' +
-        '<g fill="#f2c14e"><circle cx="32" cy="66" r="4"/>' +
+        '<g class="g-roots" fill="none" stroke="#f2c14e" ' +
+        'stroke-width="4" stroke-linecap="round">' +
+        '<path pathLength="100" d="M60,42 C52,52 40,56 32,64"/>' +
+        '<path pathLength="100" d="M60,42 C60,56 59,64 58,72"/>' +
+        '<path pathLength="100" d="M60,42 C68,52 80,56 88,64"/>' +
+        '<path pathLength="100" d="M56,50 C48,54 44,60 42,70"/>' +
+        '<path pathLength="100" d="M64,50 C72,54 76,60 78,70"/></g>' +
+        '<g class="g-nodes" fill="#f2c14e">' +
+        '<circle cx="32" cy="66" r="4"/>' +
         '<circle cx="58" cy="74" r="4"/><circle cx="88" cy="66" r="4"/>' +
         '<circle cx="42" cy="72" r="3"/><circle cx="78" cy="72" r="3"/>' +
         "</g></svg>",
     };
 
+    /* The card footer is a STEPPER, not a one-way ratchet: − and + flank
+       the value, with the level's plain-language rank between the pole
+       name and the box (a "3" means nothing until you know the ladder).
+       − floors at `skStart.base` — a player can undo a pick but never
+       spend below where everyone starts — and refunds the point, so the
+       screen is fully reversible without leaving it. */
     const skSelectHtml = (cap, PO, order) => {
+      const floor = skStart.base || 1;
       let h = '<div class="sk-select">' +
         '<div class="sk-title">Select instincts</div>' +
         '<div class="sk-ptchip"><b>' + S.skillPts + "</b> point" +
         (S.skillPts === 1 ? "" : "s") + " to spend · nothing above " +
-        cap + ' to start</div><div class="skc-grid">';
+        cap + " to start</div>" +
+        '<button class="sk-reset" id="sk-reset" type="button"' +
+        (S.skillPts >= (skStart.points || 0) ? " disabled" : "") +
+        ">↺ Reset</button>" +
+        '<div class="skc-grid">';
       for (const p of order) {
         for (const k of SK.filter(
           (q) => (data.skills[q].pole || "bridge") === p)) {
           const s = data.skills[k];
           const v = S.skills[k];
           const at = v >= cap;
+          const down = v <= floor;
           h += '<div class="skc p-' + p + (at ? " capped" : "") +
             '" data-skill="' + k + '">' +
             '<div class="skc-art">' + (GLYPH[k] || "") + "</div>" +
@@ -1885,12 +2159,77 @@ const SessionPanel = {
             '<div class="skc-desc">' + esc(s.desc) + "</div>" +
             '<div class="skc-foot"><span class="skc-pole">' +
             esc((PO[p] || {}).name || p) + "</span>" +
+            '<span class="skc-rank">' + esc(rankOf(v)) + "</span>" +
+            '<span class="skc-step">' +
+            '<button class="skdn" type="button" aria-label="Lower ' +
+            escA(s.name) + '"' + (down ? " disabled" : "") + ">−</button>" +
             '<span class="skpip">' + v + "</span>" +
-            '<button class="skup" type="button"' +
-            (at ? " disabled" : "") + ">+</button></div></div>";
+            '<button class="skup" type="button" aria-label="Raise ' +
+            escA(s.name) + '"' + (at ? " disabled" : "") + ">+</button>" +
+            "</span></div></div>";
         }
       }
       return h + "</div></div>";
+    };
+
+    /* ---- the creation funnel is a CORRIDOR, and moving along it looks
+       like travel: Instincts → Priorities → Revenue, left to right. The
+       outgoing screen slides off the way you came from, the incoming one
+       arrives from the way you are going, and its cards rise in a short
+       stagger behind it. Four rules hold this together:
+       - **Only NAVIGATION calls this.** A bump or a policy pick
+         re-renders the same screen by calling renderSelect() /
+         renderAgendaSelect() directly. Replaying a 470ms slide on every
+         + press would be unbearable, so the animation must never live
+         in the renderers themselves.
+       - **The classes go on the CHILDREN, never on `#sess-body`.** Both
+         renderers do `body.innerHTML = …`, which throws the children
+         away — so a class parked on a child cannot survive into the next
+         render and re-fire the slide. A class on the scroller itself
+         would, and would need cleanup timers to not.
+       - `swapping` blocks re-entry only for the outgoing half; once the
+         new screen is on stage the corridor is walkable again, so a
+         quick second click feels responsive instead of dead.
+       - **The arrival is force-landed on a wall clock** (CR_LAND), for
+         the same reason countTo is: a HIDDEN document freezes the
+         animation clock dead — playState stays "running" while
+         currentTime never leaves 0 — and `both` fill would hold the
+         screen at its `from` keyframe, which is opacity 0. A player who
+         clicks Continue and switches tabs would come back to a blank
+         creation screen. Stripping the class after the animation's own
+         run time is a no-op when it did play (it ended on the natural
+         state anyway) and a rescue when it didn't. CR_LAND must stay
+         above the longest card stagger + duration (.25s + .38s).
+       - Reduced motion resolves instantly — same path as the dice
+         roll. Any new animation here goes in that CSS media block too. */
+    const CR_OUT = 170, CR_LAND = 700, DEAL_MS = 1000;
+    let swapping = false;
+    const screenSwap = (fwd, render) => {
+      if (reduced()) { body.scrollTop = 0; render(); return; }
+      if (swapping) return;
+      swapping = true;
+      const out = fwd ? "cr-out-l" : "cr-out-r";
+      const inn = fwd ? "cr-in-r" : "cr-in-l";
+      // strip a still-running arrival first: `swapping` only guards the
+      // outgoing half, so a quick second click lands here with cr-in-*
+      // still on the children — and the in-rules sit LATER in the
+      // stylesheet, so the leftover class would win the `animation`
+      // shorthand and the screen would slide IN again instead of out
+      for (const el of body.children) {
+        el.classList.remove("cr-in-r", "cr-in-l");
+        el.classList.add(out);
+      }
+      setTimeout(() => {
+        body.scrollTop = 0;
+        render();
+        const arrived = [...body.children];
+        for (const el of arrived) el.classList.add(inn);
+        swapping = false;
+        // …and land it whether or not the animation clock ever ran
+        setTimeout(() => {
+          for (const el of arrived) el.classList.remove(inn);
+        }, CR_LAND);
+      }, CR_OUT);
     };
 
     /* ---- creation is its OWN screen, and it comes first. Every entry
@@ -1917,28 +2256,74 @@ const SessionPanel = {
           ? "Spend your " + left + " point" + (left > 1 ? "s" : "") +
             " to continue"
           : "Continue ▸") + "</button>";
+      /* ENTRANCE vs re-render, decided by what was on stage BEFORE this
+         render: a bump/drop/reset rebuilds a grid that already exists
+         (no deal — replaying a card deal on every + press would be
+         unbearable), while boot, the hub funnel and the ag-skills back
+         plate all arrive with no .skc-grid in the body. */
+      const entering = !body.querySelector(".skc-grid");
       const keep = body.scrollTop;         // bumps shouldn't jump the page
       body.innerHTML = html;
       body.scrollTop = keep;
       renderTurnBtn();
+      if (entering && !reduced()) {
+        const grid = body.querySelector(".skc-grid");
+        if (grid) {
+          // the cards deal out of a loose center stack (.deal in CSS);
+          // stripped on a wall clock, same rule as screenSwap/wk-open —
+          // a frozen animation clock would hold the hand stacked forever
+          grid.classList.add("deal");
+          setTimeout(() => grid.classList.remove("deal"), DEAL_MS);
+        }
+      }
+      const floor = skStart.base || 1;
       for (const r of body.querySelectorAll(".skc")) {
+        const k = r.dataset.skill;
         const up = r.querySelector(".skup");
-        if (!up || up.disabled) continue;
+        const dn = r.querySelector(".skdn");
         const bump = (ev) => {
           ev.stopPropagation();
-          if (S.skillPts < 1) return;
-          S.skills[r.dataset.skill] += 1;
+          if (S.skillPts < 1 || S.skills[k] >= cap) return;
+          S.skills[k] += 1;
           S.skillPts -= 1;
           save();
           renderSelect();
         };
-        up.addEventListener("pointerdown", bump);
-        r.addEventListener("pointerdown", bump);
+        const drop = (ev) => {
+          ev.stopPropagation();
+          if (S.skills[k] <= floor) return;
+          S.skills[k] -= 1;
+          S.skillPts += 1;
+          save();
+          renderSelect();
+        };
+        // − is a child of the card, whose own pointerdown is +1, so its
+        // handler MUST stopPropagation (it does) or lowering a skill
+        // would immediately raise it again
+        if (dn && !dn.disabled) dn.addEventListener("pointerdown", drop);
+        // the whole card stays a +1 tap target, not just the + box —
+        // but only while there is headroom to spend into
+        if (up && !up.disabled) {
+          up.addEventListener("pointerdown", bump);
+          r.addEventListener("pointerdown", bump);
+        }
+      }
+      const reset = body.querySelector("#sk-reset");
+      if (reset && !reset.disabled) {
+        reset.addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          S.skills = baseSkills();
+          S.skillPts = skStart.points || 0;
+          save();
+          renderSelect();
+        });
       }
       const go = body.querySelector("#sk-begin");
       if (go && !go.disabled) go.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
-        renderHub();
+        // forward down the corridor — renderHub's own bail lands on the
+        // agenda screen, since the points are by definition all spent
+        screenSwap(true, renderHub);
       });
     };
 
@@ -2020,10 +2405,17 @@ const SessionPanel = {
           '<span class="agt ' + p.kind + '">' + (sym(p.id) || "") + " " +
           esc(p.name) + "</span>").join("") + "</div>";
       }
+      /* There is always a way back up the corridor: from Revenue to
+         Priorities, and from Priorities all the way out to the instinct
+         screen. Before this, step 1 was a one-way door — you could
+         revise your bills forever but never revisit the instincts you
+         picked ninety seconds earlier. */
       html += '<div class="ag-nav">' +
         (agendaStep > 0
           ? '<button class="ag-back" id="ag-back" type="button">' +
-            "◂ Priorities</button>" : "") +
+            '<span class="agb-ar">◂</span>Priorities</button>'
+          : '<button class="ag-back" id="ag-skills" type="button">' +
+            '<span class="agb-ar">◂</span>Instincts</button>') +
         (agendaStep < AG_STEPS.length - 1
           ? '<button class="sk-begin" id="ag-next" type="button">' +
             "How do we pay for it ▸</button>"
@@ -2053,27 +2445,39 @@ const SessionPanel = {
       }
       // the rail is navigable too — a player who wants to revise
       // priorities after seeing the price shouldn't have to back out
+      // every step change slides, and the direction is which way along
+      // the corridor you are walking — a rail jump backwards must not
+      // animate forwards or the motion lies about where you went
+      const goStep = (i) => {
+        if (i === agendaStep) return;
+        const fwd = i > agendaStep;
+        agendaStep = i;
+        screenSwap(fwd, renderAgendaSelect);
+      };
       for (const r of body.querySelectorAll(".ag-step")) {
         r.addEventListener("pointerdown", (ev) => {
           ev.stopPropagation();
-          agendaStep = +r.dataset.step;
-          body.scrollTop = 0;
-          renderAgendaSelect();
+          goStep(+r.dataset.step);
         });
       }
       const step2 = body.querySelector("#ag-next");
       if (step2) step2.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
-        agendaStep = 1;
-        body.scrollTop = 0;
-        renderAgendaSelect();
+        goStep(1);
       });
       const back = body.querySelector("#ag-back");
       if (back) back.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
-        agendaStep = 0;
-        body.scrollTop = 0;
-        renderAgendaSelect();
+        goStep(0);
+      });
+      // all the way back out of the package and into the instincts —
+      // renderSelect is called DIRECTLY, not through renderHub, whose
+      // bail would just bounce straight back here once the points are
+      // spent (skillPts is 0 by the time anyone reaches this screen)
+      const toSkills = body.querySelector("#ag-skills");
+      if (toSkills) toSkills.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        screenSwap(false, renderSelect);
       });
       const lock = body.querySelector("#sess-lock");
       if (lock && !lock.disabled) {
@@ -3261,19 +3665,22 @@ const SessionPanel = {
       save();
       renderHead();
       const cal = calFor(S.week);
+      // every branch here is a WEEK ARRIVING — the panel comes back up
+      // out of the camera ritual, so all three take the ceremonial
+      // entrance, not the ordinary reopen
       const openWeek = () => {
         beating = false;
         renderTurnBtn();
         if (moves.length) {
-          openOverlay();
+          openOverlay(true);
           renderHub();              // let the player read what happened
           return;
         }
         if (cal.event && !S.eventDone.includes(S.week)) {
-          openOverlay();
+          openOverlay(true);
           runEvent();
         } else {
-          openOverlay();
+          openOverlay(true);
           renderHub();
         }
       };
@@ -3303,8 +3710,33 @@ const SessionPanel = {
       }
     };
 
-    /* ---- overlay plumbing */
-    const openOverlay = () => {
+    /* ---- overlay plumbing.
+       TWO entrances, and the difference is editorial. Reopening the
+       panel you just closed is furniture: it gets the modest 260ms
+       `.arriving` rise. A WEEK ARRIVING is an event — the first one on
+       boot, and every one the turn ritual lands — so it gets `.wk-open`:
+       the scrim fades up, the panel rises further and slower, one sheen
+       crosses it, and the masthead, strip, meters and content stagger in
+       behind the frame. Reserve it for those two moments; putting it on
+       every open would make the Session tab feel ceremonial and the
+       actual week feel like nothing.
+       `WK_IN` force-lands it on a wall clock for the same reason
+       screenSwap and countTo do: a hidden document freezes the animation
+       clock, and `both` fill would hold the whole overlay at opacity 0.
+       Keep it above the longest child delay + duration. */
+    const WK_IN = 900;
+    const weekArrive = () => {
+      const panel = overlay.querySelector(".ovl-panel");
+      // the plain rise and the week arrival both animate .ovl-panel, so
+      // the ordinary one has to come off or the two fight over the
+      // `animation` shorthand
+      if (panel) panel.classList.remove("arriving");
+      overlay.classList.remove("wk-open");
+      void overlay.offsetWidth;                 // restart the animation
+      overlay.classList.add("wk-open");
+      setTimeout(() => overlay.classList.remove("wk-open"), WK_IN);
+    };
+    const openOverlay = (week) => {
       $("money-overlay").classList.add("hidden");
       $("policy-overlay").classList.add("hidden");
       const wasHidden = overlay.classList.contains("hidden");
@@ -3313,9 +3745,13 @@ const SessionPanel = {
       // already-open panel must not re-animate the frame
       const panel = overlay.querySelector(".ovl-panel");
       if (panel && wasHidden && !reduced()) {
-        panel.classList.remove("arriving");
-        void panel.offsetWidth;
-        panel.classList.add("arriving");
+        if (week) {
+          weekArrive();
+        } else {
+          panel.classList.remove("arriving");
+          void panel.offsetWidth;
+          panel.classList.add("arriving");
+        }
       }
       Dialog.hide();
       // the strip could only measure itself once it was visible
@@ -3368,7 +3804,7 @@ const SessionPanel = {
       advanceWeek();
     });
     // the other overlays' buttons close this one
-    for (const id of ["tb-budget", "tb-revenue", "tb-policy",
+    for (const id of ["tb-budget", "tb-policy",
                       "fund-chip"]) {
       $(id).addEventListener("pointerdown", () =>
         overlay.classList.add("hidden"));
@@ -3383,14 +3819,13 @@ const SessionPanel = {
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") overlay.classList.add("hidden");
     });
+    /* The footer is the reset affordance and nothing else — the
+       explanatory paragraph about The Advocate, the turn structure and
+       the fictional cast was removed 2026-08-15 (user's call) so the
+       panel's height goes to the dialogue instead. `data.identity` is
+       no longer read anywhere in the UI. */
     $("sess-foot").innerHTML =
-      "You are The Advocate — no seat, no vote; members carry the " +
-      "bills, you run the campaign behind them. One turn = one week of " +
-      "the legislative session, and what a week offers — a meeting, a " +
-      "rally, a move on a chair — is opened by that week's events. " +
-      "The fiscal numbers they move ride the same FY2027 scoreboard as " +
-      "your policy bills. Characters are " +
-      "fictional. <button id=\"sess-reset\" type=\"button\" " +
+      "<button id=\"sess-reset\" type=\"button\" " +
       "style=\"background:none;border:none;color:#9fb0e8;" +
       "text-decoration:underline;cursor:pointer;font:inherit;" +
       "padding:0\">Restart session</button>";
@@ -3424,7 +3859,7 @@ const SessionPanel = {
     const cal0 = calFor(S.week);
     if ((cal0.event && !S.eventDone.includes(S.week)) ||
         (cal0.agenda && !S.agendaLocked)) {
-      openOverlay();
+      openOverlay(true);            // the FIRST week arriving
       // skill investment / bill agenda comes first when it's pending —
       // the narrative event follows once that's locked in (see sess-lock)
       if (cal0.agenda && !S.agendaLocked) renderHub();
@@ -3482,25 +3917,28 @@ const IslandUI = {
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload() {
-    this.load.json("world", "map/world.json?v=1");
-    this.load.json("meta_oahu", "map/oahu.json?v=1");
+    this.load.json("world", "map/world.json?v=" + MAP_V);
+    this.load.json("meta_oahu", "map/oahu.json?v=" + MAP_V);
     this.load.json("flows", "map/tax_flows.json?v=1");
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
-    this.load.json("policies", "map/policies.json?v=1");
-    this.load.json("session", "map/session.json?v=5");
+    this.load.json("policies", "map/policies.json?v=2");
+    // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
+    // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
+    // whenever its content changes (v6 = skillStart.ranks)
+    this.load.json("session", "map/session.json?v=8");
     this.load.json("chairs", "map/chairs.json?v=1");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {
     const world = this.cache.json.get("world");
     this.load.image("overview",
-                    "assets/map/" + world.overview.file + "?v=1");
+                    "assets/map/" + world.overview.file + "?v=" + MAP_V);
     // Oʻahu is preloaded — the intro dives into the Capitol
     const oahu = this.cache.json.get("meta_oahu");
     for (const s of oahu.slices) {
-      this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=1");
+      this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=" + MAP_V);
     }
     this.load.image("capitol", "assets/sprites/capitol.png?v=1");
     this.load.image("marker", "assets/sprites/marker.png?v=1");
@@ -3517,7 +3955,13 @@ class WorldScene extends Phaser.Scene {
 
   create(world) {
     this.world = world;
-    this.cameras.main.setBackgroundColor(DEEP_BLUE);
+    // Read the sea colour from the BAKE (build_world copies it out of
+    // the island metas) rather than trusting the constant. Every island
+    // is a rectangle composited on this, so a mismatch draws a visible
+    // box around each one — and the constant cannot be right for both
+    // art styles at once, since `--style pixel` bakes a different blue.
+    // DEEP_BLUE stays as the pre-load fallback only.
+    this.cameras.main.setBackgroundColor(world.deep || DEEP_BLUE);
     this.cameras.main.setBounds(0, 0, world.w, world.h);
 
     // zoomed-out backdrop: 1/12-scale stitch of all eight bakes,
@@ -3612,14 +4056,14 @@ class WorldScene extends Phaser.Scene {
         (s) => !this.textures.exists("map_" + s.file));
       if (!need.length) { this.addIsland(e, meta); return; }
       for (const s of need) {
-        this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=1");
+        this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=" + MAP_V);
       }
       this.load.once("complete", () => this.addIsland(e, meta));
       this.load.start();
     };
     if (this.cache.json.exists(key)) step2();
     else {
-      this.load.json(key, "map/" + slug + ".json?v=1");
+      this.load.json(key, "map/" + slug + ".json?v=" + MAP_V);
       this.load.once("complete", step2);
       this.load.start();
     }
@@ -3992,15 +4436,25 @@ class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const [cx, cy] = world.capitol;
     this.recomputeMinZoom();         // the whole archipelago fits
-    this.maxZoom = 4;
+    /* Zoom ceiling dropped 4 → 1.35 with the painterly restyle
+       (2026-08-15, user's call). The old ceiling let the camera walk
+       right up to individual 18px sprites, which is where a baked map
+       stops being a painting and starts being a texture — and the CRPG
+       look is built to be READ from a distance, not inspected. 1.35
+       still shows a neighbourhood; it just never shows brushstrokes. */
+    this.maxZoom = 1.35;
 
     cam.centerOn(world.w / 2, world.h / 2);
     cam.setZoom(this.minZoom * 1.02);
+    // the opening push-in has to land INSIDE the ceiling, so it reads
+    // it rather than carrying its own number — a hardcoded 1.7 sailed
+    // straight past maxZoom when the ceiling dropped to 1.35
+    const introZ = Math.min(1.7, this.maxZoom);
     this.introTween = this.tweens.add({
       targets: cam,
-      zoom: 1.7,
-      scrollX: cx - this.scale.width / 2 / 1.7,
-      scrollY: cy - 40 - this.scale.height / 2 / 1.7,
+      zoom: introZ,
+      scrollX: cx - this.scale.width / 2 / introZ,
+      scrollY: cy - 40 - this.scale.height / 2 / introZ,
       duration: 4200,
       delay: 700,
       ease: "Sine.easeInOut",

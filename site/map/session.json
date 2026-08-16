@@ -109,10 +109,17 @@
  },
  "characters": {
   "_note": "Only external actors get names — people the player negotiates or contends with. The player's OWN campaign (staff, coalition) is deliberately faceless: narrative injections speak for it (dialogue node `speaker` omitted/null renders as unattributed prose via saidHtml's narration path), and its two 'Talk story' slots (`office`, `coalition`) point at a place/activity, not a person.",
+  "_cardNote": "A character with a `card` gets a Disco-style profile plate pinned at the top of any scene they speak in (charCardHtml in main.js). `art` names a drawing in the PORTRAIT map — portraits are FACELESS, the same house rule as the event banners and the skill glyphs: a silhouette at a committee desk, never features. `tags` are short reads on how they operate; `note` is one sentence on what they control. The QUOTE is deliberately NOT stored here — it is pulled live from chairs.json `voice` via the chair whose `char` points back at this id, so a chair's own words can never drift between the two files. Only characters the player actually negotiates with need a card.",
   "kawaguchi": {
    "name": "Rep. Jon Kawaguchi",
    "role": "House money chair",
-   "icon": "🏛"
+   "icon": "🏛",
+   "card": {
+    "art": "chairdesk",
+    "title": "Chair, House Finance",
+    "tags": ["Holds the calendar", "Counts votes before he spends one"],
+    "note": "Every bill carrying a dollar figure crosses his desk, and he alone decides which are heard at all. Not an opponent — a scheduler who will not spend a slot on a measure he expects to die later."
+   }
   },
   "grange": {
    "name": "Curtis Grange",
@@ -1558,7 +1565,10 @@
   "points": 5,
   "creationCap": 4,
   "cap": 6,
-  "honeEvery": 2
+  "honeEvery": 2,
+  "_ranksNote": "Plain-language name for each skill level, INDEXED BY THE VALUE — ranks[1] is what a 1 is called, ranks[3] what a 3 is called. Re-based 2026-08-15 (user's call) so 1 = Very weak and 3 = Average: the ladder runs to 6, so the midpoint, not the floor, is what 'average' should name — everyone STARTS very weak and buys their way up. The list must cover 0 through `cap` or a level renders unnamed; index 0 exists only defensively (base is 1, and the creation screen's minus button floors at base, so nothing should ever reach it).",
+  "ranks": ["None", "Very weak", "Weak", "Average", "Good",
+            "Great", "Formidable"]
  },
  "_unlocksNote": "Talk story and actions are NOT a weekly allowance (changed 2026-08-15). Each event dialogue carries `unlocks` = {talks: {charId: dialogueId}, actions: [actionId]} applied when the event completes; a choice's effects may also carry `unlock` (same shape) for outcome-dependent doors. Action id 'push' opens the work-the-chair rows. A week whose event grants nothing is a closed building — renderHub says so explicitly. talkDefaults was removed with this change; the old week-1 calendar `talks` moved into w1-opening.unlocks. Keep every generic event granting SOMETHING or its week is dead air, and check the rotation after pinning a scripted week (see CLAUDE.md)."
 }

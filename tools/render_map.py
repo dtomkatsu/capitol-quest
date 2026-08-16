@@ -70,34 +70,88 @@ def hx4(s, a=255):
 
 
 # ---------------------------------------------------------------- palette
-WATER_BANDS = [  # (max dist px at full res, color)
-    (2,   hx("#f2fbf7")),   # foam line
-    (5,   hx("#a8e6de")),   # shore glow
-    (12,  hx("#5cc6d2")),   # reef
-    (26,  hx("#3799c2")),   # lagoon
-    (48,  hx("#2a71ad")),   # mid
-    (9999, hx("#1c5490")),  # deep
-]
-C_SAND_WET = hx("#dcbf85")
-C_SAND = hx("#eedca6")
-C_GRASS = hx("#68b054")
-C_FIELD = hx("#8cc063")
-C_FIELD_ROW = hx("#6ea24c")
-C_PINE = hx("#c08a54")       # pineapple red-soil field
-C_PINE_ROW = hx("#a06a3c")
-C_FOREST_FLOOR = hx("#3f7c42")
-C_LOT = hx("#7db35e")        # village lawn
-C_STREET = hx("#c3b9a2")
-C_ASPHALT = hx("#a9a79c")    # dense downtown ground
-C_ROCK_LOW = hx("#5d8748")   # verdant lower slopes
-C_ROCK_HIGH = hx("#8b8b72")  # bare rock near crests
-C_CLIFF = hx("#463e2e")
+#
+# TWO STYLES, and the geometry is IDENTICAL between them.
+#
+# `--style pixel` is the original bright pixel-art look, kept intact as
+# the ARCHIVE of what the map used to be (2026-08-15). It is archived as
+# SOURCE, not as a folder of stale PNGs: re-run with `--style pixel
+# --all` and the old map comes back byte-for-byte. Do not delete it.
+#
+# `--style painterly` (the default since 2026-08-15, user's call) is the
+# CRPG look: oil-paint brush facets, softened sprite keylines, far less
+# granular detail, and a final grade + faint vignette. It keeps the
+# BRIGHT tropical palette — a muted earth-and-slate version was built
+# first and rejected. The styles differ in treatment, not pigment.
+#
+# CRITICAL: a style may change COLOUR and DENSITY only. It must never
+# change the crop window, the transform, W/H or any px coordinate —
+# tax_flows, get_flows, world.json, landmarks and stations are all baked
+# against those numbers, and a style that moved them would silently
+# drift every downstream layer off the drawn geography.
+STYLE = "painterly"
 
-GROUND_BASE = {
-    SAND: C_SAND, GRASS: C_GRASS, FIELD: C_FIELD, FOREST: C_FOREST_FLOOR,
-    MOUNTAIN: C_ROCK_LOW, URBAN: C_LOT, URBAN_DENSE: C_ASPHALT,
-    PEAK: C_ROCK_LOW,
-}
+PIXEL_PAL = dict(
+    deep="#1c5490",
+    water=[(2, "#f2fbf7"),    # foam line
+           (5, "#a8e6de"),    # shore glow
+           (12, "#5cc6d2"),   # reef
+           (26, "#3799c2"),   # lagoon
+           (48, "#2a71ad"),   # mid
+           (9999, "#1c5490")],
+    sand_wet="#dcbf85", sand="#eedca6", grass="#68b054",
+    field="#8cc063", field_row="#6ea24c",
+    pine="#c08a54", pine_row="#a06a3c",       # pineapple red-soil field
+    forest_floor="#3f7c42", lot="#7db35e",    # lot = village lawn
+    street="#c3b9a2", asphalt="#a9a79c",      # asphalt = dense downtown
+    rock_low="#5d8748", rock_high="#8b8b72", cliff="#463e2e",
+)
+
+# SAME bright tropical palette as pixel (2026-08-15, user's call — a
+# dusty desaturated version was built first and rejected: "it should be
+# bright"). The two styles differ in TREATMENT, not colour: painterly
+# gets the oil-paint facets, softened sprite keylines, thinner sprite
+# fields and the vignette; the pigments underneath stay Hawaiʻi's.
+PAINTERLY_PAL = dict(PIXEL_PAL)
+
+
+def use_style(name):
+    """Rebind the palette globals for the chosen style.
+
+    Everything downstream reads these module-level constants, so the
+    swap happens once here rather than threading a palette object
+    through every drawing routine.
+    """
+    global STYLE, DEEP, WATER_BANDS, GROUND_BASE
+    global C_SAND_WET, C_SAND, C_GRASS, C_FIELD, C_FIELD_ROW
+    global C_PINE, C_PINE_ROW, C_FOREST_FLOOR, C_LOT
+    global C_STREET, C_ASPHALT, C_ROCK_LOW, C_ROCK_HIGH, C_CLIFF
+    STYLE = name
+    p = PIXEL_PAL if name == "pixel" else PAINTERLY_PAL
+    DEEP = p["deep"]
+    WATER_BANDS = [(d, hx(c)) for d, c in p["water"]]
+    C_SAND_WET = hx(p["sand_wet"])
+    C_SAND = hx(p["sand"])
+    C_GRASS = hx(p["grass"])
+    C_FIELD = hx(p["field"])
+    C_FIELD_ROW = hx(p["field_row"])
+    C_PINE = hx(p["pine"])
+    C_PINE_ROW = hx(p["pine_row"])
+    C_FOREST_FLOOR = hx(p["forest_floor"])
+    C_LOT = hx(p["lot"])
+    C_STREET = hx(p["street"])
+    C_ASPHALT = hx(p["asphalt"])
+    C_ROCK_LOW = hx(p["rock_low"])
+    C_ROCK_HIGH = hx(p["rock_high"])
+    C_CLIFF = hx(p["cliff"])
+    GROUND_BASE = {
+        SAND: C_SAND, GRASS: C_GRASS, FIELD: C_FIELD,
+        FOREST: C_FOREST_FLOOR, MOUNTAIN: C_ROCK_LOW, URBAN: C_LOT,
+        URBAN_DENSE: C_ASPHALT, PEAK: C_ROCK_LOW,
+    }
+
+
+use_style(STYLE)
 
 
 # ---------------------------------------------------------------- helpers
@@ -147,14 +201,47 @@ def _sp(w, h):
 
 
 def _outline(img, color):
-    """1px outline around opaque pixels (ignores translucent shadows)."""
+    """1px outline around opaque pixels (ignores translucent shadows).
+
+    In painterly style the outline is BLENDED toward the sprite rather
+    than stamped hard: a crisp dark keyline is the single strongest
+    pixel-art cue, and leaving it in was what still made the painted
+    map read as a tile game. The ring stays (it is what separates a
+    tree from the ground behind it) but only as a soft contact shadow.
+    """
     a = img[:, :, 3] >= 200
     edge = np.zeros_like(a)
     for dr in (-1, 0, 1):
         for dc in (-1, 0, 1):
             edge |= np.roll(np.roll(a, dr, 0), dc, 1)
     edge &= ~a
-    img[edge] = color
+    if STYLE == "painterly":
+        c = np.array(color, np.float32)
+        c[3] *= 0.55
+        img[edge] = c.astype(np.uint8)
+    else:
+        img[edge] = color
+
+
+def _paint_sprite(spr):
+    """Seat a sprite in the painted ground, in place.
+
+    The sprite drawings are the original pixel-art set. In painterly
+    mode they keep their COLOUR — a muting version was built first and
+    rejected ("it should be bright") — and are only enriched a touch so
+    they sit with the graded terrain instead of looking stickered on.
+    Their integration is really done by two other things: the softened
+    keyline in _outline(), and the oil-paint pass which runs over
+    sprites and ground together at the end. Pixel style is verbatim.
+    """
+    if STYLE != "painterly":
+        return spr
+    rgb = spr[..., :3].astype(np.float32)
+    lum = (rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 +
+           rgb[..., 2] * 0.114)[..., None]
+    rgb = lum + (rgb - lum) * 1.12          # match the ground's lift
+    spr[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return spr
 
 
 def _shadow(img, cx, cy, rx, ry, alpha=75):
@@ -280,12 +367,87 @@ def spr_tower(rng):
 
 
 # ---------------------------------------------------------------- main
+def painterly_finish(canvas):
+    """Turn the rendered canvas into a painting, in place, same size.
+
+    The same treatment the event banners get (make_event_art.paintify),
+    tuned for a map: a short oil-paint pass to break the per-pixel
+    terrain into brush facets, a gentle desaturate + cool grade so the
+    ground reads as pigment rather than tile colour, and a soft vignette
+    so the island sits in the dark the way the reference boards do.
+
+    MUST return the same W x H — every downstream layer is baked against
+    these dimensions.
+    """
+    import cv2
+    rgb = np.asarray(canvas.convert("RGB"), np.uint8)
+    h, w = rgb.shape[:2]
+
+    # 1. brush facets. Radius is judged against the OUTPUT, and the map
+    #    is viewed far zoomed out now, so a small radius is enough — a
+    #    big one turns whole neighbourhoods into single blobs.
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    painted = cv2.xphoto.oilPainting(bgr, 4, 1)
+    painted = cv2.cvtColor(painted, cv2.COLOR_BGR2RGB).astype(np.float32)
+    base = rgb.astype(np.float32)
+    # not full strength: at 1.0 the coastline turns to mush and the
+    # street grid stops reading as a grid at all
+    out = base * (1.0 - 0.72) + painted * 0.72
+
+    # 2. pigment grade. This BRIGHTENS — a desaturating, cool-shadowed
+    #    version was built first and rejected (2026-08-15, user's call:
+    #    "it should be bright"). Oil paint flattens toward the local
+    #    mean, so without a lift the pass reads as dust. Saturation goes
+    #    UP so the greens stay Hawaiʻi's, and the midtones lift.
+    #
+    #    NO VIGNETTE, and this is load-bearing: every island is a
+    #    RECTANGLE composited onto a flat sea of `deep`, so any
+    #    position-dependent darkening draws a visible box around each
+    #    island at world zoom. A faint radial falloff was tried and had
+    #    exactly that effect. Only per-pixel, position-INDEPENDENT
+    #    grading is safe here.
+    return Image.fromarray(
+        np.clip(_grade(out), 0, 255).astype(np.uint8), "RGB")
+
+
+def _grade(arr):
+    """The painterly colour grade. Position-independent by design, and
+    applied to BOTH the canvas and the `deep` swatch — the flat sea the
+    scene paints behind the island rectangles has to land on the same
+    colour the graded slice water does, or every island gets a visible
+    rectangular halo where the two meet.
+
+    (Explicit weighted sum, not `arr @ vec` — float32 matmul on an
+    image this size trips BLAS overflow warnings.)
+    """
+    lum = (arr[..., 0] * 0.299 + arr[..., 1] * 0.587 +
+           arr[..., 2] * 0.114)[..., None]
+    out = lum + (arr - lum) * 1.16              # richer, not greyer
+    return 255.0 * np.clip(out / 255.0, 0, 1) ** 0.94   # midtone lift
+
+
+def graded_deep(hex_color):
+    """`deep` after the same grade the slices get (painterly only)."""
+    if STYLE != "painterly":
+        return hex_color
+    v = _grade(hx(hex_color)[None, None, :])[0, 0]
+    return "#%02x%02x%02x" % tuple(int(round(c)) for c in
+                                   np.clip(v, 0, 255))
+
+
 def main():
     from islands import ISLANDS
     ap = argparse.ArgumentParser()
     ap.add_argument("--island", default="oahu", choices=sorted(ISLANDS))
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--style", default="painterly",
+                    choices=("painterly", "pixel"),
+                    help="painterly = the CRPG look (default); pixel = "
+                         "the original bright pixel-art map, kept "
+                         "reproducible as the archive of the old style")
     args = ap.parse_args()
+    use_style(args.style)
+    print(f"style: {args.style}")
     for slug in (list(ISLANDS) if args.all else [args.island]):
         render_island(slug)
 
@@ -537,30 +699,41 @@ def render_island(slug):
             by = (c + r) * 8 + TOP_PAD + 8 - y0
             if not (-40 < bx < W + 40 and -40 < by < H + 40):
                 continue
+            # painterly thins the stamp field out hard. The map is read
+            # from much further away now (maxZoom dropped with the
+            # restyle), and at that distance a dense field of 18px
+            # sprites is not detail, it is noise that the oil-paint pass
+            # then smears into a texture. Fewer, better-spaced objects
+            # read as a painted settlement; a carpet of them does not.
+            D = 0.45 if STYLE == "painterly" else 1.0
             if t == FOREST:
-                for _ in range(rng.randrange(2, 4)):
+                lo, hi = (1, 3) if STYLE == "painterly" else (2, 4)
+                for _ in range(rng.randrange(lo, hi)):
                     px = bx + rng.randrange(-14, 15)
                     py = by + rng.randrange(-7, 8)
                     stamps.append((py, px, spr_tree(rng,
                                                     tall=rng.random() < .3)))
             elif t == URBAN:
-                if rng.random() < 0.8:
+                if rng.random() < 0.8 * D:
                     px = bx + rng.randrange(-8, 9)
                     py = by + rng.randrange(-5, 6)
                     stamps.append((py, px, spr_house(rng)))
-                if rng.random() < 0.3:
+                if rng.random() < 0.3 * D:
                     px = bx + rng.randrange(-13, 14)
                     py = by + rng.randrange(-7, 8)
                     stamps.append((py, px, spr_tree(rng)))
             elif t == URBAN_DENSE:
+                # downtown keeps its towers at full density in both
+                # styles — the skyline IS the landmark, and thinning it
+                # is what would actually cost the player information
                 px = bx + rng.randrange(-7, 8)
                 py = by + rng.randrange(-4, 5)
                 stamps.append((py, px, spr_tower(rng)))
-                if rng.random() < 0.5:
+                if rng.random() < 0.5 * D:
                     stamps.append((py - 6, px + rng.choice((-12, 12)),
                                    spr_house(rng)))
             elif t == SAND:
-                if rng.random() < 0.2:
+                if rng.random() < 0.2 * D:
                     px = bx + rng.randrange(-8, 9)
                     py = by + rng.randrange(-4, 5)
                     xi = int(np.clip(px, 0, W - 1))
@@ -570,7 +743,7 @@ def render_island(slug):
 
     stamps.sort(key=lambda s: s[0])
     for py, px, spr in stamps:
-        im = Image.fromarray(spr, "RGBA")
+        im = Image.fromarray(_paint_sprite(spr), "RGBA")
         gy = ground_y(px, py)
         canvas.alpha_composite(im, (int(px - spr.shape[1] // 2),
                                     int(gy - spr.shape[0])))
@@ -608,7 +781,11 @@ def render_island(slug):
     sw, sh = (W + nx - 1) // nx, (H + ny - 1) // ny
     assert sw < 4096 and sh < 4096, (sw, sh)
     slices = []
-    rgb = canvas.convert("RGB")
+    # the painting pass runs on the WHOLE canvas before slicing — doing
+    # it per slice would put a seam down every tile boundary, because
+    # both the oil-paint kernel and the vignette are position-dependent
+    rgb = (painterly_finish(canvas) if STYLE == "painterly"
+           else canvas.convert("RGB"))
     i = 0
     for gy in range(ny):
         for gx in range(nx):
@@ -646,7 +823,9 @@ def render_island(slug):
                 if lm["id"] == grid_data["home"])
     meta = {
         "island": slug, "name": grid_data["name"],
-        "w": W, "h": H, "deep": DEEP,
+        # graded, so the flat sea behind the island rectangles matches
+        # the graded water INSIDE them (see graded_deep)
+        "w": W, "h": H, "deep": graded_deep(DEEP),
         # lon/lat -> map px for downstream layers (see build_tax_flows.py)
         "transform": {"grid": GRID, "originX": origin_x, "topPad": TOP_PAD,
                       "x0": x0, "y0": y0, "lonC": LON_C, "latC": LAT_C,

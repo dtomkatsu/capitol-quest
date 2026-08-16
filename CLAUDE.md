@@ -60,7 +60,7 @@ dev shim in index.html, and drive the camera via `window.__game`:
 
 ```js
 const s = window.__game.scene.getScene('world');
-s.stopIntro(); s.cameras.main.setZoom(1.8);
+s.stopIntro(); s.cameras.main.setZoom(1.3);   // maxZoom is 1.35
 s.cameras.main.centerOn(...s.meta.camera.capitol);
 s.applyLabelScale();
 ```
@@ -91,7 +91,12 @@ means of financing computed from budget.json) and the pulsing General
 node drills into the FY2027 projected general-fund tax mix (12 nodes,
 "← Funding mix" to go back; the tab always re-lands on the mix). "↑ Money out" is the 24
 department nodes. Motes drift node→hub on money-in views, hub→node on
-money-out. Both toolbar buttons remain and deep-link to their tab.
+money-out. **ONE toolbar button (`tb-budget`) is the only door**, and it
+lands on "↑ Money out"; the tabs carry the player to money-in. The
+separate `tb-revenue` button was removed 2026-08-15 (user's call) as a
+duplicate entrance to the same overlay — don't re-add it. Anything that
+wired listeners onto both ids (PolicyPanel's close-on-open loop,
+SessionPanel's) now lists tb-budget alone.
 `buildRadialFlow()` is the shared component: Capitol sprite at the hub,
 nodes on an ellipse (r ∝ √total, dollar amount as a second label line,
 optional emoji icon inside circles with r ≥ 6.5, optional onClick +
@@ -146,7 +151,59 @@ Rules that must survive edits:
   Glyphs are inline SVG, duotone: body in the pole color via
   currentColor, ONE gold #f2c14e accent each (the trend line, the
   maze's goal dot, the root-tip leader nodes). No faces, same as the
-  banners.
+  banners. Policy Brain also carries a faint currentColor BRAIN outline
+  behind the bars (`.g-brain`, opacity ~.18) — the thought under the
+  numbers; keep it an outline, never solid, or it becomes the subject.
+  **The glyphs are ALIVE on the select screen** (2026-08-15, user's
+  call): each moving part carries a `g-*` class and loops via CSS
+  scoped to `.skc-art` (GLYPH renders nowhere else). One motion per
+  glyph, slow — six cards run at once, so anything fast is a slot
+  machine. Brain pulses / bars breathe / trend line & maze redraw
+  (`gl-redraw`) / rays glint / typing dots bounce / sound arcs push /
+  roots regrow, nodes glint. Rules that must survive edits:
+  - **Draw-loop strokes carry `pathLength="100"`** so the one shared
+    `stroke-dasharray: 100` fits every path; a new drawn part needs the
+    attribute or its dash math is garbage.
+  - **Keyframe 0% is the resting DRAWN state** and stagger uses
+    NEGATIVE delays — a hidden document freezes the animation clock at
+    currentTime 0, and a loop that opens on "invisible" screenshots as
+    a missing limb. Redraw loops retract-then-redraw (never cut) so 0%
+    and 100% are the same frame and the loop is seamless.
+  - **Hold ≫ transition** in `gl-redraw`/`gl-root` (~68%/62% hold): at
+    45% transition the Procedure card looked half-built half the time,
+    because the maze IS that card's whole drawing.
+  - **`gl-wave` animates transform only** — the middle arc carries its
+    own `opacity` attribute for depth, and a CSS opacity animation
+    would override the attribute and flatten it.
+  - Reduced motion: one `.skc-art svg *` line in the media block kills
+    all of it; resting attribute states are the complete drawing.
+  - The pane screenshots these at random phases (fronting restarts the
+    clock) — verify with `getAnimations()` + sampled `dashoffset`, not
+    by eye.
+  **The cards DEAL from a center stack on entrance** (2026-08-15,
+  user's call — `.skc-grid.deal` in CSS, added in `renderSelect`).
+  Rules that must survive edits:
+  - **Entrance vs re-render is decided by what was on stage BEFORE the
+    render**: `entering = !body.querySelector(".skc-grid")`. Boot, the
+    hub funnel and the ag-skills back plate arrive with no grid and
+    deal; a bump/drop/reset rebuilds an existing grid and must NOT —
+    replaying the deal on every + press is unbearable. Don't replace
+    this with a call-site flag; every caller already routes through
+    renderSelect and the DOM check can't drift out of sync.
+  - **`both` fill + positive delays IS the stack**: every card holds
+    its gathered from-state until its turn to fly (that's the deck),
+    first card z-highest. The per-seat from-state is a `--deal-from`
+    custom property read by one shared keyframe, so the 640px 2-column
+    grid only re-aims the travel instead of redeclaring the animation.
+  - The class is stripped on a wall clock (`DEAL_MS`, must stay above
+    max delay .35s + duration .55s) — frozen-clock rule; a hidden tab
+    would otherwise hold the hand stacked forever.
+  - The deal rules sit AFTER the corridor block in the stylesheet ON
+    PURPOSE: same elements as `cr-rise`, and the deal must win the
+    cascade when the screen arrives via screenSwap.
+  - Timer-based probes in the pane RACE (hidden-tab setTimeout clamps
+    to ~1s) — verify the deal with a MutationObserver on `#sess-body`,
+    which is not throttled.
   Layout is a FIXED 3-column grid (`repeat(3, 1fr)`, 2 under 640px),
   not `auto-fill` — the screen is full-bleed now, so a viewport-tracked
   column count gave a ragged 5+1 on a wide monitor instead of the
@@ -161,6 +218,33 @@ Rules that must survive edits:
   scrolling `#sess-body`, so a short viewport scrolls cards under a
   reachable button instead of pushing it off the fold. The whole card
   is a tap target, not just the + box.
+  **The screen is fully REVERSIBLE (2026-08-15, user's call)** — it was
+  a one-way ratchet, so a misclick meant living with it for a whole
+  session. Three pieces, all in `skSelectHtml`/`renderSelect`:
+  - **A `−` button (`.skdn`) beside the `+`**, floored at
+    `skillStart.base` (never below where everyone starts), refunding the
+    point. Its handler MUST `stopPropagation` — it is a child of the
+    card, whose own pointerdown is +1, so without it lowering a skill
+    instantly re-raises it. The wiring loop must NOT `continue` past a
+    capped card the way the old one did (`if (!up || up.disabled)
+    continue`) or `−` is dead exactly where it is most needed: on a
+    maxed skill. Wire `−` and `+` independently.
+  - **A rank word (`.skc-rank`) between the pole name and the value** —
+    the level in plain language, because a bare "3" means nothing until
+    you know the ladder runs to 6. Names live in session.json
+    `skillStart.ranks`, INDEXED BY THE VALUE, with a fallback list in
+    main.js for old data. The list must cover 0…`cap`. Content goes in
+    the JSON, not the JS. **"Average" is the MIDDLE of the ladder, not
+    the floor** (re-based 2026-08-15, user's call): 1 Very weak,
+    2 Weak, 3 Average, 4 Good, 5 Great, 6 Formidable. Everyone starts
+    at 1 and buys up; 5 and 6 are only reachable by honing. Keep both
+    lists in step — a JSON edit alone leaves the JS fallback lying.
+  - **A quiet `↺ Reset` plate** beside the point chip (`.sk-reset`,
+    `#sk-reset`) — back to all-base, all points refunded. Disabled while
+    nothing is spent so it never offers a no-op. Deliberately understated:
+    CONTINUE is the only loud button on this screen.
+  The hub's legacy `.sk-row` spend path (an old save with unspent points)
+  still has no `−`; it shares neither markup nor CSS with these cards.
 - **Skills are chosen at week 1 (Opening Day) and honed by doing**
   (`train()` in main.js): every action names the skill it exercises
   (session.json `trains`; the bill-push action exercises Procedure)
@@ -437,10 +521,50 @@ Rules that must survive edits:
     The mobile `.agc-art` flattening MUST stay after the base rule —
     a media query adds no specificity, and a copy placed earlier in
     the file silently lost on source order (found live 2026-08-15).
+  - **The funnel is a CORRIDOR and it runs BOTH WAYS** (2026-08-15,
+    user's call). Step 1's nav slot carries `#ag-skills` ("◂ Instincts")
+    where step 2 carries `#ag-back` ("◂ Priorities"), so there is always
+    a way back out — before this, the instinct picks were unreachable
+    the moment you pressed Continue. `#ag-skills` calls `renderSelect`
+    DIRECTLY, not through `renderHub`, whose bail would bounce straight
+    back to the agenda (skillPts is 0 by then).
+  - **Moving between creation screens SLIDES** (`screenSwap` in
+    main.js, `.cr-*` keyframes in CSS). Four things must not regress:
+    - **Only navigation calls `screenSwap`.** A skill bump or a policy
+      pick re-renders by calling `renderSelect()`/`renderAgendaSelect()`
+      directly. Putting the animation inside the renderers would replay
+      a ~470ms slide on every `+` press.
+    - **The classes go on `#sess-body`'s CHILDREN, never the scroller.**
+      Both renderers do `body.innerHTML = …`, which throws the children
+      away — so a class cannot survive into the next render and re-fire.
+      A class on the scroller itself would, and would need cleanup.
+    - **Strip `cr-in-*` before adding `cr-out-*`.** `swapping` only
+      guards the outgoing half, so a quick second click arrives with the
+      in-class still on; the in-rules sit LATER in the stylesheet and
+      would win the `animation` shorthand, sliding the screen in again
+      instead of out.
+    - **The arrival is force-landed on a wall clock** (`CR_LAND`), same
+      reason as `countTo`: a hidden document FREEZES the animation clock
+      (playState "running", currentTime stuck at 0) and `both` fill
+      would hold the screen at its `from` keyframe — opacity 0. Click
+      Continue, switch tabs, come back to a blank screen. `CR_LAND` must
+      stay above the longest card stagger + duration (.25s + .38s).
+      This is also why the Browser pane can't verify the motion itself:
+      `document.hidden` is true there, so assert on the classes and on
+      the landed state instead.
   - `retitc` (renewable energy credit expansion) is a MODELED number
     (~$42M/yr, storage add-on + refundability), not a fiscal note —
     its `src` says so; replace when a real note exists. Tagged
     `credit`, so it rides the tax-credit hearing-rate cell.
+  - **`get-half` (raise the GET by half a point) was REMOVED**
+    2026-08-15 (user's call) — from policies.json and from the game.
+    No bill uses the `get` tax family now; `chairs.json`
+    `gate.familyTilt.get` and the `get` cells in hearing_rates.json
+    stay (they are the measured/editorial tables, not a bill list) and
+    the `cart` drawing stays in `SYM`, so a GET measure can come back
+    without rebuilding any of it. Unknown enacted ids are already
+    dropped on load and `startBills` skips unknown agenda ids, so an
+    in-flight save keeps a get-half bill it already introduced.
 - **The instincts sheet is NOT on the week hub** (2026-08-15, user's
   call): it has its own toolbar tab (`#tb-instincts` → `renderSheet`,
   toggling via `body.dataset.view === "sheet"`), and the hub only shows
@@ -500,18 +624,22 @@ Rules that must survive edits:
     sit at 0% and 100% and are translated −50%, so their labels
     overhang the track and "Opening Day" gets shaved without it.
   - Structure is a scrolling strip (`.stl-scroll`, fixed 940px inner)
-    plus a NON-scrolling readout line (`.stl-read`) under it. Milestone
-    detail goes in the readout, never a floating popover — a popover
-    inside an `overflow-x` box gets sliced — and never `title=`, which
-    is unstyled, slow and nonexistent on touch. Milestones are
-    `<button>`s: hover/focus previews a week, tap pins it, tap again
+    and nothing else. **The readout line (`.stl-read`, "Opening Day /
+    Week 1 · Jan 20–26, 2027 · this week") was removed 2026-08-15**
+    (user's call) to give the dialogue back its vertical space — the
+    masthead above already names the current week and its dates, so the
+    readout was a second answer to a question already answered. The
+    labels ARE the readout now. If milestone detail ever comes back it
+    still must not be a floating popover (an `overflow-x` box slices
+    it) nor `title=` (unstyled, slow, nonexistent on touch). Milestones
+    stay `<button>`s: hover/focus highlights one, tap pins it, tap again
     releases (touch has no hover). Their pointerdown MUST
     stopPropagation or the overlay's backdrop handler closes the panel.
   - **At rest exactly ONE label is drawn** — `.cur-stage`, the latest
     milestone at or before the current week (on a milestone week that
     is the current dot; between milestones it is the phase you are
     still inside, so week 6 reads "First Lateral"). Eleven labels at
-    once is a wall nobody reads, and the readout already answers "where
+    once is a wall nobody reads, and the masthead already answers "where
     am I". The rest fade in together on `:hover` or on `.reveal`, which
     a tap anywhere on the strip toggles — that class exists purely so a
     phone can read the calendar, since touch has no hover. Animate
@@ -657,14 +785,41 @@ roll. Rules that must survive edits:
 
 - **The staged roll**: picking a checked choice appends the card in
   `.rolling` (dice cycling via a 75ms interval, "the dice are out",
-  choice strip EMPTIED so nothing is clickable), then after ~780ms the
-  card is replaced with `rollHtml` (`.settled` — dice land, verdict
-  stamps in via `.sd-stamp`), the scene gets a `wash-ok`/`wash-no`
-  verdict wash, and only THEN do effects apply and the outcome beat
-  append. **Effects apply at settle, not at pick** — the metric cards
-  sit above the scene, and a support tick landing before the stamp
-  spoils the verdict. Boxcars = `.jack` (gold burst), snake eyes =
-  `.snake` (shake); both get an extra beat before the outcome.
+  choice strip EMPTIED so nothing is clickable). Since 2026-08-15 the
+  reveal is a POP-OUT TRAY (`popTray` in main.js, `.sd-tray` in CSS)
+  centered over the whole panel: a veil dims the scene, a card pops
+  with the skill name, two real 3×3 pip dice tumbling (`setFace`/
+  `pipHtml` — a numeral in a box reads as a form field), the DC line,
+  then dice slam down staggered, the arithmetic ticks in, and the
+  verdict stamps SUCCESS/FAILURE in verdict color. The inline card is
+  still rendered and settles into the transcript as the RECEIPT — the
+  tray is theatre on top, the receipt is the record you scroll back to.
+  Sequencing rules that must survive edits:
+  - **The receipt settles and the scene washes AT the tray's stamp**
+    (popTray's `onLand`), not when the tray leaves — the transcript
+    must never lag the announcement. `finish()` (effects + outcome
+    beat) runs at `onGone`, after the tray is out. **Effects still
+    apply only after the verdict is shown** — the metric cards sit
+    above the scene, and a support tick landing before the stamp
+    spoils the verdict.
+  - **JS timers own the tray's state machine; CSS owns only the look.**
+    Nothing may hang off `animationend` — a hidden document freezes the
+    animation clock, and the tray would squat over the game forever.
+    All steps are parallel absolute setTimeouts; `kill()` is idempotent,
+    force-lands `onLand` if it hasn't run, and a 4s backstop guarantees
+    removal + `finish()` even if a step is missed. Never make finish()
+    reachable only through the happy path.
+  - **The tray never takes input** (`pointer-events: none`): the choice
+    strip is already empty, and a tray that outlives its timers must
+    not be able to trap the player.
+  - Mounted on `.ovl-panel` (position: relative), NOT `.sd-scene`, so
+    it centers on the panel and ignores the transcript's scroll.
+  - Boxcars = `.jack` (gold burst on the tray card at stamp time),
+    snake eyes = `.snake` (card shake); both hold an extra 420ms.
+    Red checks (`r-red`) tint the tray card in the danger color.
+  - In the pane, verify with a MutationObserver on the panel (mount →
+    landed → verdict → out → removed) — timer clamping stretches the
+    timeline and screenshots always miss the window.
 - **Reduced motion is a real path, not a CSS afterthought**: the JS
   checks `prefers-reduced-motion` at pick time and resolves instantly
   (old behavior), and one CSS media block kills every animation. Any
@@ -686,6 +841,24 @@ Phase 2 (same day):
   and the card flashes `bump-up`/`bump-down`, so an fx line in the
   dialogue and the scoreboard above it read as one system. Do not go
   back to re-rendering this block.
+  **The card is COMPACT as of 2026-08-15** (user's call — the header was
+  eating the reader): each `.metc` is a 2-column grid,
+  `minmax(0,1fr) auto`, so the label eyebrow and the value share one
+  baseline row instead of stacking, and the bar spans both columns
+  underneath. `.sym` stays absolutely positioned and out of the grid.
+  The label needs `minmax(0, …)` (not plain `1fr`) or its `nowrap`
+  min-content width pushes the value off the card. Together with the
+  removed timeline readout, the tighter `#sess-head`/`#sess-foot`
+  margins and the removed footer paragraph, this hands ~90px back to
+  `#sess-body` — measured 136px → 228px of dialogue on a 560px-tall
+  window. Don't re-stack the label over the value.
+- **The session footer is the reset link and NOTHING else** (2026-08-15,
+  user's call). The paragraph explaining The Advocate, the turn
+  structure, the FY2027 scoreboard and the fictional cast was removed —
+  it was a wall of text on every single week. `data.identity` in
+  session.json is now read by nothing. The "characters are fictional"
+  disclaimer went with it; the content rule (never use real
+  legislators' names) is unchanged and still binding.
 - **`countTo` force-lands its final value on a wall-clock timer** as
   well as rAF: rAF does not fire in a hidden tab and a meter frozen on
   its OLD number is worse than no animation.
@@ -701,6 +874,115 @@ Phase 2 (same day):
 - Panel bookends: `.leaving` (240ms) before the week beat, `.arriving`
   on open — but ONLY when the overlay was actually closed, or every
   re-render would re-animate the frame.
+- **The HUD chip is a PROGRESS BAR, not a dot strip** (2026-08-15,
+  user's call — `renderHudTimeline`, `#hud-timeline`). At 168px the old
+  nine 5px milestone dots read as lint. Milestones survive as faint
+  ticks IN the track (inset and dim on purpose — full-height bright
+  bars read as segment dividers chopping the run into chapters, the
+  opposite of a continuous progress read), with a bright leading-edge
+  cap and a "3/16" readout. The overlay's full strip is still where you
+  READ the calendar; this answers "how much session is left" and is a
+  tap into the overlay. **Built ONCE and updated in place**
+  (`data-built`), the same lesson as `renderMetrics`: replacing the
+  innerHTML gives the fill no previous width to transition from, so it
+  would snap on every week instead of sliding.
+- **The CHARACTER CARD** (2026-08-15, user's call): a Disco-style
+  profile plate pinned at the top of any scene its character speaks in
+  — portrait, name, office, a couple of short reads on how they
+  operate, and their own words. Kawaguchi is the first and currently
+  only one. Rules:
+  - **PORTRAITS ARE FACELESS**, the same house rule as the event
+    banners and the skill glyphs: a silhouette at a committee desk, a
+    collar, a nameplate. No features, ever. Drawings live in the
+    `PORTRAIT` map in main.js, named by the card's `art` key.
+  - **ONE gold accent per drawing**, like the skill glyphs. Kawaguchi's
+    is the desk nameplate — a chair IS his nameplate. A gavel was drawn
+    and cut: it collided with the desk edge at small size and made two
+    accents.
+  - **The quote is NOT stored in session.json.** `chairVoiceFor()`
+    reads it live from chairs.json `voice` via the chair whose `char`
+    points back at the character id, so a chair's own words can never
+    drift between the two files. (`CH` is declared later in the same
+    closure but only ever READ at call time — that is fine, and is why
+    the lookup is a function rather than a precomputed map.)
+  - The card follows whoever is SPEAKING, and a node with no speaker
+    leaves it alone — you are still standing in front of the same
+    person while the prose describes the hallway.
+  - It is `position: sticky` inside the scene, not a first beat: the
+    point is that they stay in front of you for the whole conversation.
+    Under 560px the `note` is hidden and the quote carries it.
+  - Only characters with a `card` block get one, so an incidental
+    speaker never gets a dossier. Adding one to session.json REQUIRES
+    bumping `map/session.json?v=` in main.js by hand — the pre-commit
+    cache-bump hook only rewrites `?v=` inside HTML, and a stale cached
+    session.json silently renders no card at all (hit live).
+- **Dialogue body type is 16.5px / 1.68** (raised from 14.5 / 1.6 on
+  2026-08-15, user's call). This is a reading game and the transcript
+  is the whole interface. `.sd-who`, `.sd-role` and the choice buttons
+  were scaled with it — if the body size changes again, move those too
+  or the reader goes out of proportion.
+- **ONE masthead, in the panel's top-left corner** (2026-08-15, user's
+  call). The overlay used to stack two headers that said the same
+  thing: the `.ovl-title` chip ("The Campaign · Week N") riding the top
+  border, and a separate `#sess-week` row inside naming the week again.
+  Now a single plate lives in the chip slot carrying the stamped week
+  numeral, the week's title and its phase + real dates. `#sess-week` is
+  GONE from index.html and renderHead — don't reintroduce a second
+  header row. Notes:
+  - It is `.ovl-title.mast`, i.e. it OVERRIDES the chip rather than
+    living in flow, so it inherits the corner position for free and the
+    money/policy overlays keep the plain chip.
+  - Being out of flow, `#session-overlay #sess-head` must RESERVE the
+    height the plate reaches into the panel (30px, 24px under 560px) or
+    the timeline slides under it. Net it still costs ~43px less than the
+    old chip + masthead row, so the dialogue gained space.
+  - The plate carries a resting `rotate(-.7deg)`, so the week-arrival
+    stagger gives it its own `wk-rise-mast` keyframe — the shared
+    `wk-rise` interpolates through an unrotated matrix and the plate
+    visibly straightens as it lands.
+  - Under 560px the type steps down AND the tracking tightens: the DATE
+    must fit whole, an ellipsised "Feb 2, 2…" is worse than no date.
+- **An instinct CHIMING IN is a card, not a left rule** (2026-08-15,
+  user's call). `.sd-voice.v-skill` used to be a left accent bar in the
+  pole colour — the same device the bill rows, the meters and the
+  post-mortem all use, so the one element meant to INTERRUPT the reader
+  read as another list item. Now: a soft pole-tinted wash fading out to
+  the right over a dark ground, a hairline border in the same pole, and
+  the skill's name as a solid nameplate badge (dark ink on the pole
+  colour, pill radius) instead of coloured text. **No left accent
+  anywhere on it** — the tint and the badge carry the pole. The badge
+  replaces the hanging indent and the `.sd-dash` separator (hidden in
+  CSS), and voices enter from the LEFT (`sd-chime`) rather than rising,
+  because they arrive across the column. Pole colours still come from
+  `.p-wonk` / `.p-bridge` / `.p-organizer` via `--pole`.
+- **TWO overlay entrances, and the split is editorial** (2026-08-15,
+  user's call). Reopening the panel you just closed is furniture and
+  keeps the modest 260ms `.arriving` rise. A WEEK ARRIVING is an event
+  and gets `.wk-open` (`weekArrive()` in main.js, `#session-overlay.wk-open`
+  rules in CSS): the scrim fades up from transparent, the panel rises
+  further and slower, one low-opacity sheen crosses it, and title /
+  week plate / timeline / meters / `#sess-body` / footer stagger in
+  behind the frame at 60–320ms. Rules:
+  - **`openOverlay(week)` takes the flag; only TWO call sites pass
+    `true`** — the boot pop and all three branches of `openWeek()`.
+    Everything else (Session tab, Instincts tab, HUD timeline, the
+    week-1 turn-chip agenda bail) stays ordinary. Putting the
+    ceremonial entrance on every open makes the Session tab feel like
+    an occasion and the actual week feel like nothing.
+  - `weekArrive()` **removes `.arriving` first** — both classes animate
+    `.ovl-panel` and would fight over the `animation` shorthand.
+  - **`WK_IN` force-lands it on a wall clock**, same rule as
+    `screenSwap` and `countTo`: a hidden document freezes the animation
+    clock and `both` fill would hold the entire overlay at opacity 0 —
+    open the game in a background tab and come back to nothing. Keep
+    `WK_IN` above the longest child delay + duration (.32s + .44s).
+  - The sheen is an `::after` on the panel: absolutely positioned (so it
+    stays out of the panel's flex flow), radius-matched (so it doesn't
+    square off the corners), `pointer-events: none`, and killed outright
+    under reduced motion so it can't park itself across the panel.
+  - Under `.creating` the head/title/footer are `display: none`, so a
+    fresh boot animates only the panel and `#sess-body`. That is
+    correct, not a gap.
 - **Every `b` rule under `.bill-row .shname` uses the CHILD combinator.**
   The post-mortem renders inside that `<small>`, so descendant
   selectors reached its whole odds ledger and repainted it in the
@@ -793,9 +1075,10 @@ tooltip). Priorities spend from the FY2027 budget scoreboard
 (#fund-chip, bottom right — tooltip splits operating vs capital);
 revenue policies add to it. Enacted ids persist in localStorage
 `cq-policies`; unknown ids are dropped on load, so RENAMING an id
-silently repeals it for existing players. The GET half-point amt is the
-FY27 GF GET projection ÷ 8 — recompute it whenever revenue.json
-re-bases.
+silently repeals it for existing players. (`get-half`, whose amt was the
+FY27 GF GET projection ÷ 8, was removed 2026-08-15 — see the creation
+funnel section. Nothing in policies.json is derived from revenue.json
+any more, so a COR re-base no longer forces a recompute here.)
 
 ## Revenue-mix layer (feature 2a) — FY2027 projected, general fund only
 
@@ -835,6 +1118,22 @@ payroll collapses half the island onto downtown + the airport. Read that
 note before changing it. (CBP sector-level PAYANN is suppressed at ZIP
 level — only the all-sector "00" total is usable.)
 
+**Census fetch gotchas** (all hit live 2026-08-15, fixed in `_fetch`):
+- **A batch where no zip has data returns HTTP 204 with an EMPTY BODY**,
+  not an empty JSON array — `json.load` on it raises "Expecting value:
+  line 1 column 1", which looks exactly like a bad API key and is not.
+  Three real Hawaiʻi ZCTAs (96742, 96747, 96774) have no CBP record, so
+  this broke every single build.
+- **Misses must be cached too.** Caching only the hits left those three
+  permanently "missing", so every run re-requested and re-crashed. They
+  are written back as null now; consumers use `(d.get(z) or {})`.
+- **A bad key is a different failure**: HTTP 200 with an HTML body. That
+  still raises, but the message now names the likely cause.
+- **Only the BASIS series is required.** Both pop and payroll ride in
+  the output as context, but the non-basis one degrades to zeros on a
+  Census hiccup rather than killing the build — a CBP outage used to
+  break the default population build, which never reads CBP.
+
 Flow density rule: steady-state motes = Σ(rate × duration), so stream
 rates normalise by the WEIGHTED mean duration. Using an unweighted mean
 under-draws GET (its weight is downtown on short paths) and silently
@@ -856,6 +1155,62 @@ breaks the dollars-to-density encoding.
 - Road density reads `~/Revenue-Modeling-TOD/data/raw/road_centerlines.geojson`
   directly (40 MB, NOT copied into this repo). Only derived tiles are
   committed. If that repo moves, update the path in build_map.py.
+
+## Map art style — painterly (default) vs pixel (archived)
+
+`render_map.py --style {painterly,pixel}`, painterly since 2026-08-15
+(user's call: Disco/CRPG board, not a tile game).
+
+- **`--style pixel` IS the archive of the old look, and it is archived
+  as SOURCE, not as a folder of stale PNGs.** `python3
+  tools/render_map.py --style pixel --all` brings the original bright
+  pixel-art map back exactly. Don't delete the branch.
+- **A style may change COLOUR and DENSITY only — never geometry.** The
+  crop window, transform, W/H and every px coordinate must be identical
+  between styles, because tax_flows / get_flows / world.json / landmarks
+  / stations are all baked against those numbers. This was verified
+  after the restyle: all eight islands' `transform`, `w`, `h`,
+  `landmarks` and `camera` came out byte-identical, and rebuilding
+  tax_flows + world produced **no diff**. That is why a pure restyle
+  does NOT require the flow rebuild the terrain-change rule demands.
+- **The palette is the SAME bright tropical set in both styles.** A
+  muted earth-and-slate painterly palette was built first and rejected
+  ("it should be bright"). `PAINTERLY_PAL = dict(PIXEL_PAL)`. The
+  styles differ in TREATMENT: oil-paint facets (`cv2.xphoto.oilPainting`
+  at 0.72 blend — full strength turns the coastline to mush), a
+  saturation + midtone lift, softened sprite keylines (`_outline` drops
+  the hard keyline to 55% alpha — a crisp dark outline is the single
+  strongest pixel-art cue), and a thinned sprite field (`D = 0.45`;
+  downtown towers stay at full density, they ARE the landmark).
+- **NO VIGNETTE, and this is load-bearing.** Every island is a
+  RECTANGLE composited onto a flat sea, so any position-dependent
+  darkening draws a visible box around each island at world zoom. A
+  faint radial falloff was tried and did exactly that. Only per-pixel,
+  position-independent grading is safe.
+- **The sea colour has ONE source now.** It used to exist in three
+  places and each one that disagreed drew island-shaped rectangles at
+  world zoom (all three hit live, in order): the baked slice water,
+  `build_world.py`'s overview fill, and `DEEP_BLUE` in main.js.
+  render_map exports the graded value (`graded_deep()`) into every
+  `<slug>.json`; build_world READS it (`deep_from(metas)`); main.js
+  reads `world.deep` at runtime and `DEEP_BLUE` is now only the
+  pre-load fallback. That last step matters for the ARCHIVE — the
+  constant cannot be right for both styles at once, since pixel bakes
+  `#1c5490` and painterly `#185ba0`. Verified by baking `--style pixel`
+  end to end and sampling the canvas: exact match, no boxes.
+- **`MAP_V` in main.js is the ONE cache token for the whole bake** —
+  tile PNGs, overview.png, world.json and every `<slug>.json`. They come
+  out of the same run and are only valid as a SET; a world.json paired
+  with last bake's tiles is exactly the mismatch that spent three
+  rounds looking like a rendering bug. After re-baking, raise that ONE
+  number. (The pre-commit hook only rewrites `?v=` inside HTML, so
+  anything loaded from JS is by hand. Content JSON — session, policies,
+  chairs — keeps its own token; it changes on a different clock.)
+- **maxZoom is 1.35** (was 4). The old ceiling walked the camera up to
+  individual 18px sprites, which is where a baked map stops being a
+  painting and starts being a texture. The intro tween reads the
+  ceiling (`Math.min(1.7, this.maxZoom)`) rather than carrying its own
+  number — a hardcoded 1.7 sailed straight past it.
 
 ## Renderer v2 (render_map.py) — modern look, screen-space ground
 

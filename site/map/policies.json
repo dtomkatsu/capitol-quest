@@ -32,15 +32,6 @@
  ],
  "revenue": [
   {
-   "id": "get-half",
-   "name": "Raise the GET by half a point",
-   "icon": "🛒",
-   "amt": 586408,
-   "who": "4% → 4.5% on nearly every transaction. The biggest single lever the state has — but the GET raises the cost of living and hits low-income families hardest.",
-   "src": "Computed: FY2027 projected general-fund GET $4.69B ÷ 8 (half of the 4% rate)",
-   "tax": "get"
-  },
-  {
    "id": "conveyance",
    "name": "Modernize the conveyance tax",
    "icon": "🏠",

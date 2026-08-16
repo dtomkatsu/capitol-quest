@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260815104421">
+  <link rel="stylesheet" href="css/style.css?v=20260815213857">
 </head>
 <body>
   <div id="game"></div>
@@ -22,24 +22,13 @@
     </div>
 
     <div id="toolbar">
-      <button id="tb-budget" type="button" title="State budget — FY2027">
+      <button id="tb-budget" type="button" title="State budget — FY2027: where the money comes from and where it goes">
         <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
           <rect x="1"  y="10" width="4" height="7" fill="#f2c14e"/>
           <rect x="7"  y="5"  width="4" height="12" fill="#f2c14e"/>
           <rect x="13" y="1"  width="4" height="16" fill="#ffe9a8"/>
         </svg>
         <span>Budget</span>
-      </button>
-      <button id="tb-revenue" type="button" title="Where the money comes from — funding mix, then the taxes projected for FY2027">
-        <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
-          <rect x="3" y="13" width="12" height="3" fill="#f2c14e"/>
-          <rect x="3" y="13" width="12" height="1" fill="#ffe9a8"/>
-          <rect x="3" y="9"  width="12" height="3" fill="#f2c14e"/>
-          <rect x="3" y="9"  width="12" height="1" fill="#ffe9a8"/>
-          <rect x="5" y="1"  width="8"  height="6" fill="#ffe9a8"/>
-          <rect x="8" y="2"  width="2"  height="4" fill="#b07d1e"/>
-        </svg>
-        <span>Revenue</span>
       </button>
       <button id="tb-session" type="button" title="Your campaign through the session — the week's intel, events, dialogues and your one action">
         <svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
@@ -173,10 +162,14 @@
 
   <div id="session-overlay" class="ovl hidden" role="dialog" aria-modal="true">
     <div class="ovl-panel">
-      <div class="ovl-title" id="session-title">The Campaign · Week 1</div>
+      <!-- ONE masthead, riding the panel's top-left corner: the week
+           number, the week's name and its real dates. It replaced both
+           the old "The Campaign · Week N" chip and the separate
+           #sess-week row below it, which said overlapping things in two
+           places (2026-08-15, user's call). -->
+      <div class="ovl-title mast" id="session-title"></div>
       <button class="ovl-close" id="session-close" type="button" aria-label="Close">✕</button>
       <div id="sess-head">
-        <div id="sess-week"></div>
         <div id="sess-timeline" class="sess-timeline"></div>
         <div id="sess-metrics"></div>
       </div>
@@ -214,6 +207,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260815104421"></script>
+  <script src="js/main.js?v=20260815213857"></script>
 </body>
 </html>

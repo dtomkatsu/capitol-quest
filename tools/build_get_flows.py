@@ -113,17 +113,50 @@ def _key():
 
 
 def _fetch(cache_path, zips, url_fn, parse_rows, tag):
-    """Incremental Census cache: fetch only zips missing from the cache."""
+    """Incremental Census cache: fetch only zips missing from the cache.
+
+    Two Census behaviours this has to survive, both hit live:
+
+    * **A batch where NO zip has data returns HTTP 204 with an empty
+      body**, not an empty JSON array. `json.load` on that raises
+      "Expecting value: line 1 column 1", which reads exactly like a bad
+      API key and is not one. Three real Hawaiʻi ZCTAs (96742, 96747,
+      96774) have no CBP record at all, so this fired on every run.
+    * A zip the API simply never returns must be REMEMBERED as absent.
+      Caching only the hits meant those three counted as "missing"
+      forever, so every run re-requested them and re-crashed. They are
+      now written back as null and skipped next time.
+
+    (A genuinely bad key is different again: HTTP 200 with an HTML
+    "Invalid Key" body. That still raises here, which is correct — it
+    IS an error — but the message now says which.)
+    """
     out = json.load(open(cache_path)) if cache_path.exists() else {}
     missing = [z for z in zips if z not in out]
     for i in range(0, len(missing), 40):
-        batch = ",".join(missing[i:i + 40])
-        with urllib.request.urlopen(url_fn(batch), timeout=60) as fh:
-            rows = json.load(fh)
+        chunk = missing[i:i + 40]
+        with urllib.request.urlopen(url_fn(",".join(chunk)), timeout=60) as fh:
+            status = getattr(fh, "status", 200)
+            body = fh.read()
+        if status == 204 or not body.strip():
+            continue                       # no data for any zip in chunk
+        try:
+            rows = json.loads(body)
+        except json.JSONDecodeError:
+            head = body[:120].decode("utf-8", "replace").strip()
+            raise SystemExit(
+                f"{tag}: Census returned non-JSON (HTTP {status}). This is "
+                f"usually a bad/expired key in ~/.census_api_key — a bad "
+                f"key answers 200 with HTML, not 401. Body starts: {head}")
         parse_rows(rows, out)
+    # remember the misses too, or they are re-requested on every run
+    for z in missing:
+        out.setdefault(z, None)
     if missing:
         json.dump(out, open(cache_path, "w"))
-        print(f"fetched {tag} for {len(missing)} new zips -> cached")
+        got = sum(1 for z in missing if out.get(z) is not None)
+        print(f"fetched {tag} for {got}/{len(missing)} new zips "
+              f"({len(missing) - got} have no record) -> cached")
     return out
 
 
@@ -194,11 +227,29 @@ def main():
     print(f"{len(on_map)} ZCTAs land on the eight-island world")
 
     basis = "payroll" if "--basis=payroll" in sys.argv else "population"
-    cbp = load_cbp(sorted(on_map))
-    pop = load_pop(sorted(on_map))
-    raw = ({z: cbp.get(z, {}).get("payann", 0) for z in on_map}
+    # Both series ride along in the output as context, but only ONE is
+    # the modelling basis. The basis series is REQUIRED — if it can't be
+    # fetched the spread would be wrong and the build must stop. The
+    # other is decorative, so a Census-side hiccup degrades it to zeros
+    # instead of killing a build that never depended on it. (Before
+    # this, a CBP outage broke the default population build outright.)
+    def optional(loader, tag):
+        try:
+            return loader(sorted(on_map))
+        except (SystemExit, OSError, ValueError) as e:
+            print(f"warning: {tag} unavailable, writing zeros ({e})")
+            return {}
+
+    if basis == "payroll":
+        cbp = load_cbp(sorted(on_map))
+        pop = optional(load_pop, "ACS population")
+    else:
+        pop = load_pop(sorted(on_map))
+        cbp = optional(load_cbp, "CBP payroll")
+    # `or {}` — a cached zip with no Census record is stored as null
+    raw = ({z: (cbp.get(z) or {}).get("payann", 0) for z in on_map}
            if basis == "payroll" else
-           {z: pop.get(z, {}).get("pop", 0) for z in on_map})
+           {z: (pop.get(z) or {}).get("pop", 0) for z in on_map})
 
     # ---- spread each district's measured total within its own islands
     zips = []
@@ -214,8 +265,8 @@ def main():
                          "px": px, "py": py,
                          "share": round(amt / allsd, 6),
                          "getM": round(amt / 1e6, 2),
-                         "pop": pop.get(z, {}).get("pop", 0),
-                         "payann": cbp.get(z, {}).get("payann", 0)})
+                         "pop": (pop.get(z) or {}).get("pop", 0),
+                         "payann": (cbp.get(z) or {}).get("payann", 0)})
     zips.sort(key=lambda z: -z["getM"])
     print(f"{basis} basis: {len(zips)} zips; top: " +
           ", ".join(f"{z['zip']} ({z['island']}) ${z['getM']:.0f}M"

@@ -46,7 +46,20 @@ KM_PER_LON_W = 104.0
 KM_PER_LAT = 110.9
 PAD = 400                              # world-edge padding, ref px
 OV = 12                                # overview downscale factor
-DEEP = "#1c5490"
+# The open-ocean colour, READ from the island bakes rather than
+# hardcoded here. It used to be a second copy of render_map's DEEP, and
+# when the painterly grade shifted the baked water this copy stayed put
+# — so the overview backdrop was one blue and every island rectangle
+# pasted onto it was another, drawing a visible box around each island
+# at world zoom. One source of truth: whatever render_map wrote.
+DEEP = "#1c5490"                       # fallback only; see deep_from()
+
+
+def deep_from(metas):
+    for m in metas.values():
+        if m.get("deep"):
+            return m["deep"]
+    return DEEP
 
 
 def world_xy_raw(lon, lat):
@@ -105,7 +118,7 @@ def main():
 
     # island rects double as fly-to targets and label spots
     world = {
-        "w": W, "h": H, "deep": DEEP,
+        "w": W, "h": H, "deep": deep_from(metas),
         "ref_tile_km": REF_TILE,
         "frame": {"lonW": LON_W, "latW": LAT_W,
                   "kmPerLonW": KM_PER_LON_W, "kmPerLat": KM_PER_LAT,
@@ -119,8 +132,9 @@ def main():
     print(f"wrote {out.relative_to(ROOT)}: capitol at {capitol}")
 
     # ---- overview stitch (1/OV scale, BOX filter = area average)
+    sea = deep_from(metas)
     ov = Image.new("RGB", (math.ceil(W / OV), math.ceil(H / OV)),
-                   tuple(int(DEEP[i:i + 2], 16) for i in (1, 3, 5)))
+                   tuple(int(sea[i:i + 2], 16) for i in (1, 3, 5)))
     for e in entries:
         meta = metas[e["slug"]]
         full = Image.new("RGB", (meta["w"], meta["h"]))
