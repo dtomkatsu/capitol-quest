@@ -1745,11 +1745,17 @@ const SessionPanel = {
       panel.appendChild(wrap);
       const dice = wrap.querySelectorAll(".tdie");
       for (const d of dice) setFace(d, 1 + Math.floor(Math.random() * 6));
+      /* The tumble is ONE tick per frame of the cycle, not one per die
+         — two transients 0ms apart phase into a single louder click
+         and the dice stop sounding like two objects. SFX.dieTick is
+         deliberately almost nothing at this rate; see its note. */
       const iv = setInterval(() => {
         for (const d of dice) {
           setFace(d, 1 + Math.floor(Math.random() * 6));
         }
+        SFX.dieTick();
       }, 75);
+      SFX.dieTick();
       let dead = false, landed = false;
       const timers = [];
       const at = (ms, fn) => timers.push(setTimeout(fn, ms));
@@ -1774,12 +1780,24 @@ const SessionPanel = {
         clearInterval(iv);
         setFace(dice[0], r.d1);
         setFace(dice[1], r.d2);
+        // the dice slam down staggered in CSS, so they land staggered
+        // in the ear too — SFX.dieLand offsets itself by index
+        SFX.dieLand(0);
+        SFX.dieLand(1);
         wrap.classList.add("landed");
         wrap.querySelector(".tray-math").innerHTML =
           "<b>" + r.d1 + "</b> + <b>" + r.d2 + "</b> · " +
           esc(bits.join(" · ")) + " · <b>" + r.total + "</b>";
       });
       at(T_TUMBLE + T_STAMP, () => {
+        /* The verdict sting fires WITH the stamp, which is the moment
+           the result becomes true — the same instant the receipt
+           settles and the scene washes. Snake eyes and boxcars get
+           their own tail on top, matching the extra 700ms those hold
+           for and the gold burst / shake they already carry. */
+        if (r.ok) SFX.win(); else SFX.lose();
+        if (r.sum === 12) SFX.jackpot();
+        else if (r.sum === 2) SFX.snake();
         wrap.classList.add(r.ok ? "ok" : "no");
         wrap.querySelector(".tray-stamp").innerHTML =
           (r.ok ? "SUCCESS" : "FAILURE") +
@@ -2213,6 +2231,7 @@ const SessionPanel = {
           if (btn.disabled) continue;
           btn.addEventListener("pointerdown", (ev) => {
             ev.stopPropagation();
+            SFX.choice();
             const i = +btn.dataset.i;
             const c = n.choices[i];
             // roll first — the outcome branch decides everything below
@@ -2249,6 +2268,7 @@ const SessionPanel = {
               const done = play.querySelector(".sd-done");
               done.addEventListener("pointerdown", (ev2) => {
                 ev2.stopPropagation();
+                SFX.choice();
                 if (done.dataset.goto) renderNode(done.dataset.goto);
                 else onDone();
               });
@@ -2573,11 +2593,18 @@ const SessionPanel = {
         const k = r.dataset.skill;
         const up = r.querySelector(".skup");
         const dn = r.querySelector(".skdn");
+        /* The click fires only where the value ACTUALLY moved — after
+           the guard, never before it. A capped skill and a skill at the
+           floor are both still live tap targets (the card is one big +1
+           and the − has to stay clickable exactly where it matters
+           most), so playing on entry would click at the player for
+           doing nothing, which is worse than silence. */
         const bump = (ev) => {
           ev.stopPropagation();
           if (S.skillPts < 1 || S.skills[k] >= cap) return;
           S.skills[k] += 1;
           S.skillPts -= 1;
+          SFX.pip(true);
           save();
           renderSelect();
         };
@@ -2586,6 +2613,7 @@ const SessionPanel = {
           if (S.skills[k] <= floor) return;
           S.skills[k] -= 1;
           S.skillPts += 1;
+          SFX.pip(false);
           save();
           renderSelect();
         };
@@ -2606,6 +2634,10 @@ const SessionPanel = {
           ev.stopPropagation();
           S.skills = baseSkills();
           S.skillPts = skStart.points || 0;
+          // one click, not one per point refunded — a reset is a
+          // single act, and a burst of six would read as six separate
+          // things happening
+          SFX.pip(false);
           save();
           renderSelect();
         });
@@ -3131,7 +3163,7 @@ const SessionPanel = {
             "</span></div>" + trHtml +
             '<button class="sd-done" type="button">Continue ▸</button>';
           body.querySelector(".sd-done").addEventListener("pointerdown",
-            (e2) => { e2.stopPropagation(); renderHub(); });
+            (e2) => { e2.stopPropagation(); SFX.choice(); renderHub(); });
         });
       }
       const next = body.querySelector("#sess-next");
@@ -3187,7 +3219,7 @@ const SessionPanel = {
         voiceHtml(a.voices) + fxHtml + trHtml +
         '<button class="sd-done" type="button">Continue ▸</button>';
       body.querySelector(".sd-done").addEventListener("pointerdown",
-        (ev) => { ev.stopPropagation(); renderHub(); });
+        (ev) => { ev.stopPropagation(); SFX.choice(); renderHub(); });
     };
 
     /* Advancing can be triggered from the HUD with the overlay closed —
@@ -4183,6 +4215,45 @@ const SessionPanel = {
    islands; picking one flies the camera there — it's ONE continuous map,
    so this is navigation, not a scene switch. The chip label tracks
    whichever island the camera is over ("Hawaiʻi" over open water). */
+/* The sound toggle. Lives beside the island chip in the title plate,
+   not in the toolbar — the four toolbar buttons are DOORS into panels,
+   and a fifth button that is a preference would misread as a fifth
+   panel. It is wired here, outside every scene and every overlay,
+   because sound is global state and the chip is on screen from boot.
+   The glyph is drawn, NOT an emoji — the house rule (see SYM at the
+   top of this file) is that no stock emoji goes in main.js, and a
+   speaker character renders as a different picture on every platform
+   anyway. Two waves when sound is on, none when it is off, plus the
+   chip's own opacity: no crossed-out slash, which at 11px is mush. */
+const SFX_ICON = (on) =>
+  '<svg viewBox="0 0 18 18" shape-rendering="crispEdges" ' +
+  'aria-hidden="true"><path d="M3 7h3l4-3v10l-4-3H3z" ' +
+  'fill="currentColor"/>' +
+  (on
+    ? '<path d="M12 6v6M15 4v10" stroke="currentColor" ' +
+      'stroke-width="1.6" fill="none"/>'
+    : "") + "</svg>";
+const SfxUI = {
+  init() {
+    const chip = document.getElementById("sfx-chip");
+    if (!chip || !window.SFX) return;
+    const paint = () => {
+      const off = SFX.muted();
+      chip.innerHTML = SFX_ICON(!off);
+      chip.classList.toggle("off", off);
+      chip.setAttribute("aria-pressed", off ? "false" : "true");
+      chip.title = off ? "Sound off — click for sound"
+                       : "Sound on — click to mute";
+    };
+    chip.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      SFX.toggle();
+      paint();
+    });
+    paint();
+  },
+};
+
 const IslandUI = {
   built: false,
   scene: null,
@@ -4305,6 +4376,7 @@ class WorldScene extends Phaser.Scene {
       this.cache.json.get("session"), this.cache.json.get("chairs"),
       this.cache.json.get("rates"), this);
     IslandUI.init(this);
+    SfxUI.init();
 
     this.setupCamera(world);
     this.setupInput();

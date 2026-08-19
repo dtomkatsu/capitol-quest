@@ -52,6 +52,29 @@ html, body {
 }
 #island-chip:hover { color: #d4ecfa; }
 
+/* the sound toggle, riding the title plate beside the island chip.
+   Subdued by the same logic as #hud-standing: it is a PREFERENCE, not
+   a verb, so it gets no plate of its own and sits under the game's
+   name rather than beside it. The muted state is a dimmer glyph, not a
+   slash — a slash at this size is mush. */
+#sfx-chip {
+  pointer-events: auto;
+  margin-left: 9px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #9fd4f0;                 /* the glyph inherits it via fill */
+  line-height: 0;
+  opacity: .62;
+  cursor: pointer;
+  vertical-align: -2px;
+  transition: opacity .15s ease;
+}
+#sfx-chip svg { width: 13px; height: 13px; display: block; }
+#sfx-chip:hover, #sfx-chip:focus-visible { opacity: 1; }
+#sfx-chip:focus { outline: none; }
+#sfx-chip.off { opacity: .3; }
+
 #island-menu {
   position: fixed;
   top: 52px; left: 12px;

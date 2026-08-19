@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260819122759">
+  <link rel="stylesheet" href="css/style.css?v=20260819124248">
 </head>
 <body>
   <div id="game"></div>
@@ -13,6 +13,12 @@
     <div id="title-chip">
       <span class="star">★</span> CAPITOL QUEST
       <button id="island-chip" type="button" title="Change island">· Oʻahu ▾</button>
+      <!-- Sound on/off. It rides the title chip rather than the toolbar
+           on purpose: the four toolbar buttons are DOORS into panels and
+           a fifth button that is a preference would misread as a fifth
+           panel. Small, quiet, and always reachable. -->
+      <button id="sfx-chip" type="button" aria-pressed="true"
+        title="Sound on/off"></button>
     </div>
     <div id="island-menu" class="hidden"></div>
     <div id="hint">Drag to pan · Scroll or pinch to zoom · Tap the Capitol</div>
@@ -226,6 +232,9 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260819122759"></script>
+  <!-- UI sound: synthesised at runtime, no audio files. Loaded
+       BEFORE main.js, which calls window.SFX from its handlers. -->
+  <script src="js/sfx.js?v=20260819124248"></script>
+  <script src="js/main.js?v=20260819124248"></script>
 </body>
 </html>

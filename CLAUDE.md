@@ -1234,6 +1234,61 @@ Phase 2 (same day):
   dead-bill colours (found live: every term rendered grey-blue, then
   red). Three rules were fixed; keep the `>` if you touch them.
 
+## UI sound (2026-08-19)
+
+`site/js/sfx.js` — `window.SFX`, loaded before main.js. Every sound is
+SYNTHESISED at runtime with Web Audio; there are no audio files in the
+repo. Same bargain as the map, the banners and the glyphs: the asset is
+code, so a change is a diff. It also wins on LATENCY, which is the
+thing that actually matters for a click — a decoded sample cannot beat
+an oscillator starting on the same turn of the event loop. Swapping in
+a CC0 sample pack later means replacing the bodies of `SFX.*` and
+touching no call site.
+
+- **Serious CRPG, not arcade.** The first pass was rejected outright
+  ("I don't want cartoony sounds, more serious RPG-like"), and the
+  three things that made it cartoony are now house rules in the file:
+  a rising major arpeggio for success and falling notes for failure
+  (MELODY — a tune played at the player is a mobile game congratulating
+  them); a PITCH LADDER transposing the instinct click by the skill's
+  rank, so spending points walked up a scale (the coin-collect sound);
+  and SQUARE WAVES, which are chiptune however they are enveloped.
+  Everything is now a STRUCK OBJECT: noise through a resonant bandpass
+  for the material, sine partials at INHARMONIC ratios for the body
+  (consonant ratios read as a chord, i.e. as music), one pitched event
+  per call, and a master lowpass at 5.2kHz over the lot.
+- **Tune by MEASUREMENT.** "Cartoony" is mostly spectral centroid and
+  decay length, both readable from the page: patch
+  `AudioNode.prototype.connect` to tee whatever connects to
+  `ctx.destination` into an AnalyserNode, then integrate an
+  AMPLITUDE-WEIGHTED centroid over the whole event across several takes
+  — a single-frame centroid at the peak is far too noisy to compare,
+  because a 46ms FFT window lands on the transient for one sound and on
+  the body for the next. That pass caught two bugs the code looked fine
+  for: everything was ~12dB too quiet, and FAILURE was coming out
+  BRIGHTER than success (2458Hz vs 1626Hz). The shipped table is in the
+  file; **the ORDER matters more than any single number** — brightness
+  falls click → commitment → verdict, failure is the dullest thing in
+  the game, verdicts are ~3x the level of a click, nothing above 1.7kHz.
+- **The context is created LAZILY, inside a pointerdown.** Building it
+  at load leaves it "suspended" under the autoplay policy and swallows
+  the first click of the session; `resume()` runs on every call because
+  a backgrounded tab can suspend it again.
+- **A sound fires only where the value ACTUALLY moved** — after the
+  guard, never before. A capped instinct and one at the floor are both
+  still live tap targets, so clicking on entry would click at a player
+  who changed nothing, which is worse than silence.
+- The tumble plays ONE tick per cycle of the 75ms interval, not one per
+  die: two transients 0ms apart phase into a single louder click and
+  the dice stop sounding like two objects.
+- **Mute is `#sfx-chip` in the title plate, not the toolbar** — the
+  four toolbar buttons are DOORS into panels and a fifth that is a
+  preference would misread as a fifth panel. State persists in
+  localStorage `cq-sfx`; muted means the graph is never built, not that
+  the gain is zero. Its glyph is DRAWN, not an emoji (same rule as
+  `SYM`), and the muted state is a quieter icon rather than a slash — a
+  slash at 13px is mush.
+
 ## Map jobs A + B: the week beat (2026-08-15)
 
 Ending a turn runs THROUGH the map: overlay drops, the camera makes
