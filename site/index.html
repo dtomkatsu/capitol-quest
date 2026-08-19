@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260819104153">
+  <link rel="stylesheet" href="css/style.css?v=20260819122759">
 </head>
 <body>
   <div id="game"></div>
@@ -75,7 +75,7 @@
            second money figure on the same screen only invites the reader
            to reconcile the two. -->
       <div id="hud-standing"></div>
-      <div id="hud-timeline" title="Session timeline"></div>
+      <div id="hud-timeline" class="htl" title="Session timeline"></div>
       <button id="turn-chip" type="button" title="Advance the session by one week">
         <span class="tc-label">Week 1</span>
         <span class="tc-act">End Turn ▸</span>
@@ -176,6 +176,19 @@
       <div class="ovl-title mast" id="session-title"></div>
       <button class="ovl-close" id="session-close" type="button" aria-label="Close">✕</button>
       <div id="sess-head">
+        <!-- The compact progress bar rides the panel's top band BESIDE
+             the week plate (2026-08-19, user's call: "move the timeline
+             to the top of the event card, to the right of the week
+             indicator"). It is absolutely positioned against .ovl-panel
+             rather than laid out in a row with the plate, because the
+             plate's width changes with the week's title (303px on
+             "First Hearings", 363px on "Money Committee Week") and a
+             flexed strip would re-space its milestones every week.
+             It lives INSIDE #sess-head so `.creating` hides it for free
+             with the rest of the session chrome. Tapping it opens the
+             full milestone strip below. -->
+        <button id="sess-progress" class="htl" type="button"
+          aria-expanded="false" title="Session timeline"></button>
         <div id="sess-timeline" class="sess-timeline"></div>
         <div id="sess-metrics"></div>
       </div>
@@ -213,6 +226,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260819104153"></script>
+  <script src="js/main.js?v=20260819122759"></script>
 </body>
 </html>

@@ -252,6 +252,7 @@ html, body {
 /* the pieces land in reading order — the masthead plate first, then the
    calendar, the meters, the week's content, the footer */
 #session-overlay.wk-open .ovl-title,
+#session-overlay.wk-open #sess-progress,
 #session-overlay.wk-open #sess-timeline,
 #session-overlay.wk-open #sess-metrics,
 #session-overlay.wk-open #sess-body,
@@ -272,6 +273,7 @@ html, body {
   to   { opacity: 1; transform: rotate(-.7deg); }
 }
 #session-overlay.wk-open .ovl-title     { animation-delay: .06s; }
+#session-overlay.wk-open #sess-progress  { animation-delay: .12s; }
 #session-overlay.wk-open #sess-timeline { animation-delay: .14s; }
 #session-overlay.wk-open #sess-metrics  { animation-delay: .20s; }
 #session-overlay.wk-open #sess-body     { animation-delay: .26s; }
@@ -741,6 +743,81 @@ html, body {
   #session-overlay .ovl-title.mast .mast-no b { font-size: 20px; }
 }
 
+/* ---------- the panel's own compact progress bar, riding the top band
+   to the RIGHT of the week plate (2026-08-19, user's call: "move the
+   timeline to the top of the event card, to the right of the week
+   indicator", built as the compact-bar option).
+
+   Why absolute and not a flex row with the plate: the plate is a
+   variable-width object — 303px on "First Hearings", 363px on "Money
+   Committee Week" — so a bar that took the remaining slack would
+   re-space its milestone ticks every single week, and one pinned to the
+   NARROWEST case would waste 60px on most weeks. Anchored to the
+   panel's right edge it is the same object every week, and it clears
+   both the plate (max ~379px from left: 16) and the close button
+   (right: 10, ~20px wide) with room to spare.
+
+   It sits in the SAME 30px band #sess-head already reserves for the
+   plate, so this costs no vertical space at all — and hiding the full
+   strip by default hands ~81px back to the transcript.
+
+   Quiet on purpose: no plate, no border, .72 opacity at rest. The gold
+   masthead two inches to its left is the loud object in this corner and
+   a second bordered chip beside it would fight it. */
+#session-overlay #sess-progress {
+  position: absolute;
+  top: -3px;
+  right: 46px;
+  width: 300px;
+  height: 26px;
+  padding: 0;
+  gap: 8px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  opacity: .72;
+  cursor: pointer;
+  transition: opacity .18s ease;
+}
+#session-overlay #sess-progress:hover,
+#session-overlay #sess-progress:focus-visible,
+#session-overlay.tl-open #sess-progress { opacity: 1; }
+#session-overlay #sess-progress:focus { outline: none; }
+/* the caret is the affordance that says the full calendar is under it —
+   a bar alone reads as a readout, not as a door */
+#session-overlay #sess-progress::after {
+  content: "\25be";
+  flex: 0 0 auto;
+  color: #9fb0e8;
+  font-size: 9px;
+  line-height: 1;
+  transition: transform .2s ease;
+}
+#session-overlay.tl-open #sess-progress::after { transform: rotate(180deg); }
+
+/* The full milestone strip is now BEHIND that tap, not always on
+   screen. It is the same element and the same renderer as before — only
+   its default visibility changed — so centerTimeline's hidden-box bail
+   (clientWidth < 40) is doing real work here on every closed render,
+   and toggling open has to re-run it. */
+#session-overlay #sess-timeline { display: none; }
+#session-overlay.tl-open #sess-timeline { display: block; }
+
+@media (max-width: 760px) {
+  /* no room beside the plate: the bar drops into the head as an
+     ordinary first row rather than overlapping the close button */
+  #session-overlay #sess-progress {
+    position: static;
+    /* an explicit 100%, NOT auto: a <button> is inline-block, so `auto`
+       shrinks it to its content and the flex track (`flex: 1 1 auto`,
+       no basis) collapses to nothing — the bar vanishes and only the
+       "5/16" readout is left. Seen live at 700px. */
+    width: 100%;
+    margin: 2px 0 4px;
+    opacity: .85;
+  }
+}
+
 /* The session strip: a horizontally scrolling milestone rail. The
    readout line that used to sit beneath it was removed 2026-08-15 to
    free vertical space for the dialogue. One thing the old version got
@@ -1076,6 +1153,7 @@ html, body {
   #session-overlay.wk-open, #session-overlay.wk-open .ovl-panel,
   #session-overlay.wk-open .ovl-panel::after,
   #session-overlay.wk-open .ovl-title,
+  #session-overlay.wk-open #sess-progress,
   #session-overlay.wk-open #sess-timeline,
   #session-overlay.wk-open #sess-metrics,
   #session-overlay.wk-open #sess-body,
@@ -1210,6 +1288,23 @@ html, body {
   color: #8fa0d8;                       /* the silhouette's own ink */
 }
 .sd-card .cc-art svg { display: block; width: 100%; height: 100%; }
+/* A PHOTOGRAPHIC portrait (cc-photo) fills the plate instead of being
+   drawn in it, so the gradient ground and the silhouette ink behind it
+   are dead weight — and the ground would show through as a rim on any
+   rounding error. The image is already a 3:4 crop, so `cover` only
+   ever trims a hairline; it is here so a future portrait cut to a
+   slightly different box can't letterbox itself inside its own frame.
+   `aspect-ratio` carries the box in the rail, where the drawing route
+   gets its height from the SVG viewBox and there is nothing to measure
+   against. */
+.sd-card .cc-art.cc-photo { background: #0d1234; }
+.sd-card .cc-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
 .sd-card .cc-body { min-width: 0; }
 .sd-card .cc-name {
   color: #ffe9a8;
@@ -1350,6 +1445,7 @@ html, body {
     box-shadow: 0 10px 26px rgba(0, 0, 0, .5);
   }
   .sd-scene.has-card > .sd-card .cc-art svg { height: auto; }
+  .sd-scene.has-card > .sd-card .cc-art img { height: auto; }
   .sd-scene.has-card > .sd-card .cc-body { padding: 11px 8px 0 14px; }
   .sd-scene.has-card > .sd-card .cc-name { font-size: 17px; }
   .sd-scene.has-card > .sd-card .cc-tags { gap: 4px; margin-top: 8px; }
@@ -3565,14 +3661,19 @@ html, body {
    readout gives the number the dots never could. Laid out as a flex
    row so the bar takes the slack and the readout keeps its own column
    instead of overlapping the fill. */
-#hud-timeline {
+/* The bar's INTERNALS are shared (`.htl`) between the HUD chip and the
+   session panel's own compact bar, so the two readings of the same
+   calendar cannot drift apart. Only the CHROME differs: the HUD chip is
+   a plate on the map, the panel's is quiet furniture inside a panel
+   that already has a loud gold plate two inches away. */
+.htl {
   display: flex;
   align-items: center;
   gap: 7px;
   padding: 0 8px;
   box-sizing: border-box;
 }
-#hud-timeline .htl-bar {
+.htl .htl-bar {
   position: relative;
   flex: 1 1 auto;
   height: 8px;
@@ -3581,7 +3682,7 @@ html, body {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
   overflow: hidden;
 }
-#hud-timeline .htl-fill {
+.htl .htl-fill {
   position: absolute;
   top: 0; bottom: 0; left: 0;
   width: 0;
@@ -3593,7 +3694,7 @@ html, body {
 }
 /* milestone marks, sitting IN the track — dim ahead of you, dark once
    the fill has passed over them so they read against the gold */
-#hud-timeline .htl-tick {
+.htl .htl-tick {
   position: absolute;
   /* inset vertically and kept faint on purpose: full-height bright bars
      read as segment dividers chopping the run into chapters, which is
@@ -3604,10 +3705,10 @@ html, body {
   border-radius: 1px;
   background: rgba(255, 255, 255, .2);
 }
-#hud-timeline .htl-tick.past { background: rgba(43, 33, 5, .38); }
+.htl .htl-tick.past { background: rgba(43, 33, 5, .38); }
 /* the leading edge: a bright cap so the current position is findable
    even where the fill and a tick land together */
-#hud-timeline .htl-head {
+.htl .htl-head {
   position: absolute;
   top: -2px; bottom: -2px;
   left: 0;
@@ -3618,7 +3719,7 @@ html, body {
   box-shadow: 0 0 6px rgba(255, 233, 168, .9);
   transition: left .55s cubic-bezier(.25, .9, .3, 1);
 }
-#hud-timeline .htl-read {
+.htl .htl-read {
   flex: 0 0 auto;
   color: #ffe9a8;
   font-size: 9px;

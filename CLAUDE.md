@@ -359,7 +359,44 @@ Rules that must survive edits:
   - **`.sd-art` gives up its LEFT bleed inside a rail scene.** The
     banner's `margin: 10px -18px` is written for a full-width column and
     otherwise walks under the portrait.
-  - PORTRAITS ARE FACELESS, as ever. But bigger makes that rule HARDER:
+  - **A card may carry a `photo` instead of an `art` drawing**
+    (2026-08-19, user's call: "replace the Kawaguchi headshot with the
+    real one of him, but cropped"). `tools/make_portrait_art.py` cuts a
+    3:4 crop out of the character's OWN banner photograph and gives it
+    the banner treatment step for step (mild oil brush, grade, grain,
+    vignette, adaptive palette) → `site/assets/portraits/<id>.png`;
+    `charCardHtml`'s `portraitHtml` renders it as an `<img>` and
+    `.cc-art.cc-photo` drops the drawing's gradient ground. Kawaguchi is
+    the first. Rules:
+    - It is a crop of the SAME source the banner is cut from, so the
+      rail and the banner cannot drift into two different men. Never
+      source a portrait from a second photograph.
+    - **It is painted HARDER than the banner** — 6 @ 0.85 against the
+      banner's 4 @ 0.55 (2026-08-19, user's call: "I want the face
+      cards to have the painterly effect"). A banner is a whole room
+      that heavy brushwork would eat; the portrait is one head at
+      180px, where the brush is the only thing between "game art" and
+      "photo pasted into the UI". 0.55 and 0.72 both still read as a
+      filtered photograph at rail size. 0.85 is also the threshold
+      where DITHERING TURNS OFF (and grain drops to 1), resolved from
+      the strength exactly as `from_photo` does it and for the same
+      reason — flat painted regions plus Floyd-Steinberg is noise for
+      no gain.
+    - **`--soften` here is a brush on the face, not a redaction.** The
+      banner's face pass dissolves identity; this one is smaller
+      relative to the face (radius 18 on a ~304px face, against the
+      banner's 7 on a ~88px face) so the features read as painted, not
+      erased. The rail portrait IS the identification — a dossier
+      headshot with its face dissolved is a redaction.
+    - The `art` key STAYS on a card that gains a `photo` — it is the
+      fallback, and the drawing is still what any character without a
+      photograph gets.
+    - The portrait's own `?v=` (`PORTRAIT_V` in main.js) is by hand:
+      the pre-commit hook only rewrites tokens inside HTML.
+  - DRAWN PORTRAITS ARE FACELESS, as ever — the photo route above is a
+    documented exception for a named external actor who already appears
+    photographically in a banner, not a repeal. Bigger makes the rule
+    HARDER:
     at 180px a plain circle-on-a-dome is the universal avatar icon. The
     drawing earns its size with a CHAIR BACK behind the shoulders (the
     single element that breaks the avatar read — do not remove it to
@@ -453,6 +490,13 @@ Rules that must survive edits:
       Radius 6 @ 0.65 over the face INTERIOR (brow to chin, inside the
       hairline — not the head outline) is the worked example, on
       `w2-finance-office`.
+    - **A flat, discoloured PATCH in the source gets repaired in the
+      source, never chased downstream** (`tools/depatch_photo.py`;
+      recipe and the raw original in BANNERS.md). The office photo
+      carried a low-chroma oval on the wall that the 96-colour palette
+      turned into a grey splotch — 160 and 220 colours and every
+      quantizer PIL has still showed it, because the patch was really
+      in the photograph.
     - **A near-monochrome photo needs `--colors 96`, not the 32
       default.** An adaptive 32-colour palette on a room that is 90%
       brown wood spends every entry on browns, so smooth wall gradients
@@ -709,6 +753,50 @@ Rules that must survive edits:
   Sine Die…) across the session and marks the current week — keep
   `data.calendar` as the single source of both the intel/deadline copy
   and the timeline's waypoints, don't fork a second milestone list.
+  **The strip is now BEHIND A TAP, and a compact progress bar rides the
+  panel's top band beside the week plate** (2026-08-19, user's call:
+  "move the timeline to the top of the event card, to the right of the
+  week indicator"). `#sess-progress` — same renderer and same CSS as the
+  HUD chip, see the shared-bar note below — sits at the top right of the
+  panel; tapping it toggles `.tl-open` on `#session-overlay`, which
+  displays the full `#sess-timeline` strip underneath. Rules:
+  - **The bar is ABSOLUTELY positioned against `.ovl-panel`, not laid
+    out in a flex row with the plate.** The plate's width is a function
+    of the week's TITLE (measured: 303px on "First Hearings", 363px on
+    "Money Committee Week"), so a bar taking the remaining slack would
+    re-space its milestone ticks every week, and one pinned to the
+    narrowest case would waste ~60px on most weeks. Anchored to the
+    panel's right edge it is the same object every week and clears both
+    the plate and the close button. Under 760px there is no room beside
+    the plate at all and it becomes an ordinary first row of
+    `#sess-head` — with an explicit `width: 100%`, because a `<button>`
+    is inline-block and `auto` collapses the flex track to nothing
+    (seen live).
+  - **It lives INSIDE `#sess-head`** so `.creating` hides it for free
+    with the rest of the session chrome, and so it costs no vertical
+    space: it rides the same 30px band the head already reserves for
+    the out-of-flow plate. With the strip closed, the head went from
+    134px to 43px — ~91px handed back to the transcript.
+  - **`centerTimeline`'s hidden-box bail is now load-bearing on every
+    closed render**, not just on boot: a `display:none` scroll box
+    reports clientWidth 0. The toggle must re-run it on open (it does,
+    on a rAF) or the strip opens parked at scrollLeft 0 instead of on
+    the current week.
+  - The 1040px panel width and the strip's fixed 940px inner both STAY.
+    They are what make all eleven milestones legible when it is open;
+    the tap changed when you see the strip, not how wide it needs to be.
+  - The toggle's pointerdown must `stopPropagation`, same as the
+    milestone buttons — the overlay's backdrop handler would otherwise
+    read the tap as a click-outside and close the panel.
+  **ONE renderer and ONE stylesheet block serve BOTH progress bars** —
+  `renderProgress(el, verb)` in main.js (the HUD chip is
+  `renderHudTimeline`, a one-line wrapper) and the `.htl` class in CSS.
+  They are two readings of the same calendar; a second copy of that
+  arithmetic or those internals is a second chance for them to
+  disagree. Only the CHROME differs (the HUD chip is a plate on the map;
+  the panel's bar is quiet, no border, .72 opacity, because the gold
+  masthead two inches away is already the loud object in that corner)
+  and the chrome lives entirely in the stylesheet.
   Rebuilt 2026-08-15; four things must not regress:
   - **The session panel is WIDER than the other overlays on purpose**
     (`#session-overlay .ovl-panel`, 1040px vs the shared 680px). The
@@ -1029,7 +1117,9 @@ Phase 2 (same day):
   - Bars stay on mobile (user's call) — the ≤600px block only tightens
     type and width.
 - **The HUD chip is a PROGRESS BAR, not a dot strip** (2026-08-15,
-  user's call — `renderHudTimeline`, `#hud-timeline`). At 168px the old
+  user's call — `renderHudTimeline` → `renderProgress`, `#hud-timeline`;
+  since 2026-08-19 the session panel has one too, see the calendar
+  section above — same renderer, same `.htl` styles, different chrome). At 168px the old
   nine 5px milestone dots read as lint. Milestones survive as faint
   ticks IN the track (inset and dim on purpose — full-height bright
   bars read as segment dividers chopping the run into chapters, the
@@ -1045,10 +1135,11 @@ Phase 2 (same day):
   — portrait, name, office, a couple of short reads on how they
   operate, and their own words. Kawaguchi is the first and currently
   only one. Rules:
-  - **PORTRAITS ARE FACELESS**, the same house rule as the event
-    banners and the skill glyphs: a silhouette at a committee desk, a
-    collar, a nameplate. No features, ever. Drawings live in the
-    `PORTRAIT` map in main.js, named by the card's `art` key.
+  - **DRAWN PORTRAITS ARE FACELESS**, the same house rule as the skill
+    glyphs: a silhouette at a committee desk, a collar, a nameplate. No
+    features, ever. Drawings live in the `PORTRAIT` map in main.js,
+    named by the card's `art` key. A card may instead carry a `photo` —
+    see the portrait-rail section above.
   - **ONE gold accent per drawing**, like the skill glyphs. Kawaguchi's
     is the desk nameplate — a chair IS his nameplate. A gavel was drawn
     and cut: it collided with the desk edge at small size and made two

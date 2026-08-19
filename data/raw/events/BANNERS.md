@@ -21,6 +21,82 @@ python3 tools/make_event_art.py --photo data/raw/events/w2-finance-office-src.jp
   --soften 0.4656,0.4198,0.5344,0.5687 --soften-radius 7 --soften-strength 0.72
 ```
 
+## Repaired sources
+
+`w2-finance-office-src.jpg` is NOT the file that came out of the image
+model — that one is kept as `w2-finance-office-raw.jpg` and the shipped
+source is a repaired copy of it (2026-08-19, user's call: "that ugly
+splotch up and to the right of him"). The raw photo carries a
+generation artifact on the wall behind Kawaguchi: an oval of
+desaturated grey-mauve where the koa panelling should be. It is subtle
+in the raw photo — a chroma drop, not a lightness jump — and the
+banner pipeline AMPLIFIES it, because the 96-colour adaptive palette
+on a room that is 90% brown wood has nothing to spend on the one
+low-chroma region in frame and snaps it to a flat grey.
+
+Do not chase this downstream. It was measured: 160 and 220 colours,
+MAXCOVERAGE and FASTOCTREE all still show it, because the patch is
+really in the photograph. Repair it once, at the source:
+
+```bash
+python3 tools/depatch_photo.py \
+  --photo data/raw/events/w2-finance-office-raw.jpg \
+  --out data/raw/events/w2-finance-office-src.jpg \
+  --ellipse 1835,450,255,190 --mirror-y 280
+```
+
+Then re-run the banner command above unchanged — the recipe never sees
+the repair. `--mirror-y` is the horizontal axis the wood GRAIN is
+mirrored about and must land in clean wall just above the patch; the
+grain is vertical, so a vertical mirror keeps every grain line and
+every panel seam running the right way.
+
+## Portraits
+
+The portrait rail beside the transcript takes a 3:4 crop of the SAME
+photograph (`tools/make_portrait_art.py`, output
+`site/assets/portraits/<id>.png`, wired up by a `photo` key on the
+character's `card` in session.json). Same treatment as the banners,
+step for step, so the two belong to one picture set.
+
+```bash
+python3 tools/make_portrait_art.py \
+  --photo data/raw/events/w2-finance-office-src.jpg \
+  --id kawaguchi --box 1180,560,1640,1173 \
+  --paint 6 --paint-strength 0.85 \
+  --soften 1311,645,1505,873 --soften-radius 18 --soften-strength 0.6
+```
+
+Notes on those numbers:
+
+- **The portrait is painted HARDER than the banner** (6 @ 0.85 against
+  the banner's 4 @ 0.55; 2026-08-19, user's call — "I want the face
+  cards to have the painterly effect"). It can afford to be: a banner
+  is a whole room the player has to read, where heavy brushwork eats
+  the architecture, while the portrait is one head at 180px and the
+  brush is the only thing standing between "game art" and "photo pasted
+  into the UI". 0.55 and 0.72 both still read as a filtered photograph
+  at rail size; 1.0 starts dissolving him.
+- **0.85 is the threshold where dithering turns OFF**, and the tool
+  resolves that from the strength exactly the way `from_photo` does —
+  a fully painted image has flat colour regions that Floyd-Steinberg
+  muddies back toward "filtered photo", killing the brushwork the paint
+  pass exists to create. Grain drops to 1 with it. Verified side by
+  side on this portrait; the dithered version is visibly noisier in the
+  aloha shirt for no gain.
+- **`--soften` here is a brush on the FACE, not a redaction.** The
+  banner's face pass exists to dissolve identity (house rule: no faces
+  in focus). This one is smaller relative to the face — radius 18 at
+  0.6, against a face ~304px wide in the working frame, where the
+  banner's 7 sits on a face ~88px wide — so it reads as the features
+  being painted rather than erased. The rail portrait IS the
+  identification; a dossier headshot with its face dissolved is a
+  redaction. The faceless house rule still governs every DRAWN portrait
+  (`PORTRAIT` in main.js) and every crowd figure in a banner.
+- The `--soften` box is the same face rectangle as the banner's, just
+  in source PIXELS rather than fractions: 0.4656,0.4198,0.5344,0.5687
+  x 2816x1536 = 1311,645,1505,873.
+
 Notes on the args, so a re-render is a decision and not a guess:
 
 - **`--center` is aspect-dependent and must be remapped if `H` changes.**

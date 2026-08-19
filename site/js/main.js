@@ -1361,8 +1361,15 @@ const SessionPanel = {
        as renderMetrics: replacing the innerHTML gives the fill no
        previous width to transition from, so it would snap on every
        week instead of sliding. */
-    const renderHudTimeline = () => {
-      const el = $("hud-timeline");
+    const renderHudTimeline = () => renderProgress($("hud-timeline"),
+      "open the session");
+    /* ONE renderer for BOTH progress bars — the HUD chip on the map and
+       the panel's own compact bar beside the week plate (2026-08-19).
+       They are two readings of the same calendar and a second copy of
+       this arithmetic is a second chance for them to disagree; the CSS
+       is shared the same way, through `.htl`. Only the chrome and the
+       tooltip differ, and the chrome is entirely in the stylesheet. */
+    const renderProgress = (el, verb) => {
       if (!el) return;
       const span = Math.max(1, data.sineDieWeek - 1);
       const pctOf = (w) => Math.max(0, Math.min(100,
@@ -1388,13 +1395,15 @@ const SessionPanel = {
       const last = data.sineDieWeek;
       el.querySelector(".htl-read").textContent =
         Math.min(S.week, last) + "/" + last;
-      // the chip is a button into the overlay; the tooltip carries what
-      // the labels used to, since a bar has no room for nine names
+      // both bars are buttons; the tooltip carries what the milestone
+      // labels used to, since a bar has no room for nine names. `verb`
+      // is what THIS one opens — the HUD chip opens the session, the
+      // panel's bar opens the full strip under itself.
       const cal = calFor(S.week);
       el.title = "Week " + S.week + " of " + last +
         (cal.title ? " · " + cal.title : "") +
         (dateRangeFor(S.week) ? " · " + dateRangeFor(S.week) : "") +
-        " — open the session";
+        (verb ? " — " + verb : "");
     };
 
     /* ---- your standing, ambient on the map (2026-08-18, user's call:
@@ -1536,6 +1545,7 @@ const SessionPanel = {
         esc(cal.phase) + (dateStr ? " · " + esc(dateStr) : "") +
         "</small></span>";
       renderTimeline();
+      renderProgress($("sess-progress"), "show the calendar");
       renderHudTimeline();
       renderMetrics();
       renderHudStanding();
@@ -1925,11 +1935,33 @@ const SessionPanel = {
       }
       return "";
     };
+    /* A card may carry a `photo` instead of an `art` drawing: a crop of
+       the SAME photograph the character's banner is cut from
+       (tools/make_portrait_art.py → assets/portraits/<id>.png). For a
+       character who already appears photographically in a banner, a
+       drawn silhouette in the rail beside it was two different people;
+       the crop cannot drift from the banner because it IS the banner's
+       source. `art` is still the route for anyone with no photograph,
+       and those stay FACELESS — the house rule is unchanged for
+       drawings, the photo is a documented exception for named external
+       actors (2026-08-19, user's call).
+       Slug-filtered, not esc()'d: this lands in a src attribute and
+       esc() deliberately leaves quotes alone. `?v=` here is by hand —
+       the pre-commit hook only rewrites tokens inside HTML. */
+    const PORTRAIT_V = 2;
+    const portraitHtml = (c, sid) => {
+      const p = (c.photo || "").replace(/[^a-z0-9_-]/gi, "");
+      if (p) {
+        return '<img src="assets/portraits/' + p + ".png?v=" +
+          PORTRAIT_V + '" alt="">';
+      }
+      return PORTRAIT[c.art] || sym(sid) || "";
+    };
     const charCardHtml = (sid, who) => {
       const c = who.card || {};
       const quote = chairVoiceFor(sid);
-      return '<div class="cc-art">' +
-        (PORTRAIT[c.art] || sym(sid) || "") + "</div>" +
+      return '<div class="cc-art' + (c.photo ? " cc-photo" : "") + '">' +
+        portraitHtml(c, sid) + "</div>" +
         '<div class="cc-body"><div class="cc-name">' +
         esc(who.name || "") + "</div>" +
         '<div class="cc-role">' + esc(c.title || who.role || "") +
@@ -4056,6 +4088,20 @@ const SessionPanel = {
       e.stopPropagation();
       toggleSession();
     });
+    /* The panel's compact bar opens the full milestone strip beneath
+       it. stopPropagation, or the overlay's backdrop handler reads the
+       tap as a click-outside and closes the whole panel — the same trap
+       the strip's own milestone buttons already dodge.
+       centerTimeline has to run AFTER the strip is displayed: it bails
+       while the scroll box measures under 40px, which is exactly what a
+       display:none box reports, so opening without this re-run leaves
+       the strip parked at scrollLeft 0 instead of on the current week. */
+    $("sess-progress").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const open = overlay.classList.toggle("tl-open");
+      $("sess-progress").setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) requestAnimationFrame(centerTimeline);
+    });
     $("turn-chip").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       const cal = calFor(S.week);
@@ -4191,7 +4237,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=8");
+    this.load.json("session", "map/session.json?v=9");
     this.load.json("chairs", "map/chairs.json?v=1");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
