@@ -977,8 +977,18 @@ html, body {
   25% { box-shadow: 0 0 0 1px #d96a5e, 0 0 18px -6px #d96a5e;
         transform: translateY(2px); }
 }
+/* Three meters, three hues, and the hues MEAN something (2026-08-18):
+   gold = money, coral = the street, blue = inside the building. Support
+   used to share revenue's gold, which was survivable in the overlay
+   where the cards are labelled, but not in the HUD standing cluster
+   where two of three rows would have been the same colour with nothing
+   to tell them apart. Coral is not a new invention — it is `--pole`
+   #e8795c, the ORGANIZER pole ("the street and the mic"), which is
+   exactly the currency public support is; influence's blue is a step
+   from the wonk pole's #6fa8dc for the same reason. Keep any future
+   meter inside that logic rather than picking a free hue. */
 #sess-metrics .m-rev { --mc: #e3b64b; }
-#sess-metrics .m-sup { --mc: #e3b64b; }
+#sess-metrics .m-sup { --mc: #e8795c; }
 #sess-metrics .m-inf { --mc: #63a6f0; }
 #sess-metrics .m-rev.gain .mv { color: #7ff0ae; }
 #sess-metrics .m-rev.gain { --mc: #59c98b; }
@@ -1090,7 +1100,10 @@ html, body {
   .sd-card.in {
     animation: none !important;
   }
-  #sess-metrics .metc .bar i { transition: none !important; }
+  #sess-metrics .metc .bar i,
+  /* the HUD standing cluster's bars slide on the same easing as the
+     overlay's, so they belong in the same escape hatch */
+  #hud-standing .hs-bar i { transition: none !important; }
   .ag-back, .ag-back::before, .ag-back .agb-ar {
     transition: none !important;
   }
@@ -3440,6 +3453,97 @@ html, body {
 }
 @keyframes tcpulse { 50% { opacity: .25; } }
 
+/* ---------- your standing, ambient above the session progress bar.
+   The two campaign meters that otherwise only exist inside the session
+   overlay (money is NOT here — see renderHudStanding in main.js).
+   THE POINT IS THAT IT IS NOT A CHIP. Everything else on this HUD is a
+   plate: navy gradient, 2px white border, 2px outline, hard shadow.
+   This has none of that — no background, no border, no shadow — and
+   rides at .58 opacity until hovered. It sits directly above End Turn,
+   the screen's primary verb, and anything with chrome would compete
+   with it. If a future edit gives this a border, the cluster has
+   stopped being ambient and become a fourth button.
+   Sized to #hud-timeline's 168px so the bottom-left column reads as one
+   stack: standing -> time left -> the verb. */
+#hud-standing {
+  width: 168px;
+  box-sizing: border-box;
+  padding: 0 2px 1px;
+  pointer-events: auto;          /* hover only — deliberately not a button */
+  opacity: .58;
+  transition: opacity .25s ease;
+}
+#hud-standing:hover { opacity: 1; }
+/* Same shape as the overlay's .metc card — name and value on one line,
+   the bar spanning both columns under them — so the HUD cluster and the
+   card in the session panel read as the same object seen twice. It also
+   solves an alignment problem the obvious layout has: with label and
+   bar on ONE line, each row is its own grid, so "SUPPORT" and
+   "INFLUENCE" size their own first column and the two bars start and
+   end at different x. Spanning the bar sidesteps that entirely and
+   gives it the full 168px instead of the ~58px left over after a label,
+   a value and a trend. */
+#hud-standing .hs-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  column-gap: 5px;
+  margin-bottom: 4px;
+}
+#hud-standing .hs-bar { grid-column: 1 / -1; margin-top: 2px; }
+#hud-standing .hs-sup { --hc: #e8795c; }   /* the street */
+#hud-standing .hs-inf { --hc: #63a6f0; }   /* inside the building */
+#hud-standing .hs-l {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  color: #cfe0ff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+}
+/* a HAIRLINE, half the height of the timeline's track: this is a glance,
+   not a gauge, and at the timeline's 8px it started reading as a second
+   progress bar for the same run */
+#hud-standing .hs-bar {
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(4, 7, 20, .5);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+#hud-standing .hs-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: var(--hc, #9fb0e8);
+  /* built once and updated in place (renderHudStanding), so a changed
+     value genuinely slides instead of snapping */
+  transition: width .55s cubic-bezier(.25, .9, .3, 1);
+}
+#hud-standing .hs-v {
+  min-width: 15px;
+  text-align: right;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+}
+/* the trend since the week opened. Empty when nothing moved — a quiet
+   week should read as quiet, not as a row of zeroes — so this column
+   collapses to nothing rather than holding a slot. */
+#hud-standing .hs-t {
+  min-width: 20px;
+  text-align: right;
+  font-size: 8.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+}
+#hud-standing .hs-t.up   { color: #7ff0ae; }
+#hud-standing .hs-t.down { color: #ff8d80; }
+
 /* session progress, HUD-mounted above the End Turn button — the same
    calendar as .sess-timeline reduced to "how much session is left".
    The overlay's full strip is still where you go to read the milestone
@@ -3527,6 +3631,13 @@ html, body {
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }
   #hud-turn { bottom: 40px; }
+  /* bars STAY on mobile (2026-08-18, user's call) — this only tightens
+     the type and spacing so two rows plus the timeline and End Turn
+     still clear the bottom of a 375px phone */
+  #hud-standing { width: 150px; }
+  #hud-standing .hs-row { margin-bottom: 3px; }
+  #hud-standing .hs-l { font-size: 7.5px; letter-spacing: .7px; }
+  #hud-standing .hs-v { font-size: 9.5px; }
   #turn-chip { padding: 5px 11px 6px; }
   #turn-chip .tc-act { font-size: 13px; }
   #chips { top: 102px; }   /* below the 3-button toolbar row */

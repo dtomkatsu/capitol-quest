@@ -1002,6 +1002,13 @@ const SessionPanel = {
       bills: [], chairs: {}, pushWeek: -1, pushBill: null,
       skills: baseSkills(), skillPts: skStart.points || 0, train: {},
       metrics: { revenueK: 0, support: 50, influence: 30 },
+      /* Where support/influence stood when THIS week opened, so the HUD
+         standing cluster can show a trend beside the value. Snapshotted
+         at the top of advanceWeek() — before resolveBills() — so the
+         arrow the player sees on the map right after ending a turn is
+         the one the gauntlet just moved, which is the whole reason a
+         trend is worth showing at all. */
+      weekBase: { support: 50, influence: 30 },
     });
     let S = defaults();
     try {
@@ -1025,6 +1032,13 @@ const SessionPanel = {
       if (S.metrics.wealthy != null) S.metrics.influence = S.metrics.wealthy;
       delete S.metrics.families;
       delete S.metrics.wealthy;
+      // saves from before the HUD standing cluster (2026-08-18) have no
+      // week baseline — seed it at TODAY's values so an in-progress
+      // campaign opens showing no trend rather than inventing one that
+      // reads as a swing the player never caused
+      S.weekBase = Object.assign({ support: S.metrics.support,
+                                   influence: S.metrics.influence },
+                                 S.weekBase || {});
       // pre-2026-08-14 saves carried a week 0 (pre-session, agenda-only) —
       // that week is gone, its agenda step folded into week 1
       if (S.week < 1) { S.week = 1; S.agendaLocked = false; }
@@ -1383,6 +1397,71 @@ const SessionPanel = {
         " — open the session";
     };
 
+    /* ---- your standing, ambient on the map (2026-08-18, user's call:
+       "show public opinion and influence outside the overlay, in a very
+       subdued way").
+       TWO meters, not three. Money is deliberately absent: #fund-chip
+       already folds the campaign's revenue into the FY2027 figure and
+       its surplus/deficit line (updateChip -> PolicyPanel.external), and
+       a second money number on the same screen just asks the player to
+       reconcile two headline figures. If money ever needs to read
+       louder, make that balance line louder — do not add a fourth row
+       here.
+       Rules that must survive edits:
+       - **SUBDUED means no chip.** Every other HUD element is a plate
+         with a 2px white border and an outline; this one has no
+         background, no border and no shadow, and sits at .58 opacity
+         until hovered. The moment it grows chrome it competes with the
+         End Turn button directly under it, which is the screen's
+         primary verb.
+       - **Built ONCE and updated in place** (`data-built`), the same
+         lesson as renderMetrics and renderHudTimeline: replacing the
+         innerHTML leaves the fill with no previous width to transition
+         from, so the bar snaps on every change instead of sliding.
+       - **No bump/flash.** Support and influence almost only move
+         INSIDE the overlay, where this cluster is behind the scrim, so
+         a flash would fire unseen; the overlay's own cards already own
+         that job. The one beat it would land on is the turn ritual, and
+         the trend arrow covers that better than a flash could.
+       - The trend is measured from `S.weekBase`, snapshotted at the top
+         of advanceWeek(), so it reads "what this week has done to you"
+         and resets cleanly at each turn. */
+    const renderHudStanding = () => {
+      const el = $("hud-standing");
+      if (!el) return;
+      const ROWS = [
+        { key: "support", cls: "hs-sup", label: "Support",
+          tip: "Public support — spent at hearings and floor votes. " +
+               "Loud, but only at specific moments." },
+        { key: "influence", cls: "hs-inf", label: "Influence",
+          tip: "Political influence — your standing inside the " +
+               "building. Applies quietly to every scheduling decision." },
+      ];
+      if (!el.dataset.built) {
+        el.innerHTML = ROWS.map((r) =>
+          '<div class="hs-row ' + r.cls + '" title="' + esc(r.tip) + '">' +
+          '<span class="hs-l">' + esc(r.label) + "</span>" +
+          '<span class="hs-v"></span><span class="hs-t"></span>' +
+          '<span class="hs-bar"><i></i></span></div>').join("");
+        el.dataset.built = "1";
+      }
+      const base = S.weekBase || {};
+      ROWS.forEach((r, i) => {
+        const row = el.children[i];
+        if (!row) return;
+        const v = S.metrics[r.key];
+        row.querySelector(".hs-bar i").style.width = v + "%";
+        row.querySelector(".hs-v").textContent = Math.round(v);
+        // trend since the week opened — no arrow at all when nothing has
+        // moved, so a quiet week reads as quiet instead of as a zero
+        const was = base[r.key] == null ? v : base[r.key];
+        const d = Math.round(v - was);
+        const t = row.querySelector(".hs-t");
+        t.textContent = d === 0 ? "" : (d > 0 ? "▲" : "▼") + Math.abs(d);
+        t.className = "hs-t" + (d > 0 ? " up" : d < 0 ? " down" : "");
+      });
+    };
+
     /* ---- the three campaign meters.
        Built ONCE and then updated in place — the old version rebuilt
        the innerHTML on every renderHead, which is why the bars snapped
@@ -1459,6 +1538,7 @@ const SessionPanel = {
       renderTimeline();
       renderHudTimeline();
       renderMetrics();
+      renderHudStanding();
       renderTurnBtn();
     };
 
@@ -3831,6 +3911,10 @@ const SessionPanel = {
     let beating = false;
     const advanceWeek = () => {
       if (S.week > data.sineDieWeek || beating) return;
+      // BEFORE resolveBills(), so the week's movement counts toward the
+      // trend the player reads on the map a moment later
+      S.weekBase = { support: S.metrics.support,
+                     influence: S.metrics.influence };
       S.week += 1;
       startBills();
       const moves = resolveBills();

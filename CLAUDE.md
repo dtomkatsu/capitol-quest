@@ -982,6 +982,52 @@ Phase 2 (same day):
 - Panel bookends: `.leaving` (240ms) before the week beat, `.arriving`
   on open — but ONLY when the overlay was actually closed, or every
   re-render would re-animate the frame.
+- **Your STANDING is ambient on the map** (`#hud-standing`,
+  `renderHudStanding`; 2026-08-18, user's call: "show public opinion,
+  influence and money outside the overlay, in a very subdued way"). Two
+  hairline meters at the top of the bottom-left column, so that column
+  reads standing → time left → the verb.
+  - **TWO meters, not three: money is deliberately NOT here.**
+    `#fund-chip` already folds the campaign's revenue into the FY2027
+    figure and its surplus/deficit line (`updateChip` ←
+    `PolicyPanel.external`), so a second money number on the same screen
+    only asks the player to reconcile two headline figures. If money
+    ever needs to read louder, make that balance line louder — do not
+    add a third row here.
+  - **SUBDUED means NO CHIP.** Every other HUD element is a plate with a
+    2px white border and an outline; this has no background, no border,
+    no shadow, and rides at .58 opacity until hovered. It sits directly
+    above End Turn, the screen's primary verb, and anything with chrome
+    competes with it. The overlay scrim (`.ovl`, z-index 30 over the
+    HUD's 10) already dims it while a panel is open — no extra rule, and
+    no `:has()` dependency.
+  - **Three meters, three hues, and the hues MEAN something.** Support
+    used to share revenue's gold; that was survivable on the labelled
+    overlay cards but not here, where two of two rows would have matched.
+    Support is now `#e8795c` — the ORGANIZER pole, "the street and the
+    mic", which is exactly what public support is — against influence's
+    blue (a step from the wonk pole) and revenue's gold. Pick any future
+    meter's colour from that logic, not from what is free.
+  - **Row shape mirrors `.metc`** (name + value on one line, bar spanning
+    under) so the HUD cluster and the overlay card read as one object
+    seen twice. It also fixes an alignment trap: with label and bar on
+    ONE line each row is its own grid, so "SUPPORT" and "INFLUENCE" size
+    their own first column and the bars start at different x.
+  - **The trend is measured from `S.weekBase`**, snapshotted at the top
+    of `advanceWeek()` BEFORE `resolveBills()` — so the arrow the player
+    reads on the map right after ending a turn is the one the gauntlet
+    just moved. Empty when nothing changed: a quiet week should read as
+    quiet, not as a row of zeroes. Old saves seed it at today's values so
+    an in-progress campaign opens showing no trend rather than inventing
+    a swing nobody caused.
+  - **Built ONCE and updated in place** (`data-built`) — same lesson as
+    `renderMetrics` and `renderHudTimeline`.
+  - **No bump/flash on purpose.** Support and influence almost only move
+    INSIDE the overlay, where this sits behind the scrim, so a flash
+    would fire unseen; the overlay's cards already own that job and the
+    trend arrow covers the turn beat better than a flash could.
+  - Bars stay on mobile (user's call) — the ≤600px block only tightens
+    type and width.
 - **The HUD chip is a PROGRESS BAR, not a dot strip** (2026-08-15,
   user's call — `renderHudTimeline`, `#hud-timeline`). At 168px the old
   nine 5px milestone dots read as lint. Milestones survive as faint

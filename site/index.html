@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260818195210">
+  <link rel="stylesheet" href="css/style.css?v=20260819104153">
 </head>
 <body>
   <div id="game"></div>
@@ -69,6 +69,12 @@
     </div>
     <button id="fund-chip" type="button"></button>
     <div id="hud-turn">
+      <!-- Your standing, ambient on the map: the two campaign meters that
+           have no life outside the session overlay. Money deliberately is
+           NOT here — #fund-chip already carries it (bottom right), and a
+           second money figure on the same screen only invites the reader
+           to reconcile the two. -->
+      <div id="hud-standing"></div>
       <div id="hud-timeline" title="Session timeline"></div>
       <button id="turn-chip" type="button" title="Advance the session by one week">
         <span class="tc-label">Week 1</span>
@@ -207,6 +213,6 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
-  <script src="js/main.js?v=20260818195210"></script>
+  <script src="js/main.js?v=20260819104153"></script>
 </body>
 </html>
