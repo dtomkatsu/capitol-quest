@@ -1887,10 +1887,16 @@ const SessionPanel = {
       if (!dlg) { onDone(); return; }
       overlay.classList.remove("creating");   // a scene is never the select screen
       body.dataset.view = "";
+      /* `.sd-pre` is the transcript from BEFORE anyone is on stage —
+         the breezeway you waited in, the room before the door opened.
+         It is a separate box only so the portrait rail can start where
+         the character does; see showCard. */
       body.innerHTML = '<div class="sd-scene">' +
+        '<div class="sd-pre" id="sd-pre"></div>' +
         '<div class="sd-card" id="sd-card"></div>' +
         '<div class="sd-log"></div><div class="sd-play"></div></div>';
       const logEl = body.querySelector(".sd-log");
+      const preEl = body.querySelector("#sd-pre");
       const play = body.querySelector(".sd-play");
       const cardEl = body.querySelector("#sd-card");
       let shownArt = "";
@@ -1908,9 +1914,33 @@ const SessionPanel = {
         if (!sid || sid === cardWho) return;
         const who = data.characters[sid];
         if (!who || !who.card) return;
+        /* THE PORTRAIT ARRIVES WITH THE PERSON AND NOT ONE BEAT EARLIER
+           (2026-08-18, user's call — "if there's an event beforehand, I
+           don't want the portrait to show until the time is right").
+           Two halves, and the second is the one that is easy to miss:
+           - It only ever fires on a node whose `speaker` IS this
+             character, so a scene that opens on narration (w2-kawaguchi
+             waits in the breezeway before his door opens) shows no
+             portrait at all. That half was already true.
+           - **The beats already on screen move OUT of the rail's
+             column.** Without this, the whole scene reflowed the
+             instant he appeared and the breezeway — text and banner
+             both, from before he was in the room — ended up sitting
+             beside his portrait, retroactively. He was not there yet;
+             the transcript should not say he was. So the first time a
+             card turns on, everything rendered so far is handed to
+             `.sd-pre`, which spans the full width above the rail, and
+             the rail governs only what happens from his arrival on.
+           A later card SWAP (a second character taking over a scene)
+           deliberately does NOT re-split: the rail is already the right
+           shape by then, and N sections would just be N narrow columns. */
+        const firstArrival = !cardWho;
         cardWho = sid;
         cardEl.innerHTML = charCardHtml(sid, who);
         cardEl.classList.add("on");
+        if (firstArrival) {
+          while (logEl.firstChild) preEl.appendChild(logEl.firstChild);
+        }
         /* `has-card` on the SCENE is what turns the layout into the
            portrait rail — the two-column grid has to be declared on the
            parent, and a scene with no portrait must stay exactly the
@@ -1923,7 +1953,9 @@ const SessionPanel = {
         void cardEl.offsetWidth;
         cardEl.classList.add("in");
       };
+      // both boxes: the pre-arrival transcript is still the transcript
       const agePast = () => {
+        for (const el of preEl.children) el.classList.add("sd-past");
         for (const el of logEl.children) el.classList.add("sd-past");
       };
       const append = (html) => {

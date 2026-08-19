@@ -318,6 +318,30 @@ Rules that must survive edits:
   wide dossier plate pinned ABOVE the text, which made it a header — the
   eye cleared it once and never came back, so the character stopped
   being present the moment you started reading. Rules:
+  - **THE PORTRAIT ARRIVES WITH THE PERSON AND NOT ONE BEAT EARLIER**
+    (2026-08-18, user's call — "if there's an event beforehand, I don't
+    want the portrait to show until the time is right"). Two halves:
+    - `showCard` only fires on a node whose `speaker` IS that
+      character, so a scene opening on narration (w2-kawaguchi waits in
+      a breezeway before his door opens) shows no portrait at all. A
+      node with no `speaker` leaves the card alone in BOTH directions —
+      it does not raise one, and it does not drop the one that is up,
+      because you are still standing in front of the same person while
+      the prose describes the room.
+    - **The beats already on screen move OUT of the rail's column**,
+      into `.sd-pre` — a full-width row above the rail (grid row 1;
+      the rail starts at row 2). Without this the whole scene reflowed
+      the instant he appeared and the breezeway, text and banner both,
+      ended up sitting beside his portrait retroactively. He was not
+      there yet; the transcript must not say he was. Only the FIRST
+      card in a scene splits; a later swap keeps the rail as-is.
+    - Consequences to keep in step: `agePast()` must grey both boxes,
+      `hush` must dim both, `.sd-pre:empty` collapses (the common case
+      — most talks open with the character already speaking), and the
+      `.sd-art` left-bleed kill is scoped to `> .sd-log` so a banner in
+      `.sd-pre` still bleeds both ways. The rail's left bleed lives on
+      `.sd-card`'s own negative margin and NOT on the scene's
+      padding-left, or `.sd-pre`'s banner overflows the panel.
   - **Layout is CSS-only and gated to >=900px.** `showCard()` adds
     `has-card` to the SCENE (the grid has to be declared on the parent);
     narrow screens keep the horizontal plate, which is the right shape

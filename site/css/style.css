@@ -1039,6 +1039,9 @@ html, body {
 
 /* choices live under the log in their own strip — UI, not transcript */
 .sd-play { position: relative; }
+/* the pre-arrival transcript (see showCard): usually empty — a scene
+   where the speaker is there from the first line never fills it */
+.sd-pre:empty { display: none; }
 
 /* one escape hatch for all of it — the staged roll's JS side checks the
    same media query and resolves instantly */
@@ -1091,7 +1094,9 @@ html, body {
   .ag-back, .ag-back::before, .ag-back .agb-ar {
     transition: none !important;
   }
-  .sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
+  .sd-scene.hush .sd-pre > .sd-beat,
+  .sd-scene.hush .sd-pre > .sd-beat,
+.sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
 }
 
 /* event banner — designed at 320x160, SHIPPED pre-upscaled to 640x320 by
@@ -1295,16 +1300,24 @@ html, body {
     grid-template-columns: 180px minmax(0, 1fr);
     column-gap: 22px;
     align-items: start;
-    padding-left: 0;
   }
-  .sd-scene.has-card > .sd-card { grid-area: 1 / 1 / 3 / 2; }
-  .sd-scene.has-card > .sd-log  { grid-area: 1 / 2 / 2 / 3; min-width: 0; }
-  .sd-scene.has-card > .sd-play { grid-area: 2 / 2 / 3 / 3; min-width: 0; }
+  /* ROW 1 is the transcript from before the character arrived and it
+     spans BOTH columns — see showCard in main.js. The rail starts at
+     row 2, which is what makes the portrait begin where the person
+     does instead of being back-applied to the whole scene. */
+  .sd-scene.has-card > .sd-pre  { grid-area: 1 / 1 / 2 / 3; }
+  .sd-scene.has-card > .sd-card { grid-area: 2 / 1 / 4 / 2; }
+  .sd-scene.has-card > .sd-log  { grid-area: 2 / 2 / 3 / 3; min-width: 0; }
+  .sd-scene.has-card > .sd-play { grid-area: 3 / 2 / 4 / 3; min-width: 0; }
 
   /* the rail itself is not a plate — the portrait carries the frame */
   .sd-scene.has-card > .sd-card.on {
     display: block;
-    margin: 0;
+    /* the bleed lives HERE, not on the scene's padding: `.sd-pre` is a
+       full-width row in the same grid and needs the scene's normal
+       gutter, or its banner (which bleeds -18px of its own) overflows
+       the panel */
+    margin: 0 0 0 -18px;
     padding: 0 0 6px;
     background: none;
     border: 0;
@@ -1342,8 +1355,12 @@ html, body {
   @keyframes cc-in-rail {
     from { opacity: 0; transform: translateX(-14px); }
   }
-  /* the banner keeps its right bleed and loses its left one */
-  .sd-scene.has-card .sd-art {
+  /* Inside the rail's column the banner keeps its right bleed and loses
+     its left one — `margin: 10px -18px` is written for a full-width
+     column and would otherwise walk it into the gap under the portrait.
+     Scoped to `> .sd-log` on purpose: a banner in `.sd-pre` is still
+     full width and still bleeds both ways. */
+  .sd-scene.has-card > .sd-log .sd-art {
     width: calc(100% + 18px);
     margin-left: 0;
   }
@@ -1562,10 +1579,12 @@ html, body {
 }
 /* …and the room goes quiet while its dice are out: the transcript
    drops back so the only lit thing is the roll you can't take back */
+.sd-scene.hush .sd-pre > .sd-beat,
 .sd-scene.hush .sd-log > .sd-beat:not(:last-child) {
   opacity: .12;
   filter: grayscale(.8);
 }
+.sd-scene.hush .sd-pre > .sd-beat,
 .sd-scene.hush .sd-log > .sd-beat {
   transition: opacity .35s ease, filter .35s ease;
 }
