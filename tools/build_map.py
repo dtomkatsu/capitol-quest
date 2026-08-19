@@ -32,6 +32,7 @@ Outputs
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import math
 from pathlib import Path
@@ -40,6 +41,21 @@ import numpy as np
 from PIL import Image
 
 from islands import ISLANDS
+
+def _load_geojson(path):
+    """``json.load`` that transparently falls back to a sibling ``.gz``.
+
+    Large source layers (e.g. the TOD repo's ``road_centerlines.geojson``) are
+    stored gzipped to save disk; plain files win when both exist.
+    """
+    p = Path(path)
+    if not p.exists():
+        gz = p.with_name(p.name + ".gz")
+        if gz.exists():
+            with gzip.open(gz, "rt", encoding="utf-8") as fh:
+                return json.load(fh)
+    with open(p, encoding="utf-8") as fh:
+        return json.load(fh)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -173,7 +189,7 @@ def density_from_roads(lon, lat):
     roads_path = Path.home() / \
         "Revenue-Modeling-TOD/data/raw/road_centerlines.geojson"
     density = np.zeros((ROWS, COLS), np.float32)
-    roads = json.load(open(roads_path))
+    roads = _load_geojson(roads_path)
     for f in roads["features"]:
         g = f["geometry"]
         if g is None:
@@ -206,7 +222,7 @@ def urban_from_ua(lon, lat, towns):
     pad = 0.05
     x0, x1 = lon.min() - pad, lon.max() + pad
     y0, y1 = lat.min() - pad, lat.max() + pad
-    ua = json.load(open(ua_path))
+    ua = _load_geojson(ua_path)
     for f in ua["features"]:
         g = f["geometry"]
         rings = rings_of(g)
@@ -247,7 +263,7 @@ def build_island(slug):
     n = ROWS * COLS
 
     # ---- land / water
-    outline = json.load(open(ROOT / cfg["outline"]))
+    outline = _load_geojson(ROOT / cfg["outline"])
     rings = rings_of(geom_of(outline))
     print(f"outline: {len(rings)} rings")
     land = points_in_rings(lon, lat, rings)
@@ -376,7 +392,7 @@ def build_island(slug):
     rail = np.zeros((ROWS, COLS), bool)
     rail_paths = []
     if cfg["rail"]:
-        rl = json.load(open(ROOT / "data" / "rail_alignment.geojson"))
+        rl = _load_geojson(ROOT / "data" / "rail_alignment.geojson")
         feats = rl["features"] if rl.get("type") == "FeatureCollection" \
             else [rl]
         for f in feats:
@@ -405,7 +421,7 @@ def build_island(slug):
     # ---- stations
     stations = []
     if cfg["rail"]:
-        st = json.load(open(ROOT / "data" / "stations.geojson"))
+        st = _load_geojson(ROOT / "data" / "stations.geojson")
         for f in st["features"]:
             slon, slat = f["geometry"]["coordinates"][:2]
             c, r = lonlat_to_cell(slon, slat)
