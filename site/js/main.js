@@ -1623,7 +1623,16 @@ const SessionPanel = {
       el.innerHTML = pipHtml(n);
       el.dataset.n = n;
     };
-    const T_TUMBLE = 820, T_STAMP = 380, T_HOLD = 560, T_OUT = 300;
+    /* The verdict has to be READABLE, not merely shown. T_HOLD is the
+       dwell AFTER the stamp lands, and it was 560ms (2026-08-15) —
+       with the 300ms fade that gave the player under a second to take
+       in SUCCESS/FAILURE plus the arithmetic that produced it, which
+       read as the tray slamming shut on the result rather than
+       presenting it. Raised to 2200 (2026-08-18, user's call). Judge
+       this number against the STAMP, not against mount: the tray is
+       alive for T_TUMBLE + T_STAMP before the verdict exists, and the
+       player is not reading anything during the tumble. */
+    const T_TUMBLE = 820, T_STAMP = 380, T_HOLD = 2200, T_OUT = 300;
     const popTray = (chk, r, onLand, onGone) => {
       const panel = overlay.querySelector(".ovl-panel");
       if (!panel) { onLand(); onGone(); return; }   // no stage, no show
@@ -1688,7 +1697,7 @@ const SessionPanel = {
             r.sum === 2 ? '<small>snake eyes</small>' : "");
         land();                         // settle the receipt behind it
       });
-      const hold = T_HOLD + (spec ? 420 : 0);
+      const hold = T_HOLD + (spec ? 700 : 0);
       at(T_TUMBLE + T_STAMP + hold, () => wrap.classList.add("out"));
       at(T_TUMBLE + T_STAMP + hold + T_OUT, kill);
       // …and a backstop, in case any step above was missed
@@ -1728,40 +1737,98 @@ const SessionPanel = {
         esc(v.text) + "</div>";
     }).join("");
 
-    /* ---- the character card: who you are actually talking to, pinned
-       at the top of the scene the way the reference keeps a portrait up
-       for the length of a conversation (2026-08-15, user's call).
+    /* ---- the character card: who you are actually talking to, held on
+       screen for the length of the conversation (2026-08-15, user's
+       call; rebuilt as a PORTRAIT RAIL 2026-08-18, user's call).
+       It is now what the reference actually does: a tall portrait
+       ATTACHED TO THE WINDOW — flush against the panel's left frame,
+       full height, the transcript reading in a column beside it —
+       rather than the wide dossier plate that used to sit above the
+       text. The plate was a header the eye skipped past; the rail is a
+       person you are standing in front of, which is the entire point of
+       keeping them up. The 3:4 drawing below exists FOR that rail: the
+       old 80x80 square was a thumbnail and blew up to mush at rail size.
+       Layout is CSS-only (`.sd-scene.has-card`, added by showCard) and
+       is gated to >=900px — narrow screens keep the horizontal plate,
+       which is the right shape when there is no room for a column.
        PORTRAITS ARE FACELESS — the same house rule as the event banners
        and the skill glyphs. A committee desk, a nameplate, shoulders
        and a head in silhouette; no features, ever. The character reads
        as an office and a posture, which is what they are to the player.
+       Bigger makes that rule HARDER, not easier: at 180px a silhouette
+       has room to look like it is missing a face, so the drawing has to
+       carry a lit edge and a real room behind it to read as deliberate.
        Only characters with a `card` in session.json get one, so an
        incidental speaker doesn't get a dossier. */
+    /* Drawn in a 120x160 box — a 3:4 PORTRAIT, not the old 80x80
+       thumbnail. The rail renders it 180px wide, where the square
+       version was a head floating in a lot of nothing. Rules the
+       drawing follows, all house rules from the banners:
+       - no features, ever; the silhouette and the room do the work
+       - ONE gold accent, and for a chair it is the NAMEPLATE
+       - one hard key light: the lit edge down the head and shoulder is
+         the only non-duotone ink, and it is what stops a big silhouette
+         reading as an error. Keep its opacity low — at full strength it
+         becomes a second accent and fights the nameplate.
+       - the desk CUTS the figure. A whole free-standing body reads as a
+         chess piece; a bust behind a desk reads as a man in an office,
+         the same draw-order trick the w1 banner's railings use. */
     const PORTRAIT = {
       chairdesk:
-        '<svg viewBox="0 0 80 80" aria-hidden="true">' +
-        // the room behind him: a committee wall and a high window
-        '<rect x="0" y="0" width="80" height="80" fill="none"/>' +
-        '<g opacity=".26" fill="currentColor">' +
-        '<rect x="7" y="9" width="20" height="26" rx="2"/>' +
-        '<rect x="53" y="9" width="20" height="26" rx="2"/></g>' +
-        // shoulders and head — silhouette only, no features
-        '<path d="M22,62 C22,49 30,42 40,42 C50,42 58,49 58,62 Z" ' +
+        '<svg viewBox="0 0 120 160" aria-hidden="true">' +
+        // the room: two high windows with daylight in them, mullioned,
+        // over a panelled wall. The windows are the LIGHT SOURCE and
+        // they are why the figure has a lit edge at all — without them
+        // the rim below reads as an outline rather than as light.
+        '<g fill="currentColor">' +
+        '<rect x="3" y="9" width="31" height="62" rx="1.5" opacity=".28"/>' +
+        '<rect x="86" y="9" width="31" height="62" rx="1.5" opacity=".28"/>' +
+        '<rect x="17.5" y="9" width="2" height="62" opacity=".13"/>' +
+        '<rect x="100.5" y="9" width="2" height="62" opacity=".13"/>' +
+        '<rect x="3" y="37" width="31" height="2" opacity=".13"/>' +
+        '<rect x="86" y="37" width="31" height="2" opacity=".13"/>' +
+        '<rect x="0" y="84" width="120" height="2.2" opacity=".13"/></g>' +
+        // The CHAIR BACK, wider than his shoulders. This is the single
+        // element that stops the drawing reading as the universal
+        // avatar glyph: a circle on a dome IS that icon, and no amount
+        // of lighting fixes it, but a circle on a dome in a chair is a
+        // man sitting down. Do not remove it to "simplify".
+        '<rect x="25" y="68" width="70" height="58" rx="8" ' +
+        'fill="currentColor" opacity=".3"/>' +
+        // shoulders, neck and head — silhouette only, no features. The
+        // head is an ELLIPSE, not a circle, and the neck is drawn: both
+        // are cheap and both push it further from the avatar icon.
+        '<path d="M15,126 C15,101 30,87 60,87 C90,87 105,101 105,126 Z" ' +
         'fill="currentColor"/>' +
-        '<circle cx="40" cy="28" r="12" fill="currentColor"/>' +
+        '<rect x="52" y="76" width="16" height="13" fill="currentColor"/>' +
+        '<ellipse cx="60" cy="61" rx="19.5" ry="22" fill="currentColor"/>' +
+        // the key light off the windows, raking the left edge. White at
+        // this opacity, NOT a lighter blue: the silhouette is already a
+        // pale blue (.cc-art sets the ink), so a tinted rim disappears
+        // into it — the first pass used #f4f1e8 at .2 and was invisible
+        // at display size.
+        '<g fill="none" stroke="#ffffff" stroke-linecap="round" ' +
+        'opacity=".34">' +
+        '<path d="M60,39 A19.5,22 0 0 0 42,70" stroke-width="3"/>' +
+        '<path d="M19,122 C19,103 31,89 55,88" stroke-width="2.6"/></g>' +
         // the collar, cut in the panel ground so it reads as a suit
-        '<path d="M34,44 L40,53 L46,44" fill="none" stroke="#0d1234" ' +
-        'stroke-width="3" stroke-linejoin="round"/>' +
-        // the desk he schedules from, and the nameplate on it. The
-        // nameplate is the ONE gold accent — house rule is one per
-        // drawing, and a chair IS his nameplate. A gavel was tried and
-        // cut: it collided with the desk edge and made two accents.
-        '<rect x="2" y="61" width="76" height="19" rx="2" ' +
+        '<path d="M49,91 L60,111 L71,91" fill="none" stroke="#0d1234" ' +
+        'stroke-width="5" stroke-linejoin="round"/>' +
+        // the desk he schedules from: the slab, the paperwork that is
+        // the actual job, and the nameplate. The nameplate is the ONE
+        // gold accent — house rule is one per drawing, and a chair IS
+        // his nameplate. A gavel was tried and cut: it collided with
+        // the desk edge and made two accents.
+        '<rect x="0" y="122" width="120" height="38" ' +
         'fill="currentColor" opacity=".55"/>' +
-        '<rect x="2" y="61" width="76" height="2.5" fill="currentColor"/>' +
-        '<rect x="24" y="65" width="32" height="10" rx="2" ' +
+        '<rect x="0" y="122" width="120" height="2.8" ' +
+        'fill="currentColor"/>' +
+        '<g fill="currentColor" opacity=".78">' +
+        '<rect x="8" y="127" width="26" height="15" rx="1"/>' +
+        '<rect x="11" y="124" width="26" height="15" rx="1"/></g>' +
+        '<rect x="45" y="132" width="54" height="17" rx="2" ' +
         'fill="#f2c14e"/>' +
-        '<rect x="28" y="69" width="24" height="2.4" rx="1.2" ' +
+        '<rect x="51" y="139" width="42" height="3.4" rx="1.7" ' +
         'fill="#8a6a15"/></svg>',
     };
     /* The quote is NOT duplicated into session.json — it is read live
@@ -1827,6 +1894,11 @@ const SessionPanel = {
       const play = body.querySelector(".sd-play");
       const cardEl = body.querySelector("#sd-card");
       let shownArt = "";
+      /* Bumped by every renderNode. The banner's load handler uses it to
+         tell "the image finally decoded on the beat it belongs to" from
+         "the player has already advanced" — see the handler for why a
+         DOM-shape guard cannot do this job. */
+      let renderSeq = 0;
       /* The card follows whoever is SPEAKING, and a node with no
          speaker (narration, the room, your own campaign) leaves it
          alone — you are still standing in front of the same person
@@ -1839,6 +1911,13 @@ const SessionPanel = {
         cardWho = sid;
         cardEl.innerHTML = charCardHtml(sid, who);
         cardEl.classList.add("on");
+        /* `has-card` on the SCENE is what turns the layout into the
+           portrait rail — the two-column grid has to be declared on the
+           parent, and a scene with no portrait must stay exactly the
+           single-column block it has always been (most scenes have no
+           card at all, and that path is untouched by this). */
+        const sceneEl = body.querySelector(".sd-scene");
+        if (sceneEl) sceneEl.classList.add("has-card");
         // restart the entrance when the card swaps mid-scene
         cardEl.classList.remove("in");
         void cardEl.offsetWidth;
@@ -1854,20 +1933,65 @@ const SessionPanel = {
         w.innerHTML = html;
         logEl.appendChild(w);
       };
-      // keep the newest beat in view without yanking the reader past it:
-      // land the TOP of the new content near the top of the viewport
-      // when it is long, or just scroll to the end when it is short
-      const settle = () => {
+      /* keep the newest beat in view without yanking the reader past it:
+         land the TOP of the new content near the top of the viewport
+         when it is long, or just scroll to the end when it is short.
+
+         `artTop` is the second half of the fix for "the images are hard
+         to see" (2026-08-18, user's call). The banner is the scene's
+         establishing shot and it arrives in the SAME render as the line
+         under it, so the plain rule above — which only ever looks at
+         the last beat — scrolled a 480px banner up until 40px of it was
+         left, every time, before the player had looked at it. Sizing
+         the file up does nothing about that; a taller picture just gets
+         scrolled further. So when a render introduces new art, the
+         scroll is additionally capped at KEEP of the banner's height,
+         which leaves most of the picture on screen with the text and
+         the choices still pulled up into view under it.
+         Deliberately a CAP and not a jump-to-the-art: forcing scrollTop
+         to the banner's top would put the choice strip below the fold
+         on every scene that opens with a picture, which trades one
+         invisible thing for a worse one. */
+      const settle = (artEl) => {
         requestAnimationFrame(() => {
           const last = logEl.lastElementChild;
           if (!last) return;
-          const want = last.offsetTop + play.offsetHeight +
+          /* offsetTop is NOT usable here: the nearest positioned
+             ancestor is `.ovl-panel`, not the scrolling `#sess-body`,
+             so every offsetTop in this panel is inflated by the whole
+             masthead + timeline + meters stack (~191px on a laptop)
+             while scrollTop is measured from the body. Both branches
+             below were therefore scrolling ~191px too far on every
+             beat, which is what pushed a freshly-arrived banner off the
+             top of the screen before the player could look at it. Read
+             positions off getBoundingClientRect instead — it does not
+             care what the offsetParent happens to be. */
+          const bTop = body.getBoundingClientRect().top;
+          const topOf = (el) =>
+            el.getBoundingClientRect().top - bTop + body.scrollTop;
+          const lastTop = topOf(last);
+          const want = lastTop + play.offsetHeight +
             last.offsetHeight - body.clientHeight;
-          body.scrollTop = Math.min(last.offsetTop - 14, Math.max(0, want));
+          let top = Math.min(lastTop - 14, Math.max(0, want));
+          if (artEl) {
+            /* Hold the banner on screen — but never at the price of the
+               player not knowing they have choices. `peek` is the least
+               scroll that still shows the top of the choice strip; on a
+               normal window it is the smaller number and the art keeps
+               ~2/3 of itself, on a short one it wins and the art gives
+               ground. An unconditional art cap was tried first and left
+               a 720px-tall window showing a picture and no options. */
+            const KEEP = 0.68, PEEK = 44;
+            const peek = topOf(play) + PEEK - body.clientHeight;
+            top = Math.min(top, Math.max(
+              topOf(artEl) + artEl.offsetHeight * (1 - KEEP), peek));
+          }
+          body.scrollTop = Math.max(0, top);
         });
       };
 
       const renderNode = (nodeId) => {
+        renderSeq++;
         const n = dlg[nodeId];
         // no `speaker` = a faceless narrative injection (the campaign,
         // the coalition, the room) rather than a named individual —
@@ -1906,17 +2030,41 @@ const SessionPanel = {
         // slug-filtered rather than esc()'d — esc() leaves quotes alone,
         // which is fine for text but would break out of an attribute.
         const art = String(n.art || dlg.art || "").replace(/[^a-z0-9_-]/gi, "");
+        let artEl = null;
         if (art && art !== shownArt) {
           shownArt = art;
           append('<img class="sd-art" alt="" src="assets/events/' +
             art + '.png">');
+          artEl = logEl.lastElementChild;   // the beat wrapping the img
+          /* A NOT-YET-DECODED <img> measures 0 tall, and settle() runs
+             on the next frame — so on a cold load every scroll sum
+             above is computed against a banner that is not there yet,
+             and the layout jump when it decodes lands the reader
+             somewhere nobody chose. (This is why the old rule looked
+             fine while clicking around with a warm cache and dumped the
+             banner off screen on a real first visit.) Re-settle once,
+             on load, and only while this is still the beat on stage —
+             a player who has already advanced must not be yanked. */
+          const img = artEl.querySelector("img");
+          if (img && !img.complete) {
+            const seq = renderSeq;
+            img.addEventListener("load", () => {
+              // only while this is still the beat on stage — a player
+              // who has already advanced must not be yanked back. It
+              // has to be a render counter and NOT the log's shape:
+              // this runs mid-render, before the spoken beat below is
+              // appended, so any child count captured here is stale by
+              // the end of the very same renderNode call.
+              if (seq === renderSeq) settle(artEl);
+            }, { once: true });
+          }
         }
         append((who ? saidHtml(who, n.text, "", n.speaker) :
           '<div class="sd-narr">' + esc(n.text) + "</div>") +
           voiceHtml(n.voices));
         play.innerHTML = '<div class="sd-choices">' +
           n.choices.map(btnHtml).join("") + "</div>";
-        settle();
+        settle(artEl);
         for (const btn of play.querySelectorAll(".sd-choices button")) {
           if (btn.disabled) continue;
           btn.addEventListener("pointerdown", (ev) => {

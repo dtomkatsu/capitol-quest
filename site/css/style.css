@@ -1082,7 +1082,8 @@ html, body {
      still; its JS timers remove it regardless */
   .sd-tray, .sd-tray .tray-card, .sd-tray .tdie, .sd-tray .tray-math,
   .sd-tray .tray-stamp, .sd-tray .tray-card::after,
-  /* the character card's entrance */
+  /* the character card's entrance, plate or rail (`cc-in`/`cc-in-rail`
+     are both set on this one class, so one line covers both) */
   .sd-card.in {
     animation: none !important;
   }
@@ -1093,7 +1094,7 @@ html, body {
   .sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
 }
 
-/* event banner — designed at 320x92, SHIPPED pre-upscaled to 640x184 by
+/* event banner — designed at 320x160, SHIPPED pre-upscaled to 640x320 by
    tools/make_event_art.py, bled to the scene's edges.
    Deliberately NOT image-rendering:pixelated. The column is ~615-652px
    depending on the overlay scrollbar, so the file is only ever resampled
@@ -1107,13 +1108,28 @@ html, body {
   /* Clamp against the VIEWPORT rather than shipping a shorter file, so
      a short window crops to the middle of the composition instead of
      squeezing the dialogue off the panel entirely.
-     32vh is the balance point: the banner is ~219px tall in a 615px
-     column, so this shows it UNCROPPED from about 700px of viewport
-     upward (i.e. any normal window) and only starts trimming below
-     that. 26vh cropped even tall windows and read as a squat
-     letterbox; 38vh stopped clamping at all and pushed the dialogue
-     off-panel on short ones. */
-  max-height: 32vh;
+     THIS TRACKS #sess-body, NOT THE VIEWPORT, which is why it is an
+     odd-looking expression rather than a round vh (rewritten
+     2026-08-18). A plain vh clamp assumes the banner competes with the
+     window; it competes with the transcript, and the body is neither a
+     fixed share of the window nor unbounded — the panel is
+     `max-height: min(86vh, 780px)` and roughly 238px of it is masthead,
+     strip, meters and footer, so the body is about
+     `min(86vh, 780px) - 238`, i.e. ~381px at a 720px window and ~542px
+     from 1080px up. The old flat 32vh was therefore two different
+     things at two window sizes: too small to see on a laptop and 80% of
+     the body on a big monitor, where it opened scenes as a picture with
+     the prose and the choices pushed off the bottom.
+     `min(43vh - 119px, 271px)` is just half that body at every height —
+     190px at 720, 268px at 900, 271px from 1080 up. If the panel's cap
+     or the header stack ever changes, these two numbers are downstream
+     of it; re-derive, don't nudge.
+     Height for the ask this came from ("the images are too short")
+     comes from the FILE being 2:1 instead of 2.9:1 and from settle()
+     no longer scrolling the banner off the top — not from the banner
+     eating a bigger share of the panel, which trades one unreadable
+     thing for another. */
+  max-height: min(43vh - 119px, 271px);
   object-fit: cover;
   object-position: center 45%;
   /* beats own their art now: horizontal bleed to the scene edge always,
@@ -1127,11 +1143,19 @@ html, body {
   border-radius: 5px 5px 0 0;
 }
 
-/* ---------- the character card: who you are talking to, pinned at the
-   top of the scene for the length of the conversation. Sticky rather
-   than a first beat — the point is that they stay in front of you.
+/* ---------- the character card: who you are talking to, held on screen
+   for the length of the conversation. Sticky rather than a first beat —
+   the point is that they stay in front of you.
+   TWO SHAPES, and the rules below are the NARROW one (a wide plate
+   above the text). The wide one — the portrait rail attached to the
+   panel's left frame, which is the reference's actual treatment and
+   the default on any real window — is the `.sd-scene.has-card` block
+   further down, gated to >=900px. Keeping the plate as the base rather
+   than as an override is deliberate: it is the correct shape when
+   there is no room for a column, and it means the phone layout cannot
+   be broken by a change to the rail.
    The PORTRAIT IS FACELESS by house rule (see PORTRAIT in main.js);
-   the plate reads as an office and a posture, not a likeness. */
+   it reads as an office and a posture, not a likeness. */
 .sd-card {
   display: none;
   position: sticky;
@@ -1152,10 +1176,15 @@ html, body {
 @keyframes cc-in {
   from { opacity: 0; transform: translateY(-8px); }
 }
+/* 3:4, matching the drawing's viewBox (PORTRAIT in main.js). It was a
+   66px SQUARE while the drawing was 80x80; the drawing is a portrait
+   now, and a square box would letterbox it inside its own frame —
+   preserveAspectRatio does the safe thing and the result is a small
+   picture floating in a big plate. */
 .sd-card .cc-art {
   flex: 0 0 auto;
-  width: 66px;
-  height: 66px;
+  width: 62px;
+  height: 83px;
   border-radius: 9px;
   overflow: hidden;
   background: linear-gradient(158deg, #2b3670, #0d1234 72%);
@@ -1219,9 +1248,105 @@ html, body {
 }
 @media (max-width: 560px) {
   .sd-card { gap: 10px; padding: 9px 11px 10px; }
-  .sd-card .cc-art { width: 52px; height: 52px; }
+  .sd-card .cc-art { width: 48px; height: 64px; }
   .sd-card .cc-name { font-size: 16px; }
   .sd-card .cc-note { display: none; }   /* the quote carries it */
+}
+
+/* ---------- THE PORTRAIT RAIL (2026-08-18, user's call: "attach the
+   portrait to the window the way Disco Elysium does it").
+   A tall portrait flush against the panel's left frame, held for the
+   whole conversation, with the transcript and the choices reading in a
+   column beside it. The wide dossier plate this replaced sat ABOVE the
+   text, which made it a header — the eye cleared it once and never
+   looked again, so the character stopped being present the moment you
+   started reading. Beside the text they stay in the room.
+
+   Rules that must survive edits:
+   - **The grid lives on `.sd-scene.has-card`, never on `.sd-scene`.**
+     Scenes with no speaker card (most of them) must keep the plain
+     block layout untouched. `showCard()` in main.js adds the class.
+   - **`padding-left: 0` on the scene is what "attached" means.** The
+     rail then starts at the scene's own left edge, and because the
+     scene already bleeds 6px past the panel's content box it lands
+     against the frame instead of floating in a gutter. The portrait's
+     left corners are squared for the same reason — a rounded left edge
+     reads as a card sitting near the frame rather than hung on it.
+   - **`.sd-art` must give up its LEFT bleed here.** The banner's
+     `margin: 10px -18px` is written for a full-width column; inside
+     the text column that negative left margin walks it into the gap
+     and under the portrait.
+   - **The note is dropped, the quote is kept** — same call the 560px
+     breakpoint already makes, for the same reason. The rail has to fit
+     in one screen or the quote falls permanently below the fold, and
+     between the tags and the quote the note is the part that repeats.
+   - Sticky is `top: 0` with `align-self: start`: the rail is shorter
+     than the body, so it simply stays put while the transcript runs. */
+@media (min-width: 900px) {
+  .sd-scene.has-card {
+    display: grid;
+    /* 180px, not 196: the rail is sticky at top:0, so anything of it
+       past the bottom of #sess-body is not "below the fold", it is
+       permanently invisible — and the body is only ~450px on a
+       1000x800 laptop. 180 puts the portrait at 240 and the whole rail
+       at ~430, which clears that. Raising this without re-checking the
+       card's total height against the SHORTEST supported body silently
+       eats the quote. */
+    grid-template-columns: 180px minmax(0, 1fr);
+    column-gap: 22px;
+    align-items: start;
+    padding-left: 0;
+  }
+  .sd-scene.has-card > .sd-card { grid-area: 1 / 1 / 3 / 2; }
+  .sd-scene.has-card > .sd-log  { grid-area: 1 / 2 / 2 / 3; min-width: 0; }
+  .sd-scene.has-card > .sd-play { grid-area: 2 / 2 / 3 / 3; min-width: 0; }
+
+  /* the rail itself is not a plate — the portrait carries the frame */
+  .sd-scene.has-card > .sd-card.on {
+    display: block;
+    margin: 0;
+    padding: 0 0 6px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sd-scene.has-card > .sd-card .cc-art {
+    width: 100%;
+    height: auto;                      /* the viewBox sets the 3:4 box */
+    border: 1px solid rgba(242, 193, 78, .4);
+    border-left: 0;
+    border-radius: 0 10px 10px 0;
+    background:
+      radial-gradient(76% 44% at 50% 33%,
+        rgba(242, 193, 78, .17), transparent 68%),
+      linear-gradient(158deg, #2b3670, #0b1030 76%);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .5);
+  }
+  .sd-scene.has-card > .sd-card .cc-art svg { height: auto; }
+  .sd-scene.has-card > .sd-card .cc-body { padding: 11px 8px 0 14px; }
+  .sd-scene.has-card > .sd-card .cc-name { font-size: 17px; }
+  .sd-scene.has-card > .sd-card .cc-tags { gap: 4px; margin-top: 8px; }
+  .sd-scene.has-card > .sd-card .cc-note { display: none; }
+  .sd-scene.has-card > .sd-card .cc-quote {
+    font-size: 12px;
+    /* a longer chair `voice` in chairs.json must not push the rail past
+       the body — see the column-width note above */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+  }
+  /* the entrance comes from the frame, not from above */
+  .sd-scene.has-card > .sd-card.in { animation-name: cc-in-rail; }
+  @keyframes cc-in-rail {
+    from { opacity: 0; transform: translateX(-14px); }
+  }
+  /* the banner keeps its right bleed and loses its left one */
+  .sd-scene.has-card .sd-art {
+    width: calc(100% + 18px);
+    margin-left: 0;
+  }
 }
 
 /* a spoken line — hanging indent keeps the names in a readable column.

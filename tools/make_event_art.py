@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Event banner art for the session-overlay dialogues.
 
-Two routes to a banner, both landing on 640x220 at
+Two routes to a banner, both landing on 960x480 at
 site/assets/events/<id>.png:
 
   --photo PATH   a PHOTOGRAPH (optionally with a crowd composited in by
@@ -14,7 +14,7 @@ site/assets/events/<id>.png:
                  composition, no painterly rendering. Use when no usable
                  photograph of the subject exists.
 
-Scene coordinates are written in a 320x110 DESIGN space; output is
+Scene coordinates are written in a 320x160 DESIGN space; output is
 DISPLAY x that.
 
 Resolving to 640 rather than rendering 320 and upscaling is not
@@ -25,11 +25,18 @@ which cannot read as a person under any amount of shading, and which
 any blur immediately melts into a blob. See opening_day for the other
 two halves of that fix (crop closer, and occlude with the railings).
 
-640 also happens to suit the column, which is ~615-652px wide depending
-on the overlay's scrollbar: the browser only ever resamples by about a
-percent. Corollary: the CSS must NOT set image-rendering:pixelated,
-because that turns the small downscale into dropped rows instead of
-filtered ones.
+DISPLAY is then set so the shipped file MATCHES THE COLUMN, and the
+column is measured, not remembered: the session overlay's panel is
+1040px (its own override in style.css, wider than the shared 680px
+panel), which leaves the banner ~986px after the panel padding, the
+scene padding and the bleed. It was 640 until 2026-08-18, a figure
+inherited from a ~615-652px column that the widened panel had made
+obsolete years of edits ago — so every banner was being upscaled 1.54x
+by the browser and reading soft. 960 lands within ~3% of the column.
+Corollary either way: the CSS must NOT set image-rendering:pixelated,
+because that turns a small resample into dropped rows instead of
+filtered ones. If the panel width ever changes again, this number is
+downstream of it — measure the rendered width of .sd-art and match.
 
 House style (see CLAUDE.md "Session overlay"):
 - ONE hard directional key light, deep shadow, colored bounce. That is
@@ -62,13 +69,26 @@ from PIL import Image, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "site" / "assets" / "events"
 
-W, H = 320, 110          # DESIGN space — all scene coords are in this
-# 110 (a 2.9:1 banner) rather than a tighter letterbox because the
-# primary route is now a PHOTOGRAPH: at 3.5:1 a 4:3 source keeps only
-# 38% of its height, which threw away both the top colonnade and the
-# courtyard floor. 2.9:1 keeps ~46% and still fits the panel.
+W, H = 320, 160          # DESIGN space — all scene coords are in this
+# 160 (a 2:1 banner) — raised from 110 / 2.9:1 on 2026-08-18 (user's
+# call: the banners read as too short to see in the transcript). The
+# ratio is set by how much of a PHOTOGRAPH survives the letterbox,
+# because the photo route is the primary one: a 4:3 source keeps 38%
+# of its height at 3.5:1, ~46% at 2.9:1 and 67% at 2:1. Going taller
+# is therefore not a crop decision but a "how much of the picture does
+# the player actually get to see" decision, and 2:1 is the point where
+# a 4:3 photo keeps two thirds of itself while the banner still fits
+# the panel above the dialogue (see .sd-art's max-height in style.css,
+# which was raised to 40vh in the same change and must move WITH this
+# ratio — a taller file under the old clamp is just a cropped file).
+# Widening past 2:1 starts pushing the transcript off the panel on a
+# laptop, which is the constraint that stops this going to 16:9.
 S = 4                    # supersample factor while drawing
-DISPLAY = 2              # design -> output; shipped file is 640x220
+DISPLAY = 3              # design -> output; shipped file is 960x480
+PAINT_W = 1280           # fixed working width for paintify()'s brush —
+                         # see paintify: this is deliberately NOT tied to
+                         # DISPLAY, so a `--paint 4` recipe keeps meaning
+                         # the same brush after an output-size change
 COLORS = 32              # adaptive palette size after downsample
 
 
@@ -402,7 +422,7 @@ def finish(img):
                         dither=Image.FLOYDSTEINBERG).convert("RGB")
 
 
-def paintify(img, radius=4, strength=0.55, working_scale=2,
+def paintify(img, radius=4, strength=0.55, work_width=None,
              soften=None, soften_radius=None, soften_strength=0.6):
     """Nudge a photograph toward PAINTED, not just colour-graded.
 
@@ -410,12 +430,20 @@ def paintify(img, radius=4, strength=0.55, working_scale=2,
     — the plain opencv-python package lacks `cv2.xphoto`). Import is
     local so --photo without --paint never needs it installed.
 
-    The brush radius has to be judged at PROPORTION to the output, not
+    The brush radius has to be judged at PROPORTION to the frame, not
     to the source photo. `cv2.xphoto.oilPainting(src, 6, 1)` run on a
     2390px source is invisible — a 6px brush is a rounding error at that
-    scale. Run at `working_scale`x the OUTPUT resolution instead (2x by
-    default: ~1280 wide), where the same radius is a real fraction of
-    the frame, then resize down.
+    scale. So the pass runs at PAINT_W wide, then resizes to output.
+
+    PAINT_W is a FIXED width and not a multiple of the output on
+    purpose. It used to be `2 * output width`, which quietly made every
+    radius in every recorded recipe a function of DISPLAY: raising
+    DISPLAY 2 -> 3 on 2026-08-18 would have shrunk every brush by a
+    third — the same banner, rebuilt from the same command, coming out
+    visibly less painted. Radius is meant to be a unit the recipes in
+    data/raw/events/BANNERS.md can carry, so it is now anchored to a
+    resolution that does not move. `work_width` overrides it for a
+    caller that genuinely wants a different brush scale.
 
     TWO dials, and `strength` is the important one. Radius alone is a
     bad mildness control: dropping it just makes the strokes small and
@@ -440,7 +468,8 @@ def paintify(img, radius=4, strength=0.55, working_scale=2,
     import cv2
 
     ow, oh = W * DISPLAY, H * DISPLAY
-    work = img.resize((ow * working_scale, oh * working_scale), Image.LANCZOS)
+    ww = int(work_width or PAINT_W)
+    work = img.resize((ww, int(round(ww * oh / ow))), Image.LANCZOS)
     bgr = cv2.cvtColor(np.array(work), cv2.COLOR_RGB2BGR)
     painted = cv2.xphoto.oilPainting(bgr, radius, 1)
     out = Image.fromarray(cv2.cvtColor(painted, cv2.COLOR_BGR2RGB))

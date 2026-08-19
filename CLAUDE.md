@@ -309,6 +309,41 @@ Rules that must survive edits:
   `v-cons` CSS) — it read as the player having a preassigned ideology
   rather than the player's own instincts arguing with each other. The
   Disco identity is now carried by skill voices alone.
+- **A character with a `card` gets a PORTRAIT RAIL, attached to the
+  window** (`charCardHtml` + `PORTRAIT` in main.js, `.sd-scene.has-card`
+  in style.css; rebuilt 2026-08-18, user's call: "attach the portrait to
+  the window the way Disco Elysium does it"). A tall 3:4 portrait flush
+  against the panel's left frame, held for the whole conversation, with
+  the transcript and the choices in a column beside it. It replaced a
+  wide dossier plate pinned ABOVE the text, which made it a header — the
+  eye cleared it once and never came back, so the character stopped
+  being present the moment you started reading. Rules:
+  - **Layout is CSS-only and gated to >=900px.** `showCard()` adds
+    `has-card` to the SCENE (the grid has to be declared on the parent);
+    narrow screens keep the horizontal plate, which is the right shape
+    when there is no room for a column, so a rail change cannot break
+    the phone. Scenes with no speaker card — most of them — are
+    untouched by any of it.
+  - **The rail is sticky at `top: 0`, so anything past the bottom of
+    `#sess-body` is not below the fold, it is permanently invisible.**
+    The column is 180px (portrait 240, whole rail ~430) because the body
+    is only ~450px on a 1000x800 laptop. Widening it, or adding a field,
+    means re-checking the rail's total height against the SHORTEST
+    supported body — that is also why `.cc-note` is dropped here (the
+    quote carries it, the same call the 560px breakpoint makes) and why
+    `.cc-quote` is line-clamped.
+  - **`.sd-art` gives up its LEFT bleed inside a rail scene.** The
+    banner's `margin: 10px -18px` is written for a full-width column and
+    otherwise walks under the portrait.
+  - PORTRAITS ARE FACELESS, as ever. But bigger makes that rule HARDER:
+    at 180px a plain circle-on-a-dome is the universal avatar icon. The
+    drawing earns its size with a CHAIR BACK behind the shoulders (the
+    single element that breaks the avatar read — do not remove it to
+    "simplify"), an ellipse head and a drawn neck, two lit windows that
+    motivate the rim light, and the desk CUTTING the figure. The rim is
+    white at .34, not a tinted light: the silhouette is already a pale
+    blue, and the first pass's #f4f1e8 at .2 was invisible at display
+    size. Still ONE gold accent, still the nameplate.
 - **Named dialogue speakers are the two EXTERNAL actors** — Kawaguchi
   (House money chair) and Grange (lobbyist), people the player
   negotiates or contends with — **plus the player's own two
@@ -338,9 +373,13 @@ Rules that must survive edits:
   external actor (name it) or the player's own campaign (leave
   `speaker` unset)?
 - **Event banner art** comes from `tools/make_event_art.py` →
-  `site/assets/events/<id>.png` (640x220), shown when a dialogue (or a
-  single node) carries an `art` key. TWO routes, and the first is the
-  one to reach for:
+  `site/assets/events/<id>.png` (960x480), shown when a dialogue (or a
+  single node) carries an `art` key. **Every shipped banner's exact
+  build command lives in `data/raw/events/BANNERS.md` — add a line when
+  you ship one.** The args are not recoverable from the PNG, and
+  reconstructing them once (2026-08-18) cost a brute-force search over
+  `--center` plus an analytic fit of the `--soften` ellipse against a
+  diff map. TWO routes, and the first is the one to reach for:
   - **`--photo PATH` — a real photograph. THIS IS THE PRIMARY ROUTE.**
     Sources live in `data/raw/events/`. The pipeline letterboxes it,
     pulls it a few percent toward the overlay palette, and quantizes
@@ -405,6 +444,42 @@ Rules that must survive edits:
       That is why grade/colors/dither/noise all default to `None` in
       `from_photo` and resolve from the strength rather than sharing
       one constant.
+  - **Three numbers decide whether a banner is SEEN, and they are
+    coupled** (all three re-set 2026-08-18, from "the images in the
+    narrative are very short, too short"). Change one and re-derive the
+    others; changing one alone is why the previous settings drifted
+    into a thin, soft, mostly-scrolled-away strip:
+    1. **Ratio — `W, H` in make_event_art.py, now 2:1 (was 2.9:1).**
+       Sets how much of a PHOTOGRAPH survives the letterbox: a 4:3
+       source keeps 46% of its height at 2.9:1 and 67% at 2:1. This is
+       the "how much of the picture exists at all" dial.
+    2. **Resolution — `DISPLAY`, now 3 (960 wide, was 2 / 640).** The
+       column is ~986px at the session panel's 1040px width, so 640
+       was being upscaled 1.54x by the browser and reading soft. That
+       640 was inherited from a ~615-652px column the widened panel had
+       made obsolete. MEASURE `.sd-art`'s rendered width if the panel
+       ever changes again.
+       Corollary: `PAINT_W` is now a fixed working width for the brush,
+       deliberately NOT `2 x output`, so `--paint 4` in a recorded
+       recipe keeps meaning the same brush after a DISPLAY change.
+    3. **On-screen height — `.sd-art { max-height }` in style.css, now
+       `min(43vh - 119px, 271px)`.** The odd expression is the point:
+       the banner competes with the TRANSCRIPT, not the window, and
+       #sess-body is `min(86vh, 780px) - ~238px` of header. A flat vh
+       was two different things at two window sizes — too small on a
+       laptop, 80% of the body on a big monitor.
+    …and a fourth thing that is not a number: **settle() was scrolling
+    every freshly-arrived banner off the top**, because `offsetTop` in
+    this panel is relative to `.ovl-panel` (the nearest positioned
+    ancestor) while `scrollTop` is measured from `#sess-body` — every
+    beat was scrolled ~191px too far. It now reads positions off
+    getBoundingClientRect, holds ~2/3 of a new banner on screen, and
+    yields that to a `PEEK` of the choice strip on a short window so a
+    scene never opens as a picture with no visible options. It also
+    re-settles once on the image's `load`: a not-yet-decoded `<img>`
+    measures 0 tall, so on a COLD load every scroll sum was computed
+    against a banner that was not there yet. That last one is why this
+    looked fine while clicking around with a warm cache.
   - **`--scene <id>` — procedural.** For subjects with no usable
     photograph. Full control of composition, no painterly rendering.
     `opening_day` is the worked example; the notes below are what it
@@ -814,8 +889,17 @@ roll. Rules that must survive edits:
     not be able to trap the player.
   - Mounted on `.ovl-panel` (position: relative), NOT `.sd-scene`, so
     it centers on the panel and ignores the transcript's scroll.
+  - **`T_HOLD` is the dwell AFTER the stamp, and it is the number that
+    decides whether the roll is readable**: 2200ms since 2026-08-18
+    (user's call — "the pop-outs close immediately once fail or success
+    shows"). It was 560, which with the 300ms fade gave under a second
+    to take in the verdict AND the arithmetic under it, and read as the
+    tray slamming shut on the result rather than presenting it. Judge
+    this against the STAMP, not against mount: the tray is alive for
+    `T_TUMBLE + T_STAMP` (1200ms) before a verdict exists, and nobody
+    is reading during the tumble.
   - Boxcars = `.jack` (gold burst on the tray card at stamp time),
-    snake eyes = `.snake` (card shake); both hold an extra 420ms.
+    snake eyes = `.snake` (card shake); both hold an extra 700ms.
     Red checks (`r-red`) tint the tray card in the danger color.
   - In the pane, verify with a MutationObserver on the panel (mount →
     landed → verdict → out → removed) — timer clamping stretches the
