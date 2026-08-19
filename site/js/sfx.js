@@ -68,18 +68,37 @@
  * because a 46ms FFT window lands on the transient for one sound and
  * on the body for the next):
  *
- *     pipUp     peak .061   bright 1644 Hz
- *     pipDown   peak .074   bright 1284 Hz
- *     choice    peak .108   bright  982 Hz
- *     dieLand   peak .091   bright 1168 Hz
- *     win       peak .184   bright  706 Hz
- *     lose      peak .160   bright  437 Hz
+ *     pipUp     peak .096   bright  793 Hz   tail  33ms
+ *     pipDown   peak .107   bright  678 Hz   tail  33ms
+ *     choice    peak .109   bright  513 Hz   tail  67ms
+ *     week      peak .164   bright  344 Hz   tail 165ms
+ *     dieLand   peak .089   bright 1097 Hz   tail 178ms
+ *     win       peak .187   bright  605 Hz   tail 440ms
+ *     lose      peak .171   bright  328 Hz   tail 512ms
  *
  * The ORDER is the design and matters more than any single number:
- * brightness falls from click to commitment to verdict, failure is the
- * dullest thing in the game, and the verdicts are about 3x the level
- * of a click. Everything sits under 1.7kHz, which is what keeps it
- * wood and paper rather than plastic.
+ *
+ * - **Inside the CLICK FAMILY, brightness falls with WEIGHT of the
+ *   act**: raising a pip (793) is lighter than lowering one (678) is
+ *   lighter than committing to a line (513) is lighter than ending the
+ *   week (344). Tail length runs the same way, 33ms to 165ms. That
+ *   monotonic run is what makes four different sounds read as one
+ *   instrument rather than four unrelated noises.
+ * - **Failure (328) is the dullest thing in the game**, and success
+ *   (605) is brighter than it without being bright.
+ * - The dice (1097) are the brightest thing on purpose — they are the
+ *   only object in the game that is actually clattering.
+ * - Verdicts and the week are ~2x the level of a click.
+ *
+ * Re-tuned 2026-08-19 from a first pass measured at 1644Hz / 61ms for
+ * pipUp ("still a bit too high pitched, I want more of a clicky
+ * sound"). TWO changes did it, and the second mattered more than the
+ * first: the resonances came down about an octave, and the TRANSIENT
+ * layer moved from a broad bandpass to a LOWPASS. A bandpass at the
+ * Q near 1 that a click wants passes a wide skirt of top end which
+ * reads as hiss — and hiss is exactly what keeps a low click sounding
+ * high. Lowpassing it took pipUp from 1285Hz to 793Hz with no other
+ * change to that layer.
  */
 window.SFX = (function () {
   "use strict";
@@ -152,7 +171,13 @@ window.SFX = (function () {
     // gun — this is the ONLY variation a click gets (see NO PITCH LADDER)
     src.playbackRate.value = 0.9 + Math.random() * 0.2;
     var f = c.createBiquadFilter();
-    f.type = "bandpass";
+    /* Bandpass for a RESONANCE (the body of a struck thing), lowpass
+       for a TRANSIENT (the contact itself). A broad bandpass — Q near
+       1, which is what a click wants — passes a wide skirt of top end
+       that reads as hiss, and hiss is what keeps a low click sounding
+       high. A lowpass at the same corner keeps all the impact and
+       throws the skirt away. */
+    f.type = o.type || "bandpass";
     f.frequency.value = o.freq * (0.97 + Math.random() * 0.06);
     f.Q.value = o.q === undefined ? 2 : o.q;
     var g = c.createGain();
@@ -202,14 +227,38 @@ window.SFX = (function () {
        argument for the skill's rank — see NO PITCH LADDER. */
     pip: function (up) {
       if (up) {
-        strike({ freq: 1350, q: 1.8, gain: 0.16, dur: 0.026 });
-        strike({ freq: 560, q: 3.8, gain: 0.26, dur: 0.055 });
-        body({ f0: 300, f1: 190, dur: 0.05, gain: 0.07, bend: 0.04 });
+        strike({ type: "lowpass", freq: 900, q: 0.7, gain: 0.42,
+                 dur: 0.009 });
+        strike({ freq: 265, q: 2.0, gain: 0.34, dur: 0.026 });
+        body({ f0: 150, f1: 98, dur: 0.028, gain: 0.11, bend: 0.020,
+               atk: 0.002 });
       } else {
-        strike({ freq: 900, q: 1.6, gain: 0.13, dur: 0.032 });
-        strike({ freq: 380, q: 3.2, gain: 0.26, dur: 0.075 });
-        body({ f0: 205, f1: 130, dur: 0.07, gain: 0.08, bend: 0.055 });
+        strike({ type: "lowpass", freq: 680, q: 0.7, gain: 0.42,
+                 dur: 0.011 });
+        strike({ freq: 196, q: 1.9, gain: 0.34, dur: 0.032 });
+        body({ f0: 112, f1: 74, dur: 0.036, gain: 0.12, bend: 0.026,
+               atk: 0.002 });
       }
+    },
+
+    /* ENDING THE WEEK — the game's primary verb, and the same click
+       family as everything above rather than a fanfare, because that
+       is what was asked for. It is the pip's big brother: the same dry
+       knock an octave down with real weight under it, the sound of a
+       ledger shut and pushed across a desk.
+       It is the heaviest thing in the click family and deliberately
+       still SHORT: the week beat that follows is a 1.6s camera move
+       into silence, and a sound still ringing over the start of that
+       would blur the punctuation this is supposed to be. */
+    week: function () {
+      strike({ type: "lowpass", freq: 500, q: 0.7, gain: 0.34,
+               dur: 0.014 });
+      strike({ freq: 165, q: 1.8, gain: 0.40, dur: 0.085 });
+      body({ f0: 96, f1: 58, dur: 0.30, gain: 0.20, bend: 0.14,
+             atk: 0.003 });
+      // one low partial under it, inharmonic to the body so the pair
+      // reads as one heavy object and not as an interval
+      body({ f0: 139, dur: 0.16, gain: 0.055, atk: 0.006 });
     },
 
     /* Committing to a dialogue line, or pressing Continue. The same
@@ -218,9 +267,11 @@ window.SFX = (function () {
        make again; this is a decision that has landed, so it wants mass
        and a little room rather than brightness. */
     choice: function () {
-      strike({ freq: 1050, q: 1.3, gain: 0.09, dur: 0.028 });
-      strike({ freq: 300, q: 2.8, gain: 0.30, dur: 0.14 });
-      body({ f0: 160, f1: 104, dur: 0.16, gain: 0.12, bend: 0.09 });
+      strike({ type: "lowpass", freq: 620, q: 0.7, gain: 0.30,
+               dur: 0.012 });
+      strike({ freq: 215, q: 2.2, gain: 0.34, dur: 0.070 });
+      body({ f0: 118, f1: 78, dur: 0.11, gain: 0.16, bend: 0.065,
+             atk: 0.003 });
     },
 
     /* One die turning over while the tray tumbles. Called every 75ms,

@@ -1267,9 +1267,28 @@ touching no call site.
   the body for the next. That pass caught two bugs the code looked fine
   for: everything was ~12dB too quiet, and FAILURE was coming out
   BRIGHTER than success (2458Hz vs 1626Hz). The shipped table is in the
-  file; **the ORDER matters more than any single number** — brightness
-  falls click → commitment → verdict, failure is the dullest thing in
-  the game, verdicts are ~3x the level of a click, nothing above 1.7kHz.
+  file; **the ORDER matters more than any single number** — inside the
+  click family brightness and tail length both fall with the WEIGHT of
+  the act (pip up 793Hz/33ms → pip down 678 → commit to a line 513 →
+  end the week 344Hz/165ms), failure (328Hz) is the dullest thing in
+  the game, and the dice (1097Hz) are the brightest because they are
+  the only object actually clattering.
+- **A LOWPASS transient is what makes a click sound low** (2026-08-19,
+  second tuning pass: "still a bit too high pitched, I want more of a
+  clicky sound"). Dropping every resonance an octave was NOT the fix on
+  its own. A bandpass at the Q near 1 that a click wants passes a wide
+  skirt of top end, that skirt reads as hiss, and hiss is what keeps a
+  low click sounding high; moving that one layer to a lowpass took the
+  pip from 1285Hz to 793Hz with nothing else changed. `strike()` takes
+  a `type` for exactly this: bandpass for a RESONANCE (the body of a
+  struck thing), lowpass for a TRANSIENT (the contact itself).
+- **Ending the week is the click family's big brother, not a fanfare**
+  (`SFX.week`, fired inside `advanceWeek()` and not on the button, so
+  it catches both doors — the End Turn chip and the hub's `#sess-next`
+  — and so the sine-die and `beating` guards above it keep a press that
+  does nothing silent). It stays SHORT at 165ms because the week beat
+  that follows is a 1.6s camera move into silence, and a sound still
+  ringing over the start of that blurs the punctuation.
 - **The context is created LAZILY, inside a pointerdown.** Building it
   at load leaves it "suspended" under the autoplay policy and swallows
   the first click of the session; `resume()` runs on every call because

@@ -3975,6 +3975,13 @@ const SessionPanel = {
     let beating = false;
     const advanceWeek = () => {
       if (S.week > data.sineDieWeek || beating) return;
+      /* The week sound lives HERE and not on the button, for the same
+         reason the pip's lives after its guard: sine die and a beat
+         already in flight both return above this line, and a click at
+         a player whose press did nothing is worse than silence. It
+         also catches BOTH doors — the End Turn chip and the hub's
+         #sess-next — without either being able to drift. */
+      SFX.week();
       // BEFORE resolveBills(), so the week's movement counts toward the
       // trend the player reads on the map a moment later
       S.weekBase = { support: S.metrics.support,
