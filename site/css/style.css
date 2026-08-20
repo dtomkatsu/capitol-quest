@@ -992,9 +992,30 @@ html, body {
    — cards, never one shared balance bar.
    Compacted 2026-08-15 (user's call): label and value share ONE baseline
    row instead of stacking, so the header gives the dialogue below it
-   back ~30px. The card is a 2-column grid — label left, value right,
-   bar spanning both — and .sym stays absolutely positioned, out of the
-   grid entirely. */
+   back ~30px.
+   RESTYLED 2026-08-19 (user's call: "more stylish and modern without
+   that left accent, make the text more readable"). What changed and why
+   it must not drift back:
+   - **No left accent stripe.** The 3px `border-left: var(--mc)` is gone.
+     The hue now arrives as a soft top-down TINT (`--mct`, a low-alpha
+     rgba twin of `--mc`) plus the fill bar itself, which is where a
+     meter's colour belongs. A stripe on a 3-up row of cards read as
+     three unrelated tabs.
+   - **`--mct` is a hand-written rgba twin of `--mc`, not color-mix.**
+     Every card needs BOTH, so adding a meter means adding two lines.
+     Deliberate: color-mix() would compute it, but these cards sit on the
+     one surface in the game that has to render identically everywhere,
+     and two hex values are cheaper than a support question.
+   - **.sym is IN the grid now.** It used to be absolutely positioned at
+     left:7px with a 25px left padding reserved for it — the padding
+     existed only to clear the old stripe. Three real columns
+     (icon / label / value) drop the magic number entirely.
+   - **Text sizes are floors, not suggestions.** The label was 8.5px
+     uppercase at 1.1px tracking on a translucent ground, which is below
+     what this panel can carry; 10px at .8px tracking with a brighter
+     ink is the readable version, and the value went 13px -> 15px to
+     match. Do not shrink these to buy vertical space — the row already
+     gave back 30px in 2026-08-15 and that is the budget. */
 #sess-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1008,59 +1029,82 @@ html, body {
   position: relative;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  column-gap: 6px;
-  padding: 4px 8px 5px 25px;
-  background: rgba(0, 0, 0, .22);
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-left: 3px solid var(--mc, #9fb0e8);
-  border-radius: 7px;
-  color: #dfe8ff;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 7px;
+  padding: 6px 10px 7px;
+  /* the hue arrives as a tint from the top, not a stripe on the left */
+  background:
+    linear-gradient(180deg, var(--mct, rgba(159, 176, 232, .13)),
+                    rgba(255, 255, 255, 0) 78%),
+    rgba(6, 10, 24, .42);
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07);
+  color: #eef3ff;
 }
 #sess-metrics .metc > .sym {
-  position: absolute;
-  left: 7px; top: 5px;
-  width: 13px; height: 13px;
-  color: var(--mc, #9fb0e8);
-}
-#sess-metrics .metc .ml {
   grid-column: 1;
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
+  grid-row: 1;
+  width: 14px; height: 14px;
+  color: var(--mc, #9fb0e8);
+  opacity: .92;
+}
+/* THE LABEL WRAPS, it does not ellipsize. At the narrow end of the
+   overlay a card is ~161px and "POLITICAL INFLUENCE" needs ~125px of
+   that after the icon and the value have taken theirs — the old
+   `nowrap` + ellipsis turned it into "POLITICAL IN…", which is a worse
+   answer than two lines. The cards are grid siblings and stretch to a
+   shared height, so one wrapping label never makes the row ragged. */
+#sess-metrics .metc .ml {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: .7px;
   text-transform: uppercase;
-  color: #9fb0e8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #c8d6f6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
 }
 #sess-metrics .metc .mv {
-  grid-column: 2;
-  font-size: 13px;
+  grid-column: 3;
+  grid-row: 1;
+  font-size: 15px;
+  line-height: 1.1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: #eef2ff;
-  text-shadow: 1px 1px 0 #000;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .75);
 }
 #sess-metrics .metc .bar {
   display: block;
   grid-column: 1 / -1;
-  height: 4px;
-  margin-top: 3px;
-  background: rgba(255, 255, 255, .12);
-  border-radius: 3px;
+  grid-row: 2;
+  height: 5px;
+  margin-top: 5px;
+  background: rgba(2, 5, 16, .55);
+  border-radius: 99px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .5);
   overflow: hidden;
 }
 #sess-metrics .metc .bar i {
   display: block;
   height: 100%;
   width: 0;
-  border-radius: 3px;
-  background: var(--mc, #9fb0e8);
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--mc, #9fb0e8) 55%, #0b1024),
+    var(--mc, #9fb0e8));
+  box-shadow: 0 0 8px -1px var(--mc, #9fb0e8);
   /* the cards are built once and updated in place (renderMetrics), so
      a width change genuinely transitions instead of snapping */
   transition: width .55s cubic-bezier(.25, .9, .3, 1);
+}
+/* the gradient is decoration; a browser without color-mix() still needs
+   a fill, so the flat hue is declared first and only then overridden */
+@supports not (background: color-mix(in srgb, red, blue)) {
+  #sess-metrics .metc .bar i { background: var(--mc, #9fb0e8); }
 }
 #sess-metrics .metc .mv { font-variant-numeric: tabular-nums; }
 /* an effect landing in the dialogue flashes the meter it moved, so the
@@ -1087,13 +1131,13 @@ html, body {
    exactly the currency public support is; influence's blue is a step
    from the wonk pole's #6fa8dc for the same reason. Keep any future
    meter inside that logic rather than picking a free hue. */
-#sess-metrics .m-rev { --mc: #e3b64b; }
-#sess-metrics .m-sup { --mc: #e8795c; }
-#sess-metrics .m-inf { --mc: #63a6f0; }
-#sess-metrics .m-rev.gain .mv { color: #7ff0ae; }
-#sess-metrics .m-rev.gain { --mc: #59c98b; }
-#sess-metrics .m-rev.cost .mv { color: #ff8d80; }
-#sess-metrics .m-rev.cost { --mc: #d96a5e; }
+#sess-metrics .m-rev { --mc: #e3b64b; --mct: rgba(227, 182, 75, .15); }
+#sess-metrics .m-sup { --mc: #e8795c; --mct: rgba(232, 121, 92, .15); }
+#sess-metrics .m-inf { --mc: #63a6f0; --mct: rgba(99, 166, 240, .15); }
+#sess-metrics .m-rev.gain .mv { color: #8df5b8; }
+#sess-metrics .m-rev.gain { --mc: #59c98b; --mct: rgba(89, 201, 139, .15); }
+#sess-metrics .m-rev.cost .mv { color: #ff9d91; }
+#sess-metrics .m-rev.cost { --mc: #d96a5e; --mct: rgba(217, 106, 94, .17); }
 
 #sess-body {
   margin-top: 8px;
@@ -3651,7 +3695,11 @@ html, body {
   box-sizing: border-box;
   padding: 0 2px 1px;
   pointer-events: auto;          /* hover only — deliberately not a button */
-  opacity: .58;
+  /* .58 until 2026-08-19 — subdued is the rule (no chrome, no plate),
+     but at 8px type it had crossed from subdued into unreadable. The
+     fix is opacity and type size, NOT a background: the moment this
+     grows a plate it competes with End Turn directly below it. */
+  opacity: .68;
   transition: opacity .25s ease;
 }
 #hud-standing:hover { opacity: 1; }
@@ -3675,20 +3723,20 @@ html, body {
 #hud-standing .hs-sup { --hc: #e8795c; }   /* the street */
 #hud-standing .hs-inf { --hc: #63a6f0; }   /* inside the building */
 #hud-standing .hs-l {
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .7px;
   text-transform: uppercase;
-  color: #cfe0ff;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+  color: #dfeaff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
 }
 /* a HAIRLINE, half the height of the timeline's track: this is a glance,
    not a gauge, and at the timeline's 8px it started reading as a second
    progress bar for the same run */
 #hud-standing .hs-bar {
-  height: 4px;
-  border-radius: 3px;
-  background: rgba(4, 7, 20, .5);
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(4, 7, 20, .55);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, .45);
   overflow: hidden;
 }
@@ -3696,17 +3744,22 @@ html, body {
   display: block;
   height: 100%;
   width: 0;
-  border-radius: 3px;
-  background: var(--hc, #9fb0e8);
+  border-radius: 99px;
+  /* same fill as the overlay's .metc bar, so the HUD cluster and the
+     card in the session panel keep reading as one object seen twice */
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--hc, #9fb0e8) 55%, #0b1024),
+    var(--hc, #9fb0e8));
+  box-shadow: 0 0 7px -1px var(--hc, #9fb0e8);
   /* built once and updated in place (renderHudStanding), so a changed
      value genuinely slides instead of snapping */
   transition: width .55s cubic-bezier(.25, .9, .3, 1);
 }
 #hud-standing .hs-v {
-  min-width: 15px;
+  min-width: 17px;
   text-align: right;
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
@@ -3717,13 +3770,16 @@ html, body {
 #hud-standing .hs-t {
   min-width: 20px;
   text-align: right;
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
 }
-#hud-standing .hs-t.up   { color: #7ff0ae; }
-#hud-standing .hs-t.down { color: #ff8d80; }
+#hud-standing .hs-t.up   { color: #8df5b8; }
+#hud-standing .hs-t.down { color: #ff9d91; }
+@supports not (background: color-mix(in srgb, red, blue)) {
+  #hud-standing .hs-bar i { background: var(--hc, #9fb0e8); }
+}
 
 /* session progress, HUD-mounted above the End Turn button — the same
    calendar as .sess-timeline reduced to "how much session is left".
@@ -3822,8 +3878,8 @@ html, body {
      still clear the bottom of a 375px phone */
   #hud-standing { width: 150px; }
   #hud-standing .hs-row { margin-bottom: 3px; }
-  #hud-standing .hs-l { font-size: 7.5px; letter-spacing: .7px; }
-  #hud-standing .hs-v { font-size: 9.5px; }
+  #hud-standing .hs-l { font-size: 8.5px; letter-spacing: .5px; }
+  #hud-standing .hs-v { font-size: 11px; }
   #turn-chip { padding: 5px 11px 6px; }
   #turn-chip .tc-act { font-size: 13px; }
   #chips { top: 102px; }   /* below the 3-button toolbar row */

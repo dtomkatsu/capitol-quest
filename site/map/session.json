@@ -277,22 +277,40 @@
   {
    "week": 5,
    "title": "First Lateral",
-   "phase": "Session"
+   "phase": "Session",
+   "event": "w5-decking"
+  },
+  {
+   "week": 6,
+   "title": "Recess",
+   "phase": "Recess",
+   "event": "w6-recess",
+   "recess": true
+  },
+  {
+   "week": 7,
+   "title": "Floor Votes",
+   "phase": "Session",
+   "pre": "w7-storm",
+   "milestone": false
   },
   {
    "week": 8,
    "title": "First Crossover",
-   "phase": "Session"
+   "phase": "Session",
+   "event": "w8-crossover"
   },
   {
    "week": 11,
    "title": "Second Lateral",
-   "phase": "Session"
+   "phase": "Session",
+   "event": "w11-wam"
   },
   {
    "week": 13,
    "title": "Second Crossover",
-   "phase": "Session"
+   "phase": "Session",
+   "event": "w13-crossover2"
   },
   {
    "week": 14,
@@ -302,7 +320,8 @@
   {
    "week": 15,
    "title": "Conference Crunch",
-   "phase": "Conference"
+   "phase": "Conference",
+   "event": "w15-crunch"
   },
   {
    "week": 16,
@@ -319,8 +338,8 @@
   "What Washington Left",
   "Money Committee Week",
   "First Lateral",
+  "Recess",
   "Floor Votes",
-  "Crossover Eve",
   "First Crossover",
   "The Other Chamber",
   "Hearings, Again",
@@ -335,8 +354,8 @@
   "ev-forecast",
   "ev-emergency",
   "ev-oped",
-  "ev-testimony",
   "ev-potluck",
+  "ev-testimony",
   "ev-introducer"
  ],
  "sineDieWeek": 16,
@@ -1559,6 +1578,794 @@
      "push"
     ]
    }
+  },
+  "w5-decking": {
+   "_note": "DEADLINE WEEK: Finance's referral deadline is week 5 (chairs.json stages.h-fin). The scene runs on TUESDAY and the deadline is Friday, so it plays BEFORE the week's chair roll and must never state the outcome — resolveBills decides that when the turn ends. Its job is to make the player feel that a bill dies here with no vote, no roll call and no record. Absorbs the hearing-day material ev-testimony used to carry at this week.",
+   "start": {
+    "text": "The lateral file goes up Friday at four, and everything not on it is finished for the year.\n\nThis is the part nobody outside the building believes. Your bills will not be voted down this week. There will be no roll call, no debate, no recorded position anybody can be asked about in an election year. Finance will simply post a hearing notice on Friday afternoon, and the measures that are not on it will stop existing, quietly, with a status code.\n\nIt is Tuesday. Kawaguchi's office has forty-one measures still live and room on the notice for maybe half.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Learn the word: DECKING. A bill has to be posted before it can be heard, and the posting deadline is the real one. Miss it and there is nothing to appeal — nothing happened."
+     },
+     {
+      "t": "fiscal",
+      "text": "876 referrals last session and one of the two lowest hearing rates in the building. He is not deciding whether your bill is good. He is deciding what fits."
+     },
+     {
+      "t": "talkstory",
+      "text": "Half of those forty-one are somebody's whole year. Every advocate in this hallway is doing exactly what you are doing, and most of them will lose."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Camp outside Finance. Be the face he walks past all week.",
+      "effects": {
+       "influence": 3,
+       "support": -1
+      },
+      "reply": "You are there Tuesday, Wednesday and Thursday. He never stops. On Thursday he says your name without looking up, which in this building is a receipt."
+     },
+     {
+      "label": "Get your introducer to ask for it on the floor, in public.",
+      "effects": {
+       "rapport": {
+        "house": -4
+       },
+       "influence": 2,
+       "support": 3
+      },
+      "reply": "They do it, and it works the way public pressure works: the notice question is now on the record, and your member has spent something with a chair they have to live beside until May.",
+      "goto": "friday"
+     },
+     {
+      "label": "Read the notice queue and make the case it FITS — trim it yourself.",
+      "check": {
+       "skill": "procedure",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "skill",
+         "id": "fiscal",
+         "per": 3
+        },
+        {
+         "from": "flag",
+         "id": "kawaguchi-date",
+         "add": 2,
+         "label": "the date he gave you"
+        }
+       ]
+      },
+      "success": {
+       "reply": "You go up with a two-page amendment that drops the effective date a year and takes the department's fiscal objection off the table entirely. His analyst reads it standing. \"This I can post,\" she says, \"if he wants to.\" That last clause is the whole business.",
+       "effects": {
+        "influence": 4
+       }
+      },
+      "failure": {
+       "reply": "The analyst is kind about it. The trim you offered is the one thing the coalition told you never to give away, and she can see you offering it without being asked — which tells her exactly how worried you are.",
+       "effects": {
+        "influence": -2,
+        "support": -2
+       }
+      },
+      "goto": "friday"
+     }
+    ]
+   },
+   "friday": {
+    "text": "Friday, 3:52pm. The hallway outside Finance fills the way it always does — advocates who have been here thirty years standing next to interns refreshing a page on their phones. Nobody talks. At four the notice posts.\n\nYou will find out what is on it when the week ends. That is not a metaphor about the game; it is how the building works. The file goes up and you read it like everyone else.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Whatever happens now, note the shape of it: the deadline did the killing, and the deadline is the one thing in this building that never negotiates."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Stay for the posting.",
+      "effects": {},
+      "reply": "You stay. Whatever is on that notice, you will have watched it arrive."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "kawaguchi": "talk-kawaguchi",
+     "office": "talk-office",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "push",
+     "rally"
+    ]
+   }
+  },
+  "w6-recess": {
+   "_note": "THE MANDATORY RECESS. Const. art. III, sec. 10 requires a recess of at least five days somewhere between the 20th and 40th legislative day of every regular session; the dates themselves are set by concurrent resolution, not the constitution, and weekends, holidays and the recess days do not count toward the sixty. Anchored to real practice: the 2025 session opened Jan 15 and recessed Feb 20-26, which against sessionStart 2027-01-20 is exactly this week. NOT `noAction` — the CAPITOL is shut, the district is not, which is the entire scene. Grants rally/bench and deliberately withholds `push`: there is no chair in the building to work. The bite is mechanical, not textual: calendar `recess: true` makes resolveBills skip the week's chair rolls while every deadline stays where it was.",
+   "start": {
+    "text": "The building empties on Thursday and does not fill again until the following Wednesday.\n\nNobody voted for this. The constitution requires it — at least five days of recess, somewhere between the twentieth and the fortieth legislative day — and the two chambers pick the actual dates between themselves by concurrent resolution. Sixty legislative days in a regular session. Five of them are gone by design, and the weekends and holidays around them were never counted in the sixty to begin with.\n\nWhat that means for you is arithmetic, and it is not friendly. No notices post. No committee meets. No chair schedules anything. And not one deadline in front of you moves by a single day.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Read it exactly: the recess suspends the WORK, not the clock. Every deadline you are running at is still where it was on Wednesday, with one fewer week to reach it."
+     },
+     {
+      "t": "fiscal",
+      "text": "Sixty legislative days to move a budget the size of a small country's. This is the week to notice how few that actually is."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Fifty-one members just went home to their districts. For five days the people who are hardest to reach in Honolulu are sitting in a folding chair at a community meeting on their own island."
+     },
+     {
+      "t": "talkstory",
+      "text": "Everyone you have been chasing is unreachable and so is everyone chasing you. That cuts both ways, and it will not happen again this session."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Go home. Sleep. Be at the Saturday cleanup like a person.",
+      "effects": {
+       "support": 3
+      },
+      "reply": "You pull weeds at the stream cleanup for four hours beside people who have been getting your emails since January and had never once seen your face on a Saturday. Nobody talks about the bill. Everybody notices you came."
+     },
+     {
+      "label": "District week: work the neighbor-island offices while members are home.",
+      "check": {
+       "skill": "basebuilding",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "support",
+         "per": 30
+        },
+        {
+         "from": "skill",
+         "id": "mobilizing",
+         "per": 3
+        }
+       ]
+      },
+      "success": {
+       "reply": "Three islands in four days on the cheapest flights that exist. You catch a WAM member at her own district office with no scheduler between you, in slippers, at four in the afternoon — fifty minutes, no gatekeeper, and a question at the end that means she read it. Room 211 could not have bought you that.",
+       "effects": {
+        "rapport": {
+         "senate": 8
+        },
+        "support": 3,
+        "unlock": {
+         "talks": {
+          "sen-x": "talk-sen"
+         }
+        }
+       }
+      },
+      "failure": {
+       "reply": "Two locked doors, one staffer covering three offices, and a member who is genuinely, visibly on vacation with her grandchildren and does not want to be your Tuesday. You apologize and mean it. The flights were not cheap.",
+       "effects": {
+        "influence": -1,
+        "support": 1
+       }
+      }
+     },
+     {
+      "label": "Work the recess like it isn't one. Draft the Ways and Means amendment now.",
+      "check": {
+       "skill": "fiscal",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 3
+        }
+       ]
+      },
+      "success": {
+       "reply": "Five days, no phone, no hallway. You come back with the Senate draft finished and a fiscal note that answers the question Souza actually asks — not what it raises, what it costs him in a bad year. It is sitting in a drawer, ready, weeks before anyone will ask for it.",
+       "effects": {
+        "influence": 3,
+        "flag": "recess-draft"
+       }
+      },
+      "failure": {
+       "reply": "You spend five days alone with a document and produce eleven pages nobody asked for. On Wednesday the building comes back rested and you come back with a draft and a headache.",
+       "effects": {
+        "influence": 1,
+        "support": -2
+       }
+      }
+     },
+     {
+      "label": "Put the coalition on planes. Five days of rooms nobody is watching.",
+      "effects": {
+       "support": 6,
+       "influence": -2
+      },
+      "reply": "Four islands, eleven rooms, no press and no member in any of them. The organizing that shows up in April is built in weeks exactly like this one, which is why it is invisible in March.",
+      "goto": "back"
+     }
+    ]
+   },
+   "back": {
+    "text": "Wednesday morning the doors open and the hallway is loud again, and everyone in it is one week closer to a deadline that did not move.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Nothing was heard while you were gone. Nothing could be. The window you have left just got shorter by one, and the odds on every chair went up accordingly."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Back to work.",
+      "effects": {},
+      "reply": "Back to work."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "rally",
+     "bench"
+    ]
+   }
+  },
+  "w7-storm": {
+   "_note": "PRE-EVENT: pinned to week 7 by calendar `pre`, so it runs BEFORE the week's own event and is tracked in S.preDone, not S.eventDone. A -600000 revenueK hit ($600M) lands on the SAME FY2027 scoreboard as everything else (PolicyPanel.external via syncScore) — it does not kill any bill, it re-prices the whole session by moving the number the campaign has to cover. Sized deliberately: it is roughly fifteen times ev-emergency's $40M clinic rescue and is meant to be the moment the player's revenue arithmetic stops being comfortable. The state share is the teaching point — a federal declaration reimburses most of a disaster and the state carries the rest, immediately, out of a budget that was already short.",
+   "start": {
+    "text": "The Kona low sat over the chain for three days.\n\nBy the time it moved off, Kauaʻi had lost two highway bridges, Maui had six hundred homes with water through them, and the Kāneʻohe side of Oʻahu was a slow brown river with cars in it. Nobody died, which everyone keeps saying out loud, in the tone people use when they are not yet sure they believe it.\n\nThe Governor declares an emergency Sunday night. The federal declaration follows on Tuesday, which covers a large share of it eventually, on a reimbursement schedule measured in years. What it does not cover, and what cannot wait for years, is the state's own share: emergency housing, the two bridges, debris removal, the water systems on three islands, and the harbor.\n\nBudget and Finance puts a working number on it Wednesday morning. Six hundred million dollars.",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "Six hundred million against a budget that was already eight hundred million short. That is not a line item — it is the whole argument of your session, restated at gunpoint."
+     },
+     {
+      "t": "procedure",
+      "text": "This will move as an emergency appropriation and it will move FAST, ahead of everything, because it has to. Every hour Finance spends on it is an hour not spent on your notice."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Six hundred families in shelters in Wailuku tonight. Whatever this does to the arithmetic, that is what the arithmetic is about."
+     },
+     {
+      "t": "talkstory",
+      "text": "Watch what happens to the phrase 'we can't afford it' this week. It is about to get very cheap, and it is about to get very expensive."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Say the obvious thing: this is what revenue is FOR.",
+      "effects": {
+       "support": 5,
+       "influence": -3
+      },
+      "reply": "You say it Wednesday, in front of a camera, while the water is still in people's houses. Half the building thinks you are the only honest person in it and the other half thinks you just used a disaster as a talking point, and both halves say so.",
+      "goto": "cost"
+     },
+     {
+      "label": "Say nothing this week. Send the coalition's vans to Wailuku.",
+      "effects": {
+       "support": 3,
+       "influence": 2
+      },
+      "reply": "Eleven vans, four days, no press release. On Friday a member you have never gotten a meeting with texts your organizer directly to ask where to send her church's donations.",
+      "goto": "cost"
+     },
+     {
+      "label": "Get in front of the appropriation: draft the pay-for and hand it over.",
+      "check": {
+       "skill": "fiscal",
+       "dc": 13,
+       "type": "red",
+       "mods": [
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 3
+        },
+        {
+         "from": "flag",
+         "id": "recess-draft",
+         "add": 2,
+         "label": "the week you spent drafting"
+        },
+        {
+         "from": "influence",
+         "per": 30
+        }
+       ]
+      },
+      "success": {
+       "reply": "You are in Finance's anteroom Thursday at seven in the morning with three pages: what the state share actually is, what the rainy-day fund can carry without a downgrade, and what the gap is after both. It is the first document anyone has handed them that ends in a number instead of a request. The gap does not go away. But it is now YOUR framing of the gap that the committee is arguing inside of.",
+       "effects": {
+        "influence": 6
+       }
+      },
+      "failure": {
+       "reply": "You are in the anteroom at seven with three pages nobody asked you for, on the one morning of the year when the Finance staff have a genuine emergency and a chair standing over them. The analyst takes it politely. You watch her put it face-down on a stack.",
+       "effects": {
+        "influence": -3
+       }
+      },
+      "goto": "cost"
+     }
+    ]
+   },
+   "cost": {
+    "text": "The emergency appropriation passes both chambers inside nine days, which is the fastest anything will move all session. Nobody votes against it. Nobody would.\n\nAnd on Friday the FY2027 sheet is reissued with the state share in it, and everything you have been carrying since January is now being weighed against a number six hundred million dollars worse than the one you started from.\n\nNothing in your package changed. The floor under it did.",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "Nine days, unanimous, no hearing worth the name. Money moves at exactly the speed the building agrees it has to — remember that the next time somebody tells you the process is why your bill is slow."
+     },
+     {
+      "t": "procedure",
+      "text": "Your bills are all still alive and all still exactly where they were. What moved is the standard they will be judged against in conference."
+     },
+     {
+      "t": "educator",
+      "text": "This is the lesson nobody teaches in a civics class: a budget is not a document, it is a running argument, and the weather gets a vote."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Take the number.",
+      "effects": {
+       "revenueK": -600000
+      },
+      "reply": "Six hundred million dollars, on your scoreboard, in a column you did not put it in. It is going to sit there for the rest of the session."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "office": "talk-office",
+     "coalition": "talk-coalition"
+    },
+    "actions": [
+     "bench"
+    ]
+   }
+  },
+  "w8-crossover": {
+   "_note": "DEADLINE WEEK: third reading in the originating chamber (chairs.json stages.h-floor, deadline 8). Crossover is the session's hardest wall and its most misunderstood one — a bill that crosses is not halfway home, it is starting over in a chamber that owes it nothing. Runs before the week's floor roll; never state the outcome. The 48-hour decking rule is real: a bill must be printed and on members' desks 48 hours before final reading.",
+   "start": {
+    "text": "Crossover.\n\nEverything the House is going to send the Senate this year has to pass third reading by Thursday, and everything it does not send is dead until January. The 48-hour rule means the bills had to be printed and on the desks by Tuesday, which means the real deadline was two days before the deadline, which is a sentence that has ended more campaigns than any vote ever taken.\n\nThe floor calendar runs to ninety-odd measures. They will move most of them in a day and a half, with the clerk reading numbers and members voting on titles they last read in committee, if then.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "The 48-hour decking rule is not a formality — it is why the fight is over before the vote. By the time anyone is voting, the argument is two days cold."
+     },
+     {
+      "t": "talkstory",
+      "text": "A member who votes yes on crossover is doing you a small favour and telling the other chamber it is now their problem. Do not mistake it for a commitment."
+     },
+     {
+      "t": "fiscal",
+      "text": "Whatever crosses, crosses at whatever size it came out of Finance. Nobody is going to make your bill bigger in the Senate. This is the ceiling."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Whip the floor. Every office, both sides of the aisle, two days.",
+      "effects": {
+       "influence": 2,
+       "support": 1
+      },
+      "reply": "Forty-some doors. You get eleven real conversations, four of which are with members who were always yes and one of which is with somebody who tells you something true about a colleague and asks you never to say where you heard it.",
+      "goto": "after"
+     },
+     {
+      "label": "Fill the gallery. Let them vote with the room watching.",
+      "effects": {
+       "support": 5,
+       "influence": -2
+      },
+      "reply": "Two hundred people in a gallery built for ninety, in matching shirts, silent because the sergeant-at-arms asked them to be, which is somehow louder. It is on the news at six.",
+      "goto": "after"
+     },
+     {
+      "label": "Stop working the House. Start working the Senate NOW, before it crosses.",
+      "check": {
+       "skill": "procedure",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "skill",
+         "id": "talkstory",
+         "per": 3
+        },
+        {
+         "from": "flag",
+         "id": "souza-intro",
+         "add": 2,
+         "label": "Kawaguchi's phone call"
+        }
+       ]
+      },
+      "success": {
+       "reply": "It is the counterintuitive move and it is the right one: the bill's fate in the Senate is being decided this week by people who have not been asked about it yet. By Thursday two WAM offices have already read it — not because it crossed, but because you got there before it did.",
+       "effects": {
+        "rapport": {
+         "senate": 6
+        },
+        "influence": 3,
+        "unlock": {
+         "talks": {
+          "sen-x": "talk-sen"
+         }
+        }
+       }
+      },
+      "failure": {
+       "reply": "You spend crossover week in the wrong building. The Senate offices are polite and unhurried and entirely uninterested in a measure that has not reached them, and behind you the House votes without you in the hallway.",
+       "effects": {
+        "influence": -3
+       }
+      },
+      "goto": "after"
+     }
+    ]
+   },
+   "after": {
+    "text": "Thursday afternoon the clerk finishes reading, the gavel comes down, and every measure that made it walks across the rotunda to a chamber where nobody has ever heard of it, nobody sponsored it, and nobody owes it anything at all.\n\nHalf the session is behind you. The half in front of you starts from zero.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "New chamber, new committee, new chair, new deadlines. The record you built in the House is worth exactly what the Senate decides it is worth, which is usually nothing."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Your people just won something. Tell them. A campaign that only reports losses trains everyone to stop reading."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Cross the rotunda.",
+      "effects": {},
+      "reply": "You cross the rotunda."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "sen-x": "talk-sen",
+     "office": "talk-office",
+     "coalition": "talk-coalition"
+    },
+    "actions": [
+     "push",
+     "lobby"
+    ]
+   }
+  },
+  "w11-wam": {
+   "_note": "DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w4-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w2-kawaguchi) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.",
+   "start": {
+    "text": "Ways and Means decks Friday, and after Ways and Means there is no more committee. Whatever is on that notice goes to conference. Whatever is not is finished, in a chamber that never held a hearing on it, having crossed the rotunda for nothing.\n\nRoom 211 is the same closed koa door it was in February. But the anteroom is different now: there are eleven people in it and every one of them is carrying a measure that already passed the other chamber. This is the bottleneck the whole building funnels into, and it is one man's calendar.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Last gate. After this the only thing left is conference, and conference does not add bills — it only cuts the ones already in it."
+     },
+     {
+      "t": "fiscal",
+      "text": "876 referrals to Finance, 936 to Ways and Means. He is the busiest gate in the building and he is the last one. Both facts are working against you at once."
+     },
+     {
+      "t": "talkstory",
+      "text": "Eleven people in an anteroom, all of whom got further than most. Being here is not an achievement any more. It is a queue."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Spend the whole relationship. Everything you have built, now.",
+      "check": {
+       "skill": "talkstory",
+       "dc": 13,
+       "type": "red",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "flag",
+         "id": "souza-intro",
+         "add": 3,
+         "label": "Kawaguchi's phone call"
+        },
+        {
+         "from": "flag",
+         "id": "recess-draft",
+         "add": 2,
+         "label": "the amendment you drafted in recess"
+        },
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Twenty minutes, and not with him — with his analyst and his vice-chair, in a room with the door open, which is how you can tell it is real. They do not promise you the notice. They ask you three questions about the fiscal note, and the third one is a question you can only ask about a bill you are planning to post.",
+       "effects": {
+        "influence": 5
+       }
+      },
+      "failure": {
+       "reply": "You get the scheduler, who is warm and remembers your name and has nothing, exactly as she had nothing in February. Nine months of work and the same sentence. You do not get to be angry at her; she is the only person in this building who has never once lied to you.",
+       "effects": {
+        "influence": -3,
+        "support": -1
+       }
+      },
+      "goto": "twelve"
+     },
+     {
+      "label": "Forget the chair. Twelve other members sit on that committee.",
+      "effects": {
+       "support": 4,
+       "influence": 1
+      },
+      "reply": "Four offices in a day and two of them freshmen nobody has asked for anything all session. On Wednesday a WAM member asks a question in a hearing that came straight out of your one-pager, and the chair looks up.",
+      "goto": "twelve"
+     },
+     {
+      "label": "Go public. Name the committee, name the number, name the week.",
+      "effects": {
+       "support": 6,
+       "influence": -5
+      },
+      "reply": "It runs Thursday: the bill, the deadline, the room number and the six hundred million reasons the state suddenly needs the money. Your coalition has never been louder. Room 211 has never been more closed.",
+      "goto": "twelve"
+     }
+    ]
+   },
+   "twelve": {
+    "text": "Friday at four the Ways and Means notice posts, the same way Finance's did in February, to the same hallway full of the same people.\n\nThis is the last one of these. After Friday there is nothing left to be posted to.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Count what is left: conference in week fifteen, final reading in week sixteen. Two beats. Everything still alive after tonight is in the endgame."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Wait for four o'clock.",
+      "effects": {},
+      "reply": "You wait for four o'clock."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "office": "talk-office",
+     "sen-x": "talk-sen",
+     "coalition": "talk-coalition"
+    },
+    "actions": [
+     "push",
+     "lobby"
+    ]
+   }
+  },
+  "w13-crossover2": {
+   "_note": "DEADLINE WEEK: second crossover, third reading in the second chamber (chairs.json stages.s-floor, deadline 13). Teaching point is CARRYOVER: Hawaii runs a two-year biennium, so a bill that dies in the first year is not gone — it sits in the chamber it died in and can be revived in the second. That is both a genuine consolation and the most effective way ever invented to make an advocate accept a loss quietly, and the scene should let both readings stand.",
+   "start": {
+    "text": "Second crossover, and it is the quiet one. No gallery, no cameras, no matching shirts — everybody spent those in March. The Senate reads the House measures on third reading, the House reads the Senate's, and by Thursday the year's legislation is a fixed list that nothing can be added to.\n\nWhat survives goes to conference. What does not is dead for the year, and 'for the year' is doing a lot of work in that sentence.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Carryover: this is the first year of a two-year biennium, so a measure that dies now stays alive on the file and can be taken up again next January. It does not have to be reintroduced."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Be careful how you sell carryover to people who took a day off work to testify in February. 'We'll get it next year' is true and it is also the most effective sedative in this building."
+     },
+     {
+      "t": "fiscal",
+      "text": "Next January the revenue picture will be the storm plus a year of recovery. A bill that carries over does not carry over into the same budget it was written for."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Tell the coalition the truth about carryover, all of it.",
+      "effects": {
+       "support": 4,
+       "influence": -1
+      },
+      "reply": "You say it plainly on the Thursday call: what carries over, what that is actually worth, and why next year is a different budget. Nobody thanks you for it. Two organizers who were about to quit do not quit.",
+      "goto": "list"
+     },
+     {
+      "label": "Say nothing yet. Everything alive needs you in conference, not on a call.",
+      "effects": {
+       "influence": 3,
+       "support": -2
+      },
+      "reply": "The call gets postponed to next week and then to the week after. You are not wrong about where the work is. The people who filled a hearing room in February find out from a newsletter.",
+      "goto": "list"
+     },
+     {
+      "label": "Work the floor one more time for whatever is still on the bubble.",
+      "check": {
+       "skill": "mobilizing",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "support",
+         "per": 30
+        },
+        {
+         "from": "skill",
+         "id": "talkstory",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Forty-eight hours, no notice, and you put enough real constituents on enough real phones that two members who were going to be conveniently absent for third reading are in their chairs when the clerk reads the number.",
+       "effects": {
+        "support": 3,
+        "influence": 2
+       }
+      },
+      "failure": {
+       "reply": "You have asked these people for something in eleven of the last thirteen weeks. The list is tired. You get a fraction of what the same ask got you in February, and the fraction is the news.",
+       "effects": {
+        "support": -3
+       }
+      },
+      "goto": "list"
+     }
+    ]
+   },
+   "list": {
+    "text": "Thursday evening the list closes. Whatever is on it is the year.\n\nConference convenes next week, behind doors, with no public testimony and no more amendments from the floor. From here on, everything that happens to your bills happens in a room you cannot enter, decided by people whose names get posted on Monday.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "No testimony in conference. No public hearing on the final draft. The most consequential week of the session is the least visible one, and that is not an accident."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Wait for Monday's list of conferees.",
+      "effects": {},
+      "reply": "You wait for Monday."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "office": "talk-office",
+     "sen-x": "talk-sen"
+    },
+    "actions": [
+     "rally",
+     "bench"
+    ]
+   }
+  },
+  "w15-crunch": {
+   "_note": "DEADLINE WEEK: conference (chairs.json stages.conf, deadline 15). The conference roll in resolveBills is AUTOMATIC and halves a bill on a miss — the highest-stakes check in the game and the only one the player never opts into — so this scene exists to make the player feel it coming rather than discover it in a status word. Grange returns here because conference is where the business roundtable's access is worth the most and the coalition's is worth the least.",
+   "start": {
+    "text": "Conference. Room 309, and you are not in it.\n\nSix people — three from each chamber, named Monday — sitting at a table with the House draft on one side and the Senate draft on the other, and a deadline Friday. There is no public testimony. There is no hearing. There is a clock and a stack, and at some point after ten at night somebody says a number and somebody else says a smaller number.\n\nGrange has been in that hallway since Tuesday morning. He is not in the room either. He does not have to be; he has been in it for thirty years.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Conference cannot add anything. It can only cut, merge, or let something die by running out the clock — and running out the clock is what it does most."
+     },
+     {
+      "t": "fiscal",
+      "text": "Everything gets decided against one figure now, and that figure has six hundred million dollars of storm in it. Your number is not competing with zero. It is competing with a bridge on Kauaʻi."
+     },
+     {
+      "t": "talkstory",
+      "text": "The conferees are named. That is the entire public record you get. Every other thing you learn this week, you learn from somebody who should not have told you."
+     },
+     {
+      "t": "basebuilding",
+      "text": "This is the week the campaign either has durability or does not, and there is nothing left to do about which. Whatever you built by now is what walks into that room with your bill."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Hold the number. No deal that cuts it, and say so out loud.",
+      "effects": {
+       "support": 5,
+       "influence": -4,
+       "flag": "held-the-number"
+      },
+      "reply": "You tell all six conferees, in writing, that the coalition will not support a diluted version. It is a real position honestly held and it is also a gun pointed at your own foot, and every person you hand it to understands both halves.",
+      "goto": "friday"
+     },
+     {
+      "label": "Take the deal. Something at sixty percent beats nothing at a hundred.",
+      "effects": {
+       "influence": 4,
+       "support": -3,
+       "flag": "took-the-deal"
+      },
+      "reply": "You let it be known, quietly, that you can live with a smaller number. It is in front of the conferees within the hour, which tells you exactly how closely somebody was listening for it.",
+      "goto": "friday"
+     },
+     {
+      "label": "Find Grange in the hallway and ask him what he is actually protecting.",
+      "check": {
+       "skill": "talkstory",
+       "dc": 13,
+       "type": "red",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "fiscal",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "He tells you, because at this hour of this week it costs him nothing and he has always slightly enjoyed you. It is not your bill. It is one clause in it, worth a fraction of the total, and he has been spending a week of a thirty-year reputation on it. You have been defending the whole thing against a man who only ever wanted one paragraph.",
+       "effects": {
+        "influence": 5
+       }
+      },
+      "failure": {
+       "reply": "\"Long week,\" he says, and means it, and asks after your family, and means that too, and tells you nothing at all. He is very good at this. It is genuinely a pleasure to watch, right up until you are back in the hallway with what you came with.",
+       "effects": {
+        "influence": -2
+       }
+      },
+      "goto": "friday"
+     }
+    ]
+   },
+   "friday": {
+    "text": "Friday. The conference deadline is tonight, and everything not agreed by midnight dies where it sits — no vote, no record, the same death as February, at the other end of the session.\n\nYou will find out in the morning. Everyone will.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "One more beat after this: final reading, week sixteen. Nothing agreed tonight can be changed then. Whatever comes out of 309 is the bill."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Wait it out in the hallway.",
+      "effects": {},
+      "reply": "You wait it out in the hallway, with everyone else who cannot go in."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "grange": "talk-grange",
+     "coalition": "talk-coalition",
+     "office": "talk-office"
+    },
+    "actions": [
+     "rally",
+     "lobby"
+    ]
+   }
   }
  },
  "skillStart": {
@@ -1571,5 +2378,6 @@
   "ranks": ["None", "Very weak", "Weak", "Average", "Good",
             "Great", "Formidable"]
  },
- "_unlocksNote": "Talk story and actions are NOT a weekly allowance (changed 2026-08-15). Each event dialogue carries `unlocks` = {talks: {charId: dialogueId}, actions: [actionId]} applied when the event completes; a choice's effects may also carry `unlock` (same shape) for outcome-dependent doors. Action id 'push' opens the work-the-chair rows. A week whose event grants nothing is a closed building — renderHub says so explicitly. talkDefaults was removed with this change; the old week-1 calendar `talks` moved into w1-opening.unlocks. Keep every generic event granting SOMETHING or its week is dead air, and check the rotation after pinning a scripted week (see CLAUDE.md)."
+ "_unlocksNote": "Talk story and actions are NOT a weekly allowance (changed 2026-08-15). Each event dialogue carries `unlocks` = {talks: {charId: dialogueId}, actions: [actionId]} applied when the event completes; a choice's effects may also carry `unlock` (same shape) for outcome-dependent doors. Action id 'push' opens the work-the-chair rows. A week whose event grants nothing is a closed building — renderHub says so explicitly. talkDefaults was removed with this change; the old week-1 calendar `talks` moved into w1-opening.unlocks. Keep every generic event granting SOMETHING or its week is dead air, and check the rotation after pinning a scripted week (see CLAUDE.md).",
+ "_calendarNote": "Week 6 is the MANDATORY RECESS (Const. art. III, sec. 10: at least five days, somewhere between the 20th and 40th legislative day, with the actual dates fixed by concurrent resolution rather than the constitution). It carries `recess: true`, which makes resolveBills SKIP the chair rolls for that week WITHOUT moving any deadline — the whole lesson. Do not give it `noAction`: the Capitol is shut, the district is not, so w6-recess grants rally/bench and withholds `push`. Week 7 carries `milestone: false` so it can hold the storm `pre` without claiming a tick on a 940px strip already carrying twelve. `pre` runs BEFORE the week's own event and is tracked separately in S.preDone."
 }

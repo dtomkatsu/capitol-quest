@@ -777,15 +777,66 @@ Rules that must survive edits:
   through it; the `icon` keys still in session.json / policies.json are
   only the fallback for anything unmapped. Add new drawings to `SYM` —
   never paste an emoji into main.js.
-- The weekly overlay auto-pops only while the week's event is
+- The weekly overlay auto-pops only while the week's narrative is
   unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
-  Pinning a scripted event to a week SHIFTS that cycle rather than
-  dropping anything — weeks 2, 3 and 4 are scripted
-  (`w2-kawaguchi` / `w3-federal` / `w4-souza`), so the six generics run
-  weeks 5–15 at indices 3,4,5,0,1,2,3,4,5,0,1 and all six still appear.
-  **Re-check the whole rotation after pinning a week or adding a
-  generic** (`ev-introducer` made it six on 2026-08-15); a generic that
-  only lands on pinned weeks would vanish from the session entirely.
+  **Pinning does NOT shift the cycle** — the index is a pure function
+  of `w`, so pinning a week simply DROPS the generic that would have
+  landed there; it still appears wherever else the modulo puts it.
+  (An older note here claimed pinning shifts. It does not, and never
+  did in `calFor`.) Adding or removing a generic re-derives everything.
+  As of 2026-08-19 weeks 1–6, 8, 11, 13, 15 and 16 are scripted, which
+  leaves five generic weeks — 7, 9, 10, 12, 14 — against six generics,
+  so **exactly one always sits out**. Which one is decided entirely by
+  the ORDER of `genericEvents`: those weeks take indices 5, 1, 2, 4, 0,
+  so index 3 never plays, and `ev-potluck` is parked there deliberately
+  (lightest scene, only one not tied to the module's argument).
+  **Re-derive that list after pinning or unpinning any week** — the
+  failure is silent, and before the 2026-08-19 pass the back half of
+  the session was five verbatim reruns of weeks 5–9.
+- **`pre` runs a scene BEFORE the week's own event** (calendar `pre`,
+  tracked in `S.preDone`, NOT `S.eventDone`). The two lists are separate
+  on purpose: the player can close the panel between the two scenes, and
+  marking them together replays the first every time they reopen it.
+  `eventPending(cal)` is the one predicate that asks about the pair, and
+  every gate that decides whether to pop the panel must call it rather
+  than testing `cal.event` — there are five such gates.
+- **A calendar entry is not automatically a milestone.** `milestone:
+  false` keeps it off both timeline strips (`milestones()` filters for
+  both `renderTimeline` and `renderProgress`) so an entry can carry week
+  data — a `pre`, a recess flag — without claiming a tick. The 940px
+  inner width is what stops labels colliding and it is already carrying
+  twelve; week 7 uses this.
+- **THE MANDATORY RECESS IS WEEK 6** (Const. art. III, sec. 10: at least
+  five days, somewhere between the 20th and 40th legislative day, with
+  the dates fixed by concurrent resolution, not the constitution).
+  Anchored to real practice — the 2025 session opened Jan 15 and
+  recessed Feb 20–26, which against `sessionStart` 2027-01-20 is exactly
+  this week. Three rules:
+  - The calendar entry carries `recess: true`, and `resolveBills` skips
+    **every** gate that week except `auto`. A chair-only skip fires on
+    NOTHING — by week 6 anything that cleared House Finance (deadline 5)
+    is at `h-floor`, a `floor` gate, and anything still at `h-fin` is
+    already dead — so the recess would cost the player nothing at all.
+    This was written wrong once; don't rewrite it that way.
+  - **No deadline moves to compensate, and `window` must never be
+    extended.** `window` is fixed at `deadline - enteredWeek + 1` when
+    the bill enters the stage, so a skipped week is simply one draw the
+    bill never gets. That IS the lesson; "fixing" it deletes the week.
+  - It is NOT `noAction`. Sine Die's flag closes everything; the recess
+    closes the CAPITOL and leaves the district open, which falls out of
+    `unlocks` for free — `w6-recess` grants `rally`/`bench` and
+    withholds `push`, and opens no chair's door. The building being
+    empty is the content.
+  "Floor Votes" slid from week 6 to week 7 to make room, and
+  "Crossover Eve" was dropped (it and "First Crossover" named one beat).
+- **A single event can move the FY2027 bottom line.** `w7-storm` (a Kona
+  low, pinned as week 7's `pre`) books −$600,000K of state disaster
+  share through the ordinary `revenueK` channel, ~15× `ev-emergency`'s
+  clinic rescue. It kills no bill — it re-prices the session by moving
+  the number the campaign has to cover. `applyFx` therefore calls
+  `syncScore()`, NOT `setExternal(revenueK)`: the bare form dropped every
+  enacted bill's contribution off the chip until the next `resolveBills`
+  put it back, which is survivable at ±$4M and not at $600M.
 - **The scripted opening is weeks 1–4, and it is a chain.** Opening Day
   (the caucus, `kawaguchi-date`) → week 2 the courtesy call in
   Kawaguchi's office (`souza-intro`) → **week 3 `w3-federal`, the HR1
@@ -853,8 +904,9 @@ Rules that must survive edits:
   Rebuilt 2026-08-15; four things must not regress:
   - **The session panel is WIDER than the other overlays on purpose**
     (`#session-overlay .ovl-panel`, 1040px vs the shared 680px). The
-    strip is a fixed 940px — that width is what keeps eleven milestone
-    labels from colliding — so at 680px only ~634px of it was ever on
+    strip is a fixed 940px — that width is what keeps twelve milestone
+    labels from colliding (measured again after the recess was added
+    2026-08-19: no overlap on either row) — so at 680px only ~634px of it was ever on
     screen and everything past Second Lateral sat in scroll the player
     had no reason to know existed. 1040 − 40px panel padding − 32px
     strip inset clears 940, so a normal window shows Opening Day
@@ -878,7 +930,7 @@ Rules that must survive edits:
   - **At rest exactly ONE label is drawn** — `.cur-stage`, the latest
     milestone at or before the current week (on a milestone week that
     is the current dot; between milestones it is the phase you are
-    still inside, so week 6 reads "First Lateral"). Eleven labels at
+    still inside, so week 7 reads "Recess"). Twelve labels at
     once is a wall nobody reads, and the masthead already answers "where
     am I". The rest fade in together on `:hover` or on `.reveal`, which
     a tap anywhere on the strip toggles — that class exists purely so a

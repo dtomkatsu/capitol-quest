@@ -989,7 +989,7 @@ const SessionPanel = {
     };
     const defaults = () => ({
       week: 1, actionWeek: -1, agendaLocked: false, agenda: [],
-      eventDone: [], talked: {}, log: [], flags: {}, checks: {},
+      eventDone: [], preDone: [], talked: {}, log: [], flags: {}, checks: {},
       unlocks: { week: 0, talks: {}, actions: [] },
       // rapport with your two introducers, keyed by chamber; seeded from
       // chairs.json in seedIntroducers() so the baseline lives with the
@@ -1022,6 +1022,10 @@ const SessionPanel = {
       // open doors, and the next event re-grants
       S.unlocks = Object.assign({ week: 0, talks: {}, actions: [] },
         S.unlocks || {});
+      // saves from before pre-events (2026-08-19) have no preDone list;
+      // an empty one is correct — they simply play the pre when they
+      // reach a week that has one
+      S.preDone = S.preDone || [];
       // pre-introducer saves (before 2026-08-15) just get seeded at the
       // baseline by seedIntroducers(), which is exactly the behaviour
       // they already had — the odds term is zero-centred there
@@ -1093,6 +1097,17 @@ const SessionPanel = {
           (w >= 2 && w < data.sineDieWeek
             ? data.genericEvents[(w - 2) % data.genericEvents.length]
             : null),
+        // a PRE-event runs before the week's own event and is tracked
+        // separately (S.preDone) — a week can carry both, and closing
+        // the panel between them must not replay the first
+        pre: hit.pre || null,
+        // RECESS weeks: neither chamber convenes, so resolveBills skips
+        // EVERY gate (not just the chair ones — see the note there) and
+        // every deadline stays exactly where it was, which is the lesson
+        recess: !!hit.recess,
+        // a calendar entry that carries data but is not a milestone
+        // keeps its tick off the timeline strips
+        milestone: hit.milestone !== false,
         agenda: !!hit.agenda,
         noAction: !!hit.noAction || w > data.sineDieWeek,
         // no weekly defaults — talk story and actions are OPENINGS the
@@ -1207,7 +1222,14 @@ const SessionPanel = {
           parts.push('<span class="gain">Opened: ' + esc(n) + "</span>");
         }
       }
-      PolicyPanel.setExternal(S.metrics.revenueK);
+      /* syncScore(), NOT setExternal(revenueK) — the bare form dropped
+         every enacted bill's contribution off the scoreboard until the
+         next resolveBills put it back, so the FY2027 chip flinched by
+         the size of the player's own legislation on any week an fx
+         landed. It matters more now that a single event can move the
+         bottom line by $600M (w7-storm): the chip is where that number
+         is supposed to be legible. */
+      syncScore();
       save();
       renderHead();
       return parts.length ? '<div class="sd-fx">' +
@@ -1239,27 +1261,36 @@ const SessionPanel = {
     /* ---- mini timeline: the session's real milestones (crossover,
        conference, sine die…) plotted from data.calendar, with a marker
        for the current week. Milestone dots stagger label rows top/bottom
-       so 8-9 titles don't collide in the overlay's width; a separate
+       so a dozen titles don't collide in the overlay's width; a separate
        round cursor marks the current week even between milestones. */
+    /* The milestone list is NOT data.calendar — a calendar entry may
+       carry week data (a `pre`, a recess flag) without being a beat the
+       player should see plotted. `milestone: false` keeps it off both
+       strips; the 940px inner width is what stops the labels colliding
+       and it is already carrying twelve. */
+    const milestones = () =>
+      data.calendar.filter((c) => c.milestone !== false);
+
     const renderTimeline = () => {
       const el = $("sess-timeline");
       if (!el) return;
+      const cal = milestones();
       const span = Math.max(1, data.sineDieWeek - 1);
       const pctOf = (w) => Math.max(0, Math.min(100,
         ((w - 1) / span) * 100));
       const curPct = pctOf(S.week);
-      const atMilestone = data.calendar.some((c) => c.week === S.week);
+      const atMilestone = cal.some((c) => c.week === S.week);
       /* Only ONE label is drawn at rest: the stage the session is
          actually IN — the latest milestone at or before this week. On
          a milestone week that is the current dot; between milestones it
          is the phase you are still inside (week 6 is inside First
          Lateral). Everything else fades in on hover/tap, so the strip
-         reads as one legible line instead of eleven competing ones. */
+         reads as one legible line instead of twelve competing ones. */
       let stageI = -1;
-      data.calendar.forEach((c, i) => { if (c.week <= S.week) stageI = i; });
+      cal.forEach((c, i) => { if (c.week <= S.week) stageI = i; });
       let h = '<div class="stl-track"></div>' +
         '<div class="stl-fill" style="width:' + curPct + '%"></div>';
-      data.calendar.forEach((c, i) => {
+      cal.forEach((c, i) => {
         const state = (c.week < S.week ? "past" :
           c.week === S.week ? "now" : "future") +
           (i === stageI ? " cur-stage" : "");
@@ -1268,7 +1299,7 @@ const SessionPanel = {
         // negative scroll space, so those two anchor to their dot's
         // outer edge instead of straddling it
         const edge = i === 0 ? " edge-l" :
-          i === data.calendar.length - 1 ? " edge-r" : "";
+          i === cal.length - 1 ? " edge-r" : "";
         h += '<button type="button" class="stl-m ' + state +
           (i % 2 ? " lbl-b" : " lbl-t") + edge +
           '" style="left:' + pctOf(c.week) + '%" data-week="' + c.week +
@@ -1376,7 +1407,7 @@ const SessionPanel = {
         ((w - 1) / span) * 100));
       if (!el.dataset.built) {
         let ticks = "";
-        data.calendar.forEach((c) => {
+        milestones().forEach((c) => {
           ticks += '<span class="htl-tick" data-week="' + c.week +
             '" style="left:' + pctOf(c.week) + '%"></span>';
         });
@@ -1568,7 +1599,7 @@ const SessionPanel = {
       // "unspent" = an unplayed event, or an OPENED action still unused —
       // a week whose event granted nothing has nothing pending
       const pending = !interim && !needAgenda &&
-        ((cal.event && !S.eventDone.includes(S.week)) ||
+        (eventPending(cal) ||
           (!cal.noAction && weekOpen().acts.length &&
             S.actionWeek !== S.week));
       btn.disabled = interim;
@@ -2839,7 +2870,7 @@ const SessionPanel = {
           // the campaign is formed — now play the week's narrative,
           // if any is still waiting
           const cal = calFor(S.week);
-          if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+          if (eventPending(cal)) runEvent();
           else renderHub();
         });
       }
@@ -2961,9 +2992,11 @@ const SessionPanel = {
       html += billLedger(interim);
       html += introStrip();
 
-      // this week's event — the thing that opens every other door
-      const evDone = S.eventDone.includes(S.week);
-      if (cal.event) {
+      // this week's event — the thing that opens every other door.
+      // A week carrying a `pre` is not "handled" until BOTH scenes are
+      // through, so this asks eventPending rather than eventDone alone.
+      const evDone = !eventPending(cal);
+      if (cal.event || cal.pre) {
         html += '<div class="sh-sec">This week</div>';
         html += '<div class="sh-row' + (evDone ? " done" : "") +
           '" data-ev="1"><span class="shname"><b>' + sym("event") + " " +
@@ -3198,8 +3231,33 @@ const SessionPanel = {
       });
     };
 
+    /* Has this week got narrative still waiting? BOTH halves count — a
+       week may carry a `pre` (the storm at week 7) in front of its own
+       event, and every gate that decides whether to pop the panel has
+       to ask about the pair, not just `cal.event`. */
+    const eventPending = (cal) =>
+      (!!cal.pre && !S.preDone.includes(S.week)) ||
+      (!!cal.event && !S.eventDone.includes(S.week));
+
     const runEvent = () => {
       const cal = calFor(S.week);
+      /* THE PRE RUNS FIRST AND IS MARKED THE MOMENT IT FINISHES, not
+         when the week's own event does. The player can close the panel
+         in the gap between the two scenes — mark them together and the
+         storm replays every time they reopen it. */
+      if (cal.pre && !S.preDone.includes(S.week)) {
+        const pre = data.dialogues[cal.pre] || {};
+        showDialogue(cal.pre, () => {
+          if (!S.preDone.includes(S.week)) {
+            S.preDone.push(S.week);
+            grantUnlocks(pre.unlocks);
+          }
+          save();
+          if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+          else renderHub();
+        });
+        return;
+      }
       const dlg = data.dialogues[cal.event] || {};
       showDialogue(cal.event, () => {
         if (!S.eventDone.includes(S.week)) {
@@ -3538,6 +3596,23 @@ const SessionPanel = {
       const rec = (b, kind, extra) => events.push(Object.assign(
         { id: b.id, name: b.name, kind: kind, stage: b.route[b.stage] },
         extra || {}));
+      /* THE MANDATORY RECESS (week 6). During a recess the chambers do
+         not convene at all: no committee meets, no floor session is
+         held, nothing is scheduled by anyone. So EVERY gate is skipped,
+         not just the chair ones — `auto` (introduction) is the single
+         exception, because it is bookkeeping rather than a hearing.
+         Getting this wrong is easy and silent: a chair-only skip fires
+         on NOTHING, because by week 6 anything that cleared House
+         Finance (deadline 5) is sitting at h-floor, a `floor` gate, and
+         anything still at h-fin is already dead. The recess would have
+         cost the player nothing at all.
+         What it costs is one ROLL. `window` was fixed at
+         `deadline - enteredWeek + 1` when the bill entered the stage, so
+         the per-week hazard does not rise to compensate — a skipped week
+         is simply one draw the bill never gets, against a deadline that
+         has not moved. That is the lesson, and it is why this must never
+         be "fixed" by extending the window. */
+      const recess = calFor(S.week).recess;
       for (const b of liveBills()) {
         const sid = b.route[b.stage];
         const st = stageOf(sid);
@@ -3549,6 +3624,13 @@ const SessionPanel = {
         const window = Math.max(
           1, (st.deadline || S.week) - (b.enteredWeek || S.week) + 1);
         let moved = false, p = 0;
+        if (recess) {
+          // one line in the movement report, so a week where nothing
+          // happened reads as the recess and not as a broken turn
+          rec(b, "recess", { chair: (chairOf(sid) || {}).name,
+                             floor: st.gate === "floor" });
+          continue;
+        }
         if (st.gate === "chair") {
           const ch = Object.assign({ id: sid }, chairOf(sid) || {});
           const od = chairOddsParts(b, ch);
@@ -3942,6 +4024,16 @@ const SessionPanel = {
               s: m.cause === "never heard"
                 ? "No vote was taken. No record exists of anyone killing it."
                 : "The clock beat it." };
+          case "recess":
+            // the recess has to be VISIBLE or the week reads as a bug.
+            // Name the cost explicitly: a week skipped against a
+            // deadline that did not move to make up for it.
+            return { cls: "near", t: "Recess — nothing moved",
+              s: (m.floor
+                ? "Neither chamber convened, so it was never called."
+                : esc(m.chair || "The chair") + " scheduled nothing, " +
+                  "because during a recess nobody can.") +
+                 " One week gone. The deadline did not move." };
           default: return null;
         }
       };
@@ -4089,7 +4181,7 @@ const SessionPanel = {
           renderHub();              // let the player read what happened
           return;
         }
-        if (cal.event && !S.eventDone.includes(S.week)) {
+        if (eventPending(cal)) {
           openOverlay(true);
           runEvent();
         } else {
@@ -4177,7 +4269,7 @@ const SessionPanel = {
         // skill investment / bill agenda comes first when it's pending —
         // the narrative event follows once that's locked in
         if (cal.agenda && !S.agendaLocked) renderHub();
-        else if (cal.event && !S.eventDone.includes(S.week)) runEvent();
+        else if (eventPending(cal)) runEvent();
         else renderHub();
       } else overlay.classList.add("hidden");
     };
@@ -4298,7 +4390,7 @@ const SessionPanel = {
     syncScore();
     renderHead();
     const cal0 = calFor(S.week);
-    if ((cal0.event && !S.eventDone.includes(S.week)) ||
+    if (eventPending(cal0) ||
         (cal0.agenda && !S.agendaLocked)) {
       openOverlay(true);            // the FIRST week arriving
       // skill investment / bill agenda comes first when it's pending —
@@ -4407,7 +4499,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=9");
+    this.load.json("session", "map/session.json?v=10");
     this.load.json("chairs", "map/chairs.json?v=1");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
