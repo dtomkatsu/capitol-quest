@@ -122,6 +122,11 @@
     "note": "Every bill carrying a dollar figure crosses his desk, and he alone decides which are heard at all. Not an opponent — a scheduler who will not spend a slot on a measure he expects to die later."
    }
   },
+  "yamamoto": {
+   "name": "Rep. Jennifer Yamamoto",
+   "role": "House Finance co-chair",
+   "icon": "🏛"
+  },
   "grange": {
    "name": "Curtis Grange",
    "role": "business-roundtable lobbyist",
@@ -260,7 +265,7 @@
    "week": 2,
    "title": "First Hearings",
    "phase": "Session",
-   "event": "w2-kawaguchi"
+   "event": "w2-yamamoto"
   },
   {
    "week": 3,
@@ -622,132 +627,6 @@
        }
       }
      }
-    ]
-   }
-  },
-  "w2-kawaguchi": {
-   "art": "w2-finance",
-   "_note": "TWO-PART ART, the first in the game: the dialogue-level `art` (w2-finance, the Beretania breezeway) carries the approach, and the `office` node overrides it with w2-finance-office. renderNode reads `n.art || dlg.art`, so a node-level key is all this needs. THE PLAYER'S BILLS ARE NOT HEARD YET and must not be written as if they were — Finance's referral deadline is week 5 (chairs.json stages.h-fin) and the date Kawaguchi may have named in w1 is February 14th, which is week 5. Week 2 is a courtesy call, and its real job is to hand the player the Senate problem: `souza-intro` is set here and spent in w3-souza.",
-   "start": {
-    "text": "Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Ways and Means posted its hearing notices this morning; Finance posts tomorrow. Neither list has your bills on it. It is far too early for that to mean anything — which has never once stopped this hallway from reading it as though it did.",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "Week two. Finance's referral deadline is week five. Nothing has gone wrong yet — the calendar hasn't even started being cruel."
-     },
-     {
-      "t": "talkstory",
-      "text": "He gave you fifteen minutes in week two. Chairs don't spend fifteen minutes on somebody they've already decided about."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Bring the fiscal note. Fifteen minutes, one number.",
-      "effects": {
-       "influence": 1
-      },
-      "reply": "You leave the binder in the bag and walk in with a single page.",
-      "goto": "office"
-     },
-     {
-      "label": "Bring the caseload pages. Fifteen minutes, one family.",
-      "effects": {
-       "support": 1
-      },
-      "reply": "Sixteen thousand five hundred and seventy adults, and one of them with a name and a district.",
-      "goto": "office"
-     },
-     {
-      "label": "Bring nothing. Let him say the first thing.",
-      "effects": {},
-      "reply": "You go up empty-handed, which in this building is either confidence or a mistake, and nobody can tell which until afterward.",
-      "goto": "office"
-     }
-    ]
-   },
-   "office": {
-    "art": "w2-finance-office",
-    "speaker": "kawaguchi",
-    "text": "He doesn't stand. \"Sit. Your bills aren't on my notice this week, and I'd rather you heard that from me than from somebody downstairs with a theory.\" He turns his chair a few degrees toward the window. \"Eight hundred and seventy-six measures came to Finance last session. I heard a fraction of them and I'm not apologizing for the fraction. You are not my problem.\" A pause, and this is the part he actually asked you up here for. \"My problem is that whatever I hear, Ways and Means hears after me. And Chris Souza hasn't returned a call of mine since November.\"",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "876 referrals, and this committee hands back one of the two lowest hearing rates in the building. He isn't being dramatic, he's quoting his own workload."
-     },
-     {
-      "t": "procedure",
-      "text": "He just drew you the route: Finance, then Ways and Means. A bill he hears is still a bill Souza can bury. Plan for two gates, not one."
-     },
-     {
-      "t": "talkstory",
-      "text": "\"Hasn't returned a call since November\" isn't a complaint, it's an offer. He wants something carried to the Senate that he can't be seen carrying."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"Then tell me what Ways and Means needs to hear.\"",
-      "effects": {
-       "influence": 3
-      },
-      "reply": "He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. \"Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that and don't tell him I said so.\""
-     },
-     {
-      "label": "\"Hear one of ours early, chair. I'll fill your room.\"",
-      "effects": {
-       "support": 3,
-       "influence": -1
-      },
-      "reply": "\"Everybody fills my room.\" But he writes something down, which is more than he did in January."
-     },
-     {
-      "label": "\"Call him. From this office, while I'm sitting here.\"",
-      "check": {
-       "skill": "talkstory",
-       "dc": 13,
-       "type": "red",
-       "mods": [
-        {
-         "from": "influence",
-         "per": 25
-        },
-        {
-         "from": "flag",
-         "id": "kawaguchi-date",
-         "add": 2,
-         "label": "the date he gave you"
-        },
-        {
-         "from": "skill",
-         "id": "procedure",
-         "per": 3
-        }
-       ]
-      },
-      "success": {
-       "reply": "He looks at you a long moment, then picks up the desk phone. He does not get Souza. He gets a scheduler — and he uses the chair's voice on her, the one he has not once used on you. \"Jon Kawaguchi. Put them on the calendar.\" He hangs up. \"That is the entire favor. Don't spend it saying hello.\"",
-       "effects": {
-        "influence": -2,
-        "flag": "souza-intro"
-       }
-      },
-      "failure": {
-       "reply": "\"In my own office?\" He puts one hand flat on the desk, which is as close as this man comes to raising his voice. \"When I want the Senate to know what I'm doing, I'll tell them myself.\"",
-       "effects": {
-        "influence": -4
-       }
-      }
-     }
-    ]
-   },
-   "unlocks": {
-    "talks": {
-     "kawaguchi": "talk-kawaguchi",
-     "office": "talk-office",
-     "rep-x": "talk-rep"
-    },
-    "actions": [
-     "lobby",
-     "push"
     ]
    }
   },
@@ -1494,7 +1373,7 @@
    }
   },
   "w4-souza": {
-   "_note": "NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3; the w2 souza-intro flag payoff is unchanged, just a week later) (House money you can walk up to in a breezeway; Senate money you cannot). The red check reads `souza-intro` from w2-kawaguchi — a player who spent Kawaguchi's phone call gets +3 here, and a player who never got in his office is rolling this cold.",
+   "_note": "NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3). The red check reads `yamamoto-open` (2026-08-19, user's call moved the Kawaguchi meeting to week 5 — its `souza-intro` flag no longer exists this early, so this now reads the co-chair's tip from w2-yamamoto instead): a player who spent Yamamoto's favor gets +3 here, and a player who never got in her office is rolling this cold. `souza-intro` still exists — it is set THREE WEEKS LATER, in w5-decking, and is spent in w8-crossover and w11-wam.",
    "start": {
     "text": "Money Committee Week. Ways and Means posts its notices Tuesday at four, and by twenty past, every advocate in the building has read them off a phone in the same hallway. You have called Souza's office six times. His scheduler is unfailingly warm, remembers your name without being told, and has nothing — not this week, not next, and the week after that is holding for the chair. Room 211 is the same koa as every other door on the floor. It is closed.",
     "voices": [
@@ -1536,9 +1415,9 @@
        "mods": [
         {
          "from": "flag",
-         "id": "souza-intro",
+         "id": "yamamoto-open",
          "add": 3,
-         "label": "Kawaguchi's phone call"
+         "label": "Yamamoto's tip"
         },
         {
          "from": "influence",
@@ -1580,94 +1459,132 @@
    }
   },
   "w5-decking": {
-   "_note": "DEADLINE WEEK: Finance's referral deadline is week 5 (chairs.json stages.h-fin). The scene runs on TUESDAY and the deadline is Friday, so it plays BEFORE the week's chair roll and must never state the outcome — resolveBills decides that when the turn ends. Its job is to make the player feel that a bill dies here with no vote, no roll call and no record. Absorbs the hearing-day material ev-testimony used to carry at this week.",
+   "_note": "DEADLINE WEEK, and THE KAWAGUCHI MEETING (moved here from week 2 on 2026-08-19, user's call — week 2 now belongs to co-chair Yamamoto, w2-yamamoto). Finance's referral deadline is week 5 (chairs.json stages.h-fin), and the date Kawaguchi may have named via the week-1 optional talk (`talk-kawaguchi`) is February 14th — THIS week — so a player who earned `kawaguchi-date` is walking in already owed something. TWO-PART ART carries over unchanged from the original placement: the dialogue-level `art` (w2-finance, the Beretania breezeway) carries the approach, the `office` node overrides it with w2-finance-office; renderNode reads `n.art || dlg.art`. Sets `souza-intro`, spent in w8-crossover and w11-wam — both AFTER this week, so the causality holds now that the meeting sits at week 5 instead of week 2. w4-souza used to read `souza-intro` from here when this was week 2; since the meeting is now three weeks LATER than w4-souza, that scene reads `yamamoto-open` (set in w2-yamamoto) instead — keep it that way, or w4 is checking a flag that cannot exist yet.",
+   "art": "w2-finance",
    "start": {
-    "text": "The lateral file goes up Friday at four, and everything not on it is finished for the year.\n\nThis is the part nobody outside the building believes. Your bills will not be voted down this week. There will be no roll call, no debate, no recorded position anybody can be asked about in an election year. Finance will simply post a hearing notice on Friday afternoon, and the measures that are not on it will stop existing, quietly, with a status code.\n\nIt is Tuesday. Kawaguchi's office has forty-one measures still live and room on the notice for maybe half.",
+    "text": "Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. The lateral file goes up at four — Finance's own notice, the one that decides who gets heard this year and who doesn't. Kawaguchi called you up here himself, which nobody in this hallway does for a courtesy.",
     "voices": [
      {
       "t": "procedure",
-      "text": "Learn the word: DECKING. A bill has to be posted before it can be heard, and the posting deadline is the real one. Miss it and there is nothing to appeal — nothing happened."
-     },
-     {
-      "t": "fiscal",
-      "text": "876 referrals last session and one of the two lowest hearing rates in the building. He is not deciding whether your bill is good. He is deciding what fits."
+      "text": "Read the room right: a chair who wants you to hear something from him instead of off a printout is either doing you a favor or bracing you for a loss. Both cost him time he doesn't have today."
      },
      {
       "t": "talkstory",
-      "text": "Half of those forty-one are somebody's whole year. Every advocate in this hallway is doing exactly what you are doing, and most of them will lose."
+      "text": "Decking day, and he still found fifteen minutes for you. That is not nothing, on the one day of the year he has none to spare."
      }
     ],
     "choices": [
      {
-      "label": "Camp outside Finance. Be the face he walks past all week.",
+      "label": "Bring the fiscal note. Fifteen minutes, one number.",
       "effects": {
-       "influence": 3,
-       "support": -1
+       "influence": 1
       },
-      "reply": "You are there Tuesday, Wednesday and Thursday. He never stops. On Thursday he says your name without looking up, which in this building is a receipt."
+      "reply": "You leave the binder in the bag and walk in with a single page.",
+      "goto": "office"
      },
      {
-      "label": "Get your introducer to ask for it on the floor, in public.",
+      "label": "Bring the caseload pages. Fifteen minutes, one family.",
       "effects": {
-       "rapport": {
-        "house": -4
-       },
-       "influence": 2,
-       "support": 3
+       "support": 1
       },
-      "reply": "They do it, and it works the way public pressure works: the notice question is now on the record, and your member has spent something with a chair they have to live beside until May.",
-      "goto": "friday"
+      "reply": "Sixteen thousand five hundred and seventy adults, and one of them with a name and a district.",
+      "goto": "office"
      },
      {
-      "label": "Read the notice queue and make the case it FITS — trim it yourself.",
+      "label": "Bring nothing. Let him say the first thing.",
+      "effects": {},
+      "reply": "You go up empty-handed, which in this building is either confidence or a mistake, and nobody can tell which until afterward.",
+      "goto": "office"
+     }
+    ]
+   },
+   "office": {
+    "art": "w2-finance-office",
+    "speaker": "kawaguchi",
+    "text": "He doesn't stand. \"Sit. The notice goes up at four, and I wanted you to hear where you stand from me, not off a phone in that hallway with everyone else.\" He turns his chair a few degrees toward the window. \"Eight hundred and seventy-six measures came to Finance last session. I heard a fraction of them and I'm not apologizing for the fraction.\" A pause, and this is the part he actually called you up here for. \"My problem, if you make my notice, is that whatever I hear, Ways and Means hears after me. And Chris Souza hasn't returned a call of mine since November.\"",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "876 referrals, and this committee hands back one of the two lowest hearing rates in the building. He isn't being dramatic, he's quoting his own workload."
+     },
+     {
+      "t": "procedure",
+      "text": "He just drew you the route: Finance, then Ways and Means. A bill he hears today is still a bill Souza can bury in April. Plan for two gates, not one."
+     },
+     {
+      "t": "talkstory",
+      "text": "\"Hasn't returned a call since November\" isn't a complaint, it's an offer. He wants something carried to the Senate that he can't be seen carrying himself."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Then tell me what Ways and Means needs to hear.\"",
+      "effects": {
+       "influence": 3
+      },
+      "reply": "He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. \"Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so.\""
+     },
+     {
+      "label": "\"Hear one of ours early, chair. I'll fill your room.\"",
+      "effects": {
+       "support": 3,
+       "influence": -1
+      },
+      "reply": "\"Everybody fills my room.\" But he writes something down, which is more than he did in January."
+     },
+     {
+      "label": "\"Call him. From this office, while I'm sitting here.\"",
       "check": {
-       "skill": "procedure",
-       "dc": 12,
-       "type": "white",
+       "skill": "talkstory",
+       "dc": 13,
+       "type": "red",
        "mods": [
         {
-         "from": "skill",
-         "id": "fiscal",
-         "per": 3
+         "from": "influence",
+         "per": 25
         },
         {
          "from": "flag",
          "id": "kawaguchi-date",
          "add": 2,
          "label": "the date he gave you"
+        },
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 3
         }
        ]
       },
       "success": {
-       "reply": "You go up with a two-page amendment that drops the effective date a year and takes the department's fiscal objection off the table entirely. His analyst reads it standing. \"This I can post,\" she says, \"if he wants to.\" That last clause is the whole business.",
+       "reply": "He looks at you a long moment, then picks up the desk phone. He does not get Souza. He gets a scheduler — and he uses the chair's voice on her, the one he has not once used on you. \"Jon Kawaguchi. Put them on the calendar.\" He hangs up. \"That is the entire favor. Don't spend it saying hello.\"",
        "effects": {
-        "influence": 4
+        "influence": -2,
+        "flag": "souza-intro"
        }
       },
       "failure": {
-       "reply": "The analyst is kind about it. The trim you offered is the one thing the coalition told you never to give away, and she can see you offering it without being asked — which tells her exactly how worried you are.",
+       "reply": "\"In my own office?\" He puts one hand flat on the desk, which is as close as this man comes to raising his voice. \"When I want the Senate to know what I'm doing, I'll tell them myself.\"",
        "effects": {
-        "influence": -2,
-        "support": -2
+        "influence": -4
        }
-      },
-      "goto": "friday"
+      }
      }
     ]
    },
    "friday": {
-    "text": "Friday, 3:52pm. The hallway outside Finance fills the way it always does — advocates who have been here thirty years standing next to interns refreshing a page on their phones. Nobody talks. At four the notice posts.\n\nYou will find out what is on it when the week ends. That is not a metaphor about the game; it is how the building works. The file goes up and you read it like everyone else.",
+    "text": "Four o'clock. You're back in the hallway outside Finance with everyone else who doesn't have a chair's ear, watching the same door you just walked out of. Whatever he decided in there, the notice makes it official in twenty minutes — the same way it does for the forty other measures that got fifteen minutes and a closed door instead of an open one.",
     "voices": [
      {
       "t": "procedure",
-      "text": "Whatever happens now, note the shape of it: the deadline did the killing, and the deadline is the one thing in this building that never negotiates."
+      "text": "Fifteen minutes with the chair is not a hearing. Whatever happens at four, you'll read it standing up, same as everyone who didn't get the meeting."
      }
     ],
     "choices": [
      {
       "label": "Stay for the posting.",
       "effects": {},
-      "reply": "You stay. Whatever is on that notice, you will have watched it arrive."
+      "reply": "You stay. Whatever is on that notice, you will have watched it arrive — from a few feet closer than most people ever get."
      }
     ]
    },
@@ -1678,8 +1595,8 @@
      "rep-x": "talk-rep"
     },
     "actions": [
-     "push",
-     "rally"
+     "lobby",
+     "push"
     ]
    }
   },
@@ -2051,7 +1968,7 @@
    }
   },
   "w11-wam": {
-   "_note": "DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w4-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w2-kawaguchi) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.",
+   "_note": "DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w4-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w5-decking) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.",
    "start": {
     "text": "Ways and Means decks Friday, and after Ways and Means there is no more committee. Whatever is on that notice goes to conference. Whatever is not is finished, in a chamber that never held a hearing on it, having crossed the rotunda for nothing.\n\nRoom 211 is the same closed koa door it was in February. But the anteroom is different now: there are eleven people in it and every one of them is carrying a measure that already passed the other chamber. This is the bottleneck the whole building funnels into, and it is one man's calendar.",
     "voices": [
@@ -2366,6 +2283,146 @@
      "lobby"
     ]
    }
+  },
+  "w2-yamamoto": {
+   "_note": "Week 2's courtesy call — now with the co-chair, not the chair (2026-08-19, user's call: \"week 5 will be the meeting with Kawaguchi... week 2 will be the meeting with the co-chair of House Finance, Jennifer Yamamoto\"). New character (characters.yamamoto), no card/portrait — same precedent as Grange and Souza, fully negotiated but no banner art yet. Sets `yamamoto-open`, which w4-souza reads in place of the `souza-intro` bonus that used to be set here — that flag moved to week 5 with Kawaguchi (w5-decking) and cannot exist this early any more. THE PLAYER'S BILLS ARE NOT HEARD YET — Finance's referral deadline is still week 5 (chairs.json stages.h-fin) — so nothing here may imply a hearing has happened or been scheduled.",
+   "start": {
+    "text": "Her door is already open when you get there, which after two weeks of scheduled fifteen-minute slots feels almost suspicious. \"Jon doesn't do the meet-and-greet circuit,\" she says, not looking up from a stack of referral folders three feet high. \"Somebody on Finance should. Sit — tell me what you actually need, not the one-pager version.\"",
+    "voices": [
+     {
+      "t": "talkstory",
+      "text": "Co-chairs carry the workload the chair doesn't have time for. She reads more bills than he does; she just doesn't get to keep any of them."
+     },
+     {
+      "t": "procedure",
+      "text": "She can't schedule a hearing — that pen is his, not hers. What she CAN do is tell you things before he decides anything."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Give her the real number, not the press version.",
+      "effects": {
+       "influence": 1
+      },
+      "reply": "She writes it down on the folder itself, not a legal pad — in this building, that is the difference between a note and a record.",
+      "goto": "office"
+     },
+     {
+      "label": "Tell her about the family behind the caseload, not the fiscal note.",
+      "effects": {
+       "support": 1
+      },
+      "reply": "She listens the whole way through without once glancing at the folders. \"That's the version he needs. He won't ask for it himself.\"",
+      "goto": "office"
+     },
+     {
+      "label": "Ask her the question everyone's afraid to: what actually gets a bill heard here?",
+      "effects": {},
+      "reply": "She almost laughs. \"Nobody's asked me that directly in six years.\" Whatever she tells you next, she's telling you because you asked instead of pitched.",
+      "goto": "office"
+     }
+    ]
+   },
+   "office": {
+    "speaker": "yamamoto",
+    "text": "She finally looks up. \"Before this, I was a committee analyst — six years, Ways and Means, Senate side. I wrote the fiscal notes Souza's office actually reads.\" She taps the folder stack. \"Jon schedules. I read. Between the two of us we see everything that comes through this room, and half of what happens in the other one.\" A pause. \"You'll want something from over there eventually. Everybody does. I still owe a few people phone calls I never made.\"",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "A former WAM analyst reading your fiscal note is not the same as a stranger reading it. She will know exactly which number is soft before you do."
+     },
+     {
+      "t": "procedure",
+      "text": "\"Owes some people phone calls\" is an offer with the ask left off. Don't make her spell out the rest in front of anyone."
+     },
+     {
+      "t": "talkstory",
+      "text": "She hands you her own history inside of ten minutes. That is either instinct or a test, and it doesn't much matter which — you answer it the same way."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"What should the fiscal note actually say?\"",
+      "effects": {
+       "influence": 3
+      },
+      "reply": "She pulls a pen and marks up your draft live, the way she must have marked up hundreds for a chair who never once said thank you. \"This clears their staff review. Whether it clears Souza is a different problem — that one isn't mine to solve.\""
+     },
+     {
+      "label": "\"Put in a word for us over there, if you still can.\"",
+      "check": {
+       "skill": "talkstory",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 3
+        }
+       ]
+      },
+      "success": {
+       "reply": "She makes one call, off the record, to a Ways and Means clerk who still owes her a favor from 2019. \"It's not an introduction,\" she says after she hangs up. \"It's a name that won't get your call screened. That's all six years buys you now.\"",
+       "effects": {
+        "influence": 2,
+        "flag": "yamamoto-open"
+       }
+      },
+      "failure": {
+       "reply": "\"I'm a House member now,\" she says, not unkindly, closing the folder. \"That door isn't mine to open twice in one career, and it's not open today.\"",
+       "effects": {
+        "influence": -2
+       }
+      }
+     },
+     {
+      "label": "\"Just tell me what Kawaguchi actually wants to hear.\"",
+      "effects": {
+       "influence": 1
+      },
+      "reply": "\"Ask him,\" she says, and for the first time all meeting, offers nothing else. Some doors, even she only opens one at a time."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "yamamoto": "talk-yamamoto",
+     "office": "talk-office",
+     "rep-x": "talk-rep"
+    },
+    "actions": [
+     "lobby",
+     "push"
+    ]
+   }
+  },
+  "talk-yamamoto": {
+   "start": {
+    "speaker": "yamamoto",
+    "text": "\"Everybody wants Jon's pen. Nobody wants my folders.\" She taps the stack anyway. \"The folder is where a bill actually lives, before it's a headline.\"",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "The folder is the fiscal note, the referral history, every amendment offered and withdrawn. The headline is none of that."
+     },
+     {
+      "t": "procedure",
+      "text": "She is telling you, gently, to read the paperwork before you ask anyone for a miracle."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Noted, co-chair.\"",
+      "effects": {},
+      "reply": "She almost smiles — the same economical almost her chair uses. Maybe it's a Finance thing."
+     }
+    ]
+   }
   }
  },
  "skillStart": {
@@ -2379,5 +2436,6 @@
             "Great", "Formidable"]
  },
  "_unlocksNote": "Talk story and actions are NOT a weekly allowance (changed 2026-08-15). Each event dialogue carries `unlocks` = {talks: {charId: dialogueId}, actions: [actionId]} applied when the event completes; a choice's effects may also carry `unlock` (same shape) for outcome-dependent doors. Action id 'push' opens the work-the-chair rows. A week whose event grants nothing is a closed building — renderHub says so explicitly. talkDefaults was removed with this change; the old week-1 calendar `talks` moved into w1-opening.unlocks. Keep every generic event granting SOMETHING or its week is dead air, and check the rotation after pinning a scripted week (see CLAUDE.md).",
- "_calendarNote": "Week 6 is the MANDATORY RECESS (Const. art. III, sec. 10: at least five days, somewhere between the 20th and 40th legislative day, with the actual dates fixed by concurrent resolution rather than the constitution). It carries `recess: true`, which makes resolveBills SKIP the chair rolls for that week WITHOUT moving any deadline — the whole lesson. Do not give it `noAction`: the Capitol is shut, the district is not, so w6-recess grants rally/bench and withholds `push`. Week 7 carries `milestone: false` so it can hold the storm `pre` without claiming a tick on a 940px strip already carrying twelve. `pre` runs BEFORE the week's own event and is tracked separately in S.preDone."
+ "_calendarNote": "Week 6 is the MANDATORY RECESS (Const. art. III, sec. 10: at least five days, somewhere between the 20th and 40th legislative day, with the actual dates fixed by concurrent resolution rather than the constitution). It carries `recess: true`, which makes resolveBills SKIP the chair rolls for that week WITHOUT moving any deadline — the whole lesson. Do not give it `noAction`: the Capitol is shut, the district is not, so w6-recess grants rally/bench and withholds `push`. Week 7 carries `milestone: false` so it can hold the storm `pre` without claiming a tick on a 940px strip already carrying twelve. `pre` runs BEFORE the week's own event and is tracked separately in S.preDone.",
+ "_yamamotoNote": "Added 2026-08-19 (user's call: the week 2 meeting belongs to the co-chair, not the chair — Kawaguchi's own meeting moves to week 5, decking day). No `card` — same as Grange and Souza, a fully-negotiated character who simply has no banner photo yet; add one later per BANNERS.md's recipe if that changes. Her only mechanical output is the `yamamoto-open` flag (w2-yamamoto), which w4-souza now reads in place of the old `souza-intro` bonus — that flag moved to week 5 with Kawaguchi and can no longer be set early enough for week 4."
 }

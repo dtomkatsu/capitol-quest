@@ -837,14 +837,28 @@ Rules that must survive edits:
   `syncScore()`, NOT `setExternal(revenueK)`: the bare form dropped every
   enacted bill's contribution off the chip until the next `resolveBills`
   put it back, which is survivable at ±$4M and not at $600M.
-- **The scripted opening is weeks 1–4, and it is a chain.** Opening Day
-  (the caucus, `kawaguchi-date`) → week 2 the courtesy call in
-  Kawaguchi's office (`souza-intro`) → **week 3 `w3-federal`, the HR1
-  safety-net briefing** → week 4 failing to reach Souza (`w4-souza`),
-  where `souza-intro` is worth +3 on the hallway roll (58% → 92% at the
-  same skills). Flags are the only cross-week memory the engine has —
-  there is no node-level `req`/`if`, so a past choice can change a
-  later scene ONLY as a `{"from": "flag"}` check mod. Write for that.
+- **The scripted opening is weeks 1–5, and it is a chain.** Opening Day
+  (the caucus; `kawaguchi-date` is available here too, via the optional
+  `talk-kawaguchi` → `w1-kawaguchi` talk) → **week 2 `w2-yamamoto`, the
+  courtesy call with the co-chair** (`yamamoto-open` — 2026-08-19, user's
+  call: the week-2 meeting belongs to Yamamoto, not Kawaguchi) →
+  **week 3 `w3-federal`, the HR1 safety-net briefing** → week 4 failing
+  to reach Souza (`w4-souza`), where `yamamoto-open` is worth +3 on the
+  hallway roll (58% → 92% at the same skills) → **week 5 `w5-decking`,
+  THE KAWAGUCHI MEETING**, moved here from week 2 on 2026-08-19 so it
+  lands on decking day itself rather than three weeks before anything is
+  at stake; sets `souza-intro`, spent in `w8-crossover` and `w11-wam`.
+  Flags are the only cross-week memory the engine has — there is no
+  node-level `req`/`if`, so a past choice can change a later scene ONLY
+  as a `{"from": "flag"}` check mod. Write for that.
+  **Don't let `souza-intro` and `yamamoto-open` collapse into each
+  other.** They look like the same mechanic (a flag from an early
+  meeting, worth +2/+3 on a later red check) because they ARE the same
+  shape, deliberately — but they run on different clocks: `yamamoto-open`
+  is set at week 2 and spent at week 4; `souza-intro` is set at week 5
+  and spent at weeks 8 and 11. Wiring either one to the wrong week's
+  check makes that week roll a flag that cannot exist yet, which is
+  exactly the bug this note exists to prevent re-introducing.
 - **The player's own bills are not heard until week 5** (`h-fin`
   deadline in chairs.json) — nothing in weeks 1–4 may be written as
   though a hearing on them has happened or been scheduled, other than

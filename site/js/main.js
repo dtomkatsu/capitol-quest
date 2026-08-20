@@ -2080,9 +2080,9 @@ const SessionPanel = {
            don't want the portrait to show until the time is right").
            Two halves, and the second is the one that is easy to miss:
            - It only ever fires on a node whose `speaker` IS this
-             character, so a scene that opens on narration (w2-kawaguchi
-             waits in the breezeway before his door opens) shows no
-             portrait at all. That half was already true.
+             character, so a scene that opens on narration (w5-decking
+             waits in the breezeway before Kawaguchi's door opens) shows
+             no portrait at all. That half was already true.
            - **The beats already on screen move OUT of the rail's
              column.** Without this, the whole scene reflowed the
              instant he appeared and the breezeway — text and banner
@@ -4499,7 +4499,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=10");
+    this.load.json("session", "map/session.json?v=11");
     this.load.json("chairs", "map/chairs.json?v=1");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
