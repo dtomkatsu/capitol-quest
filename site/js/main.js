@@ -2677,12 +2677,14 @@ const SessionPanel = {
     let agendaStep = 0;
     const AG_STEPS = [
       { key: "cost", title: "Choose your priorities",
-        lede: "What the campaign is fighting for. Every one of these " +
-          "spends money the state does not currently have.",
+        lede: "What the campaign is fighting for. These are not bills " +
+          "you carry — they set the PRICE. Every one of them spends " +
+          "money the state does not currently have.",
         kindLabel: "Invest" },
       { key: "gain", title: "Choose how to pay",
-        lede: "Nothing above passes on its own merits alone — the " +
-          "money chairs ask this question first, so you answer it now.",
+        lede: "These are the bills your introducers actually carry, " +
+          "and the only measures the money committees will ever see. " +
+          "Raising it is the whole session.",
         kindLabel: "Raise" },
     ];
 
@@ -2691,12 +2693,15 @@ const SessionPanel = {
       body.dataset.view = "";
       const step = AG_STEPS[agendaStep];
       const picked = allPolicies.filter((p) => S.agenda.includes(p.id));
-      const n = picked.length;
       const mine = allPolicies.filter((p) => p.kind === step.key);
-      const spend = picked.filter((p) => p.kind === "cost")
-        .reduce((s, p) => s + p.amt, 0);
-      const raise = picked.filter((p) => p.kind === "gain")
-        .reduce((s, p) => s + p.amt, 0);
+      const costs = picked.filter((p) => p.kind === "cost");
+      const gains = picked.filter((p) => p.kind === "gain");
+      const spend = costs.reduce((s, p) => s + p.amt, 0);
+      const raise = gains.reduce((s, p) => s + p.amt, 0);
+      // `n` is the BILL count — the revenue picks — everywhere the word
+      // "bill" appears. The priorities are counted separately because
+      // they are a price, not legislation.
+      const n = gains.length;
 
       // step rail
       let html = '<div class="sk-select"><div class="ag-rail">';
@@ -2710,9 +2715,13 @@ const SessionPanel = {
       html += "</div>" +
         '<div class="sk-title">' + esc(step.title) + "</div>" +
         '<div class="ag-lede">' + esc(step.lede) + "</div>" +
-        '<div class="sk-ptchip"><b>' + n + "</b> bill" +
-        (n === 1 ? "" : "s") + " chosen" +
-        (n ? " · " + fmtK(spend) + " out, " + fmtK(raise) + " in" : "") +
+        '<div class="sk-ptchip">' +
+        (agendaStep === 0
+          ? "<b>" + costs.length + "</b> priorit" +
+            (costs.length === 1 ? "y" : "ies") + " chosen" +
+            (spend ? " · " + fmtK(spend) + "/yr to find" : "")
+          : "<b>" + n + "</b> tax bill" + (n === 1 ? "" : "s") +
+            " chosen · " + fmtK(raise) + " of " + fmtK(spend)) +
         "</div><div class=\"agc-grid\">";
       for (const p of mine) {
         const on = S.agenda.includes(p.id);
@@ -2731,7 +2740,7 @@ const SessionPanel = {
       html += "</div></div>";
 
       // the package ledger rides on the footer, above the plate
-      if (n) {
+      if (picked.length) {
         html += '<div class="ag-tally">' + picked.map((p) =>
           '<span class="agt ' + p.kind + '">' + (sym(p.id) || "") + " " +
           esc(p.name) + "</span>").join("") + "</div>";
@@ -2751,10 +2760,18 @@ const SessionPanel = {
           ? '<button class="sk-begin" id="ag-next" type="button">' +
             "How do we pay for it ▸</button>"
           : '<button class="sk-begin" id="sess-lock" type="button"' +
-            (n ? "" : " disabled") + ">" +
-            (n ? "Hand " + n + " bill" + (n === 1 ? "" : "s") +
-              " to your introducers ▸"
-              : "Choose at least one bill to continue") + "</button>") +
+            (n && costs.length ? "" : " disabled") + ">" +
+            /* TWO gates now, and they fail in the order the corridor
+               walks: no tax bill means there is no campaign to run,
+               and no priority means there is nothing the money is FOR.
+               The second message has to name step 1 explicitly — it is
+               the one case where the button you are looking at is
+               blocked by a screen behind you. */
+            (!n ? "Choose at least one tax bill to continue"
+              : !costs.length
+                ? "◂ Choose a priority for the money to fund"
+                : "Hand " + n + " bill" + (n === 1 ? "" : "s") +
+                  " to your introducers ▸") + "</button>") +
         "</div>";
 
       const keep = body.scrollTop;         // bumps shouldn't jump the page
@@ -2967,15 +2984,16 @@ const SessionPanel = {
         // only when the ledger isn't already showing them — billLedger
         // renders its own "Your bills" section the moment bills exist,
         // and both firing printed the heading twice
-        html += '<div class="sh-sec">Your bills</div>';
+        html += gapHtml() + '<div class="sh-sec">Your bills</div>';
         for (const id of S.agenda) {
           const p = allPolicies.find((q) => q.id === id);
-          if (p) {
+          // priorities are the PRICE and live in the gap block above;
+          // this list is legislation only
+          if (p && p.kind === "gain") {
             html += '<div class="sh-row"><span class="shname"><b>' +
               (sym(p.id) || p.icon) + " " + esc(p.name) +
               '</b></span><span class="shtag ' +
-              p.kind + '">' + (p.kind === "cost" ? "−" : "+") +
-              fmtK(p.amt) + "/yr</span></div>";
+              p.kind + '">+' + fmtK(p.amt) + "/yr</span></div>";
           }
         }
       }
@@ -3448,7 +3466,12 @@ const SessionPanel = {
       if (S.bills.length) return;
       for (const id of S.agenda) {
         const p = allPolicies.find((x) => x.id === id);
-        if (!p) continue;
+        // PRIORITIES ARE NOT BILLS. They set the target (targetK) and
+        // stop there; only revenue measures are carried, heard and
+        // killed. A cost bill would still route correctly if one ever
+        // came back — chairs.json keeps its route — but nothing creates
+        // one now.
+        if (!p || p.kind !== "gain") continue;
         // Module 1 routes every bill through the two MONEY committees and
         // nothing else — every bill with a dollar figure goes through both,
         // and they are the two hardest gates in the building. The
@@ -3482,6 +3505,24 @@ const SessionPanel = {
     const billsNetK = () => S.bills.reduce((s, b) =>
       b.status !== "enacted" ? s :
       s + (b.kind === "gain" ? 1 : -1) * b.amtK * b.amtScale, 0);
+    /* ---- the module is a REVENUE game (2026-08-19, user's call: "the
+       initial investment priorities determine how much revenue you have
+       to make up, but the bill process is centered on taxes").
+       The priorities are a COMMITMENT, not legislation: picking them
+       sets the price the campaign has to cover, and they never enter
+       the gauntlet. Only the revenue picks become bills. So the whole
+       session now reads as one question — can you raise what you
+       promised — and every chair, deadline and roll is about a tax
+       measure, which is the half of the building this module is
+       actually teaching.
+       Both numbers are DERIVED, never stored: `S.agenda` already holds
+       every pick and `S.bills` already holds every outcome, so a stored
+       target would be a third copy free to drift from either. */
+    const targetK = () => allPolicies.reduce((s, p) =>
+      p.kind === "cost" && S.agenda.includes(p.id) ? s + p.amt : s, 0);
+    const raisedK = () => S.bills.reduce((s, b) =>
+      b.status === "enacted" && b.kind === "gain"
+        ? s + b.amtK * b.amtScale : s, 0);
     const syncScore = () =>
       PolicyPanel.setExternal(S.metrics.revenueK + billsNetK());
 
@@ -3918,9 +3959,39 @@ const SessionPanel = {
       return h;
     };
 
+    /* ---- THE GAP: what the priorities cost against what the enacted
+       tax bills have actually raised. This is the module's scoreboard
+       now (2026-08-19) — the session asks one question and this is it,
+       so it sits at the top of the ledger rather than being something
+       the player reconstructs from six rows.
+       It reads honestly at both ends: nothing enacted yet says so
+       rather than showing a 0% bar, and overshooting says "raised more
+       than you promised" instead of clamping to 100% and looking like
+       a job merely finished. */
+    const gapHtml = () => {
+      const want = targetK();
+      if (!want) return "";
+      const got = raisedK();
+      const pct = Math.max(0, Math.min(100, (got / want) * 100));
+      const left = want - got;
+      return '<div class="sh-gap' + (left <= 0 ? " met" : "") + '">' +
+        '<div class="gap-top"><span class="gap-lbl">' +
+        (left <= 0 ? "Your priorities are funded"
+          : "To fund your priorities") + "</span>" +
+        '<span class="gap-num"><b>' + fmtK(got) + "</b> of " +
+        fmtK(want) + "</span></div>" +
+        '<div class="gap-bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="gap-note">' +
+        (left > 0
+          ? fmtK(left) + "/yr still to raise" +
+            (got ? "" : " — nothing enacted yet")
+          : "raised " + fmtK(-left) + "/yr more than you promised") +
+        "</div></div>";
+    };
+
     const billLedger = (reveal) => {
       if (!S.bills.length) return "";
-      let h = '<div class="sh-sec">Your bills</div>';
+      let h = gapHtml() + '<div class="sh-sec">Your bills</div>';
       for (const b of S.bills) {
         const sid = b.route[b.stage] || b.route[b.route.length - 1];
         const st = stageOf(sid);

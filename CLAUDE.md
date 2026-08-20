@@ -650,6 +650,39 @@ Rules that must survive edits:
   whose calendar entry carries `agenda: true` so the same turn also
   locks the bill agenda (`S.agendaLocked`) that lined-up members
   will introduce.
+- **MODULE 1 IS A REVENUE GAME** (2026-08-19, user's call: "the initial
+  investment priorities determine how much revenue you have to make up,
+  but the bill process is centered on taxes"). The priorities are a
+  COMMITMENT, not legislation: picking them sets the price the campaign
+  has to cover and they never enter the gauntlet. `startBills` skips
+  anything whose `kind` is not `gain`, so only revenue measures are
+  carried, heard, diluted and killed. The session therefore asks ONE
+  question — can you raise what you promised — and every chair,
+  deadline and roll is about a tax measure, which is the half of the
+  building this module actually teaches.
+  - **`targetK()` and `raisedK()` are DERIVED, never stored.**
+    `S.agenda` already holds every pick and `S.bills` every outcome; a
+    stored target would be a third copy free to drift from both.
+  - **`gapHtml()` is the scoreboard** and sits at the TOP of the ledger
+    (and of the pre-ledger restatement), because it is the session's
+    whole question. It reads honestly at both ends: nothing enacted
+    says so rather than showing a 0% bar, and overshooting says
+    "raised more than you promised" instead of clamping to 100%.
+  - **Locking needs BOTH halves** — at least one tax bill (or there is
+    no campaign) and at least one priority (or there is nothing the
+    money is FOR). The no-priority message names step 1 explicitly
+    (`◂ Choose a priority…`), the one case where the button you are
+    looking at is blocked by a screen behind you.
+  - **Known consequence: the credit-vs-wealth teaching is currently
+    unreachable in play.** The design doc's calibration says a tax
+    CREDIT passes ~1.5x as often as a wealth tax, but both
+    `credit`-tagged measures (`ctc`, `retitc`) are PRIORITIES now, so
+    the only families that reach a committee are `wealth` (conveyance,
+    capgains) and `income` (wwcr). The credit cells in
+    hearing_rates.json are measured data and stay; restoring the
+    comparison means adding a credit-tagged REVENUE measure to
+    policies.json, the same way the `get` family sat dormant after
+    get-half was removed.
 - **Creation is a TWO-screen funnel** (2026-08-15): SELECT INSTINCTS
   (`renderSelect`) then the bill package (`renderAgendaSelect`) — both
   full-bleed `.creating` screens in the same archetype-screen language
@@ -1356,6 +1389,10 @@ no vote, no record. Rules that must survive edits:
 
 - **SCOPE: the two MONEY committees only** — House Finance and Senate Ways
   and Means (`intro → h-fin → h-floor → s-wam → s-floor → conf → final`).
+  Since 2026-08-19 every bill in play is a REVENUE bill (see the
+  revenue-game bullet above — priorities set the target and are never
+  introduced), so the money committees are not merely the hardest gates
+  a bill happens to face, they are the only ones it could face.
   Every bill with a dollar figure goes through both; they take more
   referrals than any other committee (876 and 936 in 2026) and hand back
   the two lowest hearing rates in their chambers. Subject-matter committees

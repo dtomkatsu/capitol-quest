@@ -3371,6 +3371,69 @@ html, body {
 
 /* hub view — section headers carry a gold rule out to the right edge,
    so the hub reads as a stack of titled plates instead of a wall */
+/* THE GAP — the module's scoreboard since 2026-08-19: what the chosen
+   priorities cost against what the enacted tax bills have raised. It
+   sits at the top of the ledger because it is the session's whole
+   question, so it gets a plate where the rows below get none.
+   The fill is gold (revenue's colour throughout the game — the meters,
+   the flows, the budget chip) and turns green only when the promise is
+   actually covered, which is the one moment the campaign has finished
+   the thing it set out to do. */
+.sh-gap {
+  margin: 10px 0 4px;
+  padding: 9px 12px 10px;
+  background: linear-gradient(160deg, rgba(43, 54, 112, .55),
+    rgba(13, 18, 52, .55));
+  border: 1px solid rgba(242, 193, 78, .28);
+  border-radius: 8px;
+}
+.sh-gap .gap-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sh-gap .gap-lbl {
+  color: #9fb0e8;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.sh-gap .gap-num {
+  color: #e9dfc4;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sh-gap .gap-num b { color: #ffe9a8; font-size: 14px; }
+.sh-gap .gap-bar {
+  height: 7px;
+  margin: 7px 0 5px;
+  background: rgba(4, 7, 20, .55);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+  overflow: hidden;
+}
+.sh-gap .gap-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #d9a72f, #ffd166 70%, #ffe9a8);
+  /* the hub re-renders wholesale, so this cannot animate from a
+     previous width the way #sess-metrics does — it is a readout, not a
+     meter, and a snap is honest here */
+}
+.sh-gap .gap-note {
+  color: #9fb0e8;
+  font-size: 10.5px;
+  font-style: italic;
+}
+.sh-gap.met { border-color: rgba(127, 240, 174, .38); }
+.sh-gap.met .gap-bar i {
+  background: linear-gradient(90deg, #3f9c6b, #7ff0ae);
+}
+.sh-gap.met .gap-num b, .sh-gap.met .gap-note { color: #7ff0ae; }
+
 .sh-sec {
   display: flex;
   align-items: center;
