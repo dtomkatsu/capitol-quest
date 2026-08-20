@@ -2821,7 +2821,7 @@ html, body {
 }
 .agc.gain { --pc: #f2c14e; }
 .agc.cost { --pc: #59c98b; }
-.agc:hover:not(.full) {
+.agc:hover {
   transform: translateY(-3px);
   border-color: var(--pc);
   box-shadow: 0 9px 22px rgba(0, 0, 0, .55), 0 0 0 1px var(--pc);
@@ -2830,7 +2830,6 @@ html, body {
   border-color: var(--pc);
   box-shadow: 0 0 0 1px var(--pc), 0 6px 18px rgba(0, 0, 0, .55);
 }
-.agc.full { opacity: .45; cursor: default; }
 .agc-art {
   color: var(--pc);
   aspect-ratio: 10 / 4.6;

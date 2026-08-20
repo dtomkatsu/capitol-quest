@@ -637,9 +637,18 @@ Rules that must survive edits:
   - The ONE-action-per-week cap still applies on top
     (`S.actionWeek === S.week`); openings decide WHICH moves exist,
     the cap decides how many you spend.
+  **RESTARTING lands on the creation funnel, exactly like boot.** The
+  footer's "Restart session" used to call `runEvent()` directly, which
+  walked straight past SELECT INSTINCTS and the bill package into week
+  1's narrative with a default character nobody chose (fixed
+  2026-08-19, user's call). It now mirrors boot's branch — `renderHub()`
+  when the week's calendar carries `agenda` and it isn't locked, else
+  `runEvent()` — so the two doors into a fresh campaign cannot drift.
+  Per the funnel rule, that is a call to renderHub and NOT a test for
+  the screens themselves; its early bail owns that decision.
   There is no week 0 — the session starts at week 1 (Opening Day),
   whose calendar entry carries `agenda: true` so the same turn also
-  locks the ≤3-bill agenda (`S.agendaLocked`) that lined-up members
+  locks the bill agenda (`S.agendaLocked`) that lined-up members
   will introduce.
 - **Creation is a TWO-screen funnel** (2026-08-15): SELECT INSTINCTS
   (`renderSelect`) then the bill package (`renderAgendaSelect`) — both
@@ -656,9 +665,20 @@ Rules that must survive edits:
     numbered step rail (`.ag-rail`, clickable), the policy's `who` case
     ON the card in the reader serif (`.agc-desc` — tooltips don't exist
     on touch), a sticky running tally of picks (`.ag-tally`) and a
-    back/forward nav plate. The ≤3-bill cap is SHARED across both
-    steps — step 2 can open with the budget already spent, which is
-    the module's argument; don't give each step its own cap.
+    back/forward nav plate. **There is NO CAP on either step**
+    (2026-08-19, user's call: "allow users to choose as many investment
+    priorities as they want, same for the tax options"). It was ≤3
+    SHARED across both steps, so step 2 could open with the budget
+    already spent — that scarcity was carrying the module's argument,
+    and the argument now has to come from the tally and the gauntlet
+    instead: take all six and you watch six bills go through the money
+    committees and find out what that costs in weeks and support. The
+    floor stays (at least one bill, or there is no campaign), and if a
+    cap ever returns it must still be SHARED across the steps rather
+    than one per step. NB the simulation-calibrated enact-rate bands in
+    the design doc were run against a 3-bill agenda: per-bill odds are
+    untouched by this, but a 6-bill package naturally enacts more in
+    absolute terms.
     `agendaStep` is view state, deliberately NOT in S: a reload lands
     on step 1 with picks intact rather than resuming a half-wizard.
     The mobile `.agc-art` flattening MUST stay after the base rule —

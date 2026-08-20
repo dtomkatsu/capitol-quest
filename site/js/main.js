@@ -894,7 +894,7 @@ const sym = (id, cls) => SYM[id]
    `unlocks`, plus choice-level `effects.unlock`): no event played, no
    doors open. Still at most ONE action per week when one is offered.
    Actions hone the skill they exercise (train() — two uses buy a pip). Week 1
-   is Opening Day: allocate skill points and pick up to three bills
+   is Opening Day: allocate skill points and pick the bill package
    that lined-up members will introduce — that package IS your
    session. There is no week 0; the session starts in session. All
    content is data-driven from map/session.json; the thought cabinet
@@ -2661,9 +2661,16 @@ const SessionPanel = {
        Splitting the pick in two IS the module's argument: the player
        chooses a cost and then has to look at what pays for it, instead
        of reading one flat list where a school-meals bill and a GET
-       increase are the same kind of object. The ≤3 total cap is shared
-       across both steps — step 2 can therefore open with the budget
-       already spent, which is the point.
+       increase are the same kind of object.
+       **There is NO CAP on either step** (2026-08-19, user's call:
+       "allow users to choose as many investment priorities as they
+       want, same for the tax options"). It used to be ≤3 shared across
+       both steps, which made step 2 open with the budget possibly
+       already spent — that scarcity was carrying the argument, and the
+       argument now has to come from the tally and the gauntlet instead:
+       a player who takes all six watches six bills go through the money
+       committees and finds out what that costs in weeks and support.
+       The floor stays: at least one bill, or there is no campaign.
        `agendaStep` is view state, deliberately NOT in S: reloading
        mid-pick should land you back on step 1 with your picks intact,
        not resume a half-finished wizard. */
@@ -2703,14 +2710,14 @@ const SessionPanel = {
       html += "</div>" +
         '<div class="sk-title">' + esc(step.title) + "</div>" +
         '<div class="ag-lede">' + esc(step.lede) + "</div>" +
-        '<div class="sk-ptchip"><b>' + n + "</b> of 3 bills chosen" +
+        '<div class="sk-ptchip"><b>' + n + "</b> bill" +
+        (n === 1 ? "" : "s") + " chosen" +
         (n ? " · " + fmtK(spend) + " out, " + fmtK(raise) + " in" : "") +
         "</div><div class=\"agc-grid\">";
       for (const p of mine) {
         const on = S.agenda.includes(p.id);
-        const full = !on && n >= 3;
         html += '<div class="agc ' + p.kind + (on ? " on" : "") +
-          (full ? " full" : "") + '" data-pol="' + p.id + '">' +
+          '" data-pol="' + p.id + '">' +
           '<div class="agc-art">' + (sym(p.id) || p.icon || "") + "</div>" +
           '<div class="agc-name">' + esc(p.name) + "</div>" +
           '<div class="agc-desc">' + esc(p.who || "") + "</div>" +
@@ -2754,13 +2761,13 @@ const SessionPanel = {
       body.innerHTML = html;
       body.scrollTop = keep;
       renderTurnBtn();
-      for (const r of body.querySelectorAll(".agc:not(.full)")) {
+      for (const r of body.querySelectorAll(".agc")) {
         r.addEventListener("pointerdown", (ev) => {
           ev.stopPropagation();
           const id = r.dataset.pol;
           if (S.agenda.includes(id)) {
             S.agenda = S.agenda.filter((x) => x !== id);
-          } else if (S.agenda.length < 3) {
+          } else {
             S.agenda.push(id);
           }
           save();
@@ -4188,7 +4195,21 @@ const SessionPanel = {
         save();
         PolicyPanel.setExternal(0);
         renderHead();
-        runEvent();
+        /* A restart is a NEW CAMPAIGN and has to land on the creation
+           funnel, exactly the way boot does — it used to call runEvent()
+           directly, which walked straight past SELECT INSTINCTS and the
+           bill package into week 1's narrative with a default character
+           nobody chose (2026-08-19, user's call: "make sure the intro
+           screen pops up when the game is restarted too").
+           renderHub() is the funnel gate: its early bail sends an unspent
+           point pool to renderSelect and an unlocked agenda to
+           renderAgendaSelect, which is the documented rule — every entry
+           point goes through renderHub rather than testing for the
+           screens itself. The branch below mirrors boot exactly so the
+           two doors into a fresh campaign cannot drift apart. */
+        const cal = calFor(S.week);
+        if (cal.agenda && !S.agendaLocked) renderHub();
+        else runEvent();
       } else {
         b.dataset.arm = "1";
         b.textContent = "Really restart? (tap again)";
