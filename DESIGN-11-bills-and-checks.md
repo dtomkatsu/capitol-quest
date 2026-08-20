@@ -21,6 +21,72 @@ game is about.
 
 ---
 
+## 0. Revision (2026-08-19) — module 1 is a revenue game
+
+**Superseded by this section: §8's scoring formula and the framing (not
+the data) of §8c/§8d below.** They are kept, not deleted — same
+convention as the "STALE" labels elsewhere in this doc — because the
+decision history and the measured tables are both still true; only the
+description of what's a BILL changed.
+
+**The change** (Advocate's call — "the initial investment priorities
+determine how much revenue you have to make up, but the bill process is
+centered on taxes"): the `priorities` half of the creation package
+(`policies.json` `kind: "cost"`) is no longer legislation. Picking a
+priority sets a PRICE — `targetK()`, the sum of every chosen priority's
+`amt` — and stops there; it never becomes an `S.bills[]` entry and never
+touches a chair, a deadline, or a roll. `startBills()` now skips
+anything whose `kind` isn't `"gain"`. Only the `revenue` half is carried
+through the gauntlet.
+
+The session therefore asks exactly one question — **can you raise what
+you promised** — and every gate in §8b–§8d is now a gate a TAX bill
+faces, full stop. There used to be two kinds of bill in the gauntlet
+(`"cost"` and `"gain"`, both routed identically per §8b); there is now
+only one.
+
+**§8's scoring formula is corrected below** (it still describes
+`prioritiesFunded` as a sum over *enacted* `"cost"` bills, which no
+longer exist). **§8c's table and §8d's calibration numbers are still
+real measured/simulated data and are NOT wrong** — but their framing
+assumed wealth, GET and credit bills all competed for the same
+committee calendar, which is no longer true. Only `wealth` (conveyance,
+capgains) and `income` (wwcr) are LIVE families in `policies.json`
+`revenue` today. `credit` — the design's headline contrast ("credits
+beat wealth taxes") — is currently a PRIORITY, not a bill, so that
+comparison is unreachable in play. It isn't deleted from this doc,
+because it's the argument for adding a credit-tagged revenue measure
+later; §8d below re-simulates it as HYPOTHETICAL for exactly that
+reason. `get` never had a bill either (`get-half` was removed
+2026-08-15) — this just means one thing that was already true (GET) now
+has company (credit).
+
+**No cap on either creation step any more** (same day, same user's
+call: "allow users to choose as many investment priorities as they
+want, same for the tax options"). §8d's calibration was run at ONE bill
+per session (a single family in isolation), which is unaffected by the
+cap removal — the numbers below are still valid PER-BILL odds. What the
+cap removal changes is how many bills a real session fields at once (up
+to 6 now, was ≤3 shared across both steps), which the design doc never
+modeled as a joint distribution and still doesn't; treat §8d as
+per-bill enact rates, not session-total ones.
+
+**A REAL SIMULATOR now exists**: `tools/simulate_gauntlet.py`. The
+original §8d table was produced by a script that was never committed —
+it went stale the same day it shipped (the 2026-08-13 per-bill
+support/influence rewrite) and was never re-run before this tool
+existed. The new script reads `chairs.json` and `hearing_rates.json`
+LIVE rather than hand-copying numbers, so it can't drift from the
+shipped game the way the old table did. Re-run it after any change to
+gate math or the tax families in play:
+
+```bash
+python3 tools/simulate_gauntlet.py               # the full table
+python3 tools/simulate_gauntlet.py --sessions 5000 --family wealth -v
+```
+
+---
+
 ## 1. Metrics: two currencies, different physics
 
 The two opinion meters stop being halves of one bar.
@@ -340,11 +406,21 @@ sixteen weeks of meters.
 
 ## 8. Scoring at Sine Die
 
+**Corrected 2026-08-19 — see §0.** `prioritiesFunded` used to be a sum
+over enacted `"cost"` bills; priorities are not bills any more, so it's
+now the flat commitment set at creation (`targetK()` in main.js):
+
 ```
 revenueRaised   = Σ  amtK × amtScale   over enacted bills of kind "gain"
-prioritiesFunded= Σ  amtK × amtScale   over enacted bills of kind "cost"
+prioritiesFunded= Σ  amt               over every chosen S.agenda item of kind "cost"   (targetK)
 covered         = revenueRaised ≥ prioritiesFunded
 ```
+
+`prioritiesFunded` is fixed the moment the creation funnel locks — it
+cannot move again for the rest of the session, unlike `revenueRaised`,
+which only grows (or stays flat) as bills enact. The hub-level version
+of this (`gapHtml()`) is the running scoreboard; this is just its value
+at Sine Die.
 
 Both flow into the existing FY2027 scoreboard through
 `PolicyPanel.setExternal` — same chip, same numbers, no parallel
@@ -397,12 +473,14 @@ than unheard ones and inflate every rate.
 
 ## 8d. Calibration (20,000 sessions per profile, two-committee route)
 
-**STALE as of 2026-08-13.** This table assumed one shared support/
-influence pool for all bills (`S.metrics.*`). Bills now seed their own
-support/influence per tax family and diverge independently (see
-Decisions below), and chair-gate dilution is a new death spiral that
-didn't exist when this ran. The four invariants below are still the
-right ones to check for — re-run before citing these numbers again.
+**SUPERSEDED 2026-08-19 — kept for the invariants, not the numbers.**
+This table was hand-produced by a script that was never committed; it
+went stale the same day it shipped (the per-bill support/influence
+rewrite, 2026-08-13) and was never re-run before now. It also modeled a
+world where wealth, GET and credit bills all competed for the same
+committee calendar — GET has had no bill since `get-half` was removed
+(2026-08-15) and credit has had none since priorities stopped being
+bills (2026-08-19, §0).
 
 | profile | wealth tax | GET | credit |
 |---|---|---|---|
@@ -410,11 +488,49 @@ right ones to check for — re-run before citing these numbers again.
 | engaged (sup 70, inf 55, 4 pushes) | 20.3% | 19.3% | 31.3% |
 | insider (sup 40, inf 85, 8 pushes) | 30.5% | 29.9% | 45.1% |
 
-Four things this has to keep doing, or the model has drifted:
-**never-heard dominates every profile** (the thesis); **credits beat
-wealth taxes at every skill level** (the new one); **the insider
-outperforms the organiser** (the asymmetry); and **passive play rarely
-passes anything** while engaged play lands roughly one bill of three.
+**RE-RUN 2026-08-19 with `tools/simulate_gauntlet.py`** (see §0 — a
+real, re-runnable simulator now exists; it reads `chairs.json` and
+`hearing_rates.json` live, so this table can't drift from the shipped
+game the way the one above did). 20,000 sessions/cell, one bill per
+session (a single family in isolation — see §0 on why that's still
+right for a per-bill rate even with the bill-count cap removed):
+
+```
+$ python3 tools/simulate_gauntlet.py --sessions 20000 -v
+profile   wealth          income          credit (hyp)
+passive   3.3% (×0.58)    4.2% (×0.57)    11.3% (×0.58)
+engaged   21.2% (×0.71)   23.7% (×0.71)   44.5% (×0.70)
+insider   28.6% (×0.91)   30.9% (×0.91)   62.9% (×0.92)
+```
+
+`wealth` and `income` are the two LIVE families (conveyance/capgains,
+wwcr). `credit` is HYPOTHETICAL — no credit-tagged revenue measure
+exists in `policies.json` today, since `ctc` and `retitc` are
+priorities now — simulated at the family's real measured cells to show
+what restoring it would look like. The `(×N)` is the average `amtScale`
+an enacted bill carries — how much conference dilution and the
+support-floor cut typically take, separate from whether it enacts at
+all.
+
+Four things this has to keep doing, or the model has drifted (all
+checked directly against this run, not eyeballed):
+- **Never-heard dominates every profile** (the thesis) — verified
+  separately by cause: 75–87% of every profile's deaths are "never
+  heard" against the two live families, floor votes a distant second.
+- **Credits beat wealth taxes at every skill level** (the design's
+  headline contrast) — holds, and by MORE than the old table's ~1.5×:
+  now 3.4× at passive, 2.1× at engaged, 2.2× at insider. Explainable,
+  not a bug: it compounds through TWO gates (FIN credit 36% vs wealth
+  26%, WAM credit 33% vs wealth 13%), so a ~1.4–2.6× single-gate edge
+  becomes a bigger one after both committees. Still unreachable in
+  play (§0) — this is the argument for eventually shipping it.
+- **The insider outperforms the passive player** (the asymmetry) —
+  holds, monotonically, in every family.
+- **Passive rarely passes anything** (3–4%) — holds. The old phrase
+  "engaged lands roughly one bill of three" assumed a fixed 3-bill
+  package that no longer exists (no cap, §0); read this table as
+  PER-BILL odds instead — an engaged player fielding N tax bills should
+  expect roughly N × 0.21–0.24 of them enacted, independently.
 
 ## 9. Build order
 
@@ -515,6 +631,13 @@ passes anything** while engaged play lands roughly one bill of three.
 
 - ~~Which chamber is the player in?~~ Resolved above: the player is
   not a member of either.
-- Does the player carry all 3 bills through, or can they abandon one to
-  concentrate influence? (Abandoning is a real and painful skill.)
+- ~~Does the player carry all 3 bills through, or can they abandon one
+  to concentrate influence?~~ Moot as asked (2026-08-19, §0): there is
+  no 3-bill package and no cap, so "carry all N through" is just
+  whatever the player picked at creation. The real question survives in
+  a different shape — can the player DROP a live bill mid-session to
+  concentrate influence on the rest? Nothing in `resolveBills` currently
+  offers that; every bill in `S.bills` rides the gauntlet until it
+  enacts or dies on its own. Worth another pass if abandoning turns out
+  to be a real skill players want.
 - Should skill points also come from events, or only week 0 + thoughts?

@@ -1433,11 +1433,23 @@ no vote, no record. Rules that must survive edits:
   series and silently makes every gate easier than measured.
 - Leadership rolls `singleReferral` at introduction — the player never
   chooses their referral, which is the point.
-- Calibrated by simulation (20k sessions/profile, see the design doc):
-  passive play enacts ~5-9% of bills, engaged ~19-31%, insider ~30-45%,
-  a tax CREDIT passes ~1.5× as often as a wealth tax at every skill level,
-  and "never heard" is the leading cause of death in every profile. If a
-  change moves those a lot, that is a finding to explain.
+- **Calibrated by simulation, and the simulator is REAL and
+  re-runnable** (`tools/simulate_gauntlet.py`, added 2026-08-19 — the
+  original table was hand-produced by a script that was never
+  committed and had been stale since 2026-08-13). It reads
+  `chairs.json`/`hearing_rates.json` LIVE, so it can't drift from the
+  shipped game by hand-copying. Re-run after any change to gate math or
+  the tax families in `policies.json` `revenue`; full numbers and the
+  invariants they must keep are in the design doc §8d/§0. Current
+  (2026-08-19, 20k sessions/profile, per-bill, wealth+income are the
+  two LIVE families since priorities stopped being bills — see the
+  revenue-game bullet above): passive enacts ~3-4% of bills, engaged
+  ~21-24%, insider ~29-31%; "never heard" causes 75-87% of deaths in
+  every profile. The credit-vs-wealth contrast (still ~2-3× at every
+  skill level, WIDER than the old ~1.5×) is simulated but currently
+  HYPOTHETICAL — no credit-tagged revenue bill exists to actually show
+  it. If a change moves any of this a lot, that is a finding to
+  explain, not a number to quietly paper over.
 
 ## Policies overlay + budget scoreboard (feature 8)
 
