@@ -412,7 +412,14 @@ Full schema draft: `DESIGN-11-bills-and-checks.md`.
 
 - Flows are ambient, never diagrammatic: motes, not arrows; alpha < 0.6;
   additive blend; calm speeds (< 60 px/s). The map must stay readable
-  with every layer on.
+  with every layer on. (2026-08-21: motes are short COMETS — a tapered
+  tail rotated to the path tangent — same alpha budget and speeds; the
+  tail buys legibility, not brightness.)
+- The ONE sanctioned exception is the "✦ Streams" highlight toggle
+  (OFF by default, persisted in `cq-flow-hi`): faint route ribbons that
+  fade out before the hub (still no arrows), breathing source glints,
+  a soft arrival pulse, motes at alpha ≤ 0.68 and ~1.5× density. It is
+  a teaching view the player opts into, never the resting state.
 - Every number on screen traces to a named public source, cited in the
   layer's HUD chip tooltip and in this file.
 - Layers are individually toggleable and default to the least busy mix

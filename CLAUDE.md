@@ -11,9 +11,11 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
 - **Rebuild order**: `tools/build_map.py --island <slug>` →
   `tools/render_map.py --island <slug>` (or `--all`). Sprites:
   `tools/make_sprites.py`. The map is baked; editing `site/js/main.js` alone
-  never changes terrain. Both steps read `data/rainfall_mm.png`
-  (committed; regenerate with `tools/build_rainfall.py` only to refresh
-  the atlas download — see the Rainfall section).
+  never changes terrain. Both steps read `data/rainfall_mm.png` AND
+  `data/elevation_m.png` (committed; regenerate with
+  `tools/build_rainfall.py` / `tools/build_elevation.py` only to
+  refresh the source downloads — see the Rainfall and Elevation
+  sections).
 - **ONE world, all eight islands** at true geographic positions.
   `tools/build_world.py` composes the per-island bakes into a single
   41.8k×14.4k coordinate frame at the 0.32 km/tile reference scale and
@@ -1736,6 +1738,51 @@ divide, and it is DATA now, not art direction:
   `--style pixel` archive therefore now shows the dry ramps too; the
   pre-rainfall original is in git history, not behind the flag.
 
+## Elevation — the actual mountains (2026-08-21, user's call: "make the
+## mountains look like real mountains… the actual mountains")
+
+Terrain height is MEASURED now, same pattern as rainfall:
+
+- `tools/build_elevation.py` fetches AWS Terrain Tiles (terrarium z10,
+  open bucket, ~65 tiles cached in gitignored `data/raw/elevation/`)
+  and bakes `data/elevation_m.png` — 16-bit metres, **pixel-aligned
+  with the rainfall raster** (same affine, from rainfall_mm.json), so
+  the two fields share sampling maths. Below-sea clamps to 0. Eight QA
+  points assert (Mauna Kea 4156, Kōnāhuanui ~895 — knife-edges lose
+  ~7% to z10 smoothing, floors are set accordingly).
+- `tools/elevation.py`: `sample()` bilinear; `height_units()` = the ONE
+  metres→render-units curve (0.082·m^0.78 — power law, or the choice is
+  a flat Koʻolau vs a Mauna Kea that leaves the canvas); `BEACH_MAX_M`
+  (24 m) = where a sand shore can physically exist.
+- build_map: `hgrid` is the DEM for ALL land (the ridge polylines in
+  islands.py still place CLASSES — forest belts, peak tiles — but no
+  longer invent topography; ridge-tuple h_mult is dead). Synthetic
+  crater rims survive ONLY for cones under the DEM's resolution
+  (r_out ≤ 1.2 km: the three Oʻahu tuff craters); Haleakalā,
+  Mokuʻāweoweo and Kīlauea calderas are in the data. Per-tile `elev`
+  (m) rides in the grid json.
+- render_map samples the DEM per PIXEL (every 2nd px, bilinear up) —
+  **going through the 320 m tile grid + the anti-corduroy blur is what
+  airbrushed the Koʻolau into a loaf**; tile heights ride along only
+  as a blurred positive delta (the tuff-cone rims). Light 3 px blur
+  kills bilinear-cell facets in the hillshade. Height multiplier 2.5,
+  hillshade gain 6.0/±46 with a ±3 px stencil (the old 3.2 gain was
+  tuned for fake tent-slopes and read as airbrush on real ones).
+- **Bare rock is measured, not height-proxied**: alpine line at
+  ~1900 m ("t" from talt — Mauna Kea/Loa and Haleakalā summits, never
+  the 900 m Koʻolau, which the old hpx rule painted as scree), plus
+  steep-slope exposure streaks; rock hue still rides the rain ramp
+  (wet grey vs dry red cinder). MOUNTAIN/PEAK wet-end ground is now
+  vegetated green (`mtn` palette key) — a wet Hawaiian ridge is
+  forested to the knife edge; the old rock_low base drew an olive
+  dirt stripe along every crest.
+- **Sand only where beaches exist** (both build_map's SAND rim and
+  render's beach band gate on `elev < BEACH_MAX_M`): under a pali or
+  on a lava bench the shore keeps its terrain colour over a dark
+  wet-rock edge. Steep coasts keep their height to the waterline —
+  the relief pass draws real sea cliffs (Nā Pali, Molokaʻi north
+  shore, Hāmākua) for free; only gentle shores ease into the sea.
+
 ## Ocean & water (2026-08-21)
 
 - **Open ocean in every bake fades to TRANSPARENT** (`A_FADE0/1` =
@@ -1766,7 +1813,27 @@ divide, and it is DATA now, not art direction:
   a crease). A medial-axis crease where two shores' distance gradients
   meet is rounded by blurring `dw` (~12 px). `--style pixel` keeps its
   original stepped, dithered bands and hard reef stamps verbatim.
-- MAP_V is at **7** for this bake set.
+- MAP_V is at **8** for this bake set (7 was the rainfall/ocean bake).
+
+## Tax-flow presentation (2026-08-21)
+
+- Motes are **comets**: one texture per stream (tapered tail + bright
+  head, drawn pointing +x), rotated to `curve.getTangent()` each frame.
+  Ambient alpha/speed budget unchanged — FEATURES.md "Visual language
+  rules" still bind, and now record the one sanctioned exception:
+- **"✦ Streams" highlight toggle** (`#hi-chip`, OFF by default,
+  localStorage `cq-flow-hi`): additive ribbons under each stream's top
+  8 routes drawn in three segments that DIM toward the hub and stop at
+  t=0.92 (90 full-length ribbons converging would white the Capitol
+  out), tinted breathing glints on those routes' sources, a soft
+  arrival pulse at the Capitol, motes ×1.5 rate / 0.68 alpha (pool
+  420). Ribbons are stroked in world px and re-stroked when the zoom
+  bucket (`round(log2(zoom)*3)`) changes; `redrawHi` is the single
+  clean-up/redraw path and every toggle (streams AND highlight) goes
+  through it.
+- The Capitol sprite lost its reflecting pool (user's call; plaza
+  widened to keep the apron) — `capitol.png?v=2` in BOTH loaders
+  (Phaser preload + the money overlay's SVG hub image).
 
 ## Session overlay cinema pass (2026-08-21)
 

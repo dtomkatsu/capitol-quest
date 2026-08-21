@@ -21,7 +21,7 @@ const DEEP_BLUE = "#185ba0";
    anything loaded from JS is bumped BY HAND: after re-baking the map,
    raise this ONE number. Content JSON (session/policies/chairs) keeps
    its own token — it changes on a different clock. */
-const MAP_V = 7;
+const MAP_V = 8;
 
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
@@ -81,7 +81,7 @@ function buildRadialFlow(cfg) {
 
   // hub: the Capitol sprite itself
   cfg.svg.append(mk("image", {
-    href: "assets/sprites/capitol.png?v=1", x: CX - 56, y: CY - 46,
+    href: "assets/sprites/capitol.png?v=2", x: CX - 56, y: CY - 46,
     width: 112, height: 86, preserveAspectRatio: "xMidYMid meet",
   }));
   const hubLabel = mk("text", { x: CX, y: CY + 58, class: "hub" });
@@ -4516,7 +4516,7 @@ class BootScene extends Phaser.Scene {
     for (const s of oahu.slices) {
       this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=" + MAP_V);
     }
-    this.load.image("capitol", "assets/sprites/capitol.png?v=1");
+    this.load.image("capitol", "assets/sprites/capitol.png?v=2");
     this.load.image("marker", "assets/sprites/marker.png?v=1");
     for (let i = 0; i < 3; i++) {
       this.load.image("sp" + i, `assets/sprites/sparkle_${i}.png?v=1`);
@@ -4787,18 +4787,39 @@ class WorldScene extends Phaser.Scene {
     const get = this.cache.json.get("get_flows");
     if (!inc || !inc.zips || !inc.zips.length) return;
 
+    /* The mote is a COMET now (2026-08-21, user's call: "more visible
+       and stylish without making it too obvious"): a short tapering
+       tail behind a bright head, drawn pointing +x and rotated to the
+       curve tangent each frame. Same speeds, same alpha budget — the
+       tail is what makes a slow point read as *flow* instead of dust,
+       so visibility comes from legibility, not from more light. */
     const mote = (key, ring, core) => {
       if (this.textures.exists(key)) return;
       const g = this.make.graphics({ add: false });
+      for (let i = 0; i < 6; i++) {            // tail: fading beads
+        g.fillStyle(ring, 0.05 + i * 0.055);
+        g.fillCircle(2.5 + i * 1.9, 4, 0.7 + i * 0.24);
+      }
       g.fillStyle(ring, 0.5);
-      g.fillCircle(3, 3, 3);
+      g.fillCircle(14, 4, 2.6);
       g.fillStyle(core, 1);
-      g.fillCircle(3, 3, 1.6);
-      g.generateTexture(key, 6, 6);
+      g.fillCircle(14, 4, 1.4);
+      g.generateTexture(key, 18, 8);
       g.destroy();
     };
     mote("mote_gold", 0xfff2c0, 0xffe9a0);
     mote("mote_teal", 0xa8f0e6, 0x4fd8c8);
+    // soft radial glow for source glints + the Capitol arrival pulse —
+    // drawn white so each user tints it to its stream's colour
+    if (!this.textures.exists("flow_glow")) {
+      const g = this.make.graphics({ add: false });
+      for (let r = 12; r >= 1; r--) {
+        g.fillStyle(0xffffff, 0.035);          // stacked = radial falloff
+        g.fillCircle(13, 13, r);
+      }
+      g.generateTexture("flow_glow", 26, 26);
+      g.destroy();
+    }
 
     const dst = new Phaser.Math.Vector2(
       world.capitol[0], world.capitol[1] - 14);
@@ -4846,12 +4867,48 @@ class WorldScene extends Phaser.Scene {
     }
 
     const pool = [];
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 420; i++) {            // headroom for highlight mode
       const im = this.add.image(0, 0, "mote_gold")
         .setDepth(3).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
       pool.push({ im, t: 0, dur: 1, curve: null, free: true, sid: null });
     }
-    this.flows = { streams, pool, tmp: new Phaser.Math.Vector2() };
+
+    /* ---- "✦ Streams" highlight (2026-08-21): the TEACHING view, one
+       tap away, persisted. Ambient stays calm; the toggle adds
+         - faint additive ribbons under the top routes, fading OUT
+           before the hub (paths, never arrows — and 90 ribbons meeting
+           at the Capitol would white it out),
+         - breathing glints on the biggest source zips,
+         - a slow arrival pulse at the Capitol,
+         - slightly brighter, denser motes (RATE_HI / A_HI below).
+       Everything lives in F.hi and is torn down by wireHi so stream
+       toggles and scene restarts stay clean. */
+    const hi = {
+      on: localStorage.getItem("cq-flow-hi") === "1",
+      ribbons: this.add.graphics().setDepth(2)
+        .setBlendMode(Phaser.BlendModes.ADD),
+      glints: [],
+      pulse: this.add.image(dst.x, dst.y, "flow_glow")
+        .setDepth(4).setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xffe9a0).setVisible(false),
+      pulseT: 0, zBucket: -1,
+    };
+    for (const st of streams) {
+      const top = st.paths.slice().sort((a, b) => b.w - a.w).slice(0, 8);
+      for (const p of top) {
+        const s0 = p.curve.getStartPoint();
+        hi.glints.push({
+          st, im: this.add.image(s0.x, s0.y, "flow_glow")
+            .setDepth(2).setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(st.tex === "mote_teal" ? 0x4fd8c8 : 0xffd97a)
+            .setVisible(false),
+          ph: Math.random() * Math.PI * 2,
+        });
+      }
+      st.top = top;
+    }
+    this.flows = { streams, pool, hi, tmp: new Phaser.Math.Vector2(),
+                   tan: new Phaser.Math.Vector2() };
 
     const release = (id) => {
       for (const m of this.flows.pool) {
@@ -4874,6 +4931,7 @@ class WorldScene extends Phaser.Scene {
         stream.enabled = !stream.enabled;
         if (!stream.enabled) release(stream.id);
         setLabel();
+        if (this.flows && this.flows.redrawHi) this.flows.redrawHi();
       };
     };
     wire("flows-chip", streams[0], "Income tax · TY" + inc.year, inc.source);
@@ -4881,19 +4939,78 @@ class WorldScene extends Phaser.Scene {
       wire("get-chip", streams[1], "GET · FY" + get.fy,
            get.measured + ". " + get.modeled);
     }
+
+    const redrawHi = () => {
+      const F = this.flows;
+      const g = F.hi.ribbons;
+      g.clear();
+      F.hi.pulse.setVisible(false);
+      for (const gl of F.hi.glints) gl.im.setVisible(false);
+      if (!F.hi.on) return;
+      const lw = Phaser.Math.Clamp(2.2 / this.cameras.main.zoom, 2.2, 30);
+      for (const st of F.streams) {
+        if (!st.enabled || !st.top) continue;
+        const colr = st.tex === "mote_teal" ? 0x4fd8c8 : 0xf2c14e;
+        for (const p of st.top) {
+          // three segments, dimming toward the hub, stopping short of it
+          for (const [t0, t1, a] of [[0.03, 0.55, 0.13],
+                                     [0.55, 0.80, 0.08],
+                                     [0.80, 0.92, 0.04]]) {
+            g.lineStyle(lw, colr, a);
+            g.beginPath();
+            const q = F.tmp;
+            p.curve.getPoint(t0, q);
+            g.moveTo(q.x, q.y);
+            for (let k = 1; k <= 14; k++) {
+              p.curve.getPoint(t0 + (t1 - t0) * (k / 14), q);
+              g.lineTo(q.x, q.y);
+            }
+            g.strokePath();
+          }
+        }
+        for (const gl of F.hi.glints) {
+          if (gl.st.enabled) gl.im.setVisible(true);
+        }
+      }
+    };
+    this.flows.redrawHi = redrawHi;
+
+    const hiChip = document.getElementById("hi-chip");
+    if (hiChip) {
+      hiChip.classList.remove("hidden");
+      hiChip.title = "Highlight the tax streams: light the biggest " +
+        "routes and where they start. Same real dollars, easier to see.";
+      const setHi = () => {
+        hiChip.classList.toggle("off", !hi.on);
+        hiChip.textContent = (hi.on ? "✦" : "✧") + " Streams";
+      };
+      setHi();
+      hiChip.onpointerdown = (e) => {
+        e.stopPropagation();
+        hi.on = !hi.on;
+        localStorage.setItem("cq-flow-hi", hi.on ? "1" : "0");
+        setHi();
+        redrawHi();
+      };
+    }
+    redrawHi();
   }
 
-  update(_time, delta) {
+  update(time, delta) {
     const F = this.flows;
     if (!F) return;
     const dt = Math.min(0.05, delta / 1000);
+    const hiOn = F.hi && F.hi.on;
+    // highlight mode: denser and a touch brighter, still calm
+    const RATE_HI = hiOn ? 1.5 : 1.0;
+    const A_HI = hiOn ? 0.68 : 0.55;
     // screen-constant motes down to z≈0.07, then they fade to faint
     // gold dust crossing the channels at chain zoom
     const moteScale = Phaser.Math.Clamp(1 / this.cameras.main.zoom, 0.9, 14);
     for (const st of F.streams) {
       if (!st.enabled) continue;
       for (const p of st.paths) {
-        p.acc += p.rate * dt;
+        p.acc += p.rate * RATE_HI * dt;
         while (p.acc >= 1) {
           p.acc -= 1;
           const m = F.pool.find((q) => q.free);
@@ -4917,9 +5034,40 @@ class WorldScene extends Phaser.Scene {
       }
       m.curve.getPoint(m.t, F.tmp);
       m.im.setPosition(F.tmp.x, F.tmp.y);
-      m.im.setAlpha(0.55 * Math.sin(Math.PI * m.t));
+      // the comet points down its own path
+      m.curve.getTangent(m.t, F.tan);
+      m.im.setRotation(Math.atan2(F.tan.y, F.tan.x));
+      m.im.setAlpha(A_HI * Math.sin(Math.PI * m.t));
       m.im.setScale(moteScale);
     }
+    if (F.hi) this.updateHi(time, dt, moteScale);
+  }
+
+  /* the highlight layer's slow life: breathing source glints, the
+     arrival pulse, and a ribbon redraw when the zoom has moved enough
+     that their screen width drifted (they are stroked in world px). */
+  updateHi(time, dt, moteScale) {
+    const F = this.flows;
+    if (!F.hi.on) return;
+    const anyOn = F.streams.some((s) => s.enabled);
+    if (!anyOn) return;
+    const b = Math.round(Math.log2(this.cameras.main.zoom) * 3);
+    if (b !== F.hi.zBucket) {
+      F.hi.zBucket = b;
+      F.redrawHi();
+    }
+    for (const gl of F.hi.glints) {
+      if (!gl.im.visible) continue;
+      const s = 0.8 + 0.2 * Math.sin(time / 900 + gl.ph);
+      gl.im.setScale(moteScale * 1.3 * s).setAlpha(0.32 + 0.18 *
+        Math.sin(time / 900 + gl.ph));
+    }
+    // arrival pulse: a ring of light breathing out of the Capitol
+    F.hi.pulseT += dt;
+    const P = 2.8, t = (F.hi.pulseT % P) / P;
+    F.hi.pulse.setVisible(true)
+      .setScale(moteScale * (1.0 + 2.6 * t))
+      .setAlpha(0.3 * (1 - t) * (1 - t));
   }
 
   /* ---- the State Capitol landmark (world position) ---- */

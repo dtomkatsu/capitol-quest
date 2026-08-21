@@ -150,6 +150,10 @@ html, body {
 }
 #chips button.hidden { display: none; }
 #get-chip { border-color: #4fd8c8; color: #b8f4ec; }
+/* the stream-highlight toggle: white-gold, quieter than the two data
+   chips — it changes presentation, not which data is on the map */
+#hi-chip { border-color: rgba(255, 233, 168, .75); color: #fff3cf; }
+#hi-chip.off { border-color: rgba(255,255,255,.3); color: #8f99bd; }
 
 /* ---------- toolbar ---------- */
 #toolbar {

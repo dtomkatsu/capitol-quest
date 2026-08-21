@@ -45,6 +45,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+import elevation
 import rainfall
 from islands import ISLANDS
 
@@ -289,20 +290,25 @@ def build_island(slug):
              if not rainfall.covers(np.array([LON_C]),
                                     np.array([LAT_C]))[0] else ""))
 
+    # ---- measured elevation (m) per tile — see tools/elevation.py
+    elev_t = elevation.sample(lon, lat)
+    el = elev_t[land]
+    print(f"elevation: 0–{el.max():.0f} m on land "
+          f"(median {np.median(el):.0f})")
+
     # ---- ridges -> mountain / forest (noise-modulated widths)
     noise = smooth_noise((ROWS, COLS)).ravel()
     wob = 0.55 + 0.9 * noise          # 0.55..1.45 width multiplier
     mountain = np.zeros(n, bool)
     forest_src = np.zeros(n, bool)
     peak = np.zeros(n, bool)
-    closeness = np.zeros(n, np.float32)
-    for pts, w_mtn, w_forest, w_peak, h_mult in cfg["ridges"]:
+    # (the 5th tuple field, h_mult, fed the old modelled heightfield;
+    # heights come from the DEM now and it is ignored)
+    for pts, w_mtn, w_forest, w_peak, _h_mult in cfg["ridges"]:
         d = dist_to_polyline_km(lon, lat, pts)
         mountain |= land & (d < w_mtn * wob)
         forest_src |= land & (d < w_forest * wob)
         peak |= land & (d < w_peak)
-        closeness = np.maximum(
-            closeness, np.clip(1.0 - d / (w_mtn * wob), 0.0, 1.0) * h_mult)
     forest = forest_src & ~mountain
     # Where the belt of trees around a crest actually stops is decided by
     # rain, not by distance from the ridge. The Waiʻanae range, West Maui
@@ -367,14 +373,20 @@ def build_island(slug):
     tiles[dense] = URBAN_DENSE
     tiles[peak & (tiles == MOUNTAIN)] = PEAK
 
-    # ---- coast: sand rim + shallow water
+    # ---- coast: sand rim ONLY where a beach can physically exist.
+    # Sand is depositional — it collects where the land behind the
+    # shore is low. Under a pali (Nā Pali, Molokaʻi's north shore, the
+    # Hāmākua cliffs) or on a lava bench (Puna, Kaʻū) the coast is
+    # rock, and painting it cream was the map's second-biggest lie
+    # after the uniform green. Gate on measured elevation at the tile.
     g = tiles.reshape(ROWS, COLS)
     landg = land.reshape(ROWS, COLS)
     watern = np.zeros_like(landg)
     for dr, dc in ((0, 1), (0, -1), (1, 0), (-1, 0)):
         sh = np.roll(np.roll(~landg, dr, 0), dc, 1)
         watern |= sh
-    coast = landg & watern & np.isin(g, [GRASS, FIELD, FOREST])
+    beachable = elevation.beachable(elev_t).reshape(ROWS, COLS)
+    coast = landg & watern & np.isin(g, [GRASS, FIELD, FOREST]) & beachable
     g[coast] = SAND
 
     # graded water: chebyshev distance-to-land -> shallow ring then mid ring
@@ -399,18 +411,27 @@ def build_island(slug):
 
     tiles = g.ravel()
 
-    # ---- mountain height field (graded toward the crest, noisy)
-    hgrid = np.zeros(n, np.float32)
-    mmask = (tiles == MOUNTAIN)
-    hgrid[mmask] = 4 + closeness[mmask] * 9 + noise[mmask] * 3
-    pmask = (tiles == PEAK)
-    hgrid[pmask] = 16 * np.maximum(1.0, closeness[pmask]) + noise[pmask] * 5
-    # crater rims sit at their configured height
+    # ---- height field: the REAL DEM, everywhere on land (2026-08-21).
+    # The old model graded a tent toward each hand ridgeline; the
+    # measurement knows the Koʻolau has one sheer side and one gentle
+    # one, that Haleakalā is a whale-back with a hole in the top, and
+    # that central Oʻahu is a 300 m saddle rather than a plain. The
+    # ridgelines stay in islands.py for CLASS placement (forest belts,
+    # peak tiles, labels) — they no longer invent topography.
+    hgrid = elevation.height_units(elev_t)
+    hgrid[~land] = 0
+    hgrid += noise * (hgrid > 1.5)      # the old organic jitter, kept
+    # crater rims: keep the synthetic bump ONLY for cones smaller than
+    # the DEM can resolve (the three Oʻahu tuff craters). The real
+    # calderas — Haleakalā, Mokuʻāweoweo, Kīlauea — are IN the data,
+    # and a synthetic ring on top would double-draw them.
     for clon, clat, r_in, r_out, rim_h in cfg["craters"]:
+        if r_out > 1.2:
+            continue
         d = np.hypot((lon - clon) * KM_PER_LON, (lat - clat) * KM_PER_LAT)
-        rim = (d >= r_in) & (d < r_out) & mmask
-        hgrid[rim] = rim_h
-    hgrid = hgrid.astype(np.uint8)
+        rim = (d >= r_in) & (d < r_out) & land
+        hgrid[rim] = np.maximum(hgrid[rim], rim_h)
+    hgrid = np.clip(np.rint(hgrid), 0, 255).astype(np.uint8)
 
     # ---- rail: tile mask (gameplay) + smooth fractional paths (render)
     rail = np.zeros((ROWS, COLS), bool)
@@ -478,6 +499,10 @@ def build_island(slug):
         "rain": [row.tolist() for row in
                  np.rint(rain).astype(np.int32).reshape(ROWS, COLS)],
         "rain_default": int(cfg.get("rain_mm", 0)) or None,
+        # measured metres per tile — render_map's alpine rock line,
+        # beach gating and sea-cliff shore all read the real number
+        "elev": [row.tolist() for row in
+                 np.rint(elev_t).astype(np.int32).reshape(ROWS, COLS)],
         "rail": [[int(c) for c in np.flatnonzero(rail[r])]
                  for r in range(ROWS)],
         "rail_paths": rail_paths,

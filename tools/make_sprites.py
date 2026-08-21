@@ -58,7 +58,8 @@ def capitol():
     into a cornice that sweeps OUTWARD and UPWARD past the wall plane (the
     'crown'), a flat roof deck behind it with the open-to-the-sky rotunda,
     and the two squat truncated chamber cones barely cresting the roofline.
-    All ringed by the reflecting pool."""
+    Seated on its plaza (the reflecting pool was drawn until 2026-08-21,
+    then removed — user's call)."""
     W, H = 112, 86
     img = np.zeros((H, W, 4), np.uint8)
 
@@ -74,12 +75,9 @@ def capitol():
     cone_lt = hx("#c0b39c")
     cone_dk = hx("#7c7060")
 
-    # ---- reflecting pool ring + plaza
-    ellipse(img, 56, 72, 54, 13, hx("#5fbcd8"), hx("#2e6a94"))
-    for x, y in ((18, 69), (34, 76), (62, 79), (84, 74), (96, 68), (48, 66)):
-        put(img, x, y, hx("#a5e2f0"))
-        put(img, x + 1, y, hx("#a5e2f0"))
-    ellipse(img, 56, 68, 44, 9, hx("#d9d5c9"), hx("#a9a598"))
+    # ---- plaza (slightly wider than when the pool ringed it, so the
+    # building still sits on a full apron of ground)
+    ellipse(img, 56, 69, 50, 11, hx("#d9d5c9"), hx("#a9a598"))
 
     WALL_L, WALL_R = 14, 99            # wall plane
 
@@ -130,7 +128,7 @@ def capitol():
     img[12:14, 21:29] = hx("#2b4f9e")
     img[8:11, 21:24] = hx("#2b4f9e")
 
-    # ---- flanking palms at the pool edge
+    # ---- flanking palms at the plaza edge
     for px, flip in ((7, 1), (105, -1)):
         for i in range(10):
             put(img, px + flip * (i // 4), 64 - i, hx("#8a5a33"))

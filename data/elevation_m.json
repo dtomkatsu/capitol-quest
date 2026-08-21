@@ -1,0 +1,12 @@
+{
+ "units": "m",
+ "variable": "elevation above sea level (below-sea clipped to 0)",
+ "source": "Terrain Tiles on AWS (terrarium z10), https://registry.opendata.aws/terrain-tiles/",
+ "w": 2288,
+ "h": 1520,
+ "lon0": -159.81487500000003,
+ "lat0": 22.267875000000004,
+ "dlon": 0.002249999999999998,
+ "dlat": -0.002249999999999999,
+ "note": "pixel-aligned with data/rainfall_mm.png"
+}

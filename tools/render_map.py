@@ -39,7 +39,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+import elevation
 import rainfall
+from elevation import BEACH_MAX_M
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -112,6 +114,12 @@ PIXEL_PAL = dict(
     forest_floor="#3f7c42", lot="#7db35e",    # lot = village lawn
     street="#c3b9a2", asphalt="#a9a79c",      # asphalt = dense downtown
     rock_low="#5d8748", rock_high="#8b8b72", cliff="#463e2e",
+    # the wet end of MOUNTAIN/PEAK ground. It used to be rock_low, which
+    # painted every crest as an olive dirt stripe — but a wet Hawaiian
+    # ridge is FORESTED to the knife edge (the Koʻolau pali is green top
+    # to bottom); bare rock is an alpine/dryness/steepness fact, and
+    # those are separate, measured terms now.
+    mtn="#4f8749",
 
     # ---- the LEEWARD half of the same palette.
     # Every ground colour above is the WET end of a ramp; these are the
@@ -171,10 +179,11 @@ def use_style(name):
     C_ROCK_HIGH = hx(p["rock_high"])
     C_ROCK_HIGH_DRY = hx(p["rock_high_dry"])
     C_CLIFF = hx(p["cliff"])
+    C_MTN = hx(p["mtn"])
     GROUND_BASE = {
         SAND: C_SAND, GRASS: C_GRASS, FIELD: C_FIELD,
-        FOREST: C_FOREST_FLOOR, MOUNTAIN: C_ROCK_LOW, URBAN: C_LOT,
-        URBAN_DENSE: C_ASPHALT, PEAK: C_ROCK_LOW,
+        FOREST: C_FOREST_FLOOR, MOUNTAIN: C_MTN, URBAN: C_LOT,
+        URBAN_DENSE: C_ASPHALT, PEAK: C_MTN,
     }
     # dry (~500-900 mm/yr) and arid (<400 mm) ends of each ground class
     GROUND_DRY = {
@@ -186,7 +195,9 @@ def use_style(name):
                    MOUNTAIN: hx(p["rock_low_dry"]) * 0.88,
                    PEAK: hx(p["rock_low_dry"]) * 0.88}
     GROUND_LUSH = {GRASS: hx(p["grass_lush"]),
-                   FOREST: hx(p["forest_lush"])}
+                   FOREST: hx(p["forest_lush"]),
+                   MOUNTAIN: hx(p["forest_lush"]),
+                   PEAK: hx(p["forest_lush"])}
     # how much of the ramp each class actually travels. Cane and town
     # lawns are IRRIGATED — Kekaha and Kīhei are green squares in a tan
     # landscape, and that contrast is itself a fact about Hawaiʻi — so
@@ -661,20 +672,48 @@ def render_island(slug):
     v0 = np.clip(np.floor(V - 0.5).astype(np.int32), 0, GRID - 2)
     fu = np.clip(U - 0.5 - u0, 0, 1).astype(np.float32)
     fv = np.clip(V - 0.5 - v0, 0, 1).astype(np.float32)
-    h00 = theights[v0, u0]
-    h10 = theights[v0, u0 + 1]
-    h01 = theights[v0 + 1, u0]
-    h11 = theights[v0 + 1, u0 + 1]
-    hpx = ((h00 * (1 - fu) * (1 - fv) + h10 * fu * (1 - fv) +
-            h01 * (1 - fu) * fv + h11 * fu * fv) * 2.1)
+
+    def bil(tgrid):
+        return (tgrid[v0, u0] * (1 - fu) * (1 - fv) +
+                tgrid[v0, u0 + 1] * fu * (1 - fv) +
+                tgrid[v0 + 1, u0] * (1 - fu) * fv +
+                tgrid[v0 + 1, u0 + 1] * fu * fv)
+
+    # ---- the DEM, sampled per PIXEL (2026-08-21). Going through the
+    # 320 m tile grid + the anti-corduroy blur is what airbrushed the
+    # Koʻolau into a loaf: the fluted valleys are ~1 km apart and the
+    # tile-grid round trip erased them. The raster is sampled directly
+    # (at every 2nd px — its native 250 m is far coarser than that) and
+    # needs NO tent-killing blur, only a light 3 px pass so the
+    # bilinear cell facets don't checkerboard the hillshade.
+    S2 = 2
+    ta = elevation.sample(lon[::S2, ::S2], lat[::S2, ::S2])
+    talt = np.asarray(Image.fromarray(ta, "F").resize((W, H),
+                                                      Image.BILINEAR),
+                      np.float32)
+    gentle = talt < BEACH_MAX_M
+
+    hpx = elevation.height_units(talt)
+    # the tile heights ride along only as a positive DELTA, blurred —
+    # that is where build_map's synthetic rims for the three sub-grid
+    # Oʻahu tuff cones live (Lēʻahi, Koko, Pūowaina)
+    delta = np.maximum(bil(theights) - hpx, 0)
+    delta = np.asarray(Image.fromarray(delta)
+                       .resize((W // 5, H // 5), Image.BILINEAR)
+                       .resize((W, H), Image.BILINEAR), np.float32)
+    hpx = (hpx + delta) * 2.5
     hpx += smooth_field((H, W), 220, seed=31, lo=-1.6, hi=1.6) * (hpx > 1)
-    # broad blur so tile "tents" merge into smooth massifs (kills corduroy
-    # artifacts in the hillshade)
-    hs = Image.fromarray(hpx).resize((W // 5, H // 5), Image.BILINEAR) \
+    hs = Image.fromarray(hpx).resize((W // 3, H // 3), Image.BILINEAR) \
         .resize((W, H), Image.BILINEAR)
     hpx = np.asarray(hs, np.float32) * 1.15
     hpx *= land
-    hpx[d_inl < 5] *= 0.25             # ease ranges into the sea
+
+    # ease into the sea ONLY on gentle shores. A pali coast keeps its
+    # height to the waterline — the relief pass below then draws the
+    # sea cliff (Nā Pali, Molokaʻi's north shore, Hāmākua) for free.
+    ease = (d_inl < 5) & gentle
+    hpx[ease] *= 0.25
+    hpx[(d_inl < 2) & ~gentle] *= 0.75   # just soften the very rim
     hpx = np.maximum(hpx, 0).astype(np.float32)
 
     # ---- assemble ground color
@@ -798,30 +837,47 @@ def render_island(slug):
     sn = np.abs(N / 0.24 - np.round(N / 0.24)) * 0.24 < 0.014
     col[urbm & (se | sn)] = C_STREET
 
-    # beach band along every shore (overrides class), wet line at water edge
+    # beach band ONLY where the shore is actually depositional (low
+    # ground behind it — see `gentle`); elsewhere the terrain colour
+    # runs to the waterline over a dark wet-rock edge, which is what a
+    # pali footing or a lava bench looks like from up here
     beachw = 4.5 + smooth_field((H, W), 90, seed=51, lo=0, hi=3.5)
-    bm = land & (d_inl < beachw) & (hpx < 4)
+    bm = land & (d_inl < beachw) & gentle & (hpx < 6)
     col[bm] = C_SAND
     col[bm & ((fine < 0.2) | (d_inl < 1.8))] = C_SAND_WET
-    ditherb = land & (d_inl >= beachw) & (d_inl < beachw + 2.5) & (fine < 0.5)
+    ditherb = land & (d_inl >= beachw) & (d_inl < beachw + 2.5) & \
+        (fine < 0.5) & gentle
     col[ditherb] = C_SAND
+    rockshore = land & ~bm & (d_inl < 1.6)
+    col[rockshore] = col[rockshore] * 0.52 + \
+        np.array([34, 34, 30], np.float32) * 0.48
 
-    # mountain altitude blend + hillshade: verdant slopes, bare rock only
-    # near the crests, mossy patches breaking the rock up
+    # altitude blend + hillshade. Bare rock now follows the REAL
+    # mountain anatomy: the alpine line sits at measured metres (above
+    # ~1900 m nothing grows — Haleakalā's summit, Mauna Kea and Mauna
+    # Loa entire), NOT at render height, which painted the 900 m Koʻolau
+    # crest as grey scree when the real pali is green to the knife edge.
+    # Below the line, rock shows only where slopes are genuinely steep
+    # (exposed streaks on the fluted palis), and everywhere the rock
+    # hue still rides the rainfall ramp — wet grey vs dry red cinder.
     mm = hpx > 1
-    t = np.clip((hpx - 16) / 22.0, 0, 1)
-    t *= 0.55 + 0.45 * smooth_field((H, W), 70, seed=61)
+    t = np.clip((talt - 1900.0) / 450.0, 0, 1)
+    t *= 0.62 + 0.38 * smooth_field((H, W), 70, seed=61)
+    gx = np.roll(hpx, 3, 1) - np.roll(hpx, -3, 1)
+    gy = np.roll(hpx, 3, 0) - np.roll(hpx, -3, 0)
+    steep = np.clip((np.hypot(gx, gy) - 9.0) / 10.0, 0, 1)
+    t = np.maximum(t, steep * 0.38 * (smooth_field((H, W), 110, seed=62)
+                                      > 0.45))
     tm = t[mm][:, None]
-    # bare rock is grey-green where it rains on it and red-brown cinder
-    # where it does not — Mauna Kea's summit is drier than Kawaihae
     rock_hi = C_ROCK_HIGH + (C_ROCK_HIGH_DRY - C_ROCK_HIGH) * \
         (1 - wet[mm])[:, None]
     col[mm] = col[mm] * (1 - tm) + rock_hi * tm
-    gx = np.roll(hpx, 2, 1) - np.roll(hpx, -2, 1)
-    gy = np.roll(hpx, 2, 0) - np.roll(hpx, -2, 0)
-    shade = np.clip((gx * 0.7 + gy * 1.1) * 3.2, -34, 34)
+    # the sculpting light. The old gain was tuned for the modelled
+    # tent-heights; real DEM slopes are gentler per-pixel and need a
+    # stronger lamp or every valley reads as an airbrush pass.
+    shade = np.clip((gx * 0.8 + gy * 1.3) * 6.0, -46, 46)
     col[mm] += shade[mm][:, None]
-    crag = mm & (fine > 0.945)
+    crag = mm & (fine > 0.945) & ((talt > 1500) | (steep > 0.3))
     col[crag] -= 20
 
     col = np.clip(col, 0, 255).astype(np.uint8)
