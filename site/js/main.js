@@ -1744,8 +1744,29 @@ const SessionPanel = {
       }
       return h;
     };
+    /* The die is a real 3D cube now (2026-08-21, user's call: "i want
+       the dice to look like they're actually rolling") — six pip faces
+       on a .tcube that CSS spins through the air; the flat square that
+       flickered its face every 75ms never read as rolling. setFace no
+       longer swaps pips: it sets the cube's INLINE transform to the
+       orientation that puts face n in front, with a full extra turn on
+       each axis so the CSS transition reads as the roll decelerating.
+       State lives in the inline style, so a frozen animation clock in
+       a hidden tab still shows the right face — the animation is only
+       the look, per the tray's house rule. */
+    const FACE_ROT = { 1: [0, 0], 2: [0, -90], 3: [-90, 0],
+                       4: [90, 0], 5: [0, 90], 6: [0, 180] };
+    const dieHtml = () => {
+      let h = '<span class="tcube">';
+      for (let n = 1; n <= 6; n++) {
+        h += '<b class="tf tf' + n + '">' + pipHtml(n) + "</b>";
+      }
+      return h + "</span>";
+    };
     const setFace = (el, n) => {
-      el.innerHTML = pipHtml(n);
+      const o = FACE_ROT[n] || FACE_ROT[1];
+      el.querySelector(".tcube").style.transform =
+        "rotateX(" + (o[0] + 360) + "deg) rotateY(" + (o[1] - 360) + "deg)";
       el.dataset.n = n;
     };
     /* The verdict has to be READABLE, not merely shown. T_HOLD is the
@@ -1779,17 +1800,13 @@ const SessionPanel = {
         '<div class="tray-stamp"></div></div>';
       panel.appendChild(wrap);
       const dice = wrap.querySelectorAll(".tdie");
-      for (const d of dice) setFace(d, 1 + Math.floor(Math.random() * 6));
-      /* The tumble is ONE tick per frame of the cycle, not one per die
-         — two transients 0ms apart phase into a single louder click
-         and the dice stop sounding like two objects. SFX.dieTick is
+      for (const d of dice) d.innerHTML = dieHtml();
+      /* The cubes spin in CSS while airborne; this interval is now
+         only the SOUND of it. ONE tick per cycle, not one per die —
+         two transients 0ms apart phase into a single louder click and
+         the dice stop sounding like two objects. SFX.dieTick is
          deliberately almost nothing at this rate; see its note. */
-      const iv = setInterval(() => {
-        for (const d of dice) {
-          setFace(d, 1 + Math.floor(Math.random() * 6));
-        }
-        SFX.dieTick();
-      }, 75);
+      const iv = setInterval(() => SFX.dieTick(), 75);
       SFX.dieTick();
       let dead = false, landed = false;
       const timers = [];
@@ -1813,13 +1830,17 @@ const SessionPanel = {
       };
       at(T_TUMBLE, () => {
         clearInterval(iv);
+        // class FIRST, faces second: .landed swaps the cube from its
+        // spin animation to a transform transition, and the inline
+        // transform has to land while that transition is live or the
+        // cube snaps to its face instead of rolling into it
+        wrap.classList.add("landed");
         setFace(dice[0], r.d1);
         setFace(dice[1], r.d2);
         // the dice slam down staggered in CSS, so they land staggered
         // in the ear too — SFX.dieLand offsets itself by index
         SFX.dieLand(0);
         SFX.dieLand(1);
-        wrap.classList.add("landed");
         wrap.querySelector(".tray-math").innerHTML =
           "<b>" + r.d1 + "</b> + <b>" + r.d2 + "</b> · " +
           esc(bits.join(" · ")) + " · <b>" + r.total + "</b>";
@@ -4787,24 +4808,26 @@ class WorldScene extends Phaser.Scene {
     const get = this.cache.json.get("get_flows");
     if (!inc || !inc.zips || !inc.zips.length) return;
 
-    /* The mote is a COMET now (2026-08-21, user's call: "more visible
-       and stylish without making it too obvious"): a short tapering
-       tail behind a bright head, drawn pointing +x and rotated to the
-       curve tangent each frame. Same speeds, same alpha budget — the
-       tail is what makes a slow point read as *flow* instead of dust,
-       so visibility comes from legibility, not from more light. */
+    /* The mote is a STREAK (2026-08-21, user's call, same day as the
+       comet: the ball-and-tail comet "looked like sperm" — nothing
+       round anywhere now). One thin tapered line, alpha ramping toward
+       the head, capped by a short bright DASH instead of a disc; drawn
+       pointing +x and rotated to the curve tangent each frame. Same
+       speeds, same alpha budget — the length is what makes a slow
+       point read as *flow* instead of dust. */
     const mote = (key, ring, core) => {
       if (this.textures.exists(key)) return;
       const g = this.make.graphics({ add: false });
-      for (let i = 0; i < 6; i++) {            // tail: fading beads
-        g.fillStyle(ring, 0.05 + i * 0.055);
-        g.fillCircle(2.5 + i * 1.9, 4, 0.7 + i * 0.24);
+      const N = 14;
+      for (let i = 0; i < N; i++) {
+        const t = i / (N - 1);                 // 0 = tail, 1 = head
+        g.fillStyle(ring, 0.03 + 0.3 * t * t);
+        const h = 0.5 + 0.55 * t;              // half-thickness .5 → 1.05
+        g.fillRect(1 + t * 17, 3 - h, 2.6, h * 2);
       }
-      g.fillStyle(ring, 0.5);
-      g.fillCircle(14, 4, 2.6);
-      g.fillStyle(core, 1);
-      g.fillCircle(14, 4, 1.4);
-      g.generateTexture(key, 18, 8);
+      g.fillStyle(core, 0.95);
+      g.fillRect(19, 2.3, 5, 1.4);             // leading dash, not a disc
+      g.generateTexture(key, 25, 6);
       g.destroy();
     };
     mote("mote_gold", 0xfff2c0, 0xffe9a0);
@@ -4832,6 +4855,11 @@ class WorldScene extends Phaser.Scene {
     const getDollars = get ? get.total : 0;
     const grand = incDollars + getDollars;
 
+    // GET rows carry no area name — borrow the income file's, which
+    // covers the same ZIP geography
+    const areaByZip = {};
+    for (const z of inc.zips) areaByZip[z.zip] = z.area;
+
     const mkStream = (rows, weightOf, dollars, tex, id) => {
       const paths = rows.map((z, i) => {
         const src = new Phaser.Math.Vector2(z.px, z.py);
@@ -4845,7 +4873,8 @@ class WorldScene extends Phaser.Scene {
         return { curve: new Phaser.Curves.QuadraticBezier(src, mid, dst),
                  len,
                  dur: Math.min(MAX_DUR, Math.max(MIN_DUR, len / SPEED)),
-                 w: weightOf(z), acc: Math.random(), rate: 0 };
+                 w: weightOf(z), acc: Math.random(), rate: 0,
+                 zip: z.zip, area: z.area || areaByZip[z.zip] || "" };
       });
       const wTotal = paths.reduce((s, p) => s + p.w, 0) || 1;
       const budget = TARGET_MOTES * (dollars / grand);
@@ -4855,22 +4884,30 @@ class WorldScene extends Phaser.Scene {
       const wDur = paths.reduce((s, p) => s + (p.w / wTotal) * p.dur, 0);
       const rateTotal = budget / Math.max(0.5, wDur);
       for (const p of paths) p.rate = rateTotal * (p.w / wTotal);
-      return { id, tex, paths, enabled: true };
+      return { id, tex, paths, wTotal, enabled: true };
     };
 
     const streams = [
       mkStream(inc.zips, (z) => z.taxM, incDollars, "mote_gold", "income"),
     ];
+    streams[0].tipShort = "income tax, TY" + inc.year;
+    streams[0].tipNote = "";                     // measured: DOTAX by ZIP
     if (get && get.zips && get.zips.length) {
-      streams.push(
-        mkStream(get.zips, (z) => z.getM, getDollars, "mote_teal", "get"));
+      const gs = mkStream(get.zips, (z) => z.getM, getDollars,
+                          "mote_teal", "get");
+      // per-ZIP GET is the MODELED half — the tooltip must say so,
+      // same rule as the chip tooltip and the revenue footnote
+      gs.tipShort = "GET, FY" + get.fy;
+      gs.tipNote = "district total, spread modeled by population";
+      streams.push(gs);
     }
 
     const pool = [];
     for (let i = 0; i < 420; i++) {            // headroom for highlight mode
       const im = this.add.image(0, 0, "mote_gold")
         .setDepth(3).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
-      pool.push({ im, t: 0, dur: 1, curve: null, free: true, sid: null });
+      pool.push({ im, t: 0, dur: 1, curve: null, free: true, sid: null,
+                  p: null });
     }
 
     /* ---- "✦ Streams" highlight (2026-08-21): the TEACHING view, one
@@ -4909,6 +4946,28 @@ class WorldScene extends Phaser.Scene {
     }
     this.flows = { streams, pool, hi, tmp: new Phaser.Math.Vector2(),
                    tan: new Phaser.Math.Vector2() };
+
+    /* ---- hover = the receipt (2026-08-21, user's call: "some way to
+       quantify tax flows by hovering over them"). Resting the pointer
+       near a streak lights its whole route and names the source ZIP
+       and the dollars. Acquisition is nearest LIVE mote; after that
+       the hover is sticky to the CURVE, so the moving streak doesn't
+       carry the tooltip away from under the cursor. The DOM tip is
+       reused across scene restarts. */
+    let tip = document.getElementById("flow-tip");
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.id = "flow-tip";
+      document.body.appendChild(tip);
+    }
+    tip.classList.remove("show");
+    this.flows.tip = tip;
+    this.flows.hov = null;
+    this.flows.hovG = this.add.graphics().setDepth(4)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    // overlays cover the canvas: a stale pointer under one must not
+    // hold a tooltip on screen
+    this.flows.ovls = Array.from(document.querySelectorAll(".ovl"));
 
     const release = (id) => {
       for (const m of this.flows.pool) {
@@ -5018,6 +5077,7 @@ class WorldScene extends Phaser.Scene {
           m.free = false;
           m.sid = st.id;
           m.curve = p.curve;
+          m.p = p;
           m.t = 0;
           m.dur = p.dur;
           m.im.setTexture(st.tex).setVisible(true);
@@ -5034,13 +5094,113 @@ class WorldScene extends Phaser.Scene {
       }
       m.curve.getPoint(m.t, F.tmp);
       m.im.setPosition(F.tmp.x, F.tmp.y);
-      // the comet points down its own path
+      // the streak points down its own path
       m.curve.getTangent(m.t, F.tan);
       m.im.setRotation(Math.atan2(F.tan.y, F.tan.x));
       m.im.setAlpha(A_HI * Math.sin(Math.PI * m.t));
       m.im.setScale(moteScale);
     }
+    this.updateHover();
     if (F.hi) this.updateHi(time, dt, moteScale);
+  }
+
+  /* ---- flow hover: acquire on the nearest live mote, stay sticky to
+     its curve, stroke the whole route and pin a DOM receipt to the
+     cursor. All world-space; thresholds are screen px ÷ zoom so the
+     feel is constant at any camera height. */
+  nearCurve(curve, x, y, thr) {
+    const q = this.flows.tan;
+    const t2 = thr * thr;
+    for (let k = 0; k <= 24; k++) {
+      curve.getPoint(k / 24, q);
+      const dx = q.x - x, dy = q.y - y;
+      if (dx * dx + dy * dy < t2) return true;
+    }
+    return false;
+  }
+
+  updateHover() {
+    const F = this.flows;
+    const cam = this.cameras.main;
+    const ptr = this.input.activePointer;
+    let hov = null;
+    if (!F.ovls.some((o) => !o.classList.contains("hidden"))) {
+      cam.getWorldPoint(ptr.x, ptr.y, F.tmp);
+      const wx = F.tmp.x, wy = F.tmp.y;
+      const thr = 14 / cam.zoom;
+      const cur = F.hov;
+      if (cur && cur.st.enabled &&
+          this.nearCurve(cur.p.curve, wx, wy, thr * 1.6)) {
+        hov = cur;
+      } else {
+        let best = thr * thr, bm = null;
+        for (const m of F.pool) {
+          if (m.free || !m.p) continue;
+          const dx = m.im.x - wx, dy = m.im.y - wy;
+          const d = dx * dx + dy * dy;
+          if (d < best) { best = d; bm = m; }
+        }
+        if (bm) {
+          const st = F.streams.find((s) => s.id === bm.sid);
+          if (st && st.enabled) hov = { p: bm.p, st };
+        }
+      }
+    }
+    const changed = (hov && hov.p) !== (F.hov && F.hov.p);
+    F.hov = hov;
+    if (!hov) {
+      if (changed) { F.hovG.clear(); F.tip.classList.remove("show"); }
+      return;
+    }
+    // restroke every frame: the line width is world px, so it has to
+    // track the zoom anyway, and 25 segments is nothing
+    const lw = Phaser.Math.Clamp(2.6 / cam.zoom, 2.6, 34);
+    const colr = hov.st.tex === "mote_teal" ? 0x4fd8c8 : 0xf2c14e;
+    const g = F.hovG;
+    g.clear();
+    g.lineStyle(lw, colr, 0.3);
+    g.beginPath();
+    const q = F.tan;
+    hov.p.curve.getPoint(0, q);
+    g.moveTo(q.x, q.y);
+    for (let k = 1; k <= 24; k++) {
+      // stop short of the hub, same manners as the highlight ribbons
+      hov.p.curve.getPoint((k / 24) * 0.95, q);
+      g.lineTo(q.x, q.y);
+    }
+    g.strokePath();
+    if (changed) {
+      F.tip.innerHTML = this.tipHtml(hov);
+      F.tip.className =
+        "show " + (hov.st.tex === "mote_teal" ? "teal" : "gold");
+    }
+    // follow the cursor; flip at the window edges
+    const W = 270, H = 76, pad = 16;
+    const x = ptr.x + W + pad > window.innerWidth
+      ? ptr.x - W - pad : ptr.x + pad;
+    const y = ptr.y + H + pad > window.innerHeight
+      ? ptr.y - H - pad : ptr.y + pad;
+    F.tip.style.left = x + "px";
+    F.tip.style.top = y + "px";
+  }
+
+  tipHtml(hov) {
+    const esc = (s) =>
+      String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const p = hov.p, st = hov.st;
+    const fm = (m) => m >= 950 ? "$" + (m / 1000).toFixed(1) + "B"
+      : m >= 9.5 ? "$" + Math.round(m) + "M"
+      : m >= 0.95 ? "$" + m.toFixed(1) + "M"
+      : "$" + Math.round(m * 1000) + "K";
+    const pct = 100 * p.w / st.wTotal;
+    const pctS = pct >= 9.5 ? Math.round(pct) + "%" : pct.toFixed(1) + "%";
+    return "<b>" + (p.area ? esc(p.area) : "ZIP " + esc(p.zip)) + "</b>" +
+      (p.area ? "<span class='ft-zip'> · ZIP " + esc(p.zip) + "</span>"
+              : "") +
+      "<div class='ft-line'>" + fm(p.w) + "/yr → the Capitol · " + pctS +
+      " of " + esc(st.tipShort) + "</div>" +
+      (st.tipNote
+        ? "<div class='ft-note'>" + esc(st.tipNote) + "</div>" : "");
   }
 
   /* the highlight layer's slow life: breathing source glints, the

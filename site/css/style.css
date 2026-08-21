@@ -155,6 +155,33 @@ html, body {
 #hi-chip { border-color: rgba(255, 233, 168, .75); color: #fff3cf; }
 #hi-chip.off { border-color: rgba(255,255,255,.3); color: #8f99bd; }
 
+/* the flow receipt: hovering near a tax streak strokes its route and
+   pins this to the cursor — source area, ZIP, dollars, share. Fixed and
+   inert; z 20 keeps it under the overlays (z 30), so an open panel
+   covers it. Created by buildFlows, reused across scene restarts. */
+#flow-tip {
+  position: fixed;
+  z-index: 20;
+  max-width: 270px;
+  padding: 7px 11px 8px;
+  background: rgba(10, 18, 50, 0.9);
+  border: 1px solid rgba(242, 193, 78, .65);
+  border-radius: 8px;
+  color: #dfe8ff;
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: .3px;
+  pointer-events: none;
+  display: none;
+}
+#flow-tip.show { display: block; }
+#flow-tip b { color: #ffe9a8; font-size: 12.5px; }
+#flow-tip.teal { border-color: rgba(79, 216, 200, .6); }
+#flow-tip.teal b { color: #b8f4ec; }
+#flow-tip .ft-zip { color: #9aa4c8; }
+#flow-tip .ft-line { margin-top: 2px; }
+#flow-tip .ft-note { margin-top: 1px; color: #9aa4c8; font-size: 11px; }
+
 /* ---------- toolbar ---------- */
 #toolbar {
   position: fixed;
@@ -1242,7 +1269,8 @@ html, body {
   /* the roll tray — popTray never mounts under RM (the staged roll
      resolves instantly upstream), but if it ever did, it must sit
      still; its JS timers remove it regardless */
-  .sd-tray, .sd-tray .tray-card, .sd-tray .tdie, .sd-tray .tray-math,
+  .sd-tray, .sd-tray .tray-card, .sd-tray .tdie, .sd-tray .tcube,
+  .sd-tray .tray-math,
   .sd-tray .tray-stamp, .sd-tray .tray-card::after,
   /* the character card's entrance, plate or rail (`cc-in`/`cc-in-rail`
      are both set on this one class, so one line covers both) */
@@ -1251,7 +1279,10 @@ html, body {
   }
   #sess-metrics .metc .bar i,
   /* the HUD standing cluster's bars slide on the same easing as the
-     overlay's, so they belong in the same escape hatch */
+     overlay's, so they belong in the same escape hatch — and the die
+     cube's settle spin, whose resting inline transform is already the
+     correct face */
+  .sd-tray .tcube,
   #hud-standing .hs-bar i { transition: none !important; }
   .ag-back, .ag-back::before, .ag-back .agb-ar {
     transition: none !important;
@@ -1950,27 +1981,68 @@ html, body {
 .sd-tray.r-red .tray-card { border-color: #ff8d80; }
 .sd-tray.r-red .tray-skill { color: #ff8d80; }
 
-/* real pip faces, 3x3. The die is the one thing on this screen worth
-   drawing properly — a numeral in a box reads as a form field. */
+/* real pip faces, 3x3, on a REAL 3D CUBE (2026-08-21, user's call:
+   "i want the dice to look like they're actually rolling"). The old
+   flat square flickering its pips every 75ms never read as a roll.
+   Now .tdie is a perspective stage, .tcube carries six .tf faces
+   (opposite faces sum to 7), and the tumble is the cube itself
+   rolling — each die on a different dominant axis and period so the
+   two never read as one object. JS owns which face lands (setFace
+   sets the cube's inline transform); CSS owns only the motion.
+   GOTCHA: no filter / overflow:hidden / opacity on .tdie or anything
+   between it and the faces — grouping properties flatten
+   preserve-3d, which is why .jack's burst self-clips with
+   border-radius instead of overflow:hidden on the card. */
 .sd-tray .tray-dice {
   display: flex;
   justify-content: center;
-  gap: 14px;
-  margin: 16px 0 12px;
+  /* a rotated cube overhangs its 58px footprint by up to ~12px a
+     side (58·√2 diagonal), so anything under ~24px of gap lets the
+     two dice interpenetrate mid-tumble */
+  gap: 24px;
+  margin: 16px 0 14px;
 }
 .sd-tray .tdie {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  perspective: 260px;
+}
+/* ground shadow: a flat sibling of the cube — it can sit under the
+   roll without flattening the 3D context the way filter would */
+.sd-tray .tdie::after {
+  content: "";
+  position: absolute;
+  left: 3px; right: 3px;
+  bottom: -13px;
+  height: 12px;
+  background: radial-gradient(50% 50% at 50% 50%,
+    rgba(0, 0, 0, .5), transparent 70%);
+}
+.sd-tray .tcube {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.sd-tray .tf {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
-  width: 58px;
-  height: 58px;
   padding: 8px;
   box-sizing: border-box;
   background: linear-gradient(155deg, #f8f6ee, #ddd8c4);
   border-radius: 11px;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18),
-    0 5px 12px rgba(0, 0, 0, .45);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18);
+  backface-visibility: hidden;
 }
+.sd-tray .tf1 { transform: translateZ(29px); }
+.sd-tray .tf2 { transform: rotateY(90deg) translateZ(29px); }
+.sd-tray .tf3 { transform: rotateX(90deg) translateZ(29px); }
+.sd-tray .tf4 { transform: rotateX(-90deg) translateZ(29px); }
+.sd-tray .tf5 { transform: rotateY(-90deg) translateZ(29px); }
+.sd-tray .tf6 { transform: rotateY(180deg) translateZ(29px); }
 .sd-tray .tdie i {
   border-radius: 50%;
   background: transparent;
@@ -1979,23 +2051,47 @@ html, body {
   background: #10131c;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
 }
-/* in the air: the whole tray's dice tumble, offset so they never read
-   as one object moving */
-.sd-tray .tdie { animation: tdie-air .42s ease-in-out infinite; }
-.sd-tray .tdie:last-child { animation-delay: .14s; }
+/* in the air: the wrapper arcs up and down while the cube rolls */
+.sd-tray .tdie { animation: tdie-air .5s ease-in-out infinite; }
+.sd-tray .tdie:last-child { animation-delay: .17s; }
 @keyframes tdie-air {
-  0%, 100% { transform: translateY(0) rotate(-6deg); }
-  50%      { transform: translateY(-9px) rotate(7deg); }
+  0%, 100% { transform: translateY(2px); }
+  50%      { transform: translateY(-11px); }
 }
-/* landed: slam down, stagger, and stop */
+.sd-tray .tcube { animation: tcube-roll .85s linear infinite; }
+.sd-tray .tdie:last-child .tcube {
+  animation: tcube-roll2 .7s linear infinite;
+}
+@keyframes tcube-roll {
+  from { transform: rotateX(0deg) rotateY(0deg); }
+  to   { transform: rotateX(720deg) rotateY(-360deg); }
+}
+@keyframes tcube-roll2 {
+  from { transform: rotateX(0deg) rotateY(0deg); }
+  to   { transform: rotateX(-360deg) rotateY(720deg); }
+}
+/* landed: the wrapper slams down while the cube decelerates out of
+   its spin into the rolled face — the inline transform set by
+   setFace, reached through this transition. The last die's cube gets
+   the same delay as its slam so the pair lands staggered. */
 .sd-tray.landed .tdie {
   animation: tdie-land .42s cubic-bezier(.2, 1.7, .35, 1) both;
 }
 .sd-tray.landed .tdie:last-child { animation-delay: .11s; }
 @keyframes tdie-land {
-  from { transform: translateY(-26px) scale(1.28) rotate(12deg); }
+  from { transform: translateY(-26px) scale(1.22); }
   to   { transform: none; }
 }
+/* both selectors on purpose: the second die's SPIN rule
+   (.sd-tray .tdie:last-child .tcube) counts four classes, so a plain
+   .sd-tray.landed .tcube (three) loses to it and that die never stops
+   rolling — the grouped :last-child selector outranks it outright. */
+.sd-tray.landed .tdie .tcube,
+.sd-tray.landed .tdie:last-child .tcube {
+  animation: none;
+  transition: transform .5s cubic-bezier(.18, .8, .22, 1);
+}
+.sd-tray.landed .tdie:last-child .tcube { transition-delay: .11s; }
 .sd-tray .tray-dc {
   color: #8b95bb;
   font-size: 9.5px;
@@ -2043,9 +2139,11 @@ html, body {
   55%  { opacity: 1; transform: scale(.92) rotate(2deg); }
   100% { transform: none; }
 }
-/* the two loud ones, same vocabulary as the inline card */
+/* the two loud ones, same vocabulary as the inline card.
+   NO overflow:hidden here — it is a grouping property and would
+   flatten the dice cubes' preserve-3d during a boxcars tumble; the
+   burst clips itself with the card's own radius instead. */
 .sd-tray.jack .tray-card {
-  overflow: hidden;
   position: relative;
 }
 .sd-tray.jack.ok .tray-card::after,
@@ -2053,6 +2151,7 @@ html, body {
   content: "";
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   background: radial-gradient(60% 90% at 50% 55%,
     rgba(242, 193, 78, .5), transparent 70%);

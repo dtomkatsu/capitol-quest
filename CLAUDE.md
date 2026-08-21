@@ -1098,14 +1098,40 @@ All CSS keyframes + class toggles; the only JS sequencing is the staged
 roll. Rules that must survive edits:
 
 - **The staged roll**: picking a checked choice appends the card in
-  `.rolling` (dice cycling via a 75ms interval, "the dice are out",
-  choice strip EMPTIED so nothing is clickable). Since 2026-08-15 the
+  `.rolling` ("the dice are out", choice strip EMPTIED so nothing is
+  clickable). Since 2026-08-15 the
   reveal is a POP-OUT TRAY (`popTray` in main.js, `.sd-tray` in CSS)
   centered over the whole panel: a veil dims the scene, a card pops
-  with the skill name, two real 3×3 pip dice tumbling (`setFace`/
-  `pipHtml` — a numeral in a box reads as a form field), the DC line,
+  with the skill name, two real 3×3 pip dice tumbling, the DC line,
   then dice slam down staggered, the arithmetic ticks in, and the
-  verdict stamps SUCCESS/FAILURE in verdict color. The inline card is
+  verdict stamps SUCCESS/FAILURE in verdict color.
+  **The dice are 3D CSS CUBES since 2026-08-21** (user's call: "i want
+  the dice to look like they're actually rolling" — the flat square
+  flickering its face every 75ms never read as a roll): `.tdie` is a
+  perspective stage, `.tcube` carries six `pipHtml` faces (opposites
+  sum to 7), CSS spins each cube on a different dominant axis/period
+  in the air, and at T_TUMBLE `setFace` sets the cube's INLINE
+  transform to the rolled face (+ a full extra turn each axis) so the
+  `.landed` transition reads as the roll decelerating in. Rules:
+  - **JS owns the landed face via inline style** — a frozen animation
+    clock in a hidden tab costs only the tumble, never the result.
+    `popTray` adds `.landed` BEFORE calling setFace, or the transform
+    lands while the spin animation still owns the property.
+  - **The landed override needs BOTH grouped selectors** (`.sd-tray
+    .tdie:last-child .tcube`'s spin rule counts four classes; a plain
+    three-class `.landed .tcube` loses to it and die 2 never stops
+    spinning — hit in verification, die showed identity forever).
+  - **No grouping properties on/above the dice** (filter,
+    overflow:hidden, opacity) — they flatten preserve-3d; that is why
+    `.jack .tray-card` lost its overflow:hidden (the burst self-clips
+    with border-radius) and the ground shadow is a flat `::after`
+    sibling, not a drop-shadow filter.
+  - The 75ms interval survives as SOUND only (`SFX.dieTick`); the
+    faces no longer swap. `.tray-dice` gap must stay ≥ ~24px — a
+    rotated cube overhangs its box ~12px a side and the dice
+    interpenetrate below that.
+  - Reduced motion: `.tcube` is in BOTH escape hatches (animation and
+    transition) — resting state is the correct face by inline style. The inline card is
   still rendered and settles into the transcript as the RECEIPT — the
   tray is theatre on top, the receipt is the record you scroll back to.
   Sequencing rules that must survive edits:
@@ -1817,10 +1843,27 @@ Terrain height is MEASURED now, same pattern as rainfall:
 
 ## Tax-flow presentation (2026-08-21)
 
-- Motes are **comets**: one texture per stream (tapered tail + bright
-  head, drawn pointing +x), rotated to `curve.getTangent()` each frame.
-  Ambient alpha/speed budget unchanged — FEATURES.md "Visual language
-  rules" still bind, and now record the one sanctioned exception:
+- Motes are **streaks** (same day, superseding the comet: the
+  ball-and-tail head "looked like sperm"): one thin tapered LINE per
+  stream — alpha ramps toward the head, near-constant ~2px thickness,
+  a short bright dash for the tip, nothing round anywhere — drawn
+  pointing +x, rotated to `curve.getTangent()` each frame. Ambient
+  alpha/speed budget unchanged — FEATURES.md "Visual language rules"
+  still bind, and now record the one sanctioned exception:
+- **Hover quantifies a flow** (user's call, same day): resting the
+  pointer near a streak strokes its whole route (stops at t=0.95, same
+  manners as the ribbons) and pins a DOM receipt (`#flow-tip`, z 20 =
+  under the overlays) to the cursor — area name, ZIP, $/yr, share of
+  its stream. `updateHover` in main.js: acquire on the nearest LIVE
+  mote (motes carry `m.p`, paths carry zip/area/w), then STICKY to the
+  curve so the moving streak doesn't drag the tooltip; suppressed
+  while any `.ovl` is open (a stale pointer under a panel must not
+  hold a tip). GET rows have no `area` — borrowed from the income
+  file's zip→area map — and the GET tip carries the modeled-spread
+  caveat line, per the measured-vs-modeled rule. Per-path dollars are
+  just `p.w` ($M in BOTH streams: taxM / getM); share = `w / wTotal`
+  (now stored on the stream). The tip element is created once and
+  reused across scene restarts.
 - **"✦ Streams" highlight toggle** (`#hi-chip`, OFF by default,
   localStorage `cq-flow-hi`): additive ribbons under each stream's top
   8 routes drawn in three segments that DIM toward the hub and stop at
