@@ -93,13 +93,32 @@ The two opinion meters stop being halves of one bar.
 
 | | key | label | how it moves | what it does |
 |---|---|---|---|---|
-| 👪 | `support` | **Public Support** | costs your one weekly action to build; **decays 1–2/week** if unfed | converts to leverage only at hearings and floor votes |
-| 🏛️ | `influence` | **Political Influence** | built by working the building (which costs you support); **does not decay** | applies continuously to every scheduling decision |
+| 👪 | `support` | **Public Support** | costs your one weekly action to build; **spent at the moment a vote is expected and not called** (−2/week, once however many bills missed), and stakeable as an ANTE on a check | converts to leverage only at hearings and floor votes |
+| 🏛️ | `influence` | **Political Influence** | built by working the building (which costs you support); **decays 1/week toward the 30 baseline**, downward only | applies continuously to every scheduling decision |
 
 Support is a stock you spend at specific moments. Influence is a rate
 that applies every single week, everywhere, whether or not you're
 paying attention. That asymmetry *is* the lesson — don't balance them
 to 50/50, and don't let the UI imply you should.
+
+**WHICH METER DECAYS WAS REVERSED 2026-08-21 (§8e), deliberately.** This
+table used to read "support decays 1–2/week if unfed; influence does not
+decay" — and neither half was ever built, so for the whole life of the
+feature nothing decayed and nothing was spent: both meters only ever
+went up. Putting the decay on INFLUENCE instead is what makes the
+sentence under this table true in code:
+- Support genuinely is a STOCK, so it wants a SPEND at a moment, not a
+  drip. A week where the base turned out for a vote that never got
+  called is that moment, and it teaches something a timer cannot —
+  turnout is spent by asking for it, not by neglecting it.
+- Influence genuinely is a RATE, and a rate with no counter-pressure is
+  a ratchet: without decay, "Work the building" climbs to 100 and stays
+  there, so the inside game strictly dominates the back half of every
+  session and the meter stops being a choice.
+Decaying BOTH was considered and rejected: support would then be pushed
+from two directions at once while its only uses are the floor gate and
+dilution resistance, which over-prices a meter that is already the
+weaker of the two at the gates that kill bills.
 
 Starting values: `support: 50`, `influence: 30`. You start with the
 public and without the building.
@@ -488,20 +507,76 @@ bills (2026-08-19, §0).
 | engaged (sup 70, inf 55, 4 pushes) | 20.3% | 19.3% | 31.3% |
 | insider (sup 40, inf 85, 8 pushes) | 30.5% | 29.9% | 45.1% |
 
-**RE-RUN 2026-08-19 with `tools/simulate_gauntlet.py`** (see §0 — a
-real, re-runnable simulator now exists; it reads `chairs.json` and
-`hearing_rates.json` live, so this table can't drift from the shipped
-game the way the one above did). 20,000 sessions/cell, one bill per
-session (a single family in isolation — see §0 on why that's still
-right for a per-bill rate even with the bill-count cap removed):
+**SUPERSEDED AGAIN 2026-08-21 — see the run below.** The 08-19 numbers
+were right about the maths and wrong about the player: `engaged`
+(support 70, influence 55) and `insider` (40/85) name meter values that
+NO PATH THROUGH THE GAME COULD REACH, because a bill's support and
+influence were copied off the campaign's meters once at agenda lock —
+which happens inside the creation funnel, before any event fx has run —
+and then never written again by any code path. Every campaign's bills
+really sat at 50/30 + tilt for the whole session. The table was
+modelling the game as designed; the shipped game delivered
+passive-with-pushes to everybody.
 
 ```
-$ python3 tools/simulate_gauntlet.py --sessions 20000 -v
+$ python3 tools/simulate_gauntlet.py --sessions 20000 -v   # 2026-08-19
 profile   wealth          income          credit (hyp)
 passive   3.3% (×0.58)    4.2% (×0.57)    11.3% (×0.58)
 engaged   21.2% (×0.71)   23.7% (×0.71)   44.5% (×0.70)
 insider   28.6% (×0.91)   30.9% (×0.91)   62.9% (×0.92)
 ```
+
+**RE-RUN 2026-08-21, after the meters were wired into the gauntlet**
+(§8e). A bill's numbers are DERIVED from the campaign's live meters now,
+so a profile can no longer be a pair of static values — it is a WEEKLY
+ACTION POLICY, which is the choice the game actually asks the player to
+make (one action per week, and `push` competes for that slot with
+everything that builds the campaign). 20,000 sessions/cell, one bill per
+session:
+
+```
+$ python3 tools/simulate_gauntlet.py --sessions 20000 -v
+profile   wealth          income          credit (hyp)
+passive   2.4% (×0.53)    3.2% (×0.54)    8.6% (×0.58)
+push      10.1% (×0.58)   11.1% (×0.58)   26.6% (×0.63)
+lobby     4.5% (×0.64)    5.4% (×0.64)    14.8% (×0.64)
+rally     3.5% (×0.64)    4.9% (×0.64)    14.4% (×0.64)
+bench     3.8% (×0.73)    4.8% (×0.71)    13.5% (×0.79)
+balanced  6.4% (×0.65)    7.6% (×0.68)    19.1% (×0.71)
+
+what each policy BUILDS by sine die (no bill in play):
+  policy    support   influence
+  passive    50.0      30.0
+  push       64.0      57.0
+  lobby      65.0      60.0
+  rally     100.0      15.0
+  bench      95.0      30.0
+  balanced   95.0      35.0
+```
+
+The meter table is OUTPUT now, not input — the reachable ceiling of each
+weekly habit, which is exactly what the old profiles were guessing at.
+
+**Why passive moved from 3.3/4.2% to 2.4/3.2%**, attributed rather than
+waved at (measured by disabling one change at a time):
+
+| passive, wealth / income | rate |
+|---|---|
+| shipped 2026-08-21 | 2.36% / 3.17% |
+| …with the floor-calendar support burn off | 2.54% / 3.31% |
+| …with the recess off (what 08-19 modelled) | 3.06% / 3.91% |
+| …with both off — the 08-19 equivalent | **3.35% / 4.23%** |
+
+So the **passive band is preserved exactly** by the §8e rewrite: at
+50/30 all session, every derived term returns precisely what it
+returned before, which is the invariant `billMeter()` and `pushBonus()`
+were tuned around. The 08-21 shipped number is lower for two unrelated
+and identifiable reasons: **the mandatory recess, which the 08-19
+simulator never modelled at all** (a pre-existing fidelity gap in the
+tool, not a change to the game — it costs a passive bill ~0.7pp), and
+the new floor-calendar support burn (~0.2pp). The engaged/insider rows
+are simply gone: nothing replaces them, because nothing could reach
+them.
 
 `wealth` and `income` are the two LIVE families (conveyance/capgains,
 wwcr). `credit` is HYPOTHETICAL — no credit-tagged revenue measure
@@ -512,25 +587,102 @@ an enacted bill carries — how much conference dilution and the
 support-floor cut typically take, separate from whether it enacts at
 all.
 
-Four things this has to keep doing, or the model has drifted (all
+Five things this has to keep doing, or the model has drifted (all
 checked directly against this run, not eyeballed):
 - **Never-heard dominates every profile** (the thesis) — verified
-  separately by cause: 75–87% of every profile's deaths are "never
+  separately by cause: 76–90% of every policy's deaths are "never
   heard" against the two live families, floor votes a distant second.
+  (The band's top moved up because `rally` builds the support that only
+  matters at the FLOOR gate, so it dies at a chair proportionally more
+  often. Explainable, not drift.)
 - **Credits beat wealth taxes at every skill level** (the design's
-  headline contrast) — holds, and by MORE than the old table's ~1.5×:
-  now 3.4× at passive, 2.1× at engaged, 2.2× at insider. Explainable,
-  not a bug: it compounds through TWO gates (FIN credit 36% vs wealth
-  26%, WAM credit 33% vs wealth 13%), so a ~1.4–2.6× single-gate edge
-  becomes a bigger one after both committees. Still unreachable in
-  play (§0) — this is the argument for eventually shipping it.
-- **The insider outperforms the passive player** (the asymmetry) —
-  holds, monotonically, in every family.
-- **Passive rarely passes anything** (3–4%) — holds. The old phrase
-  "engaged lands roughly one bill of three" assumed a fixed 3-bill
-  package that no longer exists (no cap, §0); read this table as
-  PER-BILL odds instead — an engaged player fielding N tax bills should
-  expect roughly N × 0.21–0.24 of them enacted, independently.
+  headline contrast) — holds, at 2.9–4.1× across the six policies,
+  still far wider than the old table's ~1.5×. It compounds through TWO
+  gates (FIN credit 36% vs wealth 26%, WAM credit 33% vs wealth 13%),
+  so a ~1.4–2.6× single-gate edge becomes a bigger one after both
+  committees. Still unreachable in play (§0) — the argument for
+  eventually shipping a credit-tagged revenue measure.
+- **Every policy outperforms the passive player** (the asymmetry) —
+  holds, monotonically, in every family. This is the one that was
+  quietly FALSE in the shipped game before §8e: nothing the player did
+  after week 1 could move a hearing probability at all.
+- **Passive rarely passes anything** (2–3%) — holds.
+- **The push-first policy beats every rotation.** The weekly action is
+  one slot, and a week spent rallying inside a committee window is a
+  draw the bill never gets back. This is the model's sharpest finding
+  and it is a DESIGN OUTCOME, not a bug — the post-mortem already tells
+  the player the push is "worth more than any other lever you had".
+  Note `push` is push-FIRST, not push-only: a push needs a chair gate,
+  so on floor weeks and in the recess it falls through to lobbying,
+  which is why it also ends the session at influence 57.
+
+Read the table as PER-BILL odds — a player fielding N tax bills should
+expect roughly N × (their policy's rate) enacted, independently. The old
+phrase "engaged lands roughly one bill of three" assumed both a fixed
+3-bill package (no cap since §0) and the unreachable engaged profile;
+it is retired.
+
+## 8e. The meters, rewired into the gauntlet (2026-08-21)
+
+Support and influence were very nearly decoupled from the thing they
+are supposed to drive. Five findings, all confirmed in the code before
+anything was changed:
+
+1. **After week 1 the HUD meters touched no bill's odds.** Bills copied
+   both numbers once, at agenda lock, and the gauntlet only ever read
+   the copies. Rallying every week for a session changed no hearing
+   probability anywhere.
+2. **Every campaign's bills were identical.** Agenda lock happens inside
+   the creation funnel, before any event fx can run, so "seeded from
+   your campaign's current numbers" always meant exactly 50/30 + tilt.
+3. **Dilution was unreachable dead code.** It fires under support 35;
+   live families seed at 56 and 62 and per-bill support was never
+   written again. The support half of the two-failure-modes design has
+   never once fired in a shipped session.
+4. **The calibration table described a game that did not exist** (§8d).
+5. **Sourcing was inconsistent** — chair gates read the bill, conference
+   read the campaign, only the push wrote to a bill.
+
+The fix, in five parts:
+
+- **Bills DERIVE their meters, never store them.** A bill stores only
+  its family `tilt` (editorial, fixed at introduction) and `earned`
+  (what the player bought for it — the push). The live value is
+  `clamp(campaign meter + tilt + earned)`. Same rule as
+  `targetK()`/`raisedK()`: the campaign already holds this state and a
+  stored copy is only free to drift. **Calibration-safe by
+  construction** — a passive campaign sits at 50/30, so every term
+  returns exactly its pre-rewrite value (§8d).
+- **Dilution is graduated and reachable.** `floor` 35 → 45, ramping to
+  the full `cut` at `full` 15 instead of stepping off a cliff. Still
+  multiplicative, still stacks across both money gates, still floored by
+  `min` so dilution alone never zeroes a bill. Support still does NOT
+  make a hearing easier unless the chair is aligned — that asymmetry is
+  the teaching and it survives untouched.
+- **Support is a stock that something finally spends.** A week in which
+  a bill sat on the floor calendar and was not called costs the campaign
+  2 support — charged ONCE per week however many bills missed, because
+  it is the campaign's week that burned. Plus content can now stake a
+  meter on a check: a checked choice's own `effects` block is an ANTE,
+  paid win or lose, printed on the button beside the odds. First use is
+  packing the hearing room past the sign-up sheet (−3 support).
+- **Influence is a rate, not a ratchet.** It decays 1/week toward the
+  baseline every campaign starts at (30), downward only, so lobbying is
+  upkeep rather than a one-way climb and a player knocked below the
+  baseline must earn it back. Passive therefore sits exactly at the
+  baseline — the same invariant again.
+- **The push scales with the influence behind it** and conference reads
+  the BILL's influence like every other gate. `base + step` at influence
+  30 is exactly the old flat 0.15, so the anchor holds.
+
+What this buys, measured (§8d): a strategy spread where there was none.
+Passive 2.4%, rally 3.5%, bench 3.8%, lobby 4.5%, balanced 6.4%,
+push-first 10.1% on a wealth bill — and the two meters now do
+recognisably different jobs, since lobbying moves hearing odds while
+rallying moves floor votes and dilution resistance. `bench` carries the
+best surviving dollar figure (×0.73) of the cheap policies, which is the
+conference hold-firm payoff Base Building was always documented as
+having and could not previously demonstrate.
 
 ## 9. Build order
 

@@ -12,13 +12,14 @@
   "championed": 0.12,
   "pushInfluence": 4,
   "dilution": {
-   "_note": "Distinct failure modes: low influence still kills a bill outright (never heard, unchanged). Low SUPPORT no longer just nudges the same hearing roll — the moment a bill clears a chair gate, if its support is under floor, it comes out smaller. Multiplicative and stacks across the two money-committee gates (a chronically unpopular bill can limp out of both already thin), floored so dilution alone never zeroes a bill — killing it stays the job of never-heard/voted-down/conference.",
-   "floor": 35,
+   "_note": "Distinct failure modes: low influence still kills a bill outright (never heard, unchanged). Low SUPPORT does not make the hearing harder — it decides what SURVIVES the hearing: the moment a bill clears a chair gate, support under `floor` takes a bite out of its dollar figure. GRADUATED since 2026-08-21 (it was a cliff at 35, and unreachable besides — per-bill support was written once at seeding and never again, so nothing could ever lower it). `floor` is where dilution starts, `full` is where the per-gate bite reaches its maximum `cut`, and it ramps linearly between the two — so drifting toward the line costs a little before it costs a lot, which is the only version a player can learn from. Multiplicative and stacks across the two money-committee gates (a chronically unpopular bill can limp out of both already thin), floored by `min` so dilution alone never zeroes a bill — killing it stays the job of never-heard/voted-down/conference. floor 45 is deliberately just under the 50 every campaign starts at plus its family tilt: a passive campaign is never diluted (which is what preserves the calibrated bands), but a campaign bleeding support to floor-calendar weeks will be.",
+   "floor": 45,
+   "full": 15,
    "cut": 0.85,
    "min": 0.4
   },
   "familyTilt": {
-   "_note": "EDITORIAL, not measured — same standard as `championed` above: named, small, a judgment call about who a tax family's natural base is, not survey data. Seeds a bill's OWN support/influence away from the campaign's global numbers at introduction: wealth taxes poll well and lack institutional access; GET is the reverse (broad, visible, unpopular — but the lever leadership reaches for precisely because it avoids concentrated opposition); credits and tourism/admin sit closest to the measured hearing-rate story (session's easiest gates). Deltas are added to S.metrics.support/influence at seed time, then clamped 0-100 — they do not touch the measured base rate in baseRate(), which stays untouched by design.",
+   "_note": "EDITORIAL, not measured — same standard as `championed`: named, small, a judgment call about who a tax family's natural base is, not survey data. Since 2026-08-21 this is the ONLY per-bill meter data the game stores: a bill's live support/influence are DERIVED as (the campaign's meter + this tilt + whatever the player bought for that bill), never copied and stored. Before that they were absolute numbers seeded once at agenda lock — which happens inside the creation funnel, before any event fx can run, so every campaign's bills started at exactly 50/30 + tilt and then never moved again for the rest of the session. Wealth taxes poll well and lack institutional access; GET is the reverse (broad, visible, unpopular — but the lever leadership reaches for precisely because it avoids concentrated opposition); credits and tourism/admin sit closest to the measured hearing-rate story. Deltas are added to the campaign's meters and clamped 0-100 — they do not touch the measured base rate in baseRate(), which stays untouched by design.",
    "wealth": {
     "support": 12,
     "influence": -10
@@ -58,7 +59,21 @@
   },
   "introBaseline": 50,
   "introDiv": 400,
-  "introFloorDiv": 500
+  "introFloorDiv": 500,
+  "floorMissSupport": 2,
+  "_floorMissSupportNote": "SUPPORT IS A STOCK AND SOMETHING HAS TO SPEND IT (2026-08-21). The docs have always described support as 'spent at hearings and floor votes'; until now nothing spent it and it only ever went up. A week in which a bill sat on the floor calendar and was not called is that spend — the base turned out for a week that went nowhere. Charged ONCE per week no matter how many bills missed: it is the campaign's week that burned, not each bill's, and a six-bill package would otherwise drop 12 support in a single turn purely for being ambitious.",
+  "influenceDecay": 1,
+  "influenceBaseline": 30,
+  "_influenceDecayNote": "INFLUENCE IS A RATE, NOT A RATCHET (2026-08-21). Standing inside a building decays when you are not in it, so 'Work the building' is upkeep rather than a one-way climb — which is the distinction between the two meters that the game previously asserted in tooltips and nowhere else. Decays DOWNWARD ONLY, toward `influenceBaseline`, which is the value every campaign starts at: a player knocked below it by events must earn it back and never drifts up for free, and a passive campaign therefore sits exactly at the baseline all session. That is what keeps the simulator's passive band unmoved. It runs during the recess too, deliberately — a week when the Capitol is shut is precisely when a standing slips.",
+  "push": {
+   "_note": "THE PUSH SCALES WITH THE INFLUENCE BEHIND IT (2026-08-21) — it was a flat actionBonus 0.15 whoever asked. An insider's word to a chair is worth more than a stranger's, and the push is the game's most-used verb, so this is where the influence meter should bite hardest. bonus = min(cap, base + step * max(0, floor((billInfluence - from) / per))). ONE-SIDED ON PURPOSE: `base` IS the old flat 0.15 and the steps only ever ADD, counted from `from` (the influence baseline every campaign starts at). The first draft scaled from zero (base 0.10, a step every 30 points) and looked correct at a campaign influence of 30 — until you remember bills carry a family tilt: a wealth measure sits 10 under its campaign, landed in the first bucket, and its push quietly paid 0.10 where it had always paid 0.15. That is a stealth nerf to precisely the families the tilt already makes hardest, and it was caught in play, not in the maths. Adding a reward for standing must never take something away from a player who has not built any. Capped so it can never dwarf the measured base rate.",
+   "base": 0.15,
+   "step": 0.05,
+   "per": 30,
+   "from": 30,
+   "cap": 0.3
+  },
+  "_actionBonusNote": "SUPERSEDED by `push` above (2026-08-21); kept because old saves and any un-migrated call site still fall back to it, and because it documents what the flat value used to be."
  },
  "chairs": {
   "h-fin": {

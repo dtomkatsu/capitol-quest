@@ -987,17 +987,61 @@ Rules that must survive edits:
   every scheduling decision — never render them as a balance. The
   pre-2026-08-13 keys were `families` / `wealthy`; the load-time
   migration in `SessionPanel` must stay, or old saves reset.
-- **Support/influence are ALSO per-bill** (2026-08-13): `S.metrics.*`
-  is the campaign's global numbers; each `S.bills[i]` carries its own
-  `support`/`influence`, seeded at introduction from the global numbers
-  plus a small editorial tilt by tax family (`chairs.json`
-  `gate.familyTilt`). `chairOdds`/`floorOdds` read the BILL's numbers,
-  not the global ones — that split is what makes low-influence
-  (never heard) and low-support (heard but diluted at the chair gate,
-  `gate.dilution`) genuinely different failure modes instead of both
-  feeding one probability. New bills always need this seed
-  (`startBills`); old saves need `migrateBills()` at boot, or their
-  bills' odds silently go `NaN` and stop being heard forever.
+- **A bill's support/influence are DERIVED, never stored** (2026-08-21,
+  superseding the 2026-08-13 per-bill split — full write-up in
+  DESIGN-11 §8e). `billMeter(b, key)` =
+  `clamp(S.metrics[key] + b.tilt[key] + b.earned[key])`; a bill stores
+  ONLY `tilt` (editorial, by tax family, `chairs.json`
+  `gate.familyTilt`) and `earned` (what the player bought for that bill
+  — currently just the push). Rules:
+  - **Never reintroduce an absolute `b.support`/`b.influence`.** They
+    existed until 08-21 and were written exactly once, at agenda lock,
+    which happens inside the creation funnel BEFORE any fx can run. So
+    every campaign's bills sat at 50/30 + tilt forever, the HUD meters
+    touched no bill's odds after week 1, and `gate.dilution` was
+    unreachable dead code. Same rule as `targetK()`/`raisedK()`.
+  - **The calibration invariant is that a PASSIVE campaign sits at
+    50/30 all session**, so every derived term returns exactly its
+    pre-rewrite value and the simulator's passive band is unmoved.
+    Anything new that touches these meters must preserve that — check
+    it with `tools/simulate_gauntlet.py`, whose `passive` profile
+    exists as the anchor.
+  - `chairOdds`/`floorOdds`/`conf` all read the BILL's numbers. That
+    split is what makes low-influence (never heard) and low-support
+    (heard but diluted) genuinely different failure modes instead of
+    both feeding one probability — and **support still must not make a
+    hearing easier unless the chair is aligned**; it does its work at
+    the dilution step.
+  - Old saves are converted by `migrateBills()` at boot (two
+    generations: no keys at all, or absolute keys). It recovers
+    `earned.influence` exactly by counting pushes in `S.log`. Without
+    it every odds formula goes `NaN` and `Math.random() < NaN` is
+    always false, so bills silently stop being heard forever.
+- **The two meters have different physics, and it is now IN THE CODE**
+  (2026-08-21). Support is a STOCK that gets spent: a week where a vote
+  was expected and never called costs 2 (`gate.floorMissSupport`,
+  charged once per week however many bills missed), and content can
+  stake it as an ANTE. Influence is a RATE that decays 1/week toward
+  `gate.influenceBaseline` 30, downward only. **This REVERSED
+  DESIGN-11 §1**, which said support decays and influence doesn't —
+  neither had ever been built, so nothing decayed and nothing was
+  spent. Don't "restore" the old table without reading §1's note.
+- **A checked choice's own `effects` block is an ANTE** — paid on
+  commit, win or lose, on top of the outcome block. An UNCHECKED
+  choice is unaffected (there `effects` IS the outcome, and
+  `out === c`, so the `roll &&` guard is what stops a double-apply).
+  It applies inside `finish()`, never at pick time — the documented
+  rule that no metric may move before the verdict is stamped still
+  binds — and it is printed on the button beside the odds, because an
+  unadvertised charge is not a decision.
+- **The push scales with the influence behind it** (`gate.push`), and
+  it is ONE-SIDED: `base` IS the old flat 0.15 and steps only ever add,
+  counted from the baseline. A first draft scaled from zero and looked
+  right at campaign influence 30 — until the family tilt is
+  remembered, at which point a wealth bill (−10) fell into the first
+  bucket and its push quietly paid 0.10. Caught in play, not in the
+  maths. Never let a reward for standing take something from a player
+  who has none.
 - **Skill checks** (feature 11 step 1): 2d6 + skill + mods vs DC, with
   snake eyes/boxcars overriding. Odds are printed ON the choice button
   — that visibility is the teaching, don't hide it. WHITE checks reopen
@@ -1537,19 +1581,29 @@ no vote, no record. Rules that must survive edits:
   re-runnable** (`tools/simulate_gauntlet.py`, added 2026-08-19 — the
   original table was hand-produced by a script that was never
   committed and had been stale since 2026-08-13). It reads
-  `chairs.json`/`hearing_rates.json` LIVE, so it can't drift from the
-  shipped game by hand-copying. Re-run after any change to gate math or
-  the tax families in `policies.json` `revenue`; full numbers and the
-  invariants they must keep are in the design doc §8d/§0. Current
-  (2026-08-19, 20k sessions/profile, per-bill, wealth+income are the
-  two LIVE families since priorities stopped being bills — see the
-  revenue-game bullet above): passive enacts ~3-4% of bills, engaged
-  ~21-24%, insider ~29-31%; "never heard" causes 75-87% of deaths in
-  every profile. The credit-vs-wealth contrast (still ~2-3× at every
-  skill level, WIDER than the old ~1.5×) is simulated but currently
-  HYPOTHETICAL — no credit-tagged revenue bill exists to actually show
-  it. If a change moves any of this a lot, that is a finding to
-  explain, not a number to quietly paper over.
+  `chairs.json`/`hearing_rates.json`/`session.json` LIVE, so it can't
+  drift from the shipped game by hand-copying. Re-run after any change
+  to gate math, the meters, or the tax families in `policies.json`
+  `revenue`; full numbers and the invariants they must keep are in the
+  design doc §8d/§8e/§0.
+  **Profiles are WEEKLY ACTION POLICIES, not static meter values**
+  (2026-08-21) — the old `engaged` (support 70) and `insider` (40/85)
+  named states no path through the game could reach, which is the bug
+  §8e fixed. Current (20k sessions/cell, per-bill, wealth): passive
+  2.4%, rally 3.5%, bench 3.8%, lobby 4.5%, balanced 6.4%, push-first
+  10.1%; "never heard" causes 76-90% of deaths in every policy; the
+  credit-vs-wealth contrast holds at 2.9-4.1× but stays HYPOTHETICAL
+  (no credit-tagged revenue bill exists to show it).
+  **`passive` is the invariant anchor** — it never acts, so its meters
+  never leave 50/30 and its band must not move when the meter maths
+  changes. If it does, something is wrong. (It reads 2.4% against the
+  08-19 table's 3.3% for two reasons that were measured, not guessed:
+  the 08-19 simulator never modelled the mandatory recess at all
+  (~0.7pp — a fidelity gap in the TOOL, not a change to the game), and
+  the new floor-calendar support burn (~0.2pp). With both removed it
+  reproduces 3.35% exactly.)
+  If a change moves any of this a lot, that is a finding to explain,
+  not a number to quietly paper over.
 
 ## Policies overlay + budget scoreboard (feature 8)
 

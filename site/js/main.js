@@ -2228,12 +2228,30 @@ const SessionPanel = {
           const m = checkMath(c.check);
           const sk = data.skills[c.check.skill] ||
             { name: c.check.skill };
+          /* An ANTE is printed on the button with the odds, for the same
+             reason the odds are: an unadvertised charge is not a
+             decision, it is a surprise. Only the two meters can be
+             staked — anything else in a checked choice's effects block
+             still applies, it just isn't priced here. */
+          const ante = [];
+          if (c.effects) {
+            if (c.effects.support) {
+              ante.push("Support " + (c.effects.support > 0 ? "+" : "") +
+                c.effects.support);
+            }
+            if (c.effects.influence) {
+              ante.push("Influence " + (c.effects.influence > 0 ? "+" : "") +
+                c.effects.influence);
+            }
+          }
           const meta = st.done
             ? (st.rec.ok ? "✓ passed" :
                 c.check.type === "red" ? "✗ spent — one shot only" :
                 "✗ failed · nothing has changed since")
             : (sym(c.check.skill) || sym("dice")) + " " + sk.name + " · " +
-              dcName(c.check.dc) + " · " + m.odds.toFixed(0) + "%";
+              dcName(c.check.dc) + " · " + m.odds.toFixed(0) + "%" +
+              (ante.length ? " · costs " + esc(ante.join(", ")) +
+                " either way" : "");
           return '<button type="button" data-i="' + i + '" class="chk c-' +
             (c.check.type || "white") + (st.done ? " spent" : "") + '"' +
             (st.done ? " disabled" : "") + ">" + num +
@@ -2313,10 +2331,26 @@ const SessionPanel = {
                scene, and a support tick landing before the stamp would
                spoil the verdict a beat early */
             const finish = () => {
+              /* THE ANTE (2026-08-21): a CHECKED choice's own `effects`
+                 block is the stake — paid on commit, win or lose, on
+                 top of whichever outcome block lands. It is what lets
+                 content spend a meter to reach for something, which is
+                 how support is supposed to work and previously never
+                 could (nothing in the game spent it). An UNCHECKED
+                 choice is unaffected: there `effects` is the outcome
+                 itself, and out === c, so this would double-apply —
+                 hence the `roll &&` guard.
+                 It lands here, inside finish(), and not at pick time,
+                 because of the documented rule that no metric may move
+                 before the verdict is stamped: a support tick over the
+                 dice spoils the roll a beat early. Rendered as its own
+                 line, before the outcome's, so the player can see they
+                 paid it either way. */
+              const anteHtml = roll && c.effects ? applyFx(c.effects) : "";
               const fxHtml = applyFx(out.effects);
               append((out.reply ? '<div class="sd-narr">' +
                 esc(out.reply) + "</div>" : "") +
-                voiceHtml(out.voices) + fxHtml);
+                voiceHtml(out.voices) + anteHtml + fxHtml);
               play.innerHTML = '<button class="sd-done"' +
                 (out.goto ? ' data-goto="' + out.goto + '"' : "") +
                 ' type="button">Continue ▸</button>';
@@ -3096,8 +3130,12 @@ const SessionPanel = {
             html += '<div class="sh-row" data-push="' + b.id +
               '"><span class="shname"><b>' + sym("push") + " Work " +
               esc(ch.name) +
+              // the offer names what the push is worth AT THIS BILL'S
+              // influence, not a constant — the whole point of scaling
+              // it is that the player can watch the price of their own
+              // standing on the button before spending the week
               "</b><small>spend the week on " + esc(b.name) + " — " +
-              Math.round((G.actionBonus || 0.15) * 100) +
+              Math.round(pushBonus(bInf(b)) * 100) +
               " points of scheduling odds" +
               (dlLeft != null ? ' · <b class="dl' +
                 (dlLeft <= 1 ? " dl-soon" : "") + '">' +
@@ -3222,9 +3260,12 @@ const SessionPanel = {
           // also raises the bill's own influence, on top of the one-week
           // odds bonus — the two effects overlap in the moment (this
           // week's roll) and then influence's gain persists after.
-          // `b` is the actual S.bills element, so mutating it in place
-          // mutates the saved state directly.
-          b.influence = clamp(b.influence + (G.pushInfluence || 4));
+          // It lands in `earned`, the only per-bill store left: the
+          // bill's live number is the campaign's meter plus its tilt
+          // plus exactly this. `b` is the actual S.bills element, so
+          // mutating it in place mutates the saved state directly.
+          b.earned = b.earned || { support: 0, influence: 0 };
+          b.earned.influence += (G.pushInfluence || 4);
           S.log.push({ week: S.week, action: "push", bill: b.id });
           const trHtml = train("procedure");
           save();
@@ -3239,7 +3280,7 @@ const SessionPanel = {
             (ch.voice ? '<div class="sd-reply">' + esc(ch.voice) +
               "</div>" : "") +
             '<div class="sd-fx"><span class="gain">Scheduling odds +' +
-            Math.round((G.actionBonus || 0.15) * 100) +
+            Math.round(pushBonus(bInf(b)) * 100) +
             ' next week</span><span class="gain">' + sym("influence") +
             " " + esc(b.name) +
             "'s influence +" + (G.pushInfluence || 4) +
@@ -3466,6 +3507,96 @@ const SessionPanel = {
       stance === "hold" ? 0 :
       (kind === "gain") === (stance === "raise") ? 1 : -1;
 
+    /* ---- A BILL'S SUPPORT AND INFLUENCE ARE DERIVED, NEVER STORED
+       (2026-08-21). They used to be absolute numbers copied off the
+       campaign's meters ONCE, at agenda lock, and then never written
+       again by any code path. Three things followed, all bad:
+         - after week 1 the two HUD meters touched no bill's odds at
+           all, so a season of rallying changed no hearing probability
+           and the meters' own tooltips ("spent at hearings and floor
+           votes") were flavour rather than mechanics;
+         - agenda lock happens inside the creation funnel, BEFORE any
+           event fx can run, so every campaign's bills seeded at
+           exactly 50/30 + tilt — the seed was a constant dressed as
+           a reading of the player's campaign;
+         - dilution (`support < floor`) could therefore never fire,
+           because nothing could ever lower a bill's support.
+       Now a bill stores only what is genuinely ITS OWN — the family
+       `tilt` (editorial, fixed at introduction) and whatever the
+       player bought FOR IT (`earned`, currently the push) — and the
+       live number is read through the campaign's meter. Same rule as
+       targetK()/raisedK(): the campaign already holds this state, and
+       a stored copy is just a second version free to drift.
+       CALIBRATION INVARIANT: a passive campaign sits at 50/30 all
+       session, so these return exactly the old seeds and the
+       simulator's passive band is preserved by construction. What
+       changes is that an ENGAGED campaign now actually reaches the
+       numbers simulate_gauntlet.py has always modelled. */
+    const tiltFor = (tax) => (G.familyTilt || {})[tax] ||
+      (G.familyTilt || {})._default || {};
+    const billMeter = (b, key) => clamp(
+      (S.metrics[key] || 0) +
+      (((b.tilt || {})[key]) || 0) +
+      (((b.earned || {})[key]) || 0));
+    const bSup = (b) => billMeter(b, "support");
+    const bInf = (b) => billMeter(b, "influence");
+    // how far this bill sits from the campaign's own number, for the
+    // labels — the point of the readout is that the bill's figure IS
+    // your figure, moved by what the bill is and what you spent on it
+    const tiltStr = (b, key) => {
+      const t = (((b.tilt || {})[key]) || 0) +
+        (((b.earned || {})[key]) || 0);
+      return t ? (t > 0 ? ", +" : ", −") + Math.abs(t) + " this bill" : "";
+    };
+
+    /* THE PUSH SCALES WITH THE INFLUENCE BEHIND IT (2026-08-21). It was
+       a flat +0.15 whoever asked. An insider's word to a chair is worth
+       more than a stranger's, and the push is the game's most-used verb,
+       so this is where the influence meter should bite hardest.
+       It is ONE-SIDED ON PURPOSE: `base` IS the old flat 0.15, and the
+       steps only ever add, counted from the influence baseline every
+       campaign starts at. The first draft scaled from zero
+       (base 0.10 + a step per 30 points) and looked fine at a campaign
+       influence of 30 — until you remember bills carry a family tilt.
+       A wealth measure sits 10 under its campaign, so it fell in the
+       first bucket and its push quietly paid 0.10 where it used to pay
+       0.15: a stealth nerf to exactly the families the tilt already
+       makes hardest. Adding a reward for standing must never take
+       something away from a player who has not built any.
+       Capped so it can never dwarf the measured base rate. */
+    const pushBonus = (inf) => {
+      const p = G.push || {};
+      const base = p.base != null ? p.base : 0.15;
+      const step = p.step != null ? p.step : 0.05;
+      const per = p.per != null ? p.per : 30;
+      const from = p.from != null ? p.from :
+        (G.influenceBaseline != null ? G.influenceBaseline : 30);
+      const cap = p.cap != null ? p.cap : 0.30;
+      return Math.min(cap,
+        base + step * Math.max(0, Math.floor((inf - from) / per)));
+    };
+
+    /* DILUTION IS GRADUATED (2026-08-21). It was a cliff: support under
+       35 took a flat 15% off, anything above was untouched. With the
+       floor unreachable (see above) it never fired at all; with the
+       meters now live it would fire as an invisible step the moment a
+       bill crossed a line the player cannot see. Graduated instead —
+       drifting toward the line costs a little before it costs a lot,
+       which is the only version a player can learn from.
+       Still multiplicative, still stacks across the two money-committee
+       gates, still floored by `min` so dilution alone can never zero a
+       bill: killing one stays the job of never-heard / voted-down /
+       conference. */
+    const dilFactor = (sup) => {
+      const dil = G.dilution || {};
+      const fl = dil.floor != null ? dil.floor : 45;
+      const full = dil.full != null ? dil.full : 15;
+      const cut = dil.cut != null ? dil.cut : 0.85;
+      if (sup >= fl) return 1;
+      const t = Math.min(1, (fl - sup) / Math.max(1, fl - full));
+      return 1 - (1 - cut) * t;
+    };
+
     /* Scheduling odds for one bill at one chair, ITEMISED. The parts
        list is not debug output — it is the post-mortem the player reads
        when a bill dies unheard, which is the module's central lesson.
@@ -3491,12 +3622,17 @@ const SessionPanel = {
       add(G.championed || 0, "your introducer working it");
       add(disp / (G.dispositionDiv || 250),
         (chair.name || "the chair") + "'s disposition");
-      // per-bill numbers, not the campaign's global two — a bill's OWN
-      // influence gets it heard; its own support only helps here when
-      // aligned, and otherwise does its work at the dilution step below,
-      // not by making the hearing itself easier
-      add(bill.influence / (G.influenceDiv || 260), "this bill's influence");
-      if (a > 0) add(bill.support / (G.supportDiv || 500),
+      /* The bill's OWN numbers — now DERIVED from the campaign's live
+         meters plus this bill's tilt (see billMeter). Influence gets a
+         bill heard; support only helps here when the chair is already
+         aligned, and otherwise does its work at the dilution step in
+         resolveBills, not by making the hearing itself easier. That
+         asymmetry is the module's teaching and must survive edits. */
+      const inf = bInf(bill), sup = bSup(bill);
+      add(inf / (G.influenceDiv || 260),
+        "this bill's influence (you " + Math.round(S.metrics.influence) +
+        tiltStr(bill, "influence") + ")");
+      if (a > 0) add(sup / (G.supportDiv || 500),
         "public support (aligned with the chair)");
       // the member carrying it in THIS chamber — zero at baseline
       const car = carrierFor(chair.id);
@@ -3508,8 +3644,9 @@ const SessionPanel = {
       // clears the push once it has been consumed
       const pushed = S.pushBill === bill.id && S.pushWeek >= 0 &&
         S.week - S.pushWeek <= 1;
-      if (pushed) add(G.actionBonus || 0.15, "you worked the chair this week");
+      if (pushed) add(pushBonus(inf), "you worked the chair this week");
       return { base: g, parts: parts, pushed: pushed,
+        meters: { support: sup, influence: inf },
         p: Math.max(0.02, Math.min(0.95, p)) };
     };
     const chairOdds = (bill, chair) => chairOddsParts(bill, chair).p;
@@ -3517,8 +3654,8 @@ const SessionPanel = {
     // without it the carrier's floor-management edge silently vanishes
     const floorOdds = (bill, sid) => Math.max(0.05, Math.min(0.95,
       (G.floorBase || 0.55) +
-      bill.support / (G.floorSupportDiv || 300) +
-      bill.influence / (G.floorInfluenceDiv || 400) +
+      bSup(bill) / (G.floorSupportDiv || 300) +
+      bInf(bill) / (G.floorInfluenceDiv || 400) +
       (sid ? introEdge(sid, G.introFloorDiv) : 0)));
 
     const seedChairs = () => {
@@ -3526,20 +3663,32 @@ const SessionPanel = {
         if (S.chairs[id] == null) S.chairs[id] = CH.chairs[id].disposition || 0;
       }
     };
-    // saves from before 2026-08-13 have S.bills entries with no
-    // support/influence — startBills() no-ops once S.bills is non-empty,
-    // so those keys would stay undefined forever and turn every odds
-    // formula into NaN (Math.random() < NaN is always false — bills would
-    // silently never get heard again). Backfill using CURRENT campaign
-    // numbers, same formula as a fresh seed; not historically exact for
-    // an in-progress save, but correct going forward.
+    /* Two generations of save to carry, and billMeter() reads neither
+       of them directly — a bill needs `tilt`/`earned` or every odds
+       formula goes NaN (Math.random() < NaN is always false, so bills
+       would silently never be heard again).
+         - pre-2026-08-13 saves have no support/influence at all;
+         - 2026-08-13..08-21 saves have them as ABSOLUTE numbers.
+       Both land on the same shape. The family tilt is recomputed from
+       chairs.json, and the influence a player actually BOUGHT for a
+       bill is recovered exactly from S.log, which has recorded every
+       push since the action existed — so the one part of the old
+       absolute number that was genuinely the player's own survives the
+       change rather than being rounded off into it. Everything else
+       goes back to floating with the campaign's meters, which is the
+       whole point of the rewrite. */
     const migrateBills = () => {
       for (const b of S.bills) {
-        if (b.support != null && b.influence != null) continue;
-        const tilt = (G.familyTilt || {})[b.tax] ||
-          (G.familyTilt || {})._default || {};
-        b.support = clamp(S.metrics.support + (tilt.support || 0));
-        b.influence = clamp(S.metrics.influence + (tilt.influence || 0));
+        if (b.tilt) continue;                      // already the new shape
+        const tilt = tiltFor(b.tax);
+        b.tilt = { support: tilt.support || 0,
+                   influence: tilt.influence || 0 };
+        const pushes = (S.log || []).filter(
+          (e) => e && e.action === "push" && e.bill === b.id).length;
+        b.earned = { support: 0,
+                     influence: pushes * (G.pushInfluence || 4) };
+        delete b.support;
+        delete b.influence;
       }
     };
     const liveBills = () => S.bills.filter((b) => b.status === "alive");
@@ -3562,19 +3711,21 @@ const SessionPanel = {
         // could add or skip it) is deliberately out of scope; chairs.json
         // says how to restore it.
         const route = routeFor(p.kind);
-        // Each bill gets its OWN support/influence, seeded from the
-        // campaign's current numbers plus a small editorial tilt by tax
-        // family (chairs.json gate.familyTilt) — a wealth-tax bill and a
-        // GET bill start from the same coalition but land in different
-        // places, because they draw on different bases. From here the two
-        // numbers diverge independently per bill, not as one shared pool.
-        const tilt = (G.familyTilt || {})[p.tax] ||
-          (G.familyTilt || {})._default || {};
+        /* A bill carries only what is ITS OWN: the editorial tilt by tax
+           family (chairs.json gate.familyTilt — a wealth-tax bill and a
+           GET bill draw on different bases, so they sit at different
+           distances from the same coalition) and, later, whatever the
+           player buys FOR IT. The live numbers are read through the
+           campaign's meters at use time; see billMeter. Storing an
+           absolute here is what made every campaign's bills identical,
+           since agenda lock always happens before any fx has run. */
+        const tilt = tiltFor(p.tax);
         S.bills.push({
           id: p.id, name: p.name, kind: p.kind, amtK: p.amt, tax: p.tax,
           referral: "money",
-          support: clamp(S.metrics.support + (tilt.support || 0)),
-          influence: clamp(S.metrics.influence + (tilt.influence || 0)),
+          tilt: { support: tilt.support || 0,
+                  influence: tilt.influence || 0 },
+          earned: { support: 0, influence: 0 },
           amtScale: 1, route: route, stage: 0, enteredWeek: 1,
           status: "alive", history: [], death: null,
         });
@@ -3638,6 +3789,16 @@ const SessionPanel = {
          has not moved. That is the lesson, and it is why this must never
          be "fixed" by extending the window. */
       const recess = calFor(S.week).recess;
+      /* SUPPORT IS A STOCK AND SOMETHING HAS TO SPEND IT (2026-08-21).
+         The docs have always described support as "spent at hearings and
+         floor votes"; nothing spent it, so it only ever went up. A week
+         where a bill sat on the floor calendar and did not get voted is
+         exactly that spend — the base turned out for a week that went
+         nowhere. Counted ONCE per week however many bills missed: it is
+         the campaign's week that was burned, not each bill's, and a
+         six-bill package would otherwise drop 12 support in a turn
+         purely for having a full agenda. */
+      let floorMiss = 0;
       for (const b of liveBills()) {
         const sid = b.route[b.stage];
         const st = stageOf(sid);
@@ -3666,7 +3827,12 @@ const SessionPanel = {
           // only way the player ever feels a near-thing
           const draw = Math.random();
           moved = draw < hz;
+          // meters ride along so the post-mortem can name the numbers AS
+          // THEY STOOD — they are derived now, and recomputing them
+          // weeks later would report the campaign's present, not the
+          // bill's past (the same reason the odds are snapshotted)
           b.lastOdds = { p: p, base: od.base, parts: od.parts,
+                         meters: od.meters,
                          chair: ch.name, committee: ch.committee };
           if (!moved && draw < hz * (G.nearFactor || 1.6)) {
             rec(b, "near", { p: p, chair: ch.name });
@@ -3677,12 +3843,19 @@ const SessionPanel = {
             // decides what survives being heard. Separate from — and can
             // stack with — the conference dilution below, so a chronically
             // unpopular bill can come out of committee already thin.
+            // Graduated by how far under the floor it sits (dilFactor),
+            // and only recorded when it actually took something off.
             const dil = G.dilution || {};
-            if (b.support < (dil.floor != null ? dil.floor : 35)) {
+            const sup = bSup(b);
+            const f = dilFactor(sup);
+            if (f < 1) {
+              const before = b.amtScale;
               b.amtScale = Math.max(dil.min != null ? dil.min : 0.4,
-                b.amtScale * (dil.cut != null ? dil.cut : 0.85));
-              rec(b, "diluted", { support: b.support,
-                                  scale: b.amtScale, amtK: b.amtK });
+                b.amtScale * f);
+              if (b.amtScale < before) {
+                rec(b, "diluted", { support: sup, factor: f,
+                                    scale: b.amtScale, amtK: b.amtK });
+              }
             }
           }
         } else if (st.gate === "conf") {
@@ -3700,8 +3873,17 @@ const SessionPanel = {
           // which the player does choose.
           const org = (S.skills.basebuilding || 0) >= (S.skills.mobilizing || 0)
             ? "basebuilding" : "mobilizing";
+          /* The influence mod reads THIS BILL's number, not the
+             campaign's global one (2026-08-21). Every other gate in the
+             game had already been per-bill since 2026-08-13; conference
+             was the last place still sourcing the global meter, which
+             meant a bill's own tilt and the pushes bought for it
+             vanished at the single highest-stakes roll. A literal
+             {add,label} mod is how modOf takes a value it can't look
+             up itself. */
           const r = rollCheck({ skill: org, dc: G.confDC || 12,
-            mods: [{ from: "influence", per: 30 }] });
+            mods: [{ add: Math.floor(bInf(b) / 30),
+                     label: "this bill's influence" }] });
           moved = true;
           if (!r.ok) b.amtScale = 0.5;
           rec(b, "conf", { ok: r.ok, total: r.total, dc: G.confDC || 12,
@@ -3711,6 +3893,7 @@ const SessionPanel = {
           const hz = weekHazard(p, window);
           const draw = Math.random();
           moved = draw < hz;
+          if (!moved) floorMiss += 1;
           if (!moved && draw < hz * (G.nearFactor || 1.6)) {
             rec(b, "near", { p: p, floor: true });
           }
@@ -3747,9 +3930,48 @@ const SessionPanel = {
           rec(b, "dead", { cause: b.death.cause, p: p });
         }
       }
+      // …and the week's bill charged to the base, applied AFTER the loop
+      // so bill order can never change anyone's dilution roll
+      const burn = G.floorMissSupport != null ? G.floorMissSupport : 2;
+      if (floorMiss && burn) {
+        const before = S.metrics.support;
+        S.metrics.support = clamp(S.metrics.support - burn);
+        if (S.metrics.support !== before) {
+          events.push({ kind: "burn", n: before - S.metrics.support,
+                        bills: floorMiss });
+        }
+      }
       save();
       syncScore();
       return events;
+    };
+
+    /* ---- the week's UPKEEP, run before the building acts.
+       INFLUENCE IS A RATE, NOT A RATCHET (2026-08-21). Support is a
+       stock you spend (see the floor burn above); influence is standing
+       inside a building, and standing decays when you are not in it.
+       Without this, "Work the building" was a one-way climb and the
+       distinction the two meters are supposed to teach existed only in
+       their tooltips.
+       It decays only DOWNWARD, toward the baseline every campaign
+       starts at: a player whose influence has been knocked below that
+       by events has to earn it back, and never drifts up for free.
+       So a passive campaign sits exactly at the baseline all session
+       and the calibrated bands are untouched — same invariant
+       billMeter() is built on.
+       It runs during the RECESS too, deliberately: a week when the
+       Capitol is shut is precisely when a standing slips. */
+    const weekUpkeep = () => {
+      const out = [];
+      const d = G.influenceDecay != null ? G.influenceDecay : 1;
+      const base = G.influenceBaseline != null ? G.influenceBaseline : 30;
+      if (d > 0 && S.metrics.influence > base) {
+        const before = S.metrics.influence;
+        S.metrics.influence = Math.max(base, before - d);
+        out.push({ kind: "decay", n: before - S.metrics.influence,
+                   to: S.metrics.influence });
+      }
+      return out;
     };
 
     /* ---- the weekly intel report (the campaign's ears)
@@ -3901,8 +4123,8 @@ const SessionPanel = {
       if (read < (o.band || 3)) return "";
       const fmt = (v) => read >= (o.exact || 5)
         ? Math.round(v) : esc(bandOf(v / 100).short || "?");
-      return " · " + sym("support") + fmt(b.support) +
-        " " + sym("influence") + fmt(b.influence);
+      return " · " + sym("support") + fmt(bSup(b)) +
+        " " + sym("influence") + fmt(bInf(b));
     };
 
     /* the two members carrying the package — shown once bills exist,
@@ -3970,16 +4192,20 @@ const SessionPanel = {
         Math.round(o.p * 100) + "%</b><small>" +
         rolls + " week" + (rolls === 1 ? "" : "s") +
         " on the calendar, and it never came up.</small></div>";
-      // the counterfactual — name the biggest lever left unpulled
-      const bonus = Math.round((G.actionBonus || 0.15) * 100);
+      /* The counterfactual — name the biggest lever left unpulled.
+         Both numbers come from the DEATH SNAPSHOT (o.meters), never
+         from a live read: a bill's meters are derived from the
+         campaign's now, and this card is read weeks later. */
+      const dInf = o.meters ? o.meters.influence : null;
+      const bonus = Math.round(pushBonus(dInf == null ? 30 : dInf) * 100);
       let lesson;
       if (d.cause === "never heard" && !d.pushed) {
         lesson = "You never spent a week working " +
           esc(o.chair || "the chair") + " on this one. That action was " +
           "worth " + bonus + " points of scheduling odds — more than any " +
           "other lever you had.";
-      } else if (b.influence < 40) {
-        lesson = "Its influence never got above " + Math.round(b.influence) +
+      } else if (dInf != null && dInf < 40) {
+        lesson = "Its influence never got above " + Math.round(dInf) +
           ". Influence is what gets a bill calendared at all; support " +
           "decides what survives once it is.";
       } else if (d.cause === "never heard") {
@@ -4059,6 +4285,24 @@ const SessionPanel = {
                 : esc(m.chair || "The chair") + " scheduled nothing, " +
                   "because during a recess nobody can.") +
                  " One week gone. The deadline did not move." };
+          /* The two CAMPAIGN-level rows: they carry no bill, because
+             they happened to the campaign rather than to a measure.
+             They are reported for the same reason near-misses are —
+             a meter that moves while the panel is shut, with no line
+             in the report, reads as a bug in the scoreboard. */
+          case "burn":
+            return { cls: "near", campaign: true,
+              t: "The base spent a week on the floor calendar",
+              s: "A vote was expected and never called" +
+                 (m.bills > 1 ? " on " + m.bills + " of your bills" : "") +
+                 ". Public Support −" + m.n + ". Turnout is a stock: " +
+                 "you spend it every week you ask people to show up." };
+          case "decay":
+            return { cls: "near", campaign: true,
+              t: "Influence slipped",
+              s: "Political Influence −" + m.n + ", to " + m.to +
+                 ". Standing inside the building is a rate, not a " +
+                 "ratchet — it needs the week you spend on it." };
           default: return null;
         }
       };
@@ -4068,9 +4312,12 @@ const SessionPanel = {
         const l = line(m);
         if (!l) continue;
         const b = S.bills.find((x) => x.id === m.id);
-        h += '<div class="mv-row ' + l.cls + '"><b>' + esc(m.name) +
-          ' <span class="mv-what">' + l.t + "</span></b><small>" + l.s +
-          "</small>" +
+        // a campaign row has no measure to name, so its headline IS the
+        // event; a bill row leads with the bill
+        h += '<div class="mv-row ' + l.cls + '"><b>' +
+          (l.campaign ? '<span class="mv-what">' + l.t + "</span>"
+            : esc(m.name) + ' <span class="mv-what">' + l.t + "</span>") +
+          "</b><small>" + l.s + "</small>" +
           (m.kind === "dead" && b ? postMortem(b) : "") + "</div>";
       }
       return h;
@@ -4183,7 +4430,10 @@ const SessionPanel = {
                      influence: S.metrics.influence };
       S.week += 1;
       startBills();
-      const moves = resolveBills();
+      // upkeep FIRST, then the building acts: the week's decay is in
+      // force for the rolls that week, and lands inside the trend the
+      // player reads on the map (weekBase was snapshotted above)
+      const moves = weekUpkeep().concat(resolveBills());
       // stamp the movement report to THIS week so the hub shows it until
       // the next advance; near-misses included — the near record is the
       // only time the player ever feels how close "never heard" ran
@@ -4524,8 +4774,8 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=11");
-    this.load.json("chairs", "map/chairs.json?v=1");
+    this.load.json("session", "map/session.json?v=12");
+    this.load.json("chairs", "map/chairs.json?v=2");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {
