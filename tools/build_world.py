@@ -33,6 +33,7 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from islands import ISLANDS, ORDER
@@ -66,6 +67,79 @@ def world_xy_raw(lon, lat):
     e = (lon - LON_W) * KM_PER_LON_W
     nn = (lat - LAT_W) * KM_PER_LAT
     return 32.0 * e / K_REF, -16.0 * nn / K_REF
+
+
+def _smooth(shape, cells, seed, lo=0.0, hi=1.0):
+    """Coarse random field, bilinear-upscaled smooth (render_map's)."""
+    rng = np.random.default_rng(seed)
+    coarse = (rng.random((cells, max(1, cells // 3))) * 255).astype(np.uint8)
+    im = Image.fromarray(coarse.T, "L").resize((shape[1], shape[0]),
+                                               Image.BILINEAR)
+    return lo + np.asarray(im, np.float32) / 255.0 * (hi - lo)
+
+
+def paint_ocean(ow, oh, sea_hex, island_alpha, ov_xy):
+    """The open sea, painted once on the one continuous canvas.
+
+    Layers, all LOW-frequency (the overview upscales 12× under the
+    loaded island slices, so anything sharp here would smear):
+      * broad depth mottling — darker basins, lighter rises
+      * the two real shallow shelves, drawn from geography: Penguin
+        Bank west of Molokaʻi and the Maui Nui saddle (Kahoʻolawe /
+        Lānaʻi / Molokaʻi / Maui all stand on one drowned volcano —
+        the channels between them ARE lighter from a plane)
+      * a faint cool vignette toward open ocean, so the chain sits in
+        deep water the way the reference boards sit in dark
+    Amplitude fades to zero within ~20 px of any island so the bakes'
+    transparent-ocean fade ring (flat `deep` at its rim) never seams,
+    and within the canvas edge so the camera's flat background colour
+    matches at the world bounds.
+    """
+    from scipy import ndimage
+
+    base = np.array([int(sea_hex[i:i + 2], 16) for i in (1, 3, 5)],
+                    np.float32)
+    col = np.empty((oh, ow, 3), np.float32)
+    col[:] = base
+
+    d_isl = ndimage.distance_transform_edt(island_alpha < 8)
+    yy, xx = np.mgrid[0:oh, 0:ow].astype(np.float32)
+    d_edge = np.minimum(np.minimum(xx, ow - 1 - xx),
+                        np.minimum(yy, oh - 1 - yy))
+    amp = np.clip((d_isl - 18.0) / 40.0, 0, 1) * \
+        np.clip((d_edge - 6.0) / 22.0, 0, 1)
+
+    # broad basins and rises, two octaves
+    z = 0.62 * _smooth((oh, ow), 9, seed=101) + \
+        0.38 * _smooth((oh, ow), 24, seed=102)
+    depth = (z - 0.5) * 2.0                       # -1 dark … +1 light
+    col *= 1.0 + (0.085 * amp * depth)[..., None]
+    # light rises lean teal, dark basins lean navy — pigment, not grey
+    col[..., 1] += 6.0 * amp * np.clip(depth, 0, 1)
+    col[..., 2] += 4.0 * amp * np.clip(depth, 0, 1)
+    col[..., 2] -= 5.0 * amp * np.clip(-depth, 0, 1)
+
+    # real shelves (lon, lat, radius km, strength)
+    shelf = np.zeros((oh, ow), np.float32)
+    for lon, lat, r_km, s in [
+        (-157.48, 21.05, 22.0, 0.85),      # Penguin Bank
+        (-156.75, 20.83, 30.0, 0.65),      # Maui Nui saddle
+        (-156.48, 20.62, 18.0, 0.55),      # Kealaikahiki / ʻAlalākeiki
+    ]:
+        cx, cy = ov_xy(lon, lat)
+        r_px = r_km * 32.0 / K_REF / OV
+        d = np.hypot(xx - cx, (yy - cy) * 2.0)    # iso: N-S is squashed
+        shelf = np.maximum(shelf, s * np.clip(1.0 - d / r_px, 0, 1))
+    sh = (shelf * amp)[..., None]
+    col += sh * (np.array([84, 158, 190], np.float32) - col) * 0.30
+
+    # open-ocean vignette: cooler and a touch darker far from any land
+    far = np.clip((d_isl - 60.0) / 220.0, 0, 1) * \
+        np.clip((d_edge - 6.0) / 22.0, 0, 1)
+    col *= 1.0 - (0.06 * far)[..., None]
+    col[..., 0] *= 1.0 - 0.03 * far
+
+    return np.clip(col, 0, 255).astype(np.uint8)
 
 
 def bake_px(tr, lon, lat):
@@ -132,19 +206,42 @@ def main():
     print(f"wrote {out.relative_to(ROOT)}: capitol at {capitol}")
 
     # ---- overview stitch (1/OV scale, BOX filter = area average)
+    #
+    # The overview is not just the far-zoom backdrop any more: since the
+    # bakes' open ocean fades to transparent ~2 km offshore, this image
+    # IS the ocean at every zoom. So the ocean gets painted here — once,
+    # on one continuous canvas, which is what makes it safe: the old
+    # "no position-dependent grading" rule existed because every island
+    # was an opaque rectangle on flat sea, and any variation drew the
+    # rectangle. One canvas has no rectangles to draw.
     sea = deep_from(metas)
-    ov = Image.new("RGB", (math.ceil(W / OV), math.ceil(H / OV)),
-                   tuple(int(sea[i:i + 2], 16) for i in (1, 3, 5)))
+    ow, oh = math.ceil(W / OV), math.ceil(H / OV)
+    # Bakes carry an alpha channel whose open ocean is transparent, so
+    # they must be COMPOSITED, not pasted: Maui's rectangle overlaps
+    # Kahoʻolawe's and Molokaʻi's, and an opaque paste is what used to
+    # slice the top off Kahoʻolawe here and at runtime. Stitch the
+    # islands onto a transparent canvas FIRST — its alpha is also the
+    # land mask the ocean painter needs.
+    stitch = Image.new("RGBA", (ow, oh), (0, 0, 0, 0))
     for e in entries:
         meta = metas[e["slug"]]
-        full = Image.new("RGB", (meta["w"], meta["h"]))
+        full = Image.new("RGBA", (meta["w"], meta["h"]), (0, 0, 0, 0))
         for s in meta["slices"]:
             im = Image.open(ROOT / "site" / "assets" / "map" / s["file"])
-            full.paste(im, (s["x"], s["y"]))
+            full.paste(im.convert("RGBA"), (s["x"], s["y"]))
         tw = max(1, round(meta["w"] * e["scale"] / OV))
         th = max(1, round(meta["h"] * e["scale"] / OV))
-        ov.paste(full.resize((tw, th), Image.BOX),
-                 (round(e["anchor"][0] / OV), round(e["anchor"][1] / OV)))
+        small = full.resize((tw, th), Image.BOX)
+        stitch.paste(small, (round(e["anchor"][0] / OV),
+                             round(e["anchor"][1] / OV)), small)
+
+    def ov_xy(lon, lat):
+        wx, wy = world_xy_raw(lon, lat)
+        return (wx - x0) / OV, (wy - y0) / OV
+
+    ov = Image.fromarray(
+        paint_ocean(ow, oh, sea, np.asarray(stitch)[..., 3], ov_xy), "RGB")
+    ov.paste(stitch, (0, 0), stitch)
     ov_path = ROOT / "site" / "assets" / "map" / "overview.png"
     ov.save(ov_path, optimize=True)
     print(f"wrote overview.png {ov.width}x{ov.height} "

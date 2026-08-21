@@ -1,0 +1,13 @@
+{
+ "units": "mm/yr",
+ "variable": "mean annual rainfall",
+ "source": "Rainfall Atlas of Hawai\u02bbi (Giambelluca et al. 2013), staterf_mmann, 250 m",
+ "url": "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateRFGrids_mm.zip",
+ "note": "ocean cells filled from the nearest land cell; Ni\u02bbihau is outside atlas coverage (see islands.py rain_mm)",
+ "w": 2288,
+ "h": 1520,
+ "lon0": -159.81487500000003,
+ "lat0": 22.267875000000004,
+ "dlon": 0.002249999999999998,
+ "dlat": -0.002249999999999999
+}

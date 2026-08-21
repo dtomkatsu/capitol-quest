@@ -39,12 +39,19 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+import rainfall
+
 ROOT = Path(__file__).resolve().parent.parent
 
 TILE_W, TILE_H = 32, 16
 TOP_PAD = 64
 MARGIN = 320
 DEEP = "#1c5490"
+# open-ocean alpha fade, px from shore: opaque inside A_FADE0 (well past
+# the last water band at 48), gone by A_FADE1 — which must land inside
+# the crop margin (MARGIN // 2 = 160 px on the short axis) so the rect
+# edge is already transparent. See the sea_alpha block in render_island.
+A_FADE0, A_FADE1 = 78.0, 150.0
 
 (WATER_DEEP, WATER_SHALLOW, SAND, GRASS, FIELD, FOREST, MOUNTAIN, URBAN,
  URBAN_DENSE, PEAK, WATER_MID) = range(11)
@@ -105,6 +112,21 @@ PIXEL_PAL = dict(
     forest_floor="#3f7c42", lot="#7db35e",    # lot = village lawn
     street="#c3b9a2", asphalt="#a9a79c",      # asphalt = dense downtown
     rock_low="#5d8748", rock_high="#8b8b72", cliff="#463e2e",
+
+    # ---- the LEEWARD half of the same palette.
+    # Every ground colour above is the WET end of a ramp; these are the
+    # dry end, and the measured Rainfall Atlas field decides where each
+    # pixel sits between them (see tools/rainfall.py). Two dry stops,
+    # because leeward Hawaiʻi is two different places: gold grass over
+    # tan at Waikōloa / Kīhei / the ʻEwa plain (~500-900 mm), and bare
+    # red-brown earth on the hardpan at Kahoʻolawe and Kaupō (<400 mm).
+    grass_barren="#b3835c", grass_dry="#c5a765",
+    field_dry="#b39a5b", field_row_dry="#98813f",
+    forest_dry="#8a8b4e", lot_dry="#b0a76b",
+    rock_low_dry="#9b6f4c", rock_high_dry="#97795c",
+    # ---- and the rainforest end: Waiʻaleʻale, the Koʻolau crest, Hāna,
+    # windward Kohala. Deeper, bluer green than ordinary wet.
+    grass_lush="#4e9c46", forest_lush="#2e6b37",
 )
 
 # SAME bright tropical palette as pixel (2026-08-15, user's call — a
@@ -122,10 +144,13 @@ def use_style(name):
     swap happens once here rather than threading a palette object
     through every drawing routine.
     """
-    global STYLE, DEEP, WATER_BANDS, GROUND_BASE
+    global STYLE, DEEP, WATER_BANDS, GROUND_BASE, GROUND_DRY, GROUND_ARID
+    global GROUND_LUSH, DRY_STRENGTH
     global C_SAND_WET, C_SAND, C_GRASS, C_FIELD, C_FIELD_ROW
+    global C_FIELD_ROW_DRY
     global C_PINE, C_PINE_ROW, C_FOREST_FLOOR, C_LOT
     global C_STREET, C_ASPHALT, C_ROCK_LOW, C_ROCK_HIGH, C_CLIFF
+    global C_ROCK_HIGH_DRY
     STYLE = name
     p = PIXEL_PAL if name == "pixel" else PAINTERLY_PAL
     DEEP = p["deep"]
@@ -135,6 +160,7 @@ def use_style(name):
     C_GRASS = hx(p["grass"])
     C_FIELD = hx(p["field"])
     C_FIELD_ROW = hx(p["field_row"])
+    C_FIELD_ROW_DRY = hx(p["field_row_dry"])
     C_PINE = hx(p["pine"])
     C_PINE_ROW = hx(p["pine_row"])
     C_FOREST_FLOOR = hx(p["forest_floor"])
@@ -143,15 +169,61 @@ def use_style(name):
     C_ASPHALT = hx(p["asphalt"])
     C_ROCK_LOW = hx(p["rock_low"])
     C_ROCK_HIGH = hx(p["rock_high"])
+    C_ROCK_HIGH_DRY = hx(p["rock_high_dry"])
     C_CLIFF = hx(p["cliff"])
     GROUND_BASE = {
         SAND: C_SAND, GRASS: C_GRASS, FIELD: C_FIELD,
         FOREST: C_FOREST_FLOOR, MOUNTAIN: C_ROCK_LOW, URBAN: C_LOT,
         URBAN_DENSE: C_ASPHALT, PEAK: C_ROCK_LOW,
     }
+    # dry (~500-900 mm/yr) and arid (<400 mm) ends of each ground class
+    GROUND_DRY = {
+        GRASS: hx(p["grass_dry"]), FIELD: hx(p["field_dry"]),
+        FOREST: hx(p["forest_dry"]), MOUNTAIN: hx(p["rock_low_dry"]),
+        URBAN: hx(p["lot_dry"]), PEAK: hx(p["rock_low_dry"]),
+    }
+    GROUND_ARID = {GRASS: hx(p["grass_barren"]),
+                   MOUNTAIN: hx(p["rock_low_dry"]) * 0.88,
+                   PEAK: hx(p["rock_low_dry"]) * 0.88}
+    GROUND_LUSH = {GRASS: hx(p["grass_lush"]),
+                   FOREST: hx(p["forest_lush"])}
+    # how much of the ramp each class actually travels. Cane and town
+    # lawns are IRRIGATED — Kekaha and Kīhei are green squares in a tan
+    # landscape, and that contrast is itself a fact about Hawaiʻi — so
+    # they only take part of the drying; open ground takes all of it.
+    DRY_STRENGTH = {GRASS: 1.0, FOREST: 1.0, MOUNTAIN: 1.0, PEAK: 1.0,
+                    FIELD: 0.62, URBAN: 0.55, SAND: 0.0,
+                    URBAN_DENSE: 0.0}
 
 
 use_style(STYLE)
+
+# wetness of the "dry gold grass" stop (~650 mm/yr). Below it the ground
+# ramps on down to bare earth; above it, up to the wet-side pigment.
+W_DRY = 0.34
+
+
+def ground_color(cid, w, lush):
+    """Ground colour for terrain class `cid` at wetness `w`.
+
+    `w` and `lush` are 1-D (N,) selections of the per-pixel rainfall
+    ramps; the return is (N, 3) float32. This is the whole of "drier
+    areas should not look really green": one measured field, one ramp,
+    every class riding it by however much irrigation lets it cheat.
+    """
+    base = GROUND_BASE[cid]
+    s = DRY_STRENGTH.get(cid, 1.0)
+    col = np.repeat(base[None, :], w.shape[0], 0)
+    if s > 0 and cid in GROUND_DRY:
+        dry = GROUND_DRY[cid]
+        arid = GROUND_ARID.get(cid, dry)
+        t = np.clip(w / W_DRY, 0, 1)[:, None]
+        low = arid + (dry - arid) * t                       # arid -> dry
+        u = np.clip((w - W_DRY) / (1 - W_DRY), 0, 1)[:, None]
+        col += ((low + (base - low) * u) - col) * s         # dry -> wet
+    if cid in GROUND_LUSH:
+        col += (GROUND_LUSH[cid] - col) * lush[:, None]
+    return col
 
 
 # ---------------------------------------------------------------- helpers
@@ -307,6 +379,30 @@ def spr_palm(rng):
     img[ty + 1, tx] = hx4("#6d4a2b")        # coconuts
     img[ty + 1, tx - 1] = hx4("#5d3f24")
     _outline(img, hx4("#1f4a26"))
+    return img
+
+
+def spr_shrub(rng):
+    """Kiawe / dry scrub — what actually stands on leeward ground.
+
+    Dry country is not empty, it is sparse: a low grey-green bush every
+    so often over tan. Without this the leeward half of the map goes
+    from a green carpet to a flat one, which is the same lie in a
+    different colour.
+    """
+    w, h = 14, 12
+    img = _sp(w, h)
+    _shadow(img, 7, 10, 5, 2, alpha=60)
+    dark, mid = hx4("#4f5c34"), hx4("#6d7a45")
+    trunk = hx4("#6b5636")
+    cy, rx, ry = 5, 5, 4
+    img[cy + ry - 1:10, 6:8] = trunk
+    for y in range(cy - ry, cy + ry + 1):
+        for x in range(7 - rx, 7 + rx + 1):
+            d = ((x - 7) / rx) ** 2 + ((y - cy) / ry) ** 2
+            if d <= 1.0 and (d < 0.5 or rng.random() < 0.7):
+                img[y, x] = dark if d > 0.45 else mid
+    _outline(img, hx4("#3b4526"))
     return img
 
 
@@ -532,6 +628,22 @@ def render_island(slug):
     d_sea = band_dist(land, 34)        # distance into water from shore
     d_inl = band_dist(~land, 10)       # distance into land from shore
 
+    # ---- measured rainfall per pixel -> the wet/dry ramps.
+    # Sampled on every 4th pixel and bilinear-upscaled: the atlas is a
+    # 250 m grid and the bake runs ~20 m/px, so the coarse sample throws
+    # away nothing real and keeps Hawaiʻi's 16 Mpx canvas out of swap.
+    S = 4
+    rdef = grid_data.get("rain_default") or 1200
+    rc = rainfall.sample(lon[::S, ::S], lat[::S, ::S], default=rdef)
+    rain = np.asarray(Image.fromarray(rc, "F").resize((W, H),
+                                                      Image.BILINEAR),
+                      np.float32)
+    wet = rainfall.wetness(rain)
+    lush = rainfall.lushness(rain)
+    rl = rain[land]
+    print(f"rainfall {rl.min():.0f}–{rl.max():.0f} mm/yr on land, "
+          f"wetness {rainfall.wetness(rl).mean():.2f} mean")
+
     # ---- terrain class per pixel, noise-jittered for organic borders
     ju = smooth_field((H, W), 160, seed=11, lo=-0.62, hi=0.62)
     jv = smooth_field((H, W), 160, seed=12, lo=-0.62, hi=0.62)
@@ -580,26 +692,88 @@ def render_island(slug):
                                np.clip((bx1 - lon) / 0.025, 0, 1) *
                                np.clip((lat - by0) / 0.025, 0, 1) *
                                np.clip((by1 - lat) / 0.025, 0, 1)))
-    dw = (d_sea + (fine - 0.5) * 5.0) / (1.0 + 1.5 * bay)
-    wcol = np.empty_like(col)
-    wcol[:] = WATER_BANDS[-1][1]
-    for lim, c in reversed(WATER_BANDS[:-1]):
-        wcol[dw <= lim] = c
+    if bay.any():
+        # round the bbox corners off: the product of four ramps leaves a
+        # sharp diagonal crease that the smooth water gradient exposes
+        # (the old stepped bands hid it). Big box blur via downscale.
+        bay = np.asarray(Image.fromarray(bay)
+                         .resize((W // 60, H // 60), Image.BILINEAR)
+                         .resize((W, H), Image.BILINEAR), np.float32)
+    if STYLE == "pixel":
+        # the archived look keeps its stepped, dithered bands verbatim
+        dw = (d_sea + (fine - 0.5) * 5.0) / (1.0 + 1.5 * bay)
+        wcol = np.empty_like(col)
+        wcol[:] = WATER_BANDS[-1][1]
+        for lim, c in reversed(WATER_BANDS[:-1]):
+            wcol[dw <= lim] = c
+    else:
+        # painterly: smooth piecewise-linear gradient through the same
+        # band stops instead of hard stepped rings — the modern-RPG
+        # water read. Wobble the distance with a SMOOTH field, not the
+        # per-pixel dither: white noise over a continuous ramp makes
+        # every water pixel unique and doubles the PNG weight. The LAST
+        # stop must still be flat `deep` well inside A_FADE0, or the
+        # transparent-ocean fade (and the flat sea world.json paints
+        # behind the bakes) would seam.
+        wob = smooth_field((H, W), 200, seed=82, lo=-2.4, hi=2.4)
+        dw = (d_sea + wob) / (1.0 + 1.5 * bay)
+        # round the medial-axis crease: where two facing shores' distance
+        # gradients meet mid-channel the field has a sharp ridge, which
+        # the continuous ramp draws as a hard "V" seam in open water
+        dw = np.asarray(Image.fromarray(dw)
+                        .resize((W // 12, H // 12), Image.BILINEAR)
+                        .resize((W, H), Image.BILINEAR), np.float32)
+        # last stop at 66 px: INSIDE band_dist's cap (34 iters × scale 2
+        # = 68), so the far field truly reaches flat `deep` before the
+        # transparent-ocean fade begins at A_FADE0
+        xp = np.array([0.0] + [float(d) for d, _ in WATER_BANDS[:-1]] +
+                      [66.0], np.float32)
+        fps = np.stack([WATER_BANDS[0][1]] +
+                       [c for _, c in WATER_BANDS[:-1]] +
+                       [WATER_BANDS[-1][1]])
+        dwf = dw.ravel()
+        wcol = np.empty_like(col)
+        for ch in range(3):
+            wcol[..., ch] = np.interp(dwf, xp, fps[:, ch]).reshape(H, W)
+        # crisp breaking line right at the shore (the smooth ramp alone
+        # reads as airbrush; surf is an edge)
+        surf = ~land & (dw < 1.7 + smooth_field((H, W), 120, seed=83,
+                                                lo=0.0, hi=1.6))
+        wcol[surf] = hx("#f7fdfa")
+        # offshore swell crests: soft glints where a large-scale field
+        # says the sea is up, only over lagoon/reef depths
+        swell = smooth_field((H, W), 96, seed=84)
+        crest = ~land & (dw > 6) & (dw < 30) & (swell > 0.74) & \
+            (smooth_field((H, W), 240, seed=85) > 0.45)
+        wcol[crest] += (hx("#bdeade") - wcol[crest]) * 0.45
     # patch reefs texturing the bay lagoon
     patch = smooth_field((H, W), 130, seed=71)
-    reefp = (bay > 0.35) & ~land & (dw > 6) & (dw < 40) & (patch > 0.62)
-    wcol[reefp] = WATER_BANDS[2][1]
-    wcol[reefp & (patch > 0.72)] = WATER_BANDS[1][1]
+    if STYLE == "pixel":
+        reefp = (bay > 0.35) & ~land & (dw > 6) & (dw < 40) & (patch > 0.62)
+        wcol[reefp] = WATER_BANDS[2][1]
+        wcol[reefp & (patch > 0.72)] = WATER_BANDS[1][1]
+    else:
+        # reef strength FADES with the bay influence instead of switching
+        # off at a threshold — a hard `bay > x` cut sliced the patch
+        # blobs mid-blob and drew the bbox corner as a crease
+        rstr = np.clip((bay - 0.18) / 0.5, 0, 1)
+        reefp = ~land & (dw > 6) & (dw < 40) & (patch > 0.62) & (rstr > 0)
+        wcol[reefp] += (WATER_BANDS[2][1] - wcol[reefp]) * \
+            (0.8 * rstr[reefp])[:, None]
+        reefp2 = reefp & (patch > 0.72)
+        wcol[reefp2] += (WATER_BANDS[1][1] - wcol[reefp2]) * \
+            (0.75 * rstr[reefp2])[:, None]
     # sparse wave dashes on open water
     dash = (hash_noise((H // 1, W // 8 + 1), 9)[:, (np.arange(W) // 8)]
             < 0.004) & (d_sea > 18) & ((np.arange(H) % 3 == 0)[:, None])
     wcol[dash] = hx("#4f8cc4")
     col[~land] = wcol[~land]
 
-    # land base by class
-    for cid, base in GROUND_BASE.items():
+    # land base by class, ramped between the leeward and windward ends
+    # of the palette by the measured rainfall at that pixel
+    for cid in GROUND_BASE:
         m = land & (cls == cid)
-        col[m] = base
+        col[m] = ground_color(cid, wet[m], lush[m])
     # class-independent touches
     gm = land & np.isin(cls, [GRASS, FIELD, FOREST, URBAN, MOUNTAIN, PEAK])
     col[gm] += mottle[gm][:, None]
@@ -614,7 +788,9 @@ def render_island(slug):
     pine = smooth_field((H, W), 30, seed=41) > 0.72
     col[fieldm & pine] = C_PINE
     col[fieldm & pine & rows_a] = C_PINE_ROW
-    col[fieldm & ~pine & rows_a] = C_FIELD_ROW
+    fr = fieldm & ~pine & rows_a
+    col[fr] = C_FIELD_ROW + (C_FIELD_ROW_DRY - C_FIELD_ROW) * \
+        (DRY_STRENGTH[FIELD] * (1 - wet[fr]))[:, None]
 
     # street lattice through towns (geographic grid, ~240m blocks)
     urbm = land & np.isin(cls, [URBAN, URBAN_DENSE])
@@ -636,7 +812,11 @@ def render_island(slug):
     t = np.clip((hpx - 16) / 22.0, 0, 1)
     t *= 0.55 + 0.45 * smooth_field((H, W), 70, seed=61)
     tm = t[mm][:, None]
-    col[mm] = col[mm] * (1 - tm) + C_ROCK_HIGH * tm
+    # bare rock is grey-green where it rains on it and red-brown cinder
+    # where it does not — Mauna Kea's summit is drier than Kawaihae
+    rock_hi = C_ROCK_HIGH + (C_ROCK_HIGH_DRY - C_ROCK_HIGH) * \
+        (1 - wet[mm])[:, None]
+    col[mm] = col[mm] * (1 - tm) + rock_hi * tm
     gx = np.roll(hpx, 2, 1) - np.roll(hpx, -2, 1)
     gy = np.roll(hpx, 2, 0) - np.roll(hpx, -2, 0)
     shade = np.clip((gx * 0.7 + gy * 1.1) * 3.2, -34, 34)
@@ -689,11 +869,16 @@ def render_island(slug):
         yi = int(np.clip(py, 0, H - 1))
         return py - int(hint[yi, xi])
 
+    # per-TILE wetness for planting (the pixel field is for pigment)
+    twet = rainfall.wetness(np.array(grid_data["rain"], np.float32)) \
+        if "rain" in grid_data else np.ones((GRID, GRID), np.float32)
+
     for r in range(GRID):
         for c in range(GRID):
             t = tiles[r, c]
-            if t not in (FOREST, URBAN, URBAN_DENSE, SAND):
+            if t not in (FOREST, URBAN, URBAN_DENSE, SAND, GRASS):
                 continue
+            wv = float(twet[r, c])
             rng = random.Random(c * 7919 + r * 104729)
             bx = (c - r) * 16 + origin_x + 16 - x0
             by = (c + r) * 8 + TOP_PAD + 8 - y0
@@ -709,16 +894,31 @@ def render_island(slug):
             if t == FOREST:
                 lo, hi = (1, 3) if STYLE == "painterly" else (2, 4)
                 for _ in range(rng.randrange(lo, hi)):
+                    # a mesic forest at its dry edge is thinner than a
+                    # rainforest — thin the canopy, don't just tint it
+                    if rng.random() > 0.45 + 0.55 * wv:
+                        continue
                     px = bx + rng.randrange(-14, 15)
                     py = by + rng.randrange(-7, 8)
                     stamps.append((py, px, spr_tree(rng,
                                                     tall=rng.random() < .3)))
+            elif t == GRASS:
+                # open country: scrub on the leeward side, a stray tree
+                # where the rain reaches
+                if wv < 0.5 and rng.random() < (0.30 - 0.44 * wv) * D:
+                    px = bx + rng.randrange(-12, 13)
+                    py = by + rng.randrange(-6, 7)
+                    stamps.append((py, px, spr_shrub(rng)))
+                elif wv >= 0.5 and rng.random() < 0.10 * wv * D:
+                    px = bx + rng.randrange(-12, 13)
+                    py = by + rng.randrange(-6, 7)
+                    stamps.append((py, px, spr_tree(rng)))
             elif t == URBAN:
                 if rng.random() < 0.8 * D:
                     px = bx + rng.randrange(-8, 9)
                     py = by + rng.randrange(-5, 6)
                     stamps.append((py, px, spr_house(rng)))
-                if rng.random() < 0.3 * D:
+                if rng.random() < 0.3 * D * (0.45 + 0.55 * wv):
                     px = bx + rng.randrange(-13, 14)
                     py = by + rng.randrange(-7, 8)
                     stamps.append((py, px, spr_tree(rng)))
@@ -771,6 +971,34 @@ def render_island(slug):
             d.line([(ax, ay - LIFT - 1), (bx2, by2 - LIFT - 1)],
                    fill=(216, 220, 226, 255), width=2)
 
+    # ---- open ocean fades to TRANSPARENT.
+    #
+    # Every island bakes as a RECTANGLE and the world composites those
+    # rectangles at true geographic positions, so neighbours overlap:
+    # Maui's bake covers 1872 x 501 px of Kahoʻolawe's and 551 x 331 of
+    # Molokaʻi's. While the rectangles were opaque, whichever island
+    # drew last simply erased the other — Kahoʻolawe lost its northern
+    # half to a straight horizontal edge in the middle of the island,
+    # both in the overview stitch and at runtime (all slices sit at
+    # depth -1, so the order is whichever loaded last).
+    #
+    # Shrinking MARGIN cannot fix it: these are bounding boxes of iso
+    # DIAMONDS, and Kahoʻolawe sits 11 km off Maui — the boxes overlap
+    # at zero margin. So the far water stops being painted at all. It
+    # was already flat `deep` out there (the last water band ends at 48
+    # px from shore) and world.json paints that exact colour behind
+    # every island, so nothing visible is lost; overlapping bakes now
+    # composite instead of clobber.
+    a_far = band_dist(land, 40, scale=8)      # px into water, coarse
+    # normalize by the same bay widening the COLOUR bands use — reef-flat
+    # bays stretch the bands up to 2.5×, and an un-normalized fade was
+    # cutting the widened lagoon colour off mid-gradient (a dark wedge
+    # at the Kāneʻohe bay mouth where the backdrop showed through)
+    a_far = a_far / (1.0 + 1.5 * bay)
+    sea_alpha = np.clip((A_FADE1 - a_far) / (A_FADE1 - A_FADE0), 0, 1)
+    sea_alpha[land] = 1.0
+    sea_alpha = (sea_alpha * 255).astype(np.uint8)
+
     # ---- slices: minimal grid keeping every side < 4096 (old-mobile GL)
     out_dir = ROOT / "site" / "assets" / "map"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -786,6 +1014,8 @@ def render_island(slug):
     # both the oil-paint kernel and the vignette are position-dependent
     rgb = (painterly_finish(canvas) if STYLE == "painterly"
            else canvas.convert("RGB"))
+    rgb = Image.fromarray(
+        np.dstack([np.asarray(rgb, np.uint8), sea_alpha]), "RGBA")
     i = 0
     for gy in range(ny):
         for gx in range(nx):

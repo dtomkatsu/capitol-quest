@@ -21,7 +21,7 @@ const DEEP_BLUE = "#185ba0";
    anything loaded from JS is bumped BY HAND: after re-baking the map,
    raise this ONE number. Content JSON (session/policies/chairs) keeps
    its own token — it changes on a different clock. */
-const MAP_V = 6;
+const MAP_V = 7;
 
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
@@ -1046,6 +1046,10 @@ const SessionPanel = {
       // pre-2026-08-14 saves carried a week 0 (pre-session, agenda-only) —
       // that week is gone, its agenda step folded into week 1
       if (S.week < 1) { S.week = 1; S.agendaLocked = false; }
+      // a save whose bills is not an array (hand-edited storage, or a
+      // future shape change) must not brick the boot — migrateBills
+      // iterates it before anything can catch the mismatch
+      if (!Array.isArray(S.bills)) S.bills = [];
       // Grassroots split into Mobilizing + Base Building (2026-08-14).
       // Seed BOTH halves at the old value rather than dividing it: the
       // player earned that skill under the old rules, and halving it

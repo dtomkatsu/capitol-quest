@@ -126,6 +126,12 @@ ISLANDS = {
         "core": None,
         "urban": "ua",
         "towns": [(-160.203, 21.905, 0.6)],                 # Puʻuwai
+        # THE one island the Rainfall Atlas does not cover (its grid
+        # stops at lon -159.816), so its dryness is modelled, not
+        # measured: Niʻihau lies in Kauaʻi's rain shadow, tops out at
+        # 390 m, and runs well under 30 in/yr — dry enough that its
+        # ranch depends on catchment. Flat 640 mm ≈ 25 in.
+        "rain_mm": 640,
         "bays": [],
         "bays_tiles": [],
         "rail": False,

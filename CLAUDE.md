@@ -11,7 +11,9 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
 - **Rebuild order**: `tools/build_map.py --island <slug>` →
   `tools/render_map.py --island <slug>` (or `--all`). Sprites:
   `tools/make_sprites.py`. The map is baked; editing `site/js/main.js` alone
-  never changes terrain.
+  never changes terrain. Both steps read `data/rainfall_mm.png`
+  (committed; regenerate with `tools/build_rainfall.py` only to refresh
+  the atlas download — see the Rainfall section).
 - **ONE world, all eight islands** at true geographic positions.
   `tools/build_world.py` composes the per-island bakes into a single
   41.8k×14.4k coordinate frame at the 0.32 km/tile reference scale and
@@ -27,7 +29,11 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
   `build/map_grid_<slug>.json`, NEVER from its own constants.
   Oʻahu regression rule: after touching the engine, rebuild oahu and
   diff `build/map_grid_oahu.json` tiles/heights against the committed
-  bake — the refactor kept them byte-identical; keep it that way.
+  bake — a pure refactor must keep them byte-identical. (The 2026-08-21
+  rainfall gate was a deliberate terrain change: 616 Oʻahu tiles moved
+  forest→grass/field, heights untouched; transform/landmarks/camera/
+  sparkles verified identical across all eight islands, flows rebuilt
+  with no diff.)
 - **Downstream layers convert lon/lat to world px THROUGH the containing
   island's transform chain** (`tools/worldmath.py world_px()`: bake px ×
   scale + anchor) — never through the world frame directly, or points
@@ -1691,3 +1697,85 @@ forest · mountain/peak (hand ridgelines + noise widths, graded heights
 toward crest) · urban (road density ≥ 20, de-speckled) · urban_dense
 (density ≥ 60 inside the downtown core bbox). Craters: Lēʻahi, Koko,
 Pūowaina. Rail: tile mask for gameplay + smooth fractional paths for ink.
+
+## Rainfall — measured dryness (2026-08-21, user's call: "drier areas
+## should not look really green")
+
+The single most legible fact of Hawaiʻi's geography is the wet/dry
+divide, and it is DATA now, not art direction:
+
+- `tools/build_rainfall.py` fetches the **Rainfall Atlas of Hawaiʻi**
+  (Giambelluca et al. 2013) statewide 250 m mean-annual grid
+  (`StateRFGrids_mm.zip`, ESRI ADF — needs rasterio) into
+  `data/raw/rainfall/` (gitignored, like the TOD roads) and bakes the
+  small committed raster `data/rainfall_mm.png` (16-bit, mm/yr) +
+  `data/rainfall_mm.json` (affine header). Ocean cells are filled from
+  the nearest land cell so per-pixel sampling never falls off the
+  coastline. Eight QA points (Waiʻaleʻale ~9.9 m … Kawaihae 255 mm)
+  assert on every run.
+- `tools/rainfall.py` is the ONE reader both build steps share:
+  `sample()` (bilinear), `wetness()` (LOG ramp 300→3000 mm — linear
+  wastes its range on shades of rainforest), `lushness()` (extra depth
+  2200→5000 mm). **Niʻihau is outside the atlas grid** — islands.py
+  carries `rain_mm: 640` as its modelled fallback (the only island with
+  one).
+- build_map: the forest belt around every ridge is now GATED by rain
+  (~900 mm mesic edge, noise-jittered) — leeward Waiʻanae/Haleakalā
+  flanks stopped reading as rainforest; `rain` (mm/yr per tile) rides
+  in map_grid_<slug>.json. `build/debug_rain_<slug>.png` previews the
+  ramp per island.
+- render_map: every ground class ramps between wet and dry pigments by
+  the per-pixel field (`ground_color()`; dry stops in both palettes —
+  gold grass ~650 mm, bare red-brown hardpan <400 mm, lush deep green
+  at the rainforest end; rock_high goes red-brown cinder when dry).
+  `DRY_STRENGTH` lets irrigated classes cheat: FIELD 0.62 / URBAN 0.55
+  — Kekaha's green cane squares against tan IS the geography. Sprites
+  follow the same field: forest canopy thins toward the dry edge, dry
+  GRASS grows scattered kiawe `spr_shrub()`, wet grass a stray tree.
+- Rainfall is TERRAIN DATA, so it flows through BOTH art styles. The
+  `--style pixel` archive therefore now shows the dry ramps too; the
+  pre-rainfall original is in git history, not behind the flag.
+
+## Ocean & water (2026-08-21)
+
+- **Open ocean in every bake fades to TRANSPARENT** (`A_FADE0/1` =
+  78→150 px from shore, normalized by the same bay widening the colour
+  bands use — un-normalized it cut Kāneʻohe's widened lagoon off
+  mid-gradient as a dark wedge). This is what fixed **Kahoʻolawe being
+  sliced off by Maui's rectangle**: island bakes overlap (Maui over
+  Kahoʻolawe 1872×501 px, over Molokaʻi 551×331) and opaque rects
+  clobbered whichever drew first. Bakes now COMPOSITE — build_world
+  stitches them onto a transparent canvas and runtime just works
+  (slices all sit at depth -1; alpha does the rest).
+- **The overview IS the ocean at every zoom** (beyond ~2 km offshore
+  only the backdrop is visible), so `build_world.paint_ocean()` paints
+  the sea ONCE on that one continuous canvas: broad depth mottling,
+  the two real shelves (Penguin Bank, the Maui Nui saddle — drawn from
+  lon/lat), and a faint far-ocean vignette. Amplitude fades to zero
+  within ~20 ov-px of any island so the bakes' flat-`deep` fade rims
+  never seam, and at the canvas edge so the camera background matches.
+  The "no position-dependent grading" rule for BAKES still stands —
+  the overview is one canvas, it has no rectangles to draw.
+- **Painterly water is a smooth piecewise-linear gradient** through the
+  same band stops (last stop 66 px, inside band_dist's 68 px cap, so
+  far water truly reaches flat `deep` before the alpha fade), with a
+  SMOOTH wobble field — per-pixel dither over a continuous ramp made
+  every water pixel unique and doubled the PNG weight. Crisp surf line
+  at the shore, soft swell glints over lagoon depths, bay reef patches
+  fade with bay influence (a hard `bay > x` cut drew the bbox corner as
+  a crease). A medial-axis crease where two shores' distance gradients
+  meet is rounded by blurring `dw` (~12 px). `--style pixel` keeps its
+  original stepped, dithered bands and hard reef stamps verbatim.
+- MAP_V is at **7** for this bake set.
+
+## Session overlay cinema pass (2026-08-21)
+
+The tail of `site/css/style.css` ("THE CINEMA PASS") upgrades the
+narrative screen's material: blurred-map scrim, lit panel + film grain,
+banner art mask-faded into the page, choice/Continue plates with a
+hover sheen, glowing metric cards, foil masthead, gold scrollbar.
+**Everything in it is scoped to `#session-overlay`** — money/policy
+overlays keep the plain house plates — and it re-states no layout and
+none of the documented decisions above (nameplate voices, transcript
+ageing, mast geometry). Sheens are disabled under
+prefers-reduced-motion.

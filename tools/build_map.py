@@ -21,6 +21,11 @@ Inputs (per island; see islands.py):
                                 centerlines -> density (Oʻahu)
                                 "ua": data/urban_areas_hi.geojson (Census
                                 2020 urban areas) + hand town spots
+  data/rainfall_mm.png          measured mean annual rainfall (Rainfall
+                                Atlas of Hawaiʻi) — decides where forest
+                                can actually grow, and rides along in the
+                                grid so render_map paints leeward ground
+                                the colour it really is
   data/rail_alignment.geojson   Skyline (Oʻahu only)
   data/stations.geojson
 
@@ -40,6 +45,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+import rainfall
 from islands import ISLANDS
 
 def _load_geojson(path):
@@ -273,6 +279,16 @@ def build_island(slug):
     tiles[land] = GRASS
     landg_pre = land.reshape(ROWS, COLS)
 
+    # ---- measured rainfall (mm/yr) per tile — see tools/rainfall.py
+    rain = rainfall.sample_grid(cfg, lon, lat)
+    wet = rainfall.wetness(rain)
+    rl = rain[land]
+    print(f"rainfall: {rl.min():.0f}–{rl.max():.0f} mm/yr on land "
+          f"(median {np.median(rl):.0f})"
+          + ("  [MODELLED — outside atlas coverage]"
+             if not rainfall.covers(np.array([LON_C]),
+                                    np.array([LAT_C]))[0] else ""))
+
     # ---- ridges -> mountain / forest (noise-modulated widths)
     noise = smooth_noise((ROWS, COLS)).ravel()
     wob = 0.55 + 0.9 * noise          # 0.55..1.45 width multiplier
@@ -288,6 +304,14 @@ def build_island(slug):
         closeness = np.maximum(
             closeness, np.clip(1.0 - d / (w_mtn * wob), 0.0, 1.0) * h_mult)
     forest = forest_src & ~mountain
+    # Where the belt of trees around a crest actually stops is decided by
+    # rain, not by distance from the ridge. The Waiʻanae range, West Maui
+    # and Haleakalā all have the same ridge geometry on both flanks and a
+    # tenfold rainfall difference across them; a symmetric belt is what
+    # made the leeward half of every island read as rainforest. Cut at
+    # ~900 mm/yr — the dry edge of Hawaiʻi's mesic forest — jittered so
+    # the tree line is organic instead of an isohyet drawn in ink.
+    forest &= wet > rainfall.wetness(900.0) * (0.82 + 0.36 * noise)
     for clon, clat, r_in, r_out, _rim_h in cfg["craters"]:
         d = np.hypot((lon - clon) * KM_PER_LON, (lat - clat) * KM_PER_LAT)
         rim = land & (d >= r_in) & (d < r_out)
@@ -449,6 +473,11 @@ def build_island(slug):
         "names": NAMES,
         "tiles": [row.tolist() for row in grid],
         "heights": [row.tolist() for row in hgrid.reshape(ROWS, COLS)],
+        # measured mm/yr per tile + the fallback for islands the atlas
+        # does not cover; render_map paints and plants from these
+        "rain": [row.tolist() for row in
+                 np.rint(rain).astype(np.int32).reshape(ROWS, COLS)],
+        "rain_default": int(cfg.get("rain_mm", 0)) or None,
         "rail": [[int(c) for c in np.flatnonzero(rail[r])]
                  for r in range(ROWS)],
         "rail_paths": rail_paths,
@@ -471,6 +500,17 @@ def build_island(slug):
                                             Image.NEAREST)
     im.save(ROOT / "build" / f"debug_map_{slug}.png")
     print(f"wrote build/debug_map_{slug}.png")
+
+    # dryness QA: the same wetness ramp render_map paints with, so a bad
+    # rainfall sample is visible here before anything gets baked
+    wg = wet.reshape(ROWS, COLS)[..., None]
+    rimg = (np.array([176, 132, 74], np.float32) * (1 - wg) +
+            np.array([32, 110, 52], np.float32) * wg)
+    rimg[~landg] = [30, 80, 140]
+    Image.fromarray(rimg.astype(np.uint8), "RGB") \
+        .resize((COLS * 4, ROWS * 4), Image.NEAREST) \
+        .save(ROOT / "build" / f"debug_rain_{slug}.png")
+    print(f"wrote build/debug_rain_{slug}.png")
 
     counts = {NAMES[i]: int((tiles == i).sum()) for i in range(len(NAMES))}
     print(counts)
