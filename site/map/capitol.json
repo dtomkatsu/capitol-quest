@@ -1,0 +1,70 @@
+{
+ "name": "Hawaiʻi State Capitol",
+ "image": "capitol_scene.png",
+ "w": 1680,
+ "h": 1240,
+ "scale": 2,
+ "bg": "#080c16",
+ "spawn": [
+  840,
+  714
+ ],
+ "hotspots": [
+  {
+   "id": "senate",
+   "name": "Senate Gallery",
+   "kind": "door",
+   "px": 520,
+   "py": 572,
+   "text": "The ʻEwa cone, below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
+  },
+  {
+   "id": "house",
+   "name": "House Gallery",
+   "kind": "door",
+   "px": 1134,
+   "py": 559,
+   "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
+  },
+  {
+   "id": "wam",
+   "name": "Ways & Means",
+   "kind": "door",
+   "px": 682,
+   "py": 491,
+   "text": "The Senate's money committee. A revenue bill that cannot clear Ways & Means goes no further."
+  },
+  {
+   "id": "finance",
+   "name": "House Finance",
+   "kind": "door",
+   "px": 969,
+   "py": 476,
+   "text": "The House's money committee — every appropriation in the state budget passes across these tables."
+  },
+  {
+   "id": "gov",
+   "name": "Governor · Level 5",
+   "kind": "door",
+   "px": 800,
+   "py": 432,
+   "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. The veto pen lives up there."
+  },
+  {
+   "id": "mosaic",
+   "name": "Aquarius",
+   "kind": "poi",
+   "px": 840,
+   "py": 660,
+   "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside."
+  },
+  {
+   "id": "exit",
+   "name": "Back to Oʻahu",
+   "kind": "exit",
+   "px": 840,
+   "py": 840,
+   "text": ""
+  }
+ ]
+}

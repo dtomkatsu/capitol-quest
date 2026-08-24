@@ -23,6 +23,15 @@ const DEEP_BLUE = "#185ba0";
    its own token — it changes on a different clock. */
 const MAP_V = 8;
 
+/* Cache token for the Capitol interior bake — capitol_scene.png +
+   map/capitol.json come out of ONE run of tools/render_capitol.py and
+   are only valid as a set (hotspot px are baked against the image).
+   Hand-bumped, same rule as MAP_V. */
+const CAP_V = 4;
+/* Same rule for the House Finance office bake (tools/render_office.py:
+   office_finance.png + map/office_finance.json). */
+const OFF_V = 2;
+
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
   el: null, nameEl: null, textEl: null,
@@ -5495,20 +5504,8 @@ class WorldScene extends Phaser.Scene {
 
     cap.on("pointerup", (pointer) => {
       if (pointer.getDistance() > 8) return;   // was a drag, not a tap
-      const fl = this.cache.json.get("flows");
-      const money = fl && fl.totalM
-        ? "The golden streams you see are real: in tax year " + fl.year +
-          ", Hawaiʻi residents owed about $" + (fl.totalM / 1000).toFixed(1) +
-          " billion in state income tax, streaming in from every " +
-          "island. "
-        : "";
-      Dialog.show(
-        "Hawaiʻi State Capitol",
-        "Every state law — and every dollar in Hawaiʻi's budget — passes " +
-        "through this building. " + money +
-        "Here the Legislature decides how much to collect, and where it " +
-        "all goes. (Module 1: Taxes & the Budget — coming soon.)"
-      );
+      Dialog.hide();
+      this.scene.switch("capitol");
     });
     this.capitol = cap;
   }
@@ -5650,6 +5647,172 @@ class WorldScene extends Phaser.Scene {
   }
 }
 
+/* ------------------------------------------------ interior rooms */
+/* ONE RoomScene class serves every baked interior (FEATURES §4/§5):
+   the Capitol gallery ring and the House Finance office, each a
+   painted room + hotspot json baked by its tools/render_*.py under
+   one version token (CAP_V / OFF_V — bump with the bake). cfg:
+     key     scene key ("capitol", "office")
+     v       cache token
+     json / img   asset paths
+     exitTo  where the exit hotspot / Esc goes — "world" drops
+             body.in-capitol; a parent ROOM keeps it (HUD stays
+             hidden through the whole interior visit)
+     enter   {hotspotId: sceneKey} — doors that GO somewhere instead
+             of showing their text (finance door -> the office)
+     greet   [title, text] shown on entry; suppressed when waking
+             from a child room (_skipGreetOnce), so walking back out
+             of the office doesn't replay the rotunda speech
+   scene.switch() SLEEPS the other scene rather than rebuilding it;
+   the world keeps camera, flows and labels untouched underneath. */
+class RoomScene extends Phaser.Scene {
+  constructor(cfg) { super(cfg.key); this.cfg = cfg; }
+
+  preload() {
+    this.load.json(this.cfg.key + "_meta",
+                   this.cfg.json + "?v=" + this.cfg.v);
+    this.load.image(this.cfg.key + "_img",
+                    this.cfg.img + "?v=" + this.cfg.v);
+  }
+
+  create() {
+    const meta = this.cache.json.get(this.cfg.key + "_meta");
+    this.meta = meta;
+    this.cameras.main.setBackgroundColor(meta.bg || "#0a0e18");
+    // The PNG ships at 1/meta.scale of the SCENE size — the bake
+    // supersamples down so its edges are antialiased once, by a real
+    // filter, instead of being point-sampled to death at display time
+    // (see SS in tools/render_capitol.py). Everything else in this
+    // file — hotspot px, label/marker offsets, the zone sizes, meta.w
+    // and meta.h — stays in SCENE coordinates, so scaling the sprite
+    // back up here is the ONLY place that has to know about it.
+    this.ss = meta.scale || 1;
+    this.add.image(0, 0, this.cfg.key + "_img")
+        .setOrigin(0, 0).setScale(this.ss);
+
+    this.labels = [];
+    this.markers = [];
+    const styles = {                       // same voice as makeLabel
+      door: { size: 13, color: "#ffe9a8", stroke: "#4a3a10" },
+      poi: { size: 11, color: "#fff6dc", stroke: "#4a3a10" },
+      exit: { size: 13, color: "#eaf2ff", stroke: "#101d5c" },
+    };
+    for (const h of meta.hotspots) {
+      if (h.kind === "door") {
+        const mk = this.add.image(h.px, h.py - 30, "marker");
+        this.tweens.add({ targets: mk, y: mk.y - 7, duration: 550,
+          yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        this.markers.push(mk);
+      }
+      const st = styles[h.kind] || styles.poi;
+      const lab = this.add.text(h.px, h.py + 8,
+        h.kind === "exit" ? "⟵ " + h.name : h.name, {
+          fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
+          fontSize: st.size + "px",
+          fontStyle: "800",
+          color: st.color,
+          stroke: st.stroke,
+          strokeThickness: 4,
+          letterSpacing: 1,
+        }).setOrigin(0.5, 0).setDepth(10000);
+      this.labels.push(lab);
+      const zone = this.add.zone(h.px, h.py + 6, 120, 84)
+        .setInteractive({ useHandCursor: true });
+      zone.on("pointerup", (pointer) => {
+        if (pointer.getDistance() > 8) return;
+        if (h.kind === "exit") { this.leave(); return; }
+        const go = this.cfg.enter && this.cfg.enter[h.id];
+        if (go) { this.enterChild(go); return; }
+        Dialog.show(h.name, h.text);
+      });
+    }
+
+    this.fit();
+    this.scale.on("resize", () => this.fit());
+    this.input.keyboard &&
+      this.input.keyboard.on("keydown-ESC", () => this.leave());
+    this.events.on("wake", () => this.enterRoom());
+    this.enterRoom();
+  }
+
+  enterChild(key) {
+    Dialog.hide();
+    this._skipGreetOnce = true;       // don't re-greet on the way back
+    this.scene.switch(key);
+  }
+
+  enterRoom() {
+    document.body.classList.add("in-capitol");
+    this.fit();
+    if (this._skipGreetOnce) { this._skipGreetOnce = false; return; }
+    Dialog.show(this.cfg.greet[0], this.cfg.greet[1]);
+  }
+
+  /* the room is a painting read whole — fit it to the window */
+  fit() {
+    // the canvas can report 0x0 when booted in a hidden tab/webview
+    const w = this.scale.width || window.innerWidth || 800;
+    const h = this.scale.height || window.innerHeight || 600;
+    const cam = this.cameras.main;
+    // SNAP the zoom so one baked pixel covers a WHOLE number of device
+    // pixels. The renderer is pixelArt/nearest-neighbour, so a fitted
+    // zoom like 0.58 at dpr 2 = 1.161 device px per source px, which
+    // duplicates some columns and not others — a regular balustrade
+    // comes out with uneven pickets. That irregularity read as "the
+    // railing looks off" and no amount of redrawing could fix it.
+    // Measured 2026-08-22; keep the snap on any future layout change.
+    // With a supersampled bake the quantum is the TEXTURE, not the
+    // device: the sprite is drawn at zoom x ss, and that product must
+    // be a whole number of texture pixels or we are back to an uneven
+    // resample. ss 2 -> halves, and zoom .5 lands on an exact 1:1
+    // blit. This also retires a real bug in the dpr form: at dpr 1
+    // `Math.max(step, floor(fitZ/1)*1)` could only ever return 1, so
+    // dpr-1 users got the room at 1:1 and CROPPED while dpr-2 users
+    // got it fitted — the two device classes saw different scenes.
+    const dpr = window.devicePixelRatio || 1;
+    const fitZ = Math.min(w / this.meta.w, h / this.meta.h);
+    const step = this.ss > 1 ? 1 / this.ss : 1 / dpr;
+    const z = Math.max(step, Math.floor(fitZ / step) * step);
+    cam.setZoom(z);
+    cam.centerOn(this.meta.w / 2, this.meta.h / 2);
+    const inv = Math.min(1 / z, 1.7);
+    for (const t of this.labels) t.setScale(inv);
+    for (const m of this.markers) m.setScale(Math.min(1 / z, 1.6));
+  }
+
+  leave() {
+    Dialog.hide();
+    if (this.cfg.exitTo === "world")
+      document.body.classList.remove("in-capitol");
+    this.scene.switch(this.cfg.exitTo);
+  }
+}
+
+const ROOM_CAPITOL = {
+  key: "capitol", v: CAP_V,
+  json: "map/capitol.json", img: "assets/map/capitol_scene.png",
+  exitTo: "world",
+  enter: { finance: "office" },
+  greet: ["Hawaiʻi State Capitol",
+    "E komo mai — a gallery in the open rotunda. The chambers " +
+    "root the courtyard below — Senate toward ʻEwa, House toward " +
+    "Diamond Head — and hallways branch deeper into the building, " +
+    "to committee rooms and the Level 5 elevators. No dome " +
+    "overhead: the sky is Hawaiʻi's capitol dome. The stairs " +
+    "makai lead back to Oʻahu."],
+};
+const ROOM_OFFICE = {
+  key: "office", v: OFF_V,
+  json: "map/office_finance.json", img: "assets/map/office_finance.png",
+  exitTo: "capitol",
+  enter: null,
+  greet: ["House Finance",
+    "The Finance chair's suite — koa panels and lamplight. " +
+    "Committee staff read every fiscal note in the cubicles; the " +
+    "chair works behind the double doors. Every dollar figure in " +
+    "the House stops here first."],
+};
+
 /* ---------------------------------------------------------------- boot */
 window.addEventListener("load", () => {
   Dialog.init();
@@ -5667,6 +5830,7 @@ window.addEventListener("load", () => {
       width: window.innerWidth,
       height: window.innerHeight,
     },
-    scene: [BootScene, WorldScene],
+    scene: [BootScene, WorldScene,
+            new RoomScene(ROOM_CAPITOL), new RoomScene(ROOM_OFFICE)],
   });
 });

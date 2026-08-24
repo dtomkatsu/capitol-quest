@@ -1943,3 +1943,243 @@ overlays keep the plain house plates — and it re-states no layout and
 none of the documented decisions above (nameplate voices, transcript
 ageing, mast geometry). Sheens are disabled under
 prefers-reduced-motion.
+
+## The Capitol grounds scene (2026-08-22)
+
+`tools/render_capitol.py` bakes the Capitol interior — **the gallery
+ring above the rotunda** (user's call 2026-08-22: "the view is going
+to be the gallery/railing area"; an aerial-exterior version was built
+first the same day and replaced) → `site/assets/map/capitol_scene.png`
++ `site/map/capitol.json` (spawn + hotspots, px in image space).
+Composition: a NARROW low-gallery balcony (one storey above the
+chamber level — user's call, "lower levels, with narrower walkways")
+on the overlay's ink ground, railings at the open well, the sunlit
+courtyard one storey down, the chambers present ONLY as flared
+lava drum walls at courtyard level (user-corrected 2026-08-22: the
+cones are NOT visible from the balconies — the galleries wrap
+straight around them; an earlier version drew glowing cone caps in
+the well and was wrong), koa doors on SINGLE-LEVEL mauka
+walls — a multi-floor stack was drawn 2026-08-22 and rolled back the
+same day (user: the upper floors are recessed in reality and drawing
+them flush read wrong; "it's okay to have a just-rotunda and the
+floor that you're on view") — with open HALLWAY MOUTHS and recessed
+ELEVATOR LOBBIES branching deeper into the building (corridor_at:
+dark opening, floor running in, steel doors + call light for a
+lift), and exit stairs at the makai corner. The courtyard has no
+dark breezeway splotch and no ground-level doors (both removed,
+user's call).
+**Two MEASURED render-quality rules (2026-08-22, from "how can we make
+the pixel art look higher quality") — the railing looked wrong for
+five passes because of these, not because of how it was drawn:**
+- **No painterly pass on this asset.** `cv2.xphoto.oilPainting` at
+  radius 4 is tuned for TERRAIN read from far out; on 1-2px
+  architecture it smears pickets into blobs of uneven width and breaks
+  the handrail. Verified by baking both and diffing a railing crop at
+  1:1. `--painterly` is kept ONLY to re-run that comparison; the
+  default bake is crisp. This is why the interior does NOT follow the
+  island map's painterly house style.
+- **The camera zoom is SNAPPED so one TEXTURE pixel covers a whole
+  number of screen pixels** (`RoomScene.fit`, `step = 1 / ss`). The
+  history matters, because the first fix turned out to be half of one:
+  - *2026-08-22* — the snap was `step = 1/dpr`. A fitted zoom of 0.58
+    at dpr 2 gives 1.161 device px per source px, and nearest-neighbour
+    sampling duplicates some columns and not others, so a regular
+    balustrade renders with uneven pickets. No redrawing fixes an
+    irregular resample.
+  - *2026-08-24* — that snap made the sampling GRID regular, but only
+    by locking the room to zoom 0.5, which is a **2x decimation**:
+    every other row and column of the bake was discarded on the way to
+    the screen. Measured on a rail crop — **83 unique colours reached
+    the canvas where the source has 87 and a resample gives 376**. The
+    picket run is 1px lines on a 2px pitch, so WHICH half survived
+    drifted as the diagonal advanced. That drift is what read as
+    jagged railings, and it is detail sampled below its own pitch,
+    which no snap can rescue. Fixed by SUPERSAMPLING the bake (`SS`
+    in both `render_*.py`): the room is drawn in the full scene space
+    and LANCZOS-downsampled to display resolution ONCE, so the
+    antialiasing is baked by a real filter. The sprite carries
+    `scale: SS` out of the JSON, the JSON keeps SCENE coordinates
+    (hotspot px, label/marker offsets and zone sizes never moved), and
+    zoom 0.5 x scale 2 is an exact **1:1 blit with no runtime
+    filtering**. This is the old option (b): the interiors are a
+    painted illustration now, not crisp pixel art. The island map is
+    untouched and keeps `pixelArt: true`.
+  - **Never reintroduce the dpr form.** Besides the decimation it hid
+    a real bug: at dpr 1, `Math.max(step, floor(fitZ/1)*1)` can only
+    ever return 1, so dpr-1 users got the room at 1:1 and CROPPED
+    while dpr-2 users got it fitted — the two device classes were
+    seeing different scenes. The texture form retires that.
+  - Per-texture `setFilter(LINEAR)` DOES work on the Canvas renderer,
+    but it needs more than one frame to take: a probe that samples
+    300ms after setting it reads unchanged and looks like a no-op (it
+    is not — wait longer). Not the shipped answer, since it filters
+    every frame instead of baking once, but it is the cheap way to
+    preview the look before committing to a re-bake.
+  - Corollary: with baked AA, a non-integer dpr (1.5 on Windows) is
+    now survivable — the compositor's filtered upscale of a graded
+    edge is fine, where it would have mangled hard pixel art.
+- Geometry is pixel-snapped at the source (`iso`/`lerp`/`up` round),
+  so repeating runs share one grid; float coords made picket spacing
+  drift by a pixel and read as irregular.
+
+**Accuracy passes work from two Commons photos** (2026-08-22, after
+"find other pictures of the perspectives from those balconies"):
+`Interior of Hawaii State Capitol from Executive Floor.jpg` (view DOWN
+the atrium — source of: dark-brown walkway floors edged in white
+fluted fascia, dark bronze wall columns, tall koa doors, wall benches)
+and `Hawaii State Capitol - Interior Rotunda (5683208622).jpg` (the
+courtyard panorama — source of: large pale square ground piers,
+vertical koa-slat chamber screens, tan stone planters, the chain-post
+ring around the medallion). Re-check against BOTH before changing the
+interior's materials.
+**The floor medallion is a GENERIC original design on purpose** — the
+real rotunda floor is Tadashi Sato's 'Aquarius', a copyrighted 2-D
+artwork with no US freedom-of-panorama, so the bake must never
+reproduce his composition (even terrazzo dot-grid + rings only; the
+rule is written into paint_mosaic's docstring). Naming it in hotspot
+TEXT is fine (facts aren't copyrightable); depicting it is not. Palette and
+treatment follow make_event_art.py's interior set, NOT the bright
+overworld map palette — except the gallery recesses, which are warm
+LAVA-BRICK BROWN per the photos (banner navy read as wrong; user
+feedback 2026-08-22). The railing is a measured three-layer assembly
+from the photos and drawn CHUNKY so it survives game zoom: deep
+fluted white parapet fascia (the dominant element), a shorter open
+run of dark pickets, thin koa handrail — no fat posts; the well's far
+walls repeat the same banding per level. `CapitolScene` in main.js displays it
+fit-to-window; entered by tapping the overworld Capitol
+(`scene.switch` — the world SLEEPS, never rebuilds), exited via the
+stairs hotspot or Esc. Rules:
+
+- **`CAP_V` in main.js is the ONE cache token for BOTH files** — they
+  come out of one bake and the hotspot px are meaningless against a
+  stale image. Hand-bumped, same rule as MAP_V.
+- Standalone bake: no island-pipeline rebuild order, no Oʻahu
+  regression stake. Reference was Wikimedia Commons
+  (Category:Hawaii State Capitol); the art is drawn from scratch in
+  code, so the asset is original work, no license baggage.
+- **Orientation facts are real and load-bearing for content**: Senate
+  cone = ʻEwa (Richards St) side — Moon chandelier (620 nautilus
+  shells); House cone = Diamond Head (Punchbowl St) side — Sun
+  chandelier (gold globes). Up = mauka (Beretania), down = makai
+  (toward ʻIolani Palace). The open well is architecturally honest —
+  the real rotunda IS open to the sky, and the public really does
+  watch the chambers from gallery level. (make_sprites.py's cone
+  comments had Senate/House swapped until today; the scene and the
+  hotspot text are the corrected authority.)
+- `body.in-capitol` hides `#hud` (one rule at the end of style.css) —
+  End Turn must not run the week beat over a sleeping WorldScene.
+  `#dialog` is a SIBLING of #hud, so the JRPG box stays.
+- Pane-testing trap: the browser caches the `?v=`-stable JS/CSS/PNG
+  hard across uncommitted edits. Refetch with
+  `fetch(url, {cache:'reload'})` then reload, or the old asset renders
+  and the new code silently isn't there.
+- **Atrium-photo accuracy pass (2026-08-22, CAP_V 2)** — from a
+  user-supplied gallery-corner photo (Dreamstime preview; watermark +
+  license = reference ONLY, never a `--photo` source): glossy WIDE koa
+  cap with a specular glint row over a white kerb plate (the rail is
+  the dominant near element), arched arcade heads between the
+  courtyard piers, reddish quarry tile with per-cell tone jitter and
+  faint reflections (near-rail pickets/cap, wall columns, koa doors —
+  the sheen is the cheap half of "polished"), potted plants at the
+  near rail, stepped light falloff away from the well (scene lighting
+  on ONE canvas, not the composite-vignette trap). Deliberately NOT
+  added: the executive-floor white band and the overhead cone flanks
+  the photo shows — both would reintroduce the rolled-back upper
+  floors; the one-level call stands.
+- **The makai side is an RPG CUTAWAY** (2026-08-22, user's call: "the
+  closest side rendered RPG style, with cutaway walls — usually in
+  RPGs they won't obscure that side"). The near walls are REAL, not
+  absent: the same precast fluted exterior the building wears, sliced
+  at `CUT_H` with the wall's core (`CUT_CORE`) left facing us as the
+  cut. `cut_face()` is the ONE routine for every slice in the room —
+  the two makai stubs AND `paint_cut_ends`, which faces the mauka
+  walls where they are sawn off at the ʻEwa/Diamond Head corners. A
+  single shared core colour is what makes the room read as one
+  building cut open rather than as a set with two walls missing; if a
+  third cut ever appears, route it through `cut_face` too. Three
+  things were measured, not guessed:
+  - **`CUT_H` is measured against the 40px WALKWAY, not the mauka
+    walls' 72.** At 18 the stub ate half the balcony; 13 leaves the
+    walkway, the pots and the rail clear. Raising it means moving
+    `paint_rail_pots`' offset in the same edit — the pots sit at +16
+    on a 40px walkway and the stub claims the outer `CUT_H`.
+  - **The cut face must clear the dressed flutes in VALUE.** A pale
+    cut (#f6f2e4, then #c8bfa6 against #ece6d4 flutes) was invisible
+    at the 0.5 game zoom, which is the only scale that matters — the
+    whole near side read as one tall white parapet. Judge any change
+    to it on the DOWNSCALED bake, never at 1:1.
+  - **A reveal line at the slab line** separates the stub's fins from
+    the fascia's below; without it the two fluted bands run together
+    and the wall stops reading as standing on a floor.
+- **Dressing pass (2026-08-22, later): NO FLAGS** — the flag pairs
+  flanking the chamber doors were removed at the user's request
+  (`paint_flag` deleted; don't reintroduce). Koa doors are PAIRED
+  leaves in an architrave frame: recessed panels shaded sky-key (top
+  reveal dark, bottom lit), grain sheen lines, brass pulls at the
+  meeting stiles, kickplate, lit transom above the frame. Rail pots
+  are layered — dark foliage mass first, asymmetric frond fan over,
+  single light pixel at each tip (a symmetric fan reads as a printed
+  icon; the layering is what reads as a plant at 20px).
+- **Dense door schedule + real hallway portals (2026-08-22, later;
+  user: "in reality there would be many more doors… those alcoves
+  look off, they're supposed to represent hallways")**: each mauka
+  wall now carries ~7 features — the named doorways (hotspots) plus
+  narrow single-leaf `office` doors (`door_at` kind, hw 11) filling
+  the runs. Keep feature centres ≥ 0.10 t apart (chamber frame 40px /
+  office 28 / portal 38) and leave ONE gap per wall for the bench.
+  `corridor_at` is a full one-point PORTAL now: receding floor
+  darkening with depth, converging side walls, ceiling, a dim far
+  window (or the lift's steel doors as the far end), everything
+  clipped inside the opening and the far end nudged along the
+  corridor's true iso direction. The old version spilled a sunlit
+  floor wedge across the wall face — that is the "alcove with a plank
+  in it" read; never draw corridor floor outside the portal. Planters
+  moved AFTER walls in render() so the W/E corner planters occlude
+  the corner-most doors' floor reflections.
+- **Material corrections (2026-08-22, latest): the gallery walls are
+  CONCRETE, not lava brick** ("the texture of the walls is more
+  concrete-like") — grey `CONC`/`CONC_D` with pour joints + rng form
+  mottle, corridor interiors in the same material; `RECESS` survives
+  only as the well's under-gallery shadow. The wall BENCHES are gone
+  — drawn mid-walkway with no wall contact they read as brown bars
+  floating on the railings; don't reintroduce without solving the
+  contact problem. The N-apex stone planter is gone too (only ʻEwa
+  and Diamond Head corners keep one). Railing metal is BRONZE on both
+  sides now (far pickets #4a4238, stanchions/corner posts #57503f —
+  user: "shade of the railing should be darker"): the photos have no
+  pale pickets; white belongs only to the kerb plate and the fascia.
+- **House Finance chair's office (2026-08-22): `tools/render_office.py`**
+  → `site/assets/map/office_finance.png` + `site/map/office_finance.json`
+  (spawn + hotspots: reception, cubicles, door, desk, exit). Second
+  interior in the same cutaway language: reception with three staff
+  cubicles + L reception desk, then Kawaguchi's inner office. Theme is
+  the w2-finance-office BANNER, not the capitol atrium: full-height
+  koa-panel walls with dark seams, big clean koa desk + credenza, twin
+  cream lamps as the ONLY light source (glow painted AFTER the walls so
+  it washes both), aloha-blue as the one cool accent (cubicle fabric,
+  binder spines, guest-chair seats). Interior partition is SLICED at
+  the same CUT height with the koa double door standing full-height in
+  its architrave — the RPG-cutaway convention extends to interior
+  walls. Painter-order trap hit live: the exec chair must draw BEFORE
+  the desk (only its koa-capped back shows) or it reads as a monolith
+  standing on the desktop. WIRED 2026-08-22 (same day): `CapitolScene`
+  is refactored into ONE generic **`RoomScene`** class (main.js),
+  instantiated twice from `ROOM_CAPITOL` / `ROOM_OFFICE` configs —
+  key, cache token (CAP_V / OFF_V), asset paths, `exitTo`, an `enter`
+  map ({finance: "office"} sends that door somewhere instead of
+  showing its text), and the entry greeting. Rules:
+  - `exitTo: "world"` is the ONLY exit that drops `body.in-capitol` —
+    room→room transitions keep the HUD hidden for the whole visit.
+  - `_skipGreetOnce` (set by `enterChild`) suppresses the parent's
+    greeting when you walk back OUT of a child room; fresh entries
+    always greet. Don't replace with a greet-once flag — re-entering
+    from the world should greet again.
+  - A third room = a new `ROOM_*` config + scene-list entry + its own
+    version token. Never fork the class.
+  - Pane-testing trap: PHASER canvas taps must be synthesized as
+    `MouseEvent` mousedown/mouseup — Phaser 3.90 registers mouse/touch
+    listeners, and a synthetic `PointerEvent` is never seen. (The DOM
+    session UI is the opposite: pointerdown only, per the note above.)
+  Verified end-to-end in the pane: world → capitol (greet, HUD off) →
+  finance-door tap → office (greet, capitol sleeps) → exit (no
+  re-greet) → exit → world (HUD back).

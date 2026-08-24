@@ -1,0 +1,1132 @@
+#!/usr/bin/env python3
+"""Bake the Capitol interior — the GALLERY RING above the rotunda —
+as a 2.5-D cutaway scene.
+
+One painted room (FEATURES.md §4). The view is the gallery/railing
+area (user's call 2026-08-22 — NOT an aerial of the whole building):
+the player stands on the balcony ring that circles the open rotunda,
+railings at the well's edge, looking down on the Aquarius mosaic and
+the tops of the two chamber cones, with the committee doors and the
+chamber viewing-gallery doors along the walls. Same vantage as the
+w1-opening banner, in the game's 2:1 iso language, dollhouse-cut on
+the makai side so the room reads.
+
+Reference: Wikimedia Commons, Category:Hawaii State Capitol interior
+photos, plus a user-supplied gallery-corner atrium photo (2026-08-22)
+— all reference only, drawn from scratch, so the output is original
+work. The corner photo settled: chunky GLOSSY koa cap over a white
+kerb plate (the rail is the dominant near element), arched arcade
+heads between the courtyard piers, reddish quarry-tile walkway with a
+sheen (faint reflections of pickets/columns/doors), potted plants at
+the rail, and light falling off away from the well. It also shows the
+cone flanks flaring overhead at the chamber ends — NOT drawn, per the
+standing one-level call ("just rotunda and the floor that you're on").
+A second user photo (2026-08-23) settled the LEGISLATIVE OFFICE DOORS:
+flush dark-koa slabs, no recessed panel, faint vertical figure, a
+black engraved nameplate two-thirds up, a dull lever, and light dying
+toward the floor. See door_at() for the measurements.
+Orientation facts baked in:
+  - up = mauka (Beretania), down = makai; left = ʻEwa, right = Diamond
+    Head. SENATE gallery ʻEwa end (Moon, blue); HOUSE gallery Diamond
+    Head end (Sun, red/gold).
+  - the rotunda really is open to the sky — sunlight falls into the
+    well and the mosaic sits in it.
+Palette and treatment follow the interior banners (make_event_art.py):
+bright daylit concrete, LIGHT rail over DARK recess, koa doors, one
+warm key. Ground outside the room is the overlay's own ink.
+
+Outputs (both hand-versioned in JS via CAP_V — bump together):
+  site/assets/map/capitol_scene.png
+  site/map/capitol.json          (spawn + hotspots, px in image space)
+
+Build:  python3 tools/render_capitol.py              (crisp, default)
+        python3 tools/render_capitol.py --painterly (oil pass; it
+        destroys the railing detail — kept only to re-run the
+        comparison, never for a shipped bake)
+Standalone: does NOT touch the island pipeline; no rebuild order rules.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageChops, ImageDraw
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT_PNG = ROOT / "site" / "assets" / "map" / "capitol_scene.png"
+OUT_JSON = ROOT / "site" / "map" / "capitol.json"
+
+W, H = 1680, 1240
+# SUPERSAMPLE. Everything below is drawn in the FULL scene space
+# above, but the room is only ever SEEN at half of it: fit() snaps to
+# zoom 0.5 on any window shorter than the scene, and the renderer
+# point-samples, so every other row and column was thrown away on the
+# way to the screen. Measured 2026-08-24 on a rail crop: 83 unique
+# colours reached the canvas where the source has 87 and a resample
+# gives 376. That decimation is what read as jagged railings — the
+# picket run is 1px lines on a 2px pitch, so WHICH half survived
+# drifted as the diagonal advanced, and no redrawing can fix detail
+# sampled below its own pitch. Resolving here means the AA is baked
+# once by a real filter; the sprite then carries scale=SS, so zoom
+# 0.5 x scale 2 is an exact 1:1 blit with no runtime filtering.
+# The JSON keeps SCENE coordinates (w/h/spawn/hotspots) — only the
+# PNG shrinks — so nothing downstream has to move.
+SS = 2
+CX, CY = 840, 590          # centre of the gallery ring, at floor level
+A_OUT = 11.5               # ring outer diamond half-size (iso units) —
+                           # the walkway is a NARROW balcony (user's
+                           # call), not a wide deck
+A_IN = 9                   # the rotunda well
+DROP = 64                  # one storey only: the player stands on a
+                           # LOW gallery just above the chamber level
+RAIL_H = 15                # picket run height
+DRUM_RT, DRUM_RB = 72, 102  # chamber drum: top / flared base radius
+FASCIA_D = 24              # fluted slab-edge band depth — the photo's
+                           # dominant element, deeper than the pickets
+POST_H = 19
+STUB_H = 10                # makai edge, cut low
+CUT_H = 13                 # the makai walls are SLICED to this height
+                           # — iso-RPG convention: the wall nearest the
+                           # camera is real, but never occludes the
+                           # room. Measured against the 40px walkway,
+                           # not against the mauka walls' 72: at 18 the
+                           # stub ate half the balcony.
+CUT_T = 11, 6              # wall thickness as a screen offset; the cut
+                           # top face is what sells the slice
+CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
+                           # of the dressed flutes (#ece6d4) in VALUE —
+                           # a near-white cut face vanished entirely at
+                           # the 0.5 game zoom, which is the only scale
+                           # that matters here.
+
+rng = np.random.default_rng(7)
+
+
+def hx(s):
+    s = s.lstrip("#")
+    return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
+
+
+# palette — the interior-banner set (make_event_art.py), adapted
+INK = hx("#0a0e18")
+# the well's under-gallery shadow recess (NOT the mauka walls — those
+# are concrete, see CONC below; user-corrected 2026-08-22)
+RECESS = hx("#372c22")
+RECESS_D = hx("#241d16")
+# the gallery walls are BOARD-FORMED CONCRETE in the photos — grey
+# with pour joints and form mottle, not brick and not brown. DARK:
+# they face away from the well's sky light, and the first pass
+# (#716b5f) was the brightest surface in the room — the value
+# hierarchy must keep the white fascia on top (user: "way too bright")
+CONC = hx("#4a463f")
+CONC_D = hx("#38352f")
+# the balcony walkway floors are dark reddish QUARRY TILE in the
+# photos (gallery-corner shot: warm terracotta, light grout, a sheen)
+FLOOR = hx("#563d2b")
+FLOOR_SH = hx("#3f2c1f")
+COURT = hx("#b3ac97")      # courtyard below
+COURT_SUN = hx("#e4dbbc")
+FASCIA = hx("#e6dfca")     # white floor-edge bands
+POST = hx("#dbd4bf")
+RAIL = hx("#d5cdb6")
+KOA = hx("#7d5734")
+KOA_LT = hx("#a97e4f")
+# door leaves, MEASURED off the user's Capitol-corridor photo
+# (2026-08-23). Against the cream corridor wall the real leaves sit at
+# ~0.32 of the wall's value; the old #8a5f36 sat at 0.46 and read as
+# light oak under a skylight. The sampled wood is also browner than it
+# was orange — R:G:B ≈ 1 : 0.71 : 0.52.
+KOA_DR = hx("#644632")     # leaf base
+KOA_DR_L = hx("#835e42")   # grain sheen, the lit strike edge
+KOA_DR_D = hx("#3a281c")   # architrave, deep reveals
+PLAQUE = hx("#211b16")     # the black office nameplate
+PLAQUE_TX = hx("#6f675c")  # its engraved lettering
+DULL = hx("#6f6355")       # office lever hardware — NOT brass
+STEEL = hx("#9aa2ac")
+KEY = hx("#f2c14e")
+LAVA = hx("#5c4a3d")
+LAVA_LT = hx("#75604e")
+LAVA_D = hx("#463830")
+MOON = hx("#dfe9f6")
+
+
+def iso(u, v, dy=0.0):
+    """Iso projection, SNAPPED to whole pixels. Sub-pixel coords are
+    why repeating detail (pickets, flutes) looked irregular: PIL
+    rounds each primitive independently, so a run computed from float
+    lerps lands on an uneven grid."""
+    return (round(CX + 16.0 * (u - v)), round(CY + 8.0 * (u + v) - dy))
+
+
+def diamond(a, dy=0.0):
+    """N, E, S, W corners."""
+    return [iso(-a, -a, dy), iso(a, -a, dy), iso(a, a, dy), iso(-a, a, dy)]
+
+
+def lerp(p, q, t):
+    return (round(p[0] + (q[0] - p[0]) * t),
+            round(p[1] + (q[1] - p[1]) * t))
+
+
+def up(p, dy):
+    return (p[0], round(p[1] - dy))
+
+
+def shade(c, f):
+    return tuple(int(max(0, min(255, v * f))) for v in c)
+
+
+def mix(c1, c2, t):
+    return tuple(int(round(c1[i] + (c2[i] - c1[i]) * t)) for i in range(3))
+
+
+# ------------------------------------------------------------ ground
+def paint_ground(d):
+    d.rectangle([0, 0, W, H], fill=INK)
+
+
+def mottle_ink(img):
+    """Faint cool drift in the surround so the void isn't a dead flat."""
+    arr = np.asarray(img, np.float32)
+    small = rng.normal(0, 1, (H // 44 + 2, W // 44 + 2))
+    noise = np.kron(small, np.ones((44, 44)))[:H, :W]
+    mask = np.all(np.abs(arr - np.array(INK, np.float32)) < 12, axis=-1)
+    arr[mask] += (noise[mask, None] * 2.4)
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+
+
+# --------------------------------------------------- ring floor + sun
+def paint_ring_floor(d):
+    d.polygon(diamond(A_OUT), fill=FLOOR)
+    # quarry tile: per-cell tone jitter, then light grout joints —
+    # a flat fill read as poured concrete, not tile (atrium photo)
+    n = int(2 * A_OUT)
+    for k in range(n):
+        for l in range(n):
+            u0, v0 = -A_OUT + k, -A_OUT + l
+            if (-A_IN <= u0 and u0 + 1 <= A_IN
+                    and -A_IN <= v0 and v0 + 1 <= A_IN):
+                continue                       # the well covers it
+            d.polygon([iso(u0, v0), iso(u0 + 1, v0),
+                       iso(u0 + 1, v0 + 1), iso(u0, v0 + 1)],
+                      fill=shade(FLOOR, rng.uniform(0.95, 1.07)))
+    for k in range(1, n):
+        a = -A_OUT + k
+        d.line([iso(a, -A_OUT), iso(a, A_OUT)], fill=shade(FLOOR, 1.14),
+               width=1)
+        d.line([iso(-A_OUT, a), iso(A_OUT, a)], fill=shade(FLOOR, 1.14),
+               width=1)
+
+
+def paint_ring_shade(img):
+    """Light falls off away from the well — the sky is the key light,
+    so the walkway darkens toward the outer walls (atrium photo's
+    value structure: dark frame, glowing centre). Stepped bands, not
+    a radial vignette; walls/stairs repaint their own ground after."""
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(lay)
+    ld.polygon(diamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
+    ld.polygon(diamond(A_OUT - 0.9), fill=(8, 10, 16, 14))
+    ld.polygon(diamond(A_OUT - 1.8), fill=(0, 0, 0, 0))
+    img.alpha_composite(lay)
+
+
+def paint_sun(img):
+    """Daylight spills out of the open well onto the inner ring."""
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(lay)
+    for a, al in ((A_IN + 1.8, 22), (A_IN + 1.0, 24), (A_IN + 0.4, 28)):
+        ld.polygon(diamond(a), fill=(255, 244, 214, al))
+    img.alpha_composite(lay)
+
+
+# ------------------------------------------------------ the well
+def paint_well(img):
+    """Everything seen THROUGH the hole: the sunlit chamber-level
+    courtyard one storey down, the far inner walls (fluted slab
+    fascia over the ground colonnade), and the two chamber-cone
+    tops at the ʻEwa and Diamond Head ends."""
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    hole = diamond(A_IN)                     # N', E', S', W'
+
+    # courtyard floor, deep below
+    court = diamond(A_IN, -DROP)
+    d.polygon(court, fill=COURT)
+    for k in range(2, 2 * A_IN, 2):
+        a = -A_IN + k
+        d.line([iso(a, -A_IN, -DROP), iso(a, A_IN, -DROP)],
+               fill=shade(COURT, 0.90), width=1)
+        d.line([iso(-A_IN, a, -DROP), iso(A_IN, a, -DROP)],
+               fill=shade(COURT, 0.90), width=1)
+    d.line(diamond(A_IN - 0.7, -DROP) + [diamond(A_IN - 0.7, -DROP)[0]],
+           fill=shade(COURT, 0.88), width=2)
+    # the sun patch: light through the SQUARE oculus lands as an
+    # offset quadrilateral, not a soft ellipse — crisp edge, then a
+    # softer halo where bounce fills in
+    def sun_quad(a, ox, oy, t):
+        pts = [(px_ + ox, py_ + oy)
+               for px_, py_ in diamond(a, -DROP)]
+        d.polygon(pts, fill=mix(COURT, COURT_SUN, t))
+    sun_quad(A_IN - 1.0, -46, 14, 0.62)
+    sun_quad(A_IN - 2.4, -62, 18, 1.0)
+
+    # the galleries' overhang shades the courtyard along the far
+    # walls — the lit centre reads against this
+    for e0s, e1s in ((hole[3], hole[0]), (hole[0], hole[1])):
+        d.polygon([(e0s[0], e0s[1] + DROP), (e1s[0], e1s[1] + DROP),
+                   (e1s[0], e1s[1] + DROP + 16),
+                   (e0s[0], e0s[1] + DROP + 16)],
+                  fill=shade(COURT, 0.84))
+        d.polygon([(e0s[0], e0s[1] + DROP), (e1s[0], e1s[1] + DROP),
+                   (e1s[0], e1s[1] + DROP + 7),
+                   (e0s[0], e0s[1] + DROP + 7)],
+                  fill=shade(COURT, 0.76))
+
+    # breezeway band, mauka-makai
+    d.polygon([iso(-1.1, -A_IN, -DROP), iso(1.1, -A_IN, -DROP),
+               iso(1.1, A_IN, -DROP), iso(-1.1, A_IN, -DROP)],
+              fill=mix(FASCIA, COURT, 0.45))
+
+    # far inner walls: ONE storey down to the chamber level — the
+    # player stands on a low gallery, so below our slab's fluted
+    # fascia there is only the ground colonnade. Piers rise through.
+    for e0, e1, f in ((hole[3], hole[0], 1.0), (hole[0], hole[1], 0.86)):
+        def q(y0, y1, col):
+            d.polygon([up(e0, -y0), up(e1, -y0), up(e1, -y1),
+                       up(e0, -y1)], fill=col)
+        fluted_band(d, e0, e1, 0, 18, f)              # our slab's fins
+        q(18, DROP, shade(RECESS_D, f))               # ground level
+        # vertical koa-slat screens (the chamber walls in the photos)
+        ln_w = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
+        n_sl = max(2, int(ln_w // 4))
+        for i in range(n_sl):
+            t = (i + 0.5) / n_sl
+            b = lerp(e0, e1, t)
+            d.line([(b[0], b[1] + 22), (b[0], b[1] + DROP - 4)],
+                   fill=shade(hx("#5f452c"), f), width=2)
+        d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
+               fill=shade(COURT, f), width=2)
+        # arched arcade heads between the piers (gallery-corner photo:
+        # the courtyard level reads as arches in the lava-brick wall)
+        for t0, t1 in ((0.21, 0.47), (0.53, 0.79)):
+            pts = []
+            for k in range(13):
+                tt = t0 + (t1 - t0) * k / 12
+                b = lerp(e0, e1, tt)
+                s = 2 * k / 12 - 1
+                pts.append((b[0], b[1] + 30 - round(7 * (1 - s * s))))
+            d.line(pts, fill=shade(hx("#8a7a66"), f), width=2)
+            d.line([(px_, py_ + 2) for px_, py_ in pts],
+                   fill=shade(hx("#2c241c"), f), width=1)
+        # LARGE pale square piers, as in the courtyard panorama
+        for t in (0.18, 0.5, 0.82):
+            b = lerp(e0, e1, t)
+            d.rectangle([b[0] - 6, b[1] + 18, b[0] + 6, b[1] + DROP - 2],
+                        fill=shade(hx("#c2bba8"), f))
+            d.rectangle([b[0] + 3, b[1] + 18, b[0] + 6, b[1] + DROP - 2],
+                        fill=shade(hx("#9a9384"), f))
+    # the chamber drums, at courtyard level only — nothing of the
+    # cones shows above the galleries from this vantage
+    paint_chamber_wall(d, hole[3], senate=True)    # W' corner, ʻEwa
+    paint_chamber_wall(d, hole[1], senate=False)   # E' corner, DH
+
+    # the mosaic, in the sun
+    paint_mosaic(d, lay, CX, CY + DROP - 12)
+
+    # chain-post ring around the medallion, as in the photos
+    mx, my = CX, CY + DROP - 12
+    ring = []
+    for a in range(12):
+        ang = a * math.pi / 6
+        ring.append((mx + math.cos(ang) * 78, my + math.sin(ang) * 40))
+    for i, (px_, py_) in enumerate(ring):
+        nx, ny = ring[(i + 1) % 12]
+        sag = ((px_ + nx) / 2, (py_ + ny) / 2 + 3)
+        d.line([(px_, py_ - 7), sag], fill=hx("#b9b2a0"), width=1)
+        d.line([sag, (nx, ny - 7)], fill=hx("#b9b2a0"), width=1)
+    for px_, py_ in ring:
+        d.rectangle([px_ - 1, py_ - 7, px_ + 1, py_], fill=hx("#cfc8b6"))
+        d.rectangle([px_ - 1, py_ - 8, px_ + 1, py_ - 7],
+                    fill=hx("#8f8974"))
+
+    # four kukui canopies from above, flanking the breezeway
+    for x, y in ((CX - 60, CY + DROP - 62), (CX + 60, CY + DROP - 62),
+                 (CX - 64, CY + DROP + 34), (CX + 64, CY + DROP + 34)):
+        st = hx("#c9b88f")
+        d.polygon([(x - 14, y + 6), (x, y - 1), (x + 14, y + 6),
+                   (x, y + 13)], fill=st)
+        d.polygon([(x - 14, y + 6), (x, y + 13), (x, y + 17),
+                   (x - 14, y + 10)], fill=shade(st, 0.75))
+        d.polygon([(x + 14, y + 6), (x, y + 13), (x, y + 17),
+                   (x + 14, y + 10)], fill=shade(st, 0.6))
+        d.ellipse([x - 15, y - 9, x + 15, y + 9], fill=hx("#567a4c"))
+        d.ellipse([x - 9, y - 6, x + 7, y + 4], fill=hx("#6f9660"))
+
+    # clip the whole layer to the hole and composite
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).polygon(hole, fill=255)
+    m = ImageChops.multiply(mask, lay.getchannel("A"))
+    img.paste(lay.convert("RGB"), (0, 0), m)
+
+
+def paint_chamber_wall(d, corner, senate):
+    """The chamber's flaring lava-brick drum, seen ONLY at courtyard
+    level (user-corrected: the cones are NOT visible from the
+    balconies — the galleries wrap straight around them, so all that
+    shows in the well is the drum's curved wall at the courtyard's
+    end, disappearing under our own floor slab)."""
+    cx, cy = corner
+    sgn = 1 if senate else -1        # the face bulges toward the well
+    top_y = cy + 20                  # just under our slab's fascia
+    bot_y = cy + DROP                # courtyard floor
+    n = 20
+    top_arc, bot_arc = [], []
+    for i in range(n + 1):
+        a = math.pi * (-0.47 + 0.94 * i / n)
+        top_arc.append((cx + sgn * math.cos(a) * DRUM_RT,
+                        top_y + math.sin(a) * DRUM_RT * 0.5))
+        bot_arc.append((cx + sgn * math.cos(a) * DRUM_RB,
+                        bot_y + math.sin(a) * DRUM_RB * 0.5))
+    d.polygon(top_arc + bot_arc[::-1], fill=LAVA)
+    # brick courses following the flare
+    for t in (0.3, 0.55, 0.8):
+        arc = [lerp(pt, pb, t) for pt, pb in zip(top_arc, bot_arc)]
+        d.line(arc, fill=shade(LAVA, 0.84), width=2)
+    # light catches the upper courses, dark meets the ground
+    d.line(top_arc, fill=LAVA_LT, width=3)
+    d.line(bot_arc, fill=LAVA_D, width=2)
+
+
+def paint_mosaic(d, lay, cx, cy):
+    """A round glass-tile floor medallion in sea colours. The REAL
+    rotunda floor is Tadashi Sato's 'Aquarius' — a copyrighted 2-D
+    artwork, and the US has no freedom-of-panorama for 2-D art — so
+    this is deliberately a GENERIC original design: an even terrazzo
+    scatter of small glass rounds inside border rings, reproducing
+    nothing of Sato's composition. Keep it generic on every edit."""
+    rx, ry = 58, 29
+    d.ellipse([cx - rx - 4, cy - ry - 3, cx + rx + 4, cy + ry + 3],
+              fill=hx("#8f8974"))
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=hx("#2e6b91"))
+    d.ellipse([cx - rx + 7, cy - ry + 4, cx + rx - 7, cy + ry - 4],
+              outline=hx("#7ec8e3"), width=2)
+    cols = ["#3799c2", "#5cc6d2", "#7fd0b0", "#a8e6de", "#255e8e"]
+    for gu in range(-7, 8):          # even jittered grid — terrazzo
+        for gv in range(-7, 8):
+            x = cx + gu * 8 + rng.uniform(-2, 2)
+            y = cy + gv * 4 + rng.uniform(-1, 1)
+            if ((x - cx) / (rx - 9)) ** 2 + ((y - cy) / (ry - 6)) ** 2 > 1:
+                continue
+            r = rng.uniform(2.0, 3.4)
+            d.ellipse([x - r, y - r / 2, x + r, y + r / 2],
+                      fill=hx(cols[rng.integers(len(cols))]))
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry],
+              outline=hx("#e8e4d4"), width=2)
+
+
+# ---------------------------------------------------------- railings
+def fluted_band(d, e0, e1, y_top, depth, f=1.0):
+    """The precast fin fascia: CHUNKY alternating white panels with
+    real shadow gaps — the photo's most distinctive element. 5px fin,
+    2px gap, bright top lip."""
+    p0, p1 = (e0[0], e0[1] + y_top), (e1[0], e1[1] + y_top)
+    d.polygon([p0, p1, (p1[0], p1[1] + depth), (p0[0], p0[1] + depth)],
+              fill=shade(hx("#ece6d4"), f))
+    ln = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+    n = max(2, int(ln // 7))
+    for i in range(1, n):
+        t = i / n
+        b = lerp(p0, p1, t)
+        d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
+               fill=shade(hx("#9d9683"), f), width=2)
+    d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
+    d.line([(p0[0], p0[1] + depth), (p1[0], p1[1] + depth)],
+           fill=shade(hx("#8a8474"), f), width=1)
+
+
+def paint_railings(d):
+    """The real railing, per the atrium photos, drawn CHUNKY enough to
+    survive game zoom: a deep fluted white parapet fascia at the slab
+    edge (hanging into the well), an OPEN run of dark metal pickets
+    you see the well through, and a heavy koa handrail. No fat posts."""
+    hole = diamond(A_IN)
+    edges = [(hole[3], hole[0], False), (hole[0], hole[1], False),
+             (hole[1], hole[2], True), (hole[2], hole[3], True)]
+    for e0, e1, near in edges:
+        # NB the near slabs' own fascia faces the well, i.e. AWAY from
+        # the camera — drawing it here painted over the walkway floor
+        # and made the front decks read as tilted faces (user-caught).
+        # Only the far edges' fascia is visible, and that is painted
+        # with the well walls.
+        # white kerb plate at the floor (gallery-corner photo: a light
+        # base curb sits under the picket run on the walkway side)
+        d.polygon([e0, e1, up(e1, 4), up(e0, 4)],
+                  fill=shade(hx("#ddd6c1"), 0.98))
+        d.line([up(e0, 4), up(e1, 4)], fill=hx("#8a8474"), width=1)
+        # pickets: thin metal, well-spaced — dark against the sunlit
+        # courtyard (near), pale against the dark walkway (far)
+        ln = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
+        n = max(2, int(ln // 5))
+        # dark bronze BOTH sides (user: railing shade darker — the
+        # photos have no pale pickets; the white parts are the kerb
+        # and the outer fascia, never the metal)
+        pk = hx("#3a332a") if near else hx("#4a4238")
+        for i in range(n):
+            t = (i + 0.5) / n
+            b = lerp(e0, e1, t)
+            d.line([up(b, 5), up(b, RAIL_H)], fill=pk, width=1)
+        # slim stanchions — dark bronze like the pickets
+        for i in range(1, 8):
+            b = lerp(e0, e1, i / 8.0)
+            d.rectangle([b[0] - 1, b[1] - RAIL_H, b[0] + 1, b[1] - 4],
+                        fill=hx("#57503f"))
+        # the koa handrail — a WIDE polished cap with a specular glint
+        # (gallery-corner photo: the glossy rail is the dominant near
+        # element; the glint row is what sells "polished")
+        d.line([up(e0, RAIL_H + 1), up(e1, RAIL_H + 1)],
+               fill=hx("#54391f"), width=2)          # underside
+        d.line([up(e0, RAIL_H + 3), up(e1, RAIL_H + 3)],
+               fill=hx("#9a6a38"), width=3)          # body
+        d.line([up(e0, RAIL_H + 5), up(e1, RAIL_H + 5)],
+               fill=hx("#c79a5c"), width=2)          # lit top
+        d.line([up(e0, RAIL_H + 6), up(e1, RAIL_H + 6)],
+               fill=hx("#ecd0a1"), width=1)          # gloss glint
+        # contact shadow on the floor
+        d.line([(e0[0], e0[1] + 2), (e1[0], e1[1] + 2)],
+               fill=shade(FLOOR, 0.8), width=2)
+        if near:
+            # the polished tile throws the rail back at us — pickets
+            # as faint verticals, the koa cap as a warm smear
+            rf = mix(FLOOR, pk, 0.45)
+            for i in range(n):
+                t = (i + 0.5) / n
+                b = lerp(e0, e1, t)
+                d.line([(b[0], b[1] + 4), (b[0], b[1] + RAIL_H - 3)],
+                       fill=rf, width=1)
+            d.line([(e0[0], e0[1] + RAIL_H + 2),
+                    (e1[0], e1[1] + RAIL_H + 2)],
+                   fill=mix(FLOOR, hx("#9a6a38"), 0.38), width=2)
+            d.line([(e0[0], e0[1] + RAIL_H + 4),
+                    (e1[0], e1[1] + RAIL_H + 4)],
+                   fill=mix(FLOOR, hx("#ecd0a1"), 0.16), width=1)
+    # corner posts where the rail runs meet — bronze, not white
+    for c in hole:
+        d.rectangle([c[0] - 2, c[1] - RAIL_H - 6, c[0] + 2, c[1]],
+                    fill=hx("#57503f"))
+        d.rectangle([c[0] + 1, c[1] - RAIL_H - 6, c[0] + 2, c[1]],
+                    fill=hx("#443e30"))
+        d.rectangle([c[0] - 2, c[1] - RAIL_H - 6, c[0] + 2,
+                     c[1] - RAIL_H - 2], fill=KOA)
+        d.line([(c[0] - 2, c[1] - RAIL_H - 6),
+                (c[0] + 2, c[1] - RAIL_H - 6)], fill=KOA_LT, width=1)
+
+
+def paint_rail_pots(d):
+    """Potted plants set against the well railing on the walkway —
+    the small life the gallery-corner photo shows at intervals.
+    Terracotta pot lit from the well side (left), soil line, then
+    arcing fronds drawn dark mass first, blades over, light tips
+    last — the layering is what reads as a PLANT instead of a green
+    blob at this size."""
+    hole = diamond(A_IN)
+    # (tip dx, tip dy rel. crown, colour) — a fan, asymmetric on
+    # purpose; a symmetric fan reads as a printed icon
+    fronds = ((-8, -8, "#3f5f3a"), (-5, -12, "#567a4c"),
+              (-1, -14, "#6f9660"), (3, -13, "#567a4c"),
+              (7, -10, "#8fb37c"), (-10, -4, "#567a4c"),
+              (10, -5, "#3f5f3a"))
+    for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):  # near edges
+        for t in (0.34, 0.72):
+            p = lerp(e0, e1, t)
+            # tight to the rail: the walkway is only 40px deep here and
+            # the makai cut wall claims its outer CUT_H
+            x, y = p[0], p[1] + 16
+            d.ellipse([x - 7, y + 1, x + 7, y + 6],
+                      fill=shade(FLOOR, 0.72))              # cast shadow
+            # flared terracotta body, foot, lit rim
+            d.polygon([(x - 5, y - 5), (x + 5, y - 5),
+                       (x + 3, y + 2), (x - 3, y + 2)],
+                      fill=hx("#8c5535"))
+            d.polygon([(x - 5, y - 5), (x - 2, y - 5),
+                       (x - 2, y + 2), (x - 3, y + 2)],
+                      fill=hx("#a56a42"))                   # lit flank
+            d.polygon([(x + 2, y - 5), (x + 5, y - 5),
+                       (x + 3, y + 2), (x + 2, y + 2)],
+                      fill=hx("#6d3f26"))                   # shade flank
+            d.rectangle([x - 3, y + 2, x + 3, y + 3],
+                        fill=hx("#5a331f"))                 # foot
+            d.rectangle([x - 6, y - 8, x + 6, y - 5], fill=hx("#9c6038"))
+            d.rectangle([x - 6, y - 8, x + 6, y - 7], fill=hx("#c08050"))
+            d.rectangle([x + 4, y - 8, x + 6, y - 5], fill=hx("#7a4527"))
+            d.rectangle([x - 4, y - 9, x + 4, y - 8], fill=hx("#2e2118"))
+            # foliage: dark mass, then the frond fan out of the crown
+            cy0 = y - 9
+            d.ellipse([x - 6, cy0 - 8, x + 6, cy0 + 1],
+                      fill=hx("#33502f"))
+            for fx, fy, c in fronds:
+                tip = (x + fx, cy0 + fy)
+                bow = (x + round(fx * 0.45),
+                       cy0 + round(fy * 0.55) - 3)
+                d.line([(x, cy0), bow], fill=hx(c), width=1)
+                d.line([bow, tip], fill=hx(c), width=1)
+                d.point(tip, fill=hx("#a7c98f"))            # light tip
+
+
+# ------------------------------------------------------- mauka walls
+def door_at(d, e0, e1, t, kind, hw=17):
+    """A doorway on a mauka wall's inner face.
+    kind: koa (a WIDE single leaf, hw ~17 — chamber galleries,
+    committee rooms) | office (a narrower single leaf, hw ~11 — the
+    many ordinary legislative-office doors a wall this long really
+    carries) | steel. Grand rooms used to get a PAIRED door, but a
+    single wide leaf is what the building actually has (user,
+    2026-08-24: "it shouldn't have the double doors, only the single
+    ones") — width and hardware carry the grand-vs-ordinary read now,
+    not leaf count.
+
+    The office leaves follow the user's Capitol-corridor photo
+    (2026-08-23, reference only, drawn from scratch). What that photo
+    settled, against the old pass:
+      - FLUSH slabs. The real office doors carry no recessed panel at
+        all; the old raised-panel leaf read as a suburban front door.
+      - a firm top-to-bottom falloff — the strongest value cue in the
+        shot. Corridor light dies toward the floor: the leaf measures
+        lum 63 at head height and 27 at the kick.
+      - grain at very low contrast (R swung only 58-70 across a whole
+        leaf, ±7%), so figure, never stripes.
+      - a BLACK engraved nameplate two-thirds up, ~72% of the leaf
+        wide. The single most identifiable thing on these doors.
+      - a DULL lever, dark with a warm glint — not the brass pull.
+        Brass stays on the grand leaf.
+    """
+    p = lerp(e0, e1, t)
+    ex = (e1[0] - e0[0], e1[1] - e0[1])
+    ln = math.hypot(*ex)
+    ux, uy = ex[0] / ln, ex[1] / ln
+
+    def pt(w, y=0):
+        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+
+    def quad(w0, w1, y0, y1, colq):
+        d.polygon([pt(w0, y0), pt(w1, y0), pt(w1, y1), pt(w0, y1)],
+                  fill=colq)
+
+    def koa_leaf(w0, w1, y0, y1, seed):
+        """A flush koa slab: separable grain(w) × falloff(y), painted
+        as overlapping 1×2 cells so neither signal bands. Grain is
+        seeded off the leaf's own position, so adding a door
+        elsewhere on the wall never reshuffles its neighbours'
+        figure."""
+        g = np.random.default_rng(seed)
+        ph = g.uniform(0, 2 * math.pi, 3)
+        streaks = g.uniform(0.08, 0.92, int(g.integers(1, 3)))
+        span, ht = w1 - w0, y1 - y0
+        w = w0
+        while w < w1:
+            x = (w - w0) / span
+            fg = 1.0 + sum(
+                a * math.sin(2 * math.pi * fq * x + ph[i])
+                for i, (a, fq) in enumerate(((.055, 0.9), (.030, 2.3),
+                                             (.016, 5.1))))
+            for s in streaks:                       # darker figure line
+                if abs(x - s) < 0.035:
+                    fg *= 0.88
+            y = y0
+            while y < y1:
+                fy = 0.72 + 0.40 * ((y - y0) / ht) ** 0.7
+                quad(w, min(w + 1.2, w1), y, min(y + 2.4, y1),
+                     shade(KOA_DR, fg * fy))
+                y += 2.0
+            w += 1.0
+
+    col = STEEL if kind == "steel" else KOA_DR
+    # architrave frame, proud of the leaves, with a lit header
+    quad(-hw - 3, hw + 3, 0, 49, KOA_DR_D)
+    quad(-hw - 3, hw + 3, 48, 49, shade(KOA_DR, 0.86))
+    if kind == "steel":
+        quad(-hw, hw, 0, 46, col)
+        d.line([pt(0, 1), pt(0, 45)], fill=shade(col, 0.72), width=2)
+        d.ellipse([pt(hw, 38)[0] + 3, pt(hw, 38)[1],
+                   pt(hw, 38)[0] + 7, pt(hw, 38)[1] + 4], fill=KEY)
+    elif kind == "office":
+        seed = (abs(int(p[0])) * 733 + abs(int(p[1])) * 97) % 99991
+        koa_leaf(-hw, hw, 0, 46, seed)
+        # reveals: dark hinge stile, the strike edge catching the well
+        d.line([pt(-hw, 1), pt(-hw, 45)], fill=shade(KOA_DR, 0.50),
+               width=1)
+        d.line([pt(hw - 1, 1), pt(hw - 1, 45)], fill=KOA_DR_L, width=1)
+        # the black nameplate, two-thirds up. To scale it is barely a
+        # pixel tall (0.019 of the leaf); at 2 units it reads without
+        # becoming the black bar the first pass drew. Lettering is
+        # SHORT RUNS, dim — a solid bright line read as a second rail.
+        pw = round(hw * 0.75)
+        quad(-pw, pw, 29, 31, PLAQUE)
+        for a, b in ((-pw + 1, -1), (1, pw - 2)):
+            d.line([pt(a, 30), pt(b, 30)], fill=PLAQUE_TX, width=1)
+        # dull lever on the strike side — dark, small, one warm glint
+        d.line([pt(hw - 3, 21), pt(hw - 8, 21)], fill=hx("#332a20"),
+               width=1)
+        d.line([pt(hw - 3, 20), pt(hw - 3, 23)], fill=hx("#332a20"),
+               width=1)
+        d.point(pt(hw - 6, 21), fill=DULL)
+        # the wall's card plate beside the jamb (in the photo by both)
+        quad(hw + 5, hw + 7, 23, 27, hx("#8d8679"))
+        d.line([pt(hw + 5, 23), pt(hw + 7, 23)], fill=hx("#4b463e"),
+               width=1)
+    else:
+        # ONE wide leaf (2026-08-24, user: "it shouldn't have the
+        # double doors, only the single ones") — width, the recessed
+        # panel and brass hardware are what still tell a grand
+        # doorway apart from an ordinary office one; leaf count no
+        # longer does that job.
+        koa_leaf(-hw, hw, 0, 46,
+                 (abs(int(p[0])) * 41 + abs(int(p[1])) * 53 + 19)
+                 % 99991)
+        d.line([pt(-hw, 1), pt(-hw, 45)], fill=shade(col, 0.50),
+               width=1)
+        d.line([pt(hw - 1, 1), pt(hw - 1, 45)], fill=shade(col, 1.12),
+               width=1)
+        # single recessed panel, centred
+        w0, w1 = -hw + 4, hw - 4
+        quad(w0, w1, 9, 40, shade(col, 0.74))
+        d.line([pt(w0, 40), pt(w1, 40)], fill=shade(col, 0.52), width=1)
+        d.line([pt(w0, 9), pt(w1, 9)], fill=shade(col, 1.16), width=1)
+        d.line([pt(w0, 9), pt(w0, 40)], fill=shade(col, 0.62), width=1)
+        d.line([pt(w1, 9), pt(w1, 40)], fill=shade(col, 1.08), width=1)
+        # brass pull, centred — grand rooms keep brass, offices get
+        # the dull lever
+        d.line([pt(0, 20), pt(0, 27)], fill=KEY, width=2)
+        d.line([pt(0, 19), pt(0, 20)], fill=hx("#8a6420"), width=2)
+        # kickplate
+        quad(-hw, hw, 0, 5, shade(col, 0.62))
+        d.line([pt(-hw, 5), pt(hw, 5)], fill=shade(col, 0.48), width=1)
+    if kind == "office":
+        # the photo has NO transom over the office doors: a dark head
+        # jamb, one warm reveal under it. The grand doors keep the lit
+        # transom, so the wall still reads grand-vs-ordinary.
+        quad(-hw - 3, hw + 3, 49, 53, shade(KOA_DR, 0.44))
+        d.line([pt(-hw - 3, 49), pt(hw + 3, 49)],
+               fill=mix(KEY, KOA_DR, 0.55), width=1)
+    else:
+        quad(-hw - 3, hw + 3, 49, 53, mix(KEY, FASCIA, 0.4))
+        d.line([pt(0, 49), pt(0, 53)], fill=hx("#b3a97f"), width=1)
+    # threshold
+    quad(-hw - 4, hw + 4, -3, -7, shade(FLOOR, 0.9))
+    # faint reflection in the polished walkway tile
+    d.polygon([pt(-hw + 2, -8), pt(hw - 2, -8),
+               pt(hw - 4, -16), pt(-hw + 4, -16)],
+              fill=mix(FLOOR, col, 0.20))
+    return p
+
+
+def corridor_at(d, e0, e1, t, f, elevator=False):
+    """A HALLWAY portal in the wall — the offshoots that lead deeper
+    into the building (the balconies are not a closed ring). A
+    full-height opening with a fake one-point interior CLIPPED INSIDE
+    the portal: receding floor darkening with depth, side walls
+    converging on a dim far end (or, for a lift lobby, the steel
+    doors), the far end nudged along the corridor's true iso
+    direction. The first version spilled a sunlit floor wedge across
+    the wall face and read as an alcove with a plank leaning in it
+    (user-caught: "those alcoves look off — they're supposed to
+    represent hallways")."""
+    p = lerp(e0, e1, t)
+    dx, dy = e1[0] - e0[0], e1[1] - e0[1]
+    ln = math.hypot(dx, dy)
+    ux, uy = dx / ln, dy / ln
+    hw, ht = 16, 48
+    # the corridor really runs perpendicular-INTO this iso wall, so
+    # its far end sits offset along that direction, not dead centre
+    ox, oy = round(uy * 5), round(-ux * 5)
+
+    def pt(w, y=0.0):
+        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+
+    def fpt(w, y=0.0, k=1.0):
+        q = pt(w, y)
+        return (q[0] + round(ox * k), q[1] + round(oy * k))
+
+    # architrave, same language as the doors, with a lit header
+    d.polygon([pt(-hw - 3), pt(hw + 3), pt(hw + 3, ht + 4),
+               pt(-hw - 3, ht + 4)], fill=shade(hx("#3b2a19"), f))
+    d.polygon([pt(-hw - 3, ht + 3), pt(hw + 3, ht + 3),
+               pt(hw + 3, ht + 4), pt(-hw - 3, ht + 4)],
+              fill=shade(hx("#5c4326"), f))
+    # the void
+    d.polygon([pt(-hw), pt(hw), pt(hw, ht), pt(-hw, ht)],
+              fill=shade(hx("#120e0b"), f))
+    # far-end geometry
+    fw = hw * (0.55 if elevator else 0.40)
+    fy0, fy1 = (7, 38) if elevator else (10, 34)
+    # receding floor, two bands darkening with depth
+    d.polygon([pt(-hw), pt(hw), fpt(hw * 0.68, fy0 * 0.5, 0.5),
+               fpt(-hw * 0.68, fy0 * 0.5, 0.5)],
+              fill=shade(FLOOR, f * 0.86))
+    d.polygon([fpt(-hw * 0.68, fy0 * 0.5, 0.5),
+               fpt(hw * 0.68, fy0 * 0.5, 0.5),
+               fpt(fw, fy0), fpt(-fw, fy0)],
+              fill=shade(FLOOR, f * 0.62))
+    # side walls converging on the far end (one lit, one in shadow) —
+    # same concrete as the gallery walls outside
+    d.polygon([pt(-hw), fpt(-fw, fy0), fpt(-fw, fy1), pt(-hw, ht)],
+              fill=shade(CONC_D, f * 0.72))
+    d.polygon([pt(hw), fpt(fw, fy0), fpt(fw, fy1), pt(hw, ht)],
+              fill=shade(CONC_D, f * 0.50))
+    # ceiling
+    d.polygon([pt(-hw, ht), pt(hw, ht), fpt(fw, fy1), fpt(-fw, fy1)],
+              fill=shade(hx("#0d0a08"), f))
+    if elevator:
+        # the lift lobby is shallow: the steel doors ARE the far end
+        d.polygon([fpt(-fw, fy0), fpt(fw, fy0), fpt(fw, fy1),
+                   fpt(-fw, fy1)], fill=shade(STEEL, f * 0.9))
+        d.line([fpt(0, fy0 + 1), fpt(0, fy1 - 1)],
+               fill=shade(STEEL, f * 0.6), width=1)
+        d.line([fpt(-fw, fy0), fpt(fw, fy0)],
+               fill=shade(STEEL, f * 0.65), width=1)
+        q = fpt(0, fy1 + 3)
+        d.rectangle([q[0] - 1, q[1] - 1, q[0] + 1, q[1] + 1], fill=KEY)
+    else:
+        # dim daylight from a window at the corridor's far end
+        d.polygon([fpt(-fw, fy0), fpt(fw, fy0), fpt(fw, fy1),
+                   fpt(-fw, fy1)], fill=shade(hx("#3f382e"), f))
+        d.polygon([fpt(-fw * 0.4, fy0 + 6), fpt(fw * 0.4, fy0 + 6),
+                   fpt(fw * 0.4, fy1 - 6), fpt(-fw * 0.4, fy1 - 6)],
+                  fill=shade(hx("#6a5f4c"), f))
+    # threshold + a dark smear of the opening in the polished tile
+    d.polygon([pt(-hw - 4, -3), pt(hw + 4, -3), pt(hw + 4, -7),
+               pt(-hw - 4, -7)], fill=shade(FLOOR, 0.9))
+    d.polygon([pt(-hw + 2, -8), pt(hw - 2, -8), pt(hw - 4, -16),
+               pt(-hw + 4, -16)], fill=mix(FLOOR, hx("#120e0b"), 0.18))
+    return p
+
+
+def paint_walls(d):
+    """One level only (user's call: "just rotunda and the floor that
+    you're on") — the bays, the doors, the hallway offshoots, then
+    the slab fascia above and the dollhouse cut."""
+    out = diamond(A_OUT)                     # N, E, S, W
+    doors = {}
+    # DENSE door schedule (user: "in reality there would be many more
+    # doors — the space is quite large"): the named doorways keep
+    # their hotspots, and narrow single-leaf office doors fill the
+    # runs between them. Spacing floor: chamber doors are 40px of
+    # frame, offices 28, portals 38 — keep centres ≥ 0.10 t apart or
+    # the frames touch. One gap per wall is left for the bench.
+    for e0, e1, feats, f in (
+        (out[3], out[0], (("senate", 0.13, "door"),
+                          (None, 0.24, "office"),
+                          (None, 0.45, "hall"),
+                          ("wam", 0.57, "door"),
+                          (None, 0.68, "office"),
+                          (None, 0.78, "office"),
+                          ("gov", 0.89, "lift")), 1.0),
+        (out[0], out[1], ((None, 0.12, "hall"),
+                          (None, 0.23, "office"),
+                          ("finance", 0.35, "door"),
+                          (None, 0.47, "lift"),
+                          (None, 0.69, "office"),
+                          ("house", 0.80, "door"),
+                          (None, 0.905, "office")), 0.88),
+    ):
+        def q(y0, y1, col):
+            d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
+                      fill=col)
+        ln = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
+        q(0, 8, shade(POST, f))                       # base strip
+        q(8, 58, shade(CONC, f))                      # concrete bays
+        # concrete reads as POUR JOINTS + form mottle, not brick
+        # courses (user-corrected: "the texture of the walls is more
+        # concrete-like")
+        for y in (24, 41):
+            d.line([up(e0, y), up(e1, y)],
+                   fill=shade(CONC, f * 0.90), width=1)
+        for _ in range(10):
+            b = lerp(e0, e1, rng.uniform(0.03, 0.97))
+            mw = int(rng.uniform(5, 14))
+            my0 = int(rng.uniform(12, 44))
+            d.rectangle([b[0] - mw // 2, b[1] - my0 - int(rng.integers(4, 9)),
+                         b[0] + mw // 2, b[1] - my0],
+                        fill=shade(CONC, f * rng.uniform(0.94, 1.06)))
+        # dark bronze columns between the bays
+        for i in range(9):
+            t = i / 8
+            b = lerp(e0, e1, t)
+            d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
+                        fill=shade(hx("#241c15"), f))
+            d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
+                        fill=shade(hx("#6b5c4a"), f))
+            # column reflection in the walkway tile
+            d.line([(b[0], b[1] + 3), (b[0], b[1] + 9)],
+                   fill=mix(FLOOR, hx("#241c15"), 0.45), width=2)
+        # doors, hallway portals, elevator lobbies
+        for did, t, kind in feats:
+            if kind == "door":
+                pos = door_at(d, e0, e1, t, "koa")
+            elif kind == "office":
+                pos = door_at(d, e0, e1, t, "office", hw=11)
+            else:
+                pos = corridor_at(d, e0, e1, t, f,
+                                  elevator=(kind == "lift"))
+            if did:
+                doors[did] = pos
+        # the slab above, fluted, then the dollhouse cut
+        q(58, 72, shade(hx("#ece6d4"), f))
+        n_f = max(2, int(ln // 7))
+        for i in range(1, n_f):
+            t = i / n_f
+            b = lerp(e0, e1, t)
+            d.line([up(b, 59), up(b, 71)],
+                   fill=shade(hx("#9d9683"), f), width=2)
+        off = (-9, -5) if e0 is out[3] else (9, -5)
+        p0, p1 = up(e0, 72), up(e1, 72)
+        d.polygon([p0, p1, (p1[0] + off[0], p1[1] + off[1]),
+                   (p0[0] + off[0], p0[1] + off[1])],
+                  fill=hx("#efeadb"))
+        # NO benches: drawn floating mid-walkway they read as brown
+        # bars sitting on the railing (user-caught, removed 2026-08-22)
+    return doors
+
+
+# ------------------------------------------- makai edge + exit stairs
+def cut_face(d, a0, a1, off, arris=True):
+    """One sliced surface: the wall's core between the run `a0..a1` and
+    the same run pushed out by the wall's thickness. Shared by the
+    makai stubs and by the mauka walls' sawn-off ends at the corners,
+    so every cut in the room is the same material."""
+    b0 = (a0[0] + off[0], a0[1] + off[1])
+    b1 = (a1[0] + off[0], a1[1] + off[1])
+    d.polygon([a0, a1, b1, b0], fill=hx(CUT_CORE))
+    for k, c in ((1, "#8e866f"), (2, "#a89f88")):     # aggregate grain
+        o = (off[0] * k / 3.0, off[1] * k / 3.0)
+        d.line([(a0[0] + o[0], a0[1] + o[1]), (a1[0] + o[0], a1[1] + o[1])],
+               fill=hx(c), width=1)
+    if arris:
+        d.line([a0, a1], fill=hx("#fffdf5"), width=2)
+    d.line([b0, b1], fill=hx("#6f6957"), width=1)
+
+
+def paint_cut_ends(d):
+    """The mauka walls are SAWN OFF at the ʻEwa and Diamond Head
+    corners — full height on one side of the line, knee height on the
+    other. Facing the slice with the same core the stubs use is what
+    makes the room read as a cutaway of a real building rather than as
+    a set with two walls missing."""
+    out = diamond(A_OUT)
+    for c, moff in ((out[3], (-9, -5)), (out[1], (9, -5))):
+        cut_face(d, c, up(c, 72), moff, arris=False)
+        d.line([up(c, 72), (c[0] + moff[0], c[1] + moff[1] - 72)],
+               fill=hx("#fffdf5"), width=2)
+
+
+def paint_cut_wall(d, e0, e1, off):
+    """The makai walls, drawn RPG CUTAWAY. The wall is really there —
+    the same precast fluted exterior the rest of the building wears —
+    but SLICED at knee height so the side nearest the camera can never
+    hide the room behind it, with the cut left bright on top so the
+    slice reads as deliberate rather than as a missing wall.
+
+    We see these walls from OUTSIDE (their exterior faces the camera),
+    which is why the face is fluted fins and not the mauka walls'
+    lava-brick bays. `off` is the wall's thickness as a screen offset,
+    pointing outward — down-screen on a near wall, which is the whole
+    reason the cut face is visible at all."""
+    t0, t1 = up(e0, CUT_H), up(e1, CUT_H)
+    fluted_band(d, t0, t1, 0, CUT_H, 0.97)       # exterior, above slab
+    # a reveal at the slab line, or the stub's fins and the fascia's
+    # below run together and the whole thing reads as one tall parapet
+    # instead of a wall standing on a floor
+    d.line([e0, e1], fill=hx("#a49d8a"), width=1)
+    # the CUT itself. It must NOT be another shade of the white flutes
+    # (tried: pale-on-pale, and the slice vanished at game zoom) — it
+    # is the wall's CORE, raw aggregate, well below the dressed face in
+    # value, with a bright arris where the blade came through.
+    cut_face(d, t0, t1, off)
+    # where the stub meets the walkway: contact occlusion, so the wall
+    # sits ON the floor instead of being pasted over it
+    d.line([up(e0, CUT_H + 1), up(e1, CUT_H + 1)],
+           fill=shade(FLOOR, 0.80), width=2)
+    d.line([up(e0, CUT_H + 3), up(e1, CUT_H + 3)],
+           fill=shade(FLOOR, 0.90), width=1)
+
+
+def paint_front_edge(d):
+    out = diamond(A_OUT)
+    gap = 30
+    for e0, e1 in ((out[1], out[2]), (out[2], out[3])):   # SE, SW
+        # outward normal is DOWN-screen on both near edges; x follows
+        # the edge's own direction
+        off = CUT_T if e1 is out[2] else (-CUT_T[0], CUT_T[1])
+        # cut wall, broken at the S corner for the stairs
+        span = 32.0 * A_OUT   # edge's horizontal extent, px
+        if e1 is out[2]:      # SE runs E->S: stop short of S
+            e1 = lerp(e0, e1, 1 - gap / span)
+        else:                 # SW runs S->W: start past S
+            e0 = lerp(e0, e1, gap / span)
+        fluted_band(d, e0, e1, 0, FASCIA_D, 0.92)
+        paint_cut_wall(d, e0, e1, off)
+    # stairs down from the S corner, out of the room
+    s = out[2]
+    for i in range(5):
+        y = s[1] + STUB_H + i * 8
+        wdt = 40 - i * 2
+        d.polygon([(s[0] - wdt, y), (s[0] + wdt, y),
+                   (s[0] + wdt - 4, y + 6), (s[0] - wdt + 4, y + 6)],
+                  fill=shade(hx("#cbc3ae"), 0.95 - i * 0.13))
+    # cheek walls flanking the run, landing at the foot
+    for sgn in (-1, 1):
+        d.polygon([(s[0] + sgn * 40, s[1] + STUB_H),
+                   (s[0] + sgn * 30, s[1] + STUB_H + 44),
+                   (s[0] + sgn * 30, s[1] + STUB_H + 52),
+                   (s[0] + sgn * 44, s[1] + STUB_H + 4)],
+                  fill=shade(hx("#b5ad98"), 0.9))
+    d.polygon([(s[0] - 32, s[1] + STUB_H + 44),
+               (s[0] + 32, s[1] + STUB_H + 44),
+               (s[0] + 24, s[1] + STUB_H + 56),
+               (s[0] - 24, s[1] + STUB_H + 56)],
+              fill=shade(hx("#8f8a7a"), 0.85))
+
+
+def paint_planters(d):
+    """Raised TAN STONE planter boxes at the ʻEwa and Diamond Head
+    corners of the walkway. The third one at the N apex was removed
+    (user: "the central potted plant should be removed") — wedged at
+    the corner between the two walls it read as clutter."""
+    stone = hx("#c9b88f")
+    for u, v in ((10.25, -10.25), (-10.25, 10.25)):
+        x, y = iso(u, v)
+        d.polygon([(x - 16, y), (x, y - 8), (x + 16, y), (x, y + 8)],
+                  fill=stone)
+        d.polygon([(x - 16, y), (x, y + 8), (x, y + 13), (x - 16, y + 5)],
+                  fill=shade(stone, 0.78))
+        d.polygon([(x + 16, y), (x, y + 8), (x, y + 13), (x + 16, y + 5)],
+                  fill=shade(stone, 0.62))
+        d.polygon([(x - 10, y), (x, y - 5), (x + 10, y), (x, y + 5)],
+                  fill=hx("#567a4c"))
+        d.polygon([(x - 6, y - 1), (x, y - 4), (x + 5, y - 1), (x, y + 2)],
+                  fill=hx("#6f9660"))
+        # broken canopy: shade pocket + leaf ticks, so it reads as
+        # foliage instead of two flat diamonds
+        d.polygon([(x - 8, y + 1), (x - 3, y - 1), (x - 1, y + 3),
+                   (x - 6, y + 4)], fill=hx("#4a6a42"))
+        for lx, ly in ((-7, -1), (-2, -3), (3, -2), (6, 1), (0, 2),
+                       (-4, 3)):
+            d.line([(x + lx, y + ly), (x + lx + 2, y + ly - 2)],
+                   fill=hx("#8fb37c"), width=1)
+
+
+# ------------------------------------------------------------- finish
+def painterly(img):
+    """Oil-paint facets + the map grade. NO vignette (house rule)."""
+    import cv2
+    rgb = np.asarray(img.convert("RGB"), np.uint8)
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    painted = cv2.xphoto.oilPainting(bgr, 4, 1)
+    painted = cv2.cvtColor(painted, cv2.COLOR_BGR2RGB).astype(np.float32)
+    out = rgb.astype(np.float32) * 0.34 + painted * 0.66
+    lum = (out[..., 0] * 0.299 + out[..., 1] * 0.587 +
+           out[..., 2] * 0.114)[..., None]
+    out = lum + (out - lum) * 1.12
+    out = 255.0 * np.clip(out / 255.0, 0, 1) ** 0.97
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGB")
+
+
+# ---------------------------------------------------------------- main
+def render(raw=False):
+    img = Image.new("RGBA", (W, H), INK + (255,))
+    d = ImageDraw.Draw(img)
+
+    paint_ground(d)
+    img = mottle_ink(img.convert("RGB")).convert("RGBA")
+    d = ImageDraw.Draw(img)
+
+    paint_ring_floor(d)
+    paint_sun(img)
+    paint_ring_shade(img)
+    d = ImageDraw.Draw(img)
+    paint_well(img)
+    d = ImageDraw.Draw(img)
+    paint_railings(d)
+    paint_rail_pots(d)
+    doors = paint_walls(d)
+    # planters AFTER walls: the W/E corner planters sit in front of
+    # the corner-most doors' floor reflections and must occlude them
+    paint_planters(d)
+    paint_front_edge(d)
+    paint_cut_ends(d)
+
+    img = img.convert("RGB")
+    if not raw:
+        img = painterly(img)
+    img = img.resize((W // SS, H // SS), Image.LANCZOS)   # see SS
+    img.save(OUT_PNG)
+    # the runtime paints this behind the image (letterbox bars at odd
+    # aspect ratios) — sample the finished surround so they can never
+    # disagree, same one-source rule as `deep` in the island bakes
+    bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
+
+    # ---- hotspots, computed from the same geometry
+    out = diamond(A_OUT)
+    dpx = {k: (int(p[0]), int(p[1])) for k, p in doors.items()}
+    meta = {
+        "name": "Hawaiʻi State Capitol",
+        "image": "capitol_scene.png",
+        "w": W, "h": H, "scale": SS, "bg": bg,
+        "spawn": [CX, int(out[2][1]) - 60],
+        "hotspots": [
+            dict(id="senate", name="Senate Gallery", kind="door",
+                 px=dpx["senate"][0], py=dpx["senate"][1] + 6,
+                 text="The ʻEwa cone, below this door: Hawaiʻi's 25 "
+                      "senators under the Moon — a chandelier of 620 "
+                      "chambered nautilus shells. The public watches "
+                      "from up here, at the rail."),
+            dict(id="house", name="House Gallery", kind="door",
+                 px=dpx["house"][0], py=dpx["house"][1] + 6,
+                 text="The Diamond Head cone: the 51 representatives "
+                      "under the Sun, a chandelier of gold-plated "
+                      "globes. Every state law begins as a bill read "
+                      "in one of the two cones below."),
+            dict(id="wam", name="Ways & Means", kind="door",
+                 px=dpx["wam"][0], py=dpx["wam"][1] + 6,
+                 text="The Senate's money committee. A revenue bill "
+                      "that cannot clear Ways & Means goes no "
+                      "further."),
+            dict(id="finance", name="House Finance", kind="door",
+                 px=dpx["finance"][0], py=dpx["finance"][1] + 6,
+                 text="The House's money committee — every "
+                      "appropriation in the state budget passes "
+                      "across these tables."),
+            dict(id="gov", name="Governor · Level 5", kind="door",
+                 px=dpx["gov"][0], py=dpx["gov"][1] + 6,
+                 text="The elevator to Level 5, where the Governor "
+                      "and Lieutenant Governor look down into the "
+                      "rotunda. The veto pen lives up there."),
+            dict(id="mosaic", name="Aquarius", kind="poi",
+                 px=CX, py=CY + DROP + 6,
+                 text="The floor medallion below marks where Tadashi "
+                      "Sato's sea-stone mosaic lies. Look up instead: "
+                      "no dome — the rotunda "
+                      "opens to the sky. The sky is Hawaiʻi's capitol "
+                      "dome, and rain and rainbows come inside."),
+            dict(id="exit", name="Back to Oʻahu", kind="exit",
+                 px=CX, py=int(out[2][1]) + 66,
+                 text=""),
+        ],
+    }
+    OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
+    print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
+          f" (scene {W}x{H} @ {SS}x)", "and", OUT_JSON.name)
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--painterly", action="store_true",
+                    help="apply the oil-paint finish (NOT the default: "
+                         "measured 2026-08-22, radius 4 smears the "
+                         "railing pickets into uneven blobs — the pass "
+                         "is tuned for terrain, not architecture)")
+    render(raw=not ap.parse_args().painterly)

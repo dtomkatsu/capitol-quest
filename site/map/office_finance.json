@@ -1,0 +1,54 @@
+{
+ "name": "House Finance — Chair's Office",
+ "image": "office_finance.png",
+ "w": 1240,
+ "h": 800,
+ "scale": 2,
+ "bg": "#0a0e18",
+ "spawn": [
+  631,
+  518
+ ],
+ "hotspots": [
+  {
+   "id": "reception",
+   "name": "Reception",
+   "kind": "poi",
+   "px": 646,
+   "py": 496,
+   "text": "Committee staff triage everything here — every bill with a dollar figure in the House crosses this desk on its way to the chair."
+  },
+  {
+   "id": "cubicles",
+   "name": "Committee Staff",
+   "kind": "poi",
+   "px": 748,
+   "py": 407,
+   "text": "Analysts who read every fiscal note. The binders hold the executive budget request, line by line."
+  },
+  {
+   "id": "door",
+   "name": "The Chair",
+   "kind": "door",
+   "px": 502,
+   "py": 421,
+   "text": "Beyond the koa doors: the member who decides which revenue bills get a hearing at all."
+  },
+  {
+   "id": "desk",
+   "name": "Chair Kawaguchi",
+   "kind": "poi",
+   "px": 508,
+   "py": 354,
+   "text": "A clean desk, two lamps, and the quiet power of the schedule. Bills die politely here — by never being heard."
+  },
+  {
+   "id": "exit",
+   "name": "Back to the gallery",
+   "kind": "exit",
+   "px": 612,
+   "py": 548,
+   "text": ""
+  }
+ ]
+}

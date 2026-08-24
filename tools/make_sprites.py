@@ -118,8 +118,8 @@ def capitol():
     img[23, 36:77] = hx("#6e6a5c")
 
     # ---- the two chamber cones: squat, truncated, just cresting the deck
-    cone(img, 44, 26, 19, 10, 6, cone_c, cone_lt, cone_dk)   # House (ʻEwa)
-    cone(img, 69, 26, 19, 10, 6, cone_c, cone_lt, cone_dk)   # Senate
+    cone(img, 44, 26, 19, 10, 6, cone_c, cone_lt, cone_dk)   # Senate (ʻEwa)
+    cone(img, 69, 26, 19, 10, 6, cone_c, cone_lt, cone_dk)   # House (Diamond Head)
 
     # ---- modest flag at the ʻEwa corner
     img[8:22, 20:21] = hx("#77726a")

@@ -154,6 +154,19 @@ others feel state ones.
 
 - Interior scene (new Phaser scene, single painted room): the rotunda,
   House & Senate chamber doors, Finance/Ways & Means committee rooms.
+  - ✅ 2026-08-22 first cut: `CapitolScene` (main.js) — the GALLERY
+    RING above the rotunda (user's call: the view is the gallery/
+    railing area), baked by `tools/render_capitol.py` as a 2.5-D iso
+    cutaway: a NARROW low-gallery balcony one storey above the
+    chamber level, railings at the open well, the sun patch and a
+    generic floor medallion below (never Sato's copyrighted Aquarius
+    composition), the chambers' flared lava drums at courtyard level only (the cones
+    are NOT visible from the balconies — galleries wrap around them),
+    chamber-gallery + committee doors, open hallway mouths and
+    recessed elevator lobbies branching deeper into the building
+    (single-level walls — "just rotunda and the floor you're on",
+    user's call), exit stairs makai. Tapping the overworld Capitol enters; hotspots carry
+    the educational text. The dollar-coin NPC quest still to come.
 - A dollar-coin NPC walks the player through: collected → general fund →
   executive budget request → legislative appropriation → governor's veto
   pen → department. JRPG dialogue boxes throughout.
@@ -163,6 +176,87 @@ others feel state ones.
 - Walkable sprite on the overworld (8-dir, collision from the land/urban
   masks already baked in build/map_grid.json); a guide character (mōʻī
   ʻiʻiwi bird?) who narrates and marks quest targets.
+
+**SCOPED 2026-08-22 — walk the CAPITOL INTERIOR first** (the overworld
+variant is a later reuse: at km-scale tiles the interior sprite is 2px,
+it needs its own mini-sprite). The player controls THE ADVOCATE walking
+the gallery ring in `CapitolScene`.
+
+**A. The character.** Androgynous by construction (design settled
+2026-08-22 after two concept rounds):
+- Silhouette rules: shoulders ≈ hips, no waist pinch, no broad-shoulder
+  V — those two cues are what gender a silhouette. Head:height ≈ 1:3.6
+  (the banner-crowd proportion rules apply here too).
+- Aloha business casual, i.e. what people actually wear in that
+  building: muted teal short-sleeve aloha shirt with a 2–3px scatter
+  print, charcoal slacks, brown shoes. SHORT-CROP dark hair (user's
+  call — the collar-length low tie of round 1 is out).
+- NO lei (user's call, round 2) — the sprite carries no gold accent;
+  the one-gold-accent rule stays a glyph/portrait rule, not a sprite
+  rule.
+- VAGUE FACIAL DETAILS (user's call — a documented exception to the
+  faceless-campaign rule, which still binds portraits and glyphs).
+  Four concept rounds taught what "elegant" means at an 8px face:
+  - SCULPT IN VALUE PLANES, never draw features. The children's-
+    drawing read = symmetric dot-features floating on a flat oval.
+    One key light (upper-left, same as the body) builds three zones —
+    lit left (G), mid (F), core shadow right (E→D) — and the
+    features are small disruptions INSIDE the zones: eyes sunk in a
+    socket band (the shadow-side eye barely implied), a nose-bridge
+    light, a cheekbone catch, an off-centre 2px mouth, a jaw that
+    TAPERS through two rows to a narrow chin, the neck in the jaw's
+    cast shadow. A swept asymmetric fringe, not a symmetric cap.
+  - Eyes at LOW contrast (a warm dark ~2 stops under skin base),
+    never black — full-contrast eye px are the button-eye doll fail.
+  - Proportion: hair crop 4 rows, face 6-7 — a 5/5 split read as a
+    helmet on a squashed face.
+- "Higher-def" rendering, not bigger canvas (26×42): hue-shifted
+  3-tone ramps (shadows cool, lights warm), SLOPED shoulders and
+  tapered sleeves and rounded shoes (the 90° box corners were half
+  the ugly-edge read), and a soft 55%-alpha keyline — the map-sprite
+  convention; an opaque dilation halo was the other half of the ugly
+  edge.
+- Scale: door leaves are 46px, so the standing figure is ~40px in
+  scene px. Author at native 1× and judge readability at the SNAPPED
+  0.5 game zoom, per the interior render-quality rules.
+- Sheet: `tools/make_player.py` (procedural, like every other asset) →
+  `site/assets/sprites/player.png`. Two DRAWN facings (toward-camera
+  SE, away NE) × horizontal mirror = 4 iso directions; idle + 4-frame
+  walk (contact–pass–contact–pass) each = 20 frames, ~8 fps.
+
+**B. Occlusion overlay (the one renderer change).** The room is one
+baked PNG, but the well railings, rail pots, corner planters, makai cut
+stubs and stair cheeks all stand NEARER the camera than walkway ground
+behind them. `render_capitol.py` gains a second output,
+`capitol_over.png` — transparent, occluders only — drawn from the SAME
+geometry in the same bake. Runtime: base at depth 0, player 50, overlay
+100. Floor reflections stay in the BASE (they are floor). All three
+files ride the one `CAP_V`.
+
+**C. Navigation — geometry, not a mask.** The walkable ring is pure
+math: invert the (linear) iso transform screen→(u,v); walkable iff
+`A_IN + m < max(|u|,|v|) < A_OUT − m`, minus planter/pot circles, plus
+the stairs mouth (which is the walk-out exit). Constants ship in a
+`nav` block in capitol.json — same-geometry-one-source, no mask file.
+Collision = reject step, with axis-slide so walls feel smooth.
+
+**D. Controls.** WASD/arrows 8-dir + tap-to-walk (clamp target to the
+ring, walk straight, slide around corners — no A* for a convex ring).
+Proximity ≤ ~48px lights a hotspot's marker and Space/tap interacts;
+direct hotspot taps keep working (touch must not regress). Exit: walk
+onto the stairs mouth, or Esc as today.
+
+**E. Order of work.** (1) make_player.py sheet — half the effort and
+all the art risk, iterate at 4× crops; (2) overlay split + nav block +
+CAP_V bump; (3) CapitolScene input/move/collide/anim/depth; (4)
+proximity affordance + stairs exit; (5) pane pass (`?raf=mc`, drive
+with synthetic keys, MutationObserver-style patience on anims).
+Known risks: readability at the snapped zoom; androgyny drifting in
+the side/walk frames (re-check shoulders≈hips every frame); the
+overlay double-drawing floor pixels (it must carry only what stands).
+
+- LATER, on this framework: the §4 dollar-coin guide NPC (same nav +
+  occlusion), other balcony NPCs, the overworld mini-sprite.
 
 ## 6. Rail stations & the TOD property-tax story
 

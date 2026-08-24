@@ -44,6 +44,7 @@ Real geography drives every tile:
 python3 tools/build_map.py     # classify 288x288 tile grid  -> build/map_grid.json + debug PNG
 python3 tools/render_map.py    # bake pixel-art iso map      -> site/assets/map/*.png + site/map/oahu.json
 python3 tools/make_sprites.py  # capitol, marker, sparkles   -> site/assets/sprites/*.png
+python3 tools/render_capitol.py # Capitol grounds 2.5D scene -> site/assets/map/capitol_scene.png + site/map/capitol.json
 python3 tools/make_event_art.py --scene <id>          # procedural banner -> site/assets/events/<id>.png
 python3 tools/make_event_art.py --photo P --paint 8   # or from a photo, oil-paint filter for a painted look
 ```
