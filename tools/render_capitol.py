@@ -31,6 +31,9 @@ Orientation facts baked in:
     Head end (Sun, red/gold).
   - the rotunda really is open to the sky — sunlight falls into the
     well and the mosaic sits in it.
+  - THREE levels since 2026-08-24 (user's call): the courtyard, the
+    gallery ring the player stands on, and a Senate floor above it.
+    The upper level is RECESSED a full bay — see paint_upper_level().
 Palette and treatment follow the interior banners (make_event_art.py):
 bright daylit concrete, LIGHT rail over DARK recess, koa doors, one
 warm key. Ground outside the room is the overlay's own ink.
@@ -76,14 +79,40 @@ W, H = 1680, 1240
 # The JSON keeps SCENE coordinates (w/h/spawn/hotspots) — only the
 # PNG shrinks — so nothing downstream has to move.
 SS = 2
-CX, CY = 840, 590          # centre of the gallery ring, at floor level
+CX, CY = 840, 680          # centre of the gallery ring, at floor level.
+                           # CY moved 590 -> 680 when the third level
+                           # landed (2026-08-24): the new storey grows
+                           # the room UPWARD only, so the content
+                           # centre had drifted 90px above the frame's
+                           # and the room hung high in the viewport
+                           # with dead space under it. Everything is
+                           # derived from iso(), so this shifts the
+                           # whole scene as one.
 A_OUT = 11.5               # ring outer diamond half-size (iso units) —
                            # the walkway is a NARROW balcony (user's
                            # call), not a wide deck
 A_IN = 9                   # the rotunda well
-DROP = 64                  # one storey only: the player stands on a
-                           # LOW gallery just above the chamber level
+DROP = 64                  # the player stands on a LOW gallery just
+                           # above the chamber level
+# ---- the THIRD level (2026-08-24, user's call), Senate territory.
+# It is RECESSED, and that is the entire design. A flush stack was
+# drawn 2026-08-22 and rolled back the same day because two rows of
+# doors on one plane read as a motel elevation — nothing in the
+# section told you the upper floor was BEHIND the lower one. Stepping
+# it back a full bay means the court WIDENS as it rises: you see the
+# upper walkway's FLOOR, not just more wall, and the two levels are
+# legible from a fixed camera. LVL2_IN == A_OUT and LVL2_Y == the
+# lower slab's top, so the terrace tiles exactly — the upper rail
+# stands on the lower wall's own line, no seam to hide.
+LVL2_IN = A_OUT
+LVL2_OUT = 14.0
+LVL2_Y = 72
 RAIL_H = 15                # picket run height
+PICKET_PITCH = 6           # px between pickets — EVEN, see even_run().
+PICKET_W = 2               # judged on the DOWNSCALED bake: at SS 2 a
+                           # 1px picket is half a display pixel and
+                           # LANCZOS renders the run as grey haze.
+FLUTE_PITCH = 6            # the white fluted bands, same rule
 DRUM_RT, DRUM_RB = 72, 102  # chamber drum: top / flared base radius
 FASCIA_D = 24              # fluted slab-edge band depth — the photo's
                            # dominant element, deeper than the pickets
@@ -174,6 +203,33 @@ def lerp(p, q, t):
 
 def up(p, dy):
     return (p[0], round(p[1] - dy))
+
+
+def even_run(e0, e1, pitch):
+    """Whole-pixel positions along a 2:1 iso edge, on an EXACT pitch.
+
+    `lerp(e0, e1, i / n)` rounds every point independently, so a pitch
+    that is not a whole number of pixels lands as a BEAT. Measured
+    2026-08-24: the ring's picket pitch was 288/64 = 4.5 px and the run
+    came out 5,4,5,4… — 32 gaps of five against 31 of four — which is
+    what read as unevenly spaced bars. Snapping the ENDPOINTS to whole
+    pixels (the 2026-08-22 pass) could never fix it, because the
+    interior positions are still computed in t and rounded one by one.
+
+    Step in PIXELS instead, and force the pitch EVEN: these edges run
+    exactly 2:1, so an even x step gives a whole-pixel y step and there
+    is nothing left to round. Even also means the pitch survives the
+    SS downsample without picking up a second beat at display size.
+    """
+    dx, dy = e1[0] - e0[0], e1[1] - e0[1]
+    step = max(2, int(round(pitch / 2)) * 2)
+    n = max(2, int(abs(dx) // step))
+    sx = 1 if dx >= 0 else -1
+    sy = 1 if dy >= 0 else -1
+    ry = abs(dy) / abs(dx) if dx else 0.0        # 0.5 on every ring edge
+    return [(e0[0] + sx * (step // 2 + i * step),
+             e0[1] + sy * int((step // 2 + i * step) * ry))
+            for i in range(n)]
 
 
 def shade(c, f):
@@ -437,11 +493,7 @@ def fluted_band(d, e0, e1, y_top, depth, f=1.0):
     p0, p1 = (e0[0], e0[1] + y_top), (e1[0], e1[1] + y_top)
     d.polygon([p0, p1, (p1[0], p1[1] + depth), (p0[0], p0[1] + depth)],
               fill=shade(hx("#ece6d4"), f))
-    ln = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
-    n = max(2, int(ln // 7))
-    for i in range(1, n):
-        t = i / n
-        b = lerp(p0, p1, t)
+    for b in even_run(p0, p1, FLUTE_PITCH):
         d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
                fill=shade(hx("#9d9683"), f), width=2)
     d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
@@ -470,16 +522,12 @@ def paint_railings(d):
         d.line([up(e0, 4), up(e1, 4)], fill=hx("#8a8474"), width=1)
         # pickets: thin metal, well-spaced — dark against the sunlit
         # courtyard (near), pale against the dark walkway (far)
-        ln = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
-        n = max(2, int(ln // 5))
         # dark bronze BOTH sides (user: railing shade darker — the
         # photos have no pale pickets; the white parts are the kerb
         # and the outer fascia, never the metal)
         pk = hx("#3a332a") if near else hx("#4a4238")
-        for i in range(n):
-            t = (i + 0.5) / n
-            b = lerp(e0, e1, t)
-            d.line([up(b, 5), up(b, RAIL_H)], fill=pk, width=1)
+        for b in even_run(e0, e1, PICKET_PITCH):
+            d.line([up(b, 5), up(b, RAIL_H)], fill=pk, width=PICKET_W)
         # slim stanchions — dark bronze like the pickets
         for i in range(1, 8):
             b = lerp(e0, e1, i / 8.0)
@@ -503,11 +551,11 @@ def paint_railings(d):
             # the polished tile throws the rail back at us — pickets
             # as faint verticals, the koa cap as a warm smear
             rf = mix(FLOOR, pk, 0.45)
-            for i in range(n):
-                t = (i + 0.5) / n
-                b = lerp(e0, e1, t)
+            # the SAME run — a reflection that drifts off its own
+            # pickets is worse than no reflection
+            for b in even_run(e0, e1, PICKET_PITCH):
                 d.line([(b[0], b[1] + 4), (b[0], b[1] + RAIL_H - 3)],
-                       fill=rf, width=1)
+                       fill=rf, width=PICKET_W)
             d.line([(e0[0], e0[1] + RAIL_H + 2),
                     (e1[0], e1[1] + RAIL_H + 2)],
                    fill=mix(FLOOR, hx("#9a6a38"), 0.38), width=2)
@@ -805,10 +853,136 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
     return p
 
 
+def paint_upper_level(d):
+    """The third level — Senate offices — stepped BACK a full bay.
+
+    Only the two MAUKA runs are drawn: a makai half would stand
+    between the camera and the room, which is exactly what the
+    dollhouse cut exists to prevent one storey down.
+
+    Painted far-to-near within each run — wall, then the walkway that
+    stands in front of it, then the rail at the walkway's inner edge.
+    On the mauka side the OUTER ring is the far one, which is the
+    opposite of the intuition that "outer" means "nearer".
+
+    Deliberately carries no form mottle: it is the most distant thing
+    in the room, where detail past value separation turns to noise,
+    and skipping it keeps this off the shared `rng` so adding a level
+    cannot reshuffle the level below's wall texture.
+    """
+    inn = diamond(LVL2_IN, LVL2_Y)
+    out = diamond(LVL2_OUT, LVL2_Y)
+    # ---- the SLICED ENDS first, or the upper floor floats.
+    # Stepping back means the building carries mass between A_OUT and
+    # LVL2_OUT — the offices BEHIND the lower wall — which nothing
+    # ever drew, because one storey down that mass is hidden by the
+    # wall itself. At the ʻEwa and Diamond Head corners the runs stop
+    # and the hole shows: the upper level's outer half hung over bare
+    # ink and read as a cantilever. Facing the slice with the same
+    # core every other cut uses makes it a sawn-open building instead.
+    g_in, g_out = diamond(A_OUT), diamond(LVL2_OUT)
+    top = LVL2_Y + 72
+    for i in (3, 1):
+        c0, c1 = g_in[i], g_out[i]
+        d.polygon([c0, c1, up(c1, top), up(c0, top)], fill=hx(CUT_CORE))
+        for k, c in ((1, "#8e866f"), (2, "#a89f88")):    # aggregate
+            t = k / 3.0
+            d.line([lerp(c0, c1, t), lerp(up(c0, top), up(c1, top), t)],
+                   fill=hx(c), width=1)
+        # the floor PLATE, so the section reads as storeys stacked and
+        # not as one solid pier
+        for y in (LVL2_Y, LVL2_Y - 5):
+            d.line([up(c0, y), up(c1, y)], fill=hx("#b9b096"), width=1)
+        d.line([up(c0, LVL2_Y - 6), up(c1, LVL2_Y - 6)],
+               fill=hx("#6f6957"), width=1)
+        d.line([c0, up(c0, top)], fill=hx("#fffdf5"), width=2)  # arris
+        d.line([c1, up(c1, top)], fill=hx("#6f6957"), width=1)
+    doors = {}
+    for i0, i1, feats, f in (
+        # Both HALLWAY MOUTHS sit on the Diamond Head run (user,
+        # 2026-08-24): one hard against the top point and one past the
+        # rightmost door, so the recesses bracket the run instead of
+        # punching a hole through the middle of it. Mid-wall portals
+        # broke the door rhythm exactly where the eye travels.
+        (3, 0, (("senpres", 0.22, "door"),
+                (None, 0.37, "office"),
+                (None, 0.49, "office"),
+                (None, 0.63, "office"),
+                (None, 0.75, "office"),
+                (None, 0.87, "office")), 1.10),
+        (0, 1, ((None, 0.07, "hall"),
+                (None, 0.20, "office"),
+                (None, 0.32, "office"),
+                ("senclerk", 0.44, "door"),
+                (None, 0.58, "office"),
+                (None, 0.71, "office"),
+                (None, 0.84, "office"),
+                (None, 0.95, "hall")), 0.97),
+    ):
+        a0, a1 = inn[i0], inn[i1]
+        e0, e1 = out[i0], out[i1]
+
+        def q(y0, y1, col):
+            d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
+                      fill=col)
+
+        # ---- the wall (far)
+        q(0, 8, shade(POST, f))
+        q(8, 58, shade(CONC, f))
+        for y in (24, 41):
+            d.line([up(e0, y), up(e1, y)],
+                   fill=shade(CONC, f * 0.90), width=1)
+        for i in range(9):
+            b = lerp(e0, e1, i / 8)
+            d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
+                        fill=shade(hx("#241c15"), f))
+            d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
+                        fill=shade(hx("#6b5c4a"), f))
+        for did, t, kind in feats:
+            if kind == "door":
+                pos = door_at(d, e0, e1, t, "koa")
+            elif kind == "office":
+                pos = door_at(d, e0, e1, t, "office", hw=11)
+            else:
+                pos = corridor_at(d, e0, e1, t, f)
+            if did:
+                doors[did] = pos
+        q(58, 72, shade(hx("#ece6d4"), f))
+        for b in even_run(e0, e1, FLUTE_PITCH):
+            d.line([up(b, 59), up(b, 71)],
+                   fill=shade(hx("#9d9683"), f), width=2)
+
+        # ---- the walkway, standing in front of the wall
+        d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
+        d.line([a0, a1], fill=shade(FLOOR_SH, f), width=1)
+
+        # ---- the rail at its inner edge (nearest, so last)
+        d.polygon([a0, a1, up(a1, 4), up(a0, 4)],
+                  fill=shade(hx("#ddd6c1"), f * 0.98))
+        d.line([up(a0, 4), up(a1, 4)], fill=shade(hx("#8a8474"), f),
+               width=1)
+        for b in even_run(a0, a1, PICKET_PITCH):
+            d.line([up(b, 5), up(b, RAIL_H)],
+                   fill=shade(hx("#4a4238"), f), width=PICKET_W)
+        for i in range(1, 8):
+            b = lerp(a0, a1, i / 8.0)
+            d.rectangle([b[0] - 1, b[1] - RAIL_H, b[0] + 1, b[1] - 4],
+                        fill=shade(hx("#57503f"), f))
+        d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
+               fill=shade(hx("#54391f"), f), width=2)
+        d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
+               fill=shade(hx("#9a6a38"), f), width=3)
+        d.line([up(a0, RAIL_H + 5), up(a1, RAIL_H + 5)],
+               fill=shade(hx("#c79a5c"), f), width=2)
+        d.line([up(a0, RAIL_H + 6), up(a1, RAIL_H + 6)],
+               fill=shade(hx("#ecd0a1"), f), width=1)
+    return doors
+
+
 def paint_walls(d):
-    """One level only (user's call: "just rotunda and the floor that
-    you're on") — the bays, the doors, the hallway offshoots, then
-    the slab fascia above and the dollhouse cut."""
+    """The GALLERY level — the bays, the doors, the hallway offshoots,
+    then the slab fascia above and the dollhouse cut. The floor above
+    is paint_upper_level(), drawn first because it is further back."""
     out = diamond(A_OUT)                     # N, E, S, W
     doors = {}
     # DENSE door schedule (user: "in reality there would be many more
@@ -836,7 +1010,6 @@ def paint_walls(d):
         def q(y0, y1, col):
             d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
                       fill=col)
-        ln = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
         q(0, 8, shade(POST, f))                       # base strip
         q(8, 58, shade(CONC, f))                      # concrete bays
         # concrete reads as POUR JOINTS + form mottle, not brick
@@ -876,10 +1049,7 @@ def paint_walls(d):
                 doors[did] = pos
         # the slab above, fluted, then the dollhouse cut
         q(58, 72, shade(hx("#ece6d4"), f))
-        n_f = max(2, int(ln // 7))
-        for i in range(1, n_f):
-            t = i / n_f
-            b = lerp(e0, e1, t)
+        for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
                    fill=shade(hx("#9d9683"), f), width=2)
         off = (-9, -5) if e0 is out[3] else (9, -5)
@@ -1052,7 +1222,9 @@ def render(raw=False):
     d = ImageDraw.Draw(img)
     paint_railings(d)
     paint_rail_pots(d)
+    upper = paint_upper_level(d)          # furthest: before the walls
     doors = paint_walls(d)
+    doors.update(upper)
     # planters AFTER walls: the W/E corner planters sit in front of
     # the corner-most doors' floor reflections and must occlude them
     paint_planters(d)
@@ -1105,6 +1277,19 @@ def render(raw=False):
                  text="The elevator to Level 5, where the Governor "
                       "and Lieutenant Governor look down into the "
                       "rotunda. The veto pen lives up there."),
+            dict(id="senpres", name="Senate President", kind="door",
+                 px=dpx["senpres"][0], py=dpx["senpres"][1] + 6,
+                 text="Third level, and this floor is the Senate's. "
+                      "Referrals are settled behind this door — which "
+                      "committees a measure must clear before it can "
+                      "reach the floor, and so how many ways it can "
+                      "quietly die."),
+            dict(id="senclerk", name="Senate Clerk", kind="door",
+                 px=dpx["senclerk"][0], py=dpx["senclerk"][1] + 6,
+                 text="Every measure is filed, numbered and journaled "
+                      "here. What the chamber did is whatever this "
+                      "office wrote down — the journal is the record, "
+                      "not anyone's memory of the vote."),
             dict(id="mosaic", name="Aquarius", kind="poi",
                  px=CX, py=CY + DROP + 6,
                  text="The floor medallion below marks where Tadashi "

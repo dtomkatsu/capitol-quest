@@ -27,7 +27,7 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 4;
+const CAP_V = 7;
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
 const OFF_V = 2;

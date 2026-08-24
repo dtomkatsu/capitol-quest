@@ -1958,16 +1958,56 @@ courtyard one storey down, the chambers present ONLY as flared
 lava drum walls at courtyard level (user-corrected 2026-08-22: the
 cones are NOT visible from the balconies — the galleries wrap
 straight around them; an earlier version drew glowing cone caps in
-the well and was wrong), koa doors on SINGLE-LEVEL mauka
-walls — a multi-floor stack was drawn 2026-08-22 and rolled back the
-same day (user: the upper floors are recessed in reality and drawing
-them flush read wrong; "it's okay to have a just-rotunda and the
-floor that you're on view") — with open HALLWAY MOUTHS and recessed
+the well and was wrong), koa doors on the mauka walls of
+THREE levels — the courtyard, the gallery ring the player stands on,
+and a SENATE floor above it (2026-08-24, user's call, reversing the
+standing one-level rule) — with open HALLWAY MOUTHS and recessed
 ELEVATOR LOBBIES branching deeper into the building (corridor_at:
 dark opening, floor running in, steel doors + call light for a
 lift), and exit stairs at the makai corner. The courtyard has no
 dark breezeway splotch and no ground-level doors (both removed,
 user's call).
+- **The third level is RECESSED, and the recess IS the feature**
+  (`paint_upper_level`). A multi-floor stack was drawn 2026-08-22 and
+  rolled back the same day because two rows of doors on one plane read
+  as a motel elevation — nothing in the section said the upper floor
+  was BEHIND the lower one. Stepping it back a full bay means the
+  court widens as it rises, so you see the upper walkway's FLOOR and
+  not just more wall, and the levels stay legible from a fixed camera.
+  Rules that must survive edits:
+  - `LVL2_IN == A_OUT` and `LVL2_Y ==` the lower slab's top, so the
+    terrace TILES exactly — the upper rail stands on the lower wall's
+    own line and there is no seam to hide. Change one, change both.
+  - **Only the two MAUKA runs exist.** A makai half would stand
+    between the camera and the room, which is what the dollhouse cut
+    exists to prevent one storey down.
+  - **The SLICED ENDS are not decoration.** Stepping back means the
+    building carries mass between `A_OUT` and `LVL2_OUT` — the offices
+    behind the lower wall — which nothing had ever drawn, because one
+    storey down that mass is hidden by the wall itself. At the ʻEwa
+    and Diamond Head corners the runs stop and the hole shows: without
+    the cut faces the upper level's outer half hangs over bare ink and
+    reads as a cantilever. Any further level needs its own.
+  - **Both HALLWAY MOUTHS sit on the Diamond Head run** (user,
+    2026-08-24): one hard against the top point, one past the
+    rightmost door, so the recesses BRACKET the run. Mid-wall portals
+    punch a hole through the door rhythm exactly where the eye travels
+    along the wall. The ʻEwa run is all doors. NB the level BELOW does
+    not follow this — it keeps a mid-wall lift and an ʻEwa hall,
+    because `gov` is a named hotspot anchored there.
+  - Painted far-to-near WITHIN each run — wall, then the walkway
+    standing in front of it, then the rail at its inner edge. On the
+    mauka side the OUTER ring is the FAR one, which is the opposite of
+    the intuition that "outer" means "nearer".
+  - No form mottle on purpose: most distant thing in the room, and
+    skipping it keeps the level off the shared `rng`, so adding a
+    storey cannot reshuffle the level below's wall texture.
+  - **`CY` is framing, not geometry.** The storey grows the room
+    UPWARD only, so the content centre drifted 90px above the frame's
+    and the room hung high in the viewport with dead space under it;
+    CY 590 -> 680 shifts the whole scene as one, since everything
+    derives from `iso()`. Re-check after any change to the room's
+    height by measuring the content bbox against `INK`.
 **Two MEASURED render-quality rules (2026-08-22, from "how can we make
 the pixel art look higher quality") — the railing looked wrong for
 five passes because of these, not because of how it was drawn:**
@@ -2020,7 +2060,30 @@ five passes because of these, not because of how it was drawn:**
     edge is fine, where it would have mangled hard pixel art.
 - Geometry is pixel-snapped at the source (`iso`/`lerp`/`up` round),
   so repeating runs share one grid; float coords made picket spacing
-  drift by a pixel and read as irregular.
+  drift by a pixel and read as irregular. **That was only half a
+  fix.** Snapping the ENDPOINTS still leaves the interior positions to
+  `lerp(e0, e1, i / n)`, which rounds each one independently, so a
+  pitch that is not a whole number of pixels beats anyway. Measured
+  2026-08-24: the ring's picket pitch was 288/64 = **4.5 px** and the
+  run came out 5,4,5,4… — 32 gaps of five against 31 of four. That is
+  the "railing bars look unevenly spaced" report, and it survived the
+  08-22 pass untouched.
+- **Every repeating run along an edge goes through `even_run(e0, e1,
+  pitch)`**, which steps in PIXELS and forces the pitch EVEN. These
+  edges are exactly 2:1, so an even x step gives a whole-pixel y step
+  and there is nothing left to round; even also means the pitch
+  survives the SS downsample without picking up a second beat. Three
+  runs use it — the rail pickets, the parapet flutes and the slab
+  flutes above the doors. The floor REFLECTION of the pickets shares
+  the same call: a reflection that drifts off its own bars is worse
+  than no reflection. Anything new that repeats along an edge uses it
+  too; do not go back to counting in `t`.
+- **Picket pitch and width were judged on the DOWNSCALED bake**
+  (`PICKET_PITCH` 6, `PICKET_W` 2), never at 1:1 — SS halves both, so
+  a 1px bar is half a display pixel and LANCZOS renders the run as
+  grey haze. The sweep: 4/1 is that haze (it was the shipped density),
+  4/2 is nearly a solid dark band, 8/2 reads as sparse posts, 6/2
+  keeps a clear bar-and-gap rhythm.
 
 **Accuracy passes work from two Commons photos** (2026-08-22, after
 "find other pictures of the perspectives from those balconies"):

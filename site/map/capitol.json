@@ -7,7 +7,7 @@
  "bg": "#080c16",
  "spawn": [
   840,
-  714
+  804
  ],
  "hotspots": [
   {
@@ -15,7 +15,7 @@
    "name": "Senate Gallery",
    "kind": "door",
    "px": 520,
-   "py": 572,
+   "py": 662,
    "text": "The ʻEwa cone, below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
   },
   {
@@ -23,7 +23,7 @@
    "name": "House Gallery",
    "kind": "door",
    "px": 1134,
-   "py": 559,
+   "py": 649,
    "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
   {
@@ -31,7 +31,7 @@
    "name": "Ways & Means",
    "kind": "door",
    "px": 682,
-   "py": 491,
+   "py": 581,
    "text": "The Senate's money committee. A revenue bill that cannot clear Ways & Means goes no further."
   },
   {
@@ -39,7 +39,7 @@
    "name": "House Finance",
    "kind": "door",
    "px": 969,
-   "py": 476,
+   "py": 566,
    "text": "The House's money committee — every appropriation in the state budget passes across these tables."
   },
   {
@@ -47,15 +47,31 @@
    "name": "Governor · Level 5",
    "kind": "door",
    "px": 800,
-   "py": 432,
+   "py": 522,
    "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. The veto pen lives up there."
+  },
+  {
+   "id": "senpres",
+   "name": "Senate President",
+   "kind": "door",
+   "px": 491,
+   "py": 565,
+   "text": "Third level, and this floor is the Senate's. Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
+  },
+  {
+   "id": "senclerk",
+   "name": "Senate Clerk",
+   "kind": "door",
+   "px": 1037,
+   "py": 489,
+   "text": "Every measure is filed, numbered and journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
   },
   {
    "id": "mosaic",
    "name": "Aquarius",
    "kind": "poi",
    "px": 840,
-   "py": 660,
+   "py": 750,
    "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside."
   },
   {
@@ -63,7 +79,7 @@
    "name": "Back to Oʻahu",
    "kind": "exit",
    "px": 840,
-   "py": 840,
+   "py": 930,
    "text": ""
   }
  ]
