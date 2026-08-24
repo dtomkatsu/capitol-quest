@@ -22,32 +22,32 @@
    "id": "house",
    "name": "House Gallery",
    "kind": "door",
-   "px": 1134,
-   "py": 649,
+   "px": 1098,
+   "py": 631,
    "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
   {
    "id": "wam",
    "name": "Ways & Means",
    "kind": "door",
-   "px": 682,
-   "py": 581,
+   "px": 619,
+   "py": 612,
    "text": "The Senate's money committee. A revenue bill that cannot clear Ways & Means goes no further."
   },
   {
    "id": "finance",
    "name": "House Finance",
    "kind": "door",
-   "px": 969,
-   "py": 566,
+   "px": 958,
+   "py": 561,
    "text": "The House's money committee — every appropriation in the state budget passes across these tables."
   },
   {
    "id": "gov",
    "name": "Governor · Level 5",
    "kind": "door",
-   "px": 800,
-   "py": 522,
+   "px": 1186,
+   "py": 675,
    "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. The veto pen lives up there."
   },
   {

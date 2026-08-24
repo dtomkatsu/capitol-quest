@@ -991,21 +991,32 @@ def paint_walls(d):
     # runs between them. Spacing floor: chamber doors are 40px of
     # frame, offices 28, portals 38 — keep centres ≥ 0.10 t apart or
     # the frames touch. One gap per wall is left for the bench.
+    #
+    # PORTALS SIT AT THE ENDS OF THE DIAMOND HEAD RUN — THE SAME
+    # PLACEMENT AS THE STOREY ABOVE (user, 2026-08-24: "I wanted the
+    # hallways on second floor to be same as third floor"). One hard
+    # against the top point, one past the rightmost door, so the two
+    # recesses BRACKET the run; the ʻEwa run is all doors, exactly as
+    # in paint_upper_level. Before this the ʻEwa hall sat at 0.45 and
+    # a lift at 0.47, punching holes through the door rhythm right
+    # where the eye travels the wall. `gov` is the lift lobby that
+    # closes the run — a named hotspot, so it moved runs with it.
     for e0, e1, feats, f in (
         (out[3], out[0], (("senate", 0.13, "door"),
-                          (None, 0.24, "office"),
-                          (None, 0.45, "hall"),
-                          ("wam", 0.57, "door"),
-                          (None, 0.68, "office"),
-                          (None, 0.78, "office"),
-                          ("gov", 0.89, "lift")), 1.0),
-        (out[0], out[1], ((None, 0.12, "hall"),
-                          (None, 0.23, "office"),
-                          ("finance", 0.35, "door"),
-                          (None, 0.47, "lift"),
-                          (None, 0.69, "office"),
-                          ("house", 0.80, "door"),
-                          (None, 0.905, "office")), 0.88),
+                          (None, 0.26, "office"),
+                          ("wam", 0.40, "door"),
+                          (None, 0.53, "office"),
+                          (None, 0.64, "office"),
+                          (None, 0.75, "office"),
+                          (None, 0.87, "office")), 1.0),
+        (out[0], out[1], ((None, 0.07, "hall"),
+                          (None, 0.20, "office"),
+                          ("finance", 0.32, "door"),
+                          (None, 0.45, "office"),
+                          (None, 0.57, "office"),
+                          ("house", 0.70, "door"),
+                          (None, 0.82, "office"),
+                          ("gov", 0.94, "lift")), 0.88),
     ):
         def q(y0, y1, col):
             d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],

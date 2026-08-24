@@ -27,7 +27,7 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 7;
+const CAP_V = 8;
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
 const OFF_V = 2;
@@ -5716,8 +5716,19 @@ class RoomScene extends Phaser.Scene {
           letterSpacing: 1,
         }).setOrigin(0.5, 0).setDepth(10000);
       this.labels.push(lab);
+      // NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS (user's call
+      // 2026-08-24: "don't have those big labels over all the doors").
+      // Nine plates of stroked type across a painted room read as a
+      // debug overlay and hid the thing they were labelling. The
+      // bouncing marker is what says "this door is live" now; the EXIT
+      // keeps its label, because the way out must never need hunting.
+      if (h.kind !== "exit") lab.setVisible(false);
       const zone = this.add.zone(h.px, h.py + 6, 120, 84)
         .setInteractive({ useHandCursor: true });
+      if (h.kind !== "exit") {
+        zone.on("pointerover", () => lab.setVisible(true));
+        zone.on("pointerout", () => lab.setVisible(false));
+      }
       zone.on("pointerup", (pointer) => {
         if (pointer.getDistance() > 8) return;
         if (h.kind === "exit") { this.leave(); return; }

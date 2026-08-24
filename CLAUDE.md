@@ -1992,9 +1992,23 @@ user's call).
     2026-08-24): one hard against the top point, one past the
     rightmost door, so the recesses BRACKET the run. Mid-wall portals
     punch a hole through the door rhythm exactly where the eye travels
-    along the wall. The ʻEwa run is all doors. NB the level BELOW does
-    not follow this — it keeps a mid-wall lift and an ʻEwa hall,
-    because `gov` is a named hotspot anchored there.
+    along the wall. The ʻEwa run is all doors.
+  - **THE GALLERY LEVEL BELOW IS THE SAME, RUN FOR RUN** (user,
+    2026-08-24: "I wanted the hallways on second floor to be same as
+    third floor" — this reverses the note that said it deliberately
+    didn't, and it means the SAME RUN, not a mirrored one: a first
+    pass bracketed the ʻEwa run down here on the theory that portals
+    shouldn't stack between storeys, and that was not the ask).
+    Both of its portals sit on the DIAMOND HEAD run — a hallway hard
+    against the top point (t 0.07) and the governor's lift lobby past
+    the rightmost door (`gov`, t 0.94) — and the ʻEwa run is all
+    doors. It used to carry a hall at ʻEwa 0.45 and a lift at Diamond
+    Head 0.47, both mid-wall. `gov` is a named hotspot, so it CHANGED
+    RUNS to become the closing portal; the re-spacing moved the other
+    named doors too (`wam` .57→.40, `finance` .35→.32,
+    `house` .80→.70). Hotspot px come out of the bake, so nothing is
+    hand-maintained — but CAP_V must be bumped or the stale JSON
+    points at the old doors.
   - Painted far-to-near WITHIN each run — wall, then the walkway
     standing in front of it, then the rail at its inner edge. On the
     mauka side the OUTER ring is the FAR one, which is the opposite of
@@ -2129,6 +2143,16 @@ stairs hotspot or Esc. Rules:
   watch the chambers from gallery level. (make_sprites.py's cone
   comments had Senate/House swapped until today; the scene and the
   hotspot text are the corrected authority.)
+- **HOTSPOT NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS**
+  (2026-08-24, user's call: "don't have those big labels over all the
+  doors"). `RoomScene.create` still builds every label, but anything
+  that isn't the EXIT starts hidden and is shown by the zone's
+  pointerover/pointerout. Nine plates of stroked type stood across a
+  painted room and read as a debug overlay — they hid the very doors
+  they named. The bouncing marker is what says "this door is live"
+  now. The exit keeps its label on purpose: the way out must never
+  need hunting, and on touch (no hover) it is the one name a player
+  cannot afford to miss.
 - `body.in-capitol` hides `#hud` (one rule at the end of style.css) —
   End Turn must not run the week beat over a sleeping WorldScene.
   `#dialog` is a SIBLING of #hud, so the JRPG box stays.
