@@ -2068,16 +2068,30 @@ user's call).
       ("you just messed the whole thing up") — the LAYOUT (glass on
       Diamond Head, one open bay on ʻEwa, koa slats elsewhere) is
       settled; only the rendering inside each section was wrong.
-    - **ʻEwa = dark arcade with ONE BAY OPEN TO THE OUTSIDE**
-      (`court_opening` + `OPEN_BAY`): what shows through it is the
-      HABS photo's view out — sky GLARE, far towers standing on a
+    - **ʻEwa = fully OPEN — a breezeway, not a wall with a bay**
+      (`court_opening` + `OPEN_BAY` (0.03, 0.97); 2026-08-24,
+      breezeway photo, user: "the slats shouldn't be on that
+      entrance side. that's also open"). The koa slats, the arcade
+      arch and the stone plinth are all DELETED — they were dressing
+      on a wall that is not there. What shows through the whole run
+      is the HABS/breezeway view out: sky GLARE, far towers on a
       shaded tree line, sunlit plaza, palms drawn as trunk + FAN
-      (a disc on a stick is a street lamp), and one exterior pier in
-      silhouette so the bay reads as a passage UNDER the building,
-      not a window. The broken silhouette is what says "outdoors";
-      the first version's flat bands + two stubby colonnade
-      rectangles did not. Dark jamb reveal one side, lit arris the
-      other; the bay skips the slats, the plinth and the arch.
+      (a disc on a stick is a street lamp). TWO rows of piers make
+      the depth: the near pale row at 0.18/0.5/0.82 (drawn by the
+      wall loop) and an outer silhouette row at 0.33/0.67 inside the
+      view — offset from each other on purpose, or they read as one
+      pier with a shadow. The broken silhouette is what says
+      "outdoors"; flat colour bands did not.
+    - **The courtyard's BIG STONE PLANTER-BENCHES** (`planter_bench`
+      in paint_well; 2026-08-24, user's atrium photo: "you also
+      forgot those empty planters … the big benches/planters"): two
+      low square stone boxes flanking the breezeway with a stepped
+      bench ledge all the way around, and mostly EMPTY — bare soil
+      with a few dry stalks, per the photo; one carries the
+      courtyard's tree (HABS view). They replaced the four floating
+      kukui canopies, which had no planters under them and read as
+      bushes growing out of pavement. Keep the empty one empty —
+      that is what the photograph shows.
     - **`OPEN_BAY` is at the TOP POINT end (0.53–0.79), not the ʻEwa
       corner, and that is forced by the well.** The court floor is a
       storey down, so the near end of each wall — its foot included —

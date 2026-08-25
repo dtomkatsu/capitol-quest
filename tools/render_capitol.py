@@ -148,19 +148,14 @@ CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # the 0.5 game zoom, which is the only scale
                            # that matters here.
 
-OPEN_BAY = (0.53, 0.79)    # the ʻEwa courtyard bay that is a hole
-                           # through the wing to the street — see
-                           # court_opening(). Shared: the wall skips
-                           # its slats/plinth there and the floor
-                           # takes a daylight spill in front of it.
-                           # It is the bay toward the TOP POINT on
-                           # purpose: the court floor is a storey down,
-                           # so the near end of each wall — its foot
-                           # included — falls outside the well and is
-                           # hidden by our own slab. Put the opening
-                           # near the ʻEwa corner instead (tried
-                           # first, 0.20-0.48) and only its head shows
-                           # and the light it throws is invisible.
+OPEN_BAY = (0.03, 0.97)    # the ʻEwa run's open extent — effectively
+                           # the WHOLE run (2026-08-24, breezeway
+                           # photo, user: "the slats shouldn't be on
+                           # that entrance side. that's also open").
+                           # The court's ground level is an open
+                           # breezeway on this side: piers in front,
+                           # daylight behind, no wall. Only thin
+                           # margins remain so the corner posts read.
 
 rng = np.random.default_rng(7)
 
@@ -415,51 +410,18 @@ def paint_well(img):
         if glazed:
             court_glass(d, e0, e1, f, 21, DROP - 2)
         else:
+            # the WHOLE run is open — a breezeway, not a wall with a
+            # bay (2026-08-24, breezeway photo). The koa slats that
+            # used to fill the margins are gone: there is nothing on
+            # this side for them to be a screen OF.
             court_opening(d, e0, e1, OPEN_BAY[0], OPEN_BAY[1], f,
                           22, DROP - 2)
-            # vertical koa-slat screens (the chamber walls in the
-            # photos) — everywhere the bay is not open
-            ln_w = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
-            n_sl = max(2, int(ln_w // 4))
-            for i in range(n_sl):
-                t = (i + 0.5) / n_sl
-                if OPEN_BAY[0] <= t <= OPEN_BAY[1]:
-                    continue
-                b = lerp(e0, e1, t)
-                d.line([(b[0], b[1] + 22), (b[0], b[1] + DROP - 4)],
-                       fill=shade(hx("#5f452c"), f), width=2)
-        # stone PLINTH along the foot of the court wall. The taller
-        # storey left a big flat dark field under the arches with
-        # nothing to read against; the base band is what tells you the
-        # wall meets a floor (and it is in the panorama).
-        # ... but glass runs to the floor and the open bay has no
-        # wall to plinth, so both skip it
-        if not glazed:
-            for b0, b1 in ((0.0, OPEN_BAY[0]), (OPEN_BAY[1], 1.0)):
-                c0 = court_bay_pt(e0, e1, b0, DROP - 15)
-                c1 = court_bay_pt(e0, e1, b1, DROP - 15)
-                d.polygon([c0, c1, (c1[0], c1[1] + 14),
-                           (c0[0], c0[1] + 14)],
-                          fill=shade(hx("#b0a893"), f))
-                d.line([c0, c1], fill=shade(hx("#cdc5ae"), f), width=1)
+        # no plinth and no arcade arches on either run any more:
+        # glass runs to the floor, and the open side has no wall for
+        # either to belong to (the arch was dressing on the koa
+        # screen, gone with it)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
-        # arched arcade heads between the piers (gallery-corner photo:
-        # the courtyard level reads as arches in the lava-brick wall)
-        # arch head and rise are FRACTIONS of the storey — a fixed
-        # 30/7 under the slab left the heads bunched at the top of a
-        # tall court with a blank wall hanging under them
-        a_y, a_r = round(DROP * 0.47), round(DROP * 0.11)
-        for t0, t1 in (() if glazed else ((0.21, 0.47),)):
-            pts = []
-            for k in range(13):
-                tt = t0 + (t1 - t0) * k / 12
-                b = lerp(e0, e1, tt)
-                s = 2 * k / 12 - 1
-                pts.append((b[0], b[1] + a_y - round(a_r * (1 - s * s))))
-            d.line(pts, fill=shade(hx("#8a7a66"), f), width=2)
-            d.line([(px_, py_ + 2) for px_, py_ in pts],
-                   fill=shade(hx("#2c241c"), f), width=1)
         # LARGE pale square piers, as in the courtyard panorama
         for t in (0.18, 0.5, 0.82):
             b = lerp(e0, e1, t)
@@ -491,23 +453,60 @@ def paint_well(img):
         d.rectangle([px_ - 1, py_ - 8, px_ + 1, py_ - 7],
                     fill=hx("#8f8974"))
 
-    # four kukui canopies from above, flanking the breezeway
-    # Two up-court, two flanking the medallion. The pair that used to
-    # stand BELOW it is gone: a deep court hides its own near half
-    # under our slab, and anything down there is sliced by the well
-    # edge. Flanking keeps four trees on the visible floor and keeps
-    # the group symmetrical about the medallion.
-    for x, y in ((CX - 60, CY + DROP - 50), (CX + 60, CY + DROP - 50),
-                 (CX - 88, CY + DROP - 16), (CX + 88, CY + DROP - 16)):
-        st = hx("#c9b88f")
-        d.polygon([(x - 14, y + 6), (x, y - 1), (x + 14, y + 6),
-                   (x, y + 13)], fill=st)
-        d.polygon([(x - 14, y + 6), (x, y + 13), (x, y + 17),
-                   (x - 14, y + 10)], fill=shade(st, 0.75))
-        d.polygon([(x + 14, y + 6), (x, y + 13), (x, y + 17),
-                   (x + 14, y + 10)], fill=shade(st, 0.6))
-        d.ellipse([x - 15, y - 9, x + 15, y + 9], fill=hx("#567a4c"))
-        d.ellipse([x - 9, y - 6, x + 7, y + 4], fill=hx("#6f9660"))
+    # THE BIG STONE PLANTER-BENCHES (2026-08-24, from the user's
+    # atrium photo — "you also forgot those empty planters that are in
+    # the rotunda. the big benches/planters"). Low square stone boxes
+    # with a stepped BENCH ledge all the way around, big enough to sit
+    # on, and mostly EMPTY — bare soil, per the photo. One carries the
+    # courtyard's tree, as in the HABS view. These replace the four
+    # floating kukui canopies, which had no planters under them and
+    # read as bushes growing out of pavement.
+    def planter_bench(x, y, w, treed):
+        h = w // 2                          # iso: 2:1
+        stone, soil = hx("#c9b88f"), hx("#3a2e22")
+
+        def dia(cx_, cy_, ww):
+            hh = ww // 2
+            return [(cx_ - ww, cy_), (cx_, cy_ - hh),
+                    (cx_ + ww, cy_), (cx_, cy_ + hh)]
+
+        # bench step: broad, low
+        for pts, fy, drop_px in ((dia(x, y, w), 1.0, 5),
+                                 (dia(x, y - 6, round(w * 0.72)),
+                                  1.06, 7)):
+            l_, t_, r_, b_ = pts[0], pts[1], pts[2], pts[3]
+            d.polygon([l_, b_, (b_[0], b_[1] + drop_px),
+                       (l_[0], l_[1] + drop_px)],
+                      fill=shade(stone, 0.74 * fy))
+            d.polygon([r_, b_, (b_[0], b_[1] + drop_px),
+                       (r_[0], r_[1] + drop_px)],
+                      fill=shade(stone, 0.60 * fy))
+            d.polygon(pts, fill=shade(stone, fy))
+            d.line([l_, b_], fill=shade(stone, 0.86 * fy), width=1)
+            d.line([b_, r_], fill=shade(stone, 0.80 * fy), width=1)
+        # the soil, sunk a hair inside the rim
+        d.polygon(dia(x, y - 7, round(w * 0.56)), fill=soil)
+        d.polygon(dia(x, y - 8, round(w * 0.56)),
+                  outline=shade(soil, 1.35))
+        if treed:
+            st = round(w * 0.16)
+            d.line([(x, y - 8), (x + 1, y - 8 - w // 2)],
+                   fill=hx("#6b5236"), width=2)
+            ty = y - 8 - w // 2
+            d.ellipse([x - w * 0.52, ty - w * 0.30,
+                       x + w * 0.52, ty + w * 0.18],
+                      fill=hx("#567a4c"))
+            d.ellipse([x - w * 0.30, ty - w * 0.22,
+                       x + w * 0.24, ty + w * 0.02],
+                      fill=hx("#6f9660"))
+        else:
+            # a few dry stalks — the photo's planters are not clean
+            for sx, sh in ((-8, 7), (-2, 10), (5, 6), (9, 9)):
+                d.line([(x + sx, y - 8), (x + sx + 2, y - 8 - sh)],
+                       fill=hx("#8a7a5c"), width=1)
+
+    planter_bench(CX - 64, CY + DROP - 52, 30, treed=True)
+    planter_bench(CX + 64, CY + DROP - 52, 30, treed=False)
 
     # clip the whole layer to the hole and composite
     mask = Image.new("L", (W, H), 0)
@@ -669,13 +668,15 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
             d.line([(x + 1, ty),
                     (x + 1 + ang * 4, ty + abs(ang) * 1.6 + 3)],
                    fill=shade(hx("#3c4f38"), f), width=2)
-    # one exterior pier of the colonnade, in silhouette — the bay is a
-    # passage under the building, not a window
-    x = round(q0[0] + span * 0.50)
-    yb = q0[1] + (q1[1] - q0[1]) * 0.50
-    d.polygon([(x - 4, yb + dy * 0.06), (x + 4, yb + dy * 0.06),
-               (x + 3, yb + dy * 0.92), (x - 3, yb + dy * 0.92)],
-              fill=shade(hx("#6a675c"), f))
+    # the OUTER row of the breezeway's piers, in silhouette — offset
+    # from the near row's 0.18/0.5/0.82 so the two rows read as depth,
+    # not as one pier with a shadow
+    for pf in (0.33, 0.67):
+        x = round(q0[0] + span * pf)
+        yb = q0[1] + (q1[1] - q0[1]) * pf
+        d.polygon([(x - 4, yb + dy * 0.06), (x + 4, yb + dy * 0.06),
+                   (x + 3, yb + dy * 0.92), (x - 3, yb + dy * 0.92)],
+                  fill=shade(hx("#6a675c"), f))
     d.line([q0, (q0[0], q0[1] + dy)], fill=shade(hx("#2a231c"), f),
            width=2)                                    # dark reveal
     d.line([q1, (q1[0], q1[1] + dy)], fill=shade(hx("#e8e2ce"), f),
