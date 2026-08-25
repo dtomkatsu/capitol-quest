@@ -133,22 +133,19 @@ DRUM_RT, DRUM_RB = 72, 102  # chamber drum: top / flared base radius
 FASCIA_D = 24              # fluted slab-edge band depth — the photo's
                            # dominant element, deeper than the pickets
 POST_H = 19
-STUB_H = 10                # makai edge, cut low
-CUT_H = 13                 # the makai walls are SLICED to this height
-                           # — iso-RPG convention: the wall nearest the
-                           # camera is real, but never occludes the
-                           # room. Measured against the 40px walkway,
-                           # not against the mauka walls' 72: at 18 the
-                           # stub ate half the balcony.
-CUT_T = 11, 6              # wall thickness as a screen offset; the cut
-                           # top face is what sells the slice
+STUB_H = 10                # makai edge — now only the stair landing's
+                           # datum. The knee-high CUT stub walls that
+                           # used to stand on the near edges are GONE
+                           # (2026-08-24, user: "don't need the walls,
+                           # just showing the walkway is fine") — the
+                           # walkway ends at its own slab fascia.
 CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # of the dressed flutes (#ece6d4) in VALUE —
                            # a near-white cut face vanished entirely at
                            # the 0.5 game zoom, which is the only scale
                            # that matters here.
 
-OPEN_BAY = (0.02, 0.985)    # the ʻEwa run's open extent — effectively
+OPEN_BAY = (0.02, 1.0)    # the ʻEwa run's open extent — effectively
                            # the WHOLE run (2026-08-24, breezeway
                            # photo, user: "the slats shouldn't be on
                            # that entrance side. that's also open").
@@ -422,27 +419,49 @@ def paint_well(img):
         # screen, gone with it)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
-        # LARGE pale square piers, as in the courtyard panorama
-        for t in (0.18, 0.5, 0.82):
-            b = lerp(e0, e1, t)
-            d.rectangle([b[0] - 6, b[1] + 18, b[0] + 6, b[1] + DROP - 2],
-                        fill=shade(hx("#c2bba8"), f))
-            d.rectangle([b[0] + 3, b[1] + 18, b[0] + 6, b[1] + DROP - 2],
-                        fill=shade(hx("#9a9384"), f))
-    # the tile-clad SMOKESTACKS, flanking the chamber's glass wall on
-    # the Diamond Head run — never on the ʻEwa side, which is open
-    # ONE stack, at the near end of the glass. There is no companion
-    # at the far end (user, 2026-08-24): the building would hide it
-    # from this vantage anyway, and the pass that added one at t 0.65
-    # stood it between two courtyard piers, mid-colonnade, where it
-    # made no sense at all.
-    # t 0.065: far enough off the apex that the FULL foot radius
-    # stays inside the well — at 0.05 the tower's left half crossed
-    # the ʻEwa edge and the mask sheared it along the diagonal.
-    # Height DROP-22: the body ends flush under the fascia band
-    # (which occupies 0-18 and is drawn before us, in front).
-    b = lerp(hole[0], hole[1], 0.065)
-    smokestack(d, (b[0], b[1] + DROP - 2), DROP - 22, 16, 9, 0.92)
+        # LARGE pale square piers, as in the courtyard panorama — on
+        # the OPEN ʻEwa run only (2026-08-24, "columns … clipping into
+        # other elements"): on the glazed run the fixed 0.18/0.5/0.82
+        # grid stood piers straight through the glass doors and the
+        # middle of the curved section. The curtain wall carries its
+        # own structure (the drawn pier at 0.352 and the mullions);
+        # the breezeway keeps the pier rows that make its depth.
+        if not glazed:
+            for t in (0.18, 0.5, 0.82):
+                b = lerp(e0, e1, t)
+                d.rectangle([b[0] - 6, b[1] + 18, b[0] + 6,
+                             b[1] + DROP - 2],
+                            fill=shade(hx("#c2bba8"), f))
+                d.rectangle([b[0] + 3, b[1] + 18, b[0] + 6,
+                             b[1] + DROP - 2],
+                            fill=shade(hx("#9a9384"), f))
+    # THE SMOKESTACK stands OUT ON THE PAVING, not against the wall
+    # (user's photograph, 2026-08-25): in the court, in front of the
+    # colonnade, beside the chamber's glass entrance. `fwd` is how far
+    # it steps off the Diamond Head wall into the room — that step is
+    # what makes it free-standing, and it is also what keeps its foot
+    # clear of the well mask's diagonal without hugging the apex.
+    # Height stops it 26px under the hole edge, so its MOUTH clears
+    # the fascia band (which owns 0-18) with daylight over it: the
+    # open top is the whole round read, and it must never be sheared.
+    # THE HALF-CONE AND THE PANEL IT IS BONDED TO. The panel has to
+    # be a PROJECTING mass, not a line on a flat wall (2026-08-25,
+    # user: "it looks like it's not even part of the wall"): the
+    # cone's flat cut face has its normal along +u, and +u faces THIS
+    # camera (dot 0.707 with the view direction), so on a flat wall
+    # that face is visible and the crescent reads as a loose scrap
+    # standing in open floor. Something solid must occupy the space it
+    # is bonded to. So a pier projects from the curtain wall into the
+    # court, deeper than the cone's radius, and is drawn AFTER the
+    # cone — it hides the cut face, the cladding dies into its flank,
+    # and the whole assembly reads as one piece of wall.
+    S_U, S_V, S_R, S_CUT = -A_IN + 2.15, -A_IN + 0.1, 1.45, 0.5
+    smokestack(d, S_U, S_V, DROP - 24, S_R, 0.55, S_CUT, 0.92)
+    # the pier's bonded face IS the cut plane, and it must project
+    # past the cone's widest point there (v0 + sin(acos(cut))*R) or
+    # the flat cut shows and the sliver comes loose again
+    court_panel(d, S_U + S_CUT * S_R, S_U + S_CUT * S_R + 0.55,
+                1.35, 0.9)
 
     # the mosaic, in the sun
     paint_mosaic(d, lay, CX, CY + DROP - 12)
@@ -562,7 +581,7 @@ def court_glass(d, e0, e1, f, top, bot):
     # used to sit at 0.02-0.10 lived exactly where the smokestack
     # stands and produced a pale mullion sliver squeezed between the
     # tower and the first door panel — the stack owns that zone now.
-    for ta, tb in ((0.62, 0.98),):
+    for ta, tb in ((0.01, 0.108), (0.62, 0.98)):
         p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
         d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
                   fill=shade(hx("#232b2c"), f))
@@ -576,13 +595,13 @@ def court_glass(d, e0, e1, f, top, bot):
         d.line([p0, (p0[0], p0[1] + dy)],
                fill=shade(hx("#a8a08c"), f), width=1)
 
-    # ---- the GLASS DOORS, left of the curve. ta is BURIED under the
-    # smokestack on purpose (tower foot spans ~0.01-0.12, drawn after
-    # us, in front): the bay emerges from behind the tapering cylinder
-    # instead of starting beside it with a seam — that seam is what
-    # made the tower read as a free-standing column rather than the
-    # corner the wall wraps around.
-    ta, tb = 0.075, 0.36
+    # ---- the GLASS DOORS. The bay STARTS AT THE SMOKESTACK (2026-08-25):
+    # the half-cone is bonded to this panel's corner-side edge, so the
+    # panel has to begin there — that abutment is what "connected to
+    # the side of the panel" means. The strip between the corner and
+    # the cone is filler glazing (the 0.01-0.10 pane above), not bare
+    # wall, or the court's corner reads as a dark wedge.
+    ta, tb = 0.145, 0.40
     p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
     d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
               fill=shade(hx("#d5cdb6"), f))            # pale surround
@@ -750,479 +769,134 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
 
 
-def smokestack(d, base, h, w_bot, w_top, f=1.0):
-    """THE TILE-CLAD TAPERED TOWER at the end of the chamber's curved
-    glass (2026-08-24, user: "the smokestack should be moved to the
-    glass side"). Every atrium photograph shows one: a battered round
-    tower faced in small square tiles, standing like a chimney base —
-    which is why the user calls it a smokestack.
+def court_panel(d, u_a, u_b, dep, f=1.0):
+    """The PROJECTING PIER at the edge of the chamber's glass bay —
+    the "panel" the half-cone is bonded to. It has to stand proud of
+    the curtain wall by more than the cone's radius, or there is
+    nothing to hide the cone's flat cut face and the sliver reads as
+    detached (2026-08-25). Drawn AFTER the cone, so the cladding dies
+    into its hidden ʻEwa-side flank.
 
-    IT IS A CYLINDER, AND THE PERSPECTIVE IS THE WHOLE JOB (rebuilt
-    2026-08-24 after "you almost got the curved smokestack right,
-    except the perspective is wrong"). The first pass drew a tapered
-    BOX with flat horizontal courses and a 2px kink in the middle,
-    which is a pyramid with stripes. In this 2:1 iso a plan circle of
-    radius A projects to an ellipse A wide and A/2 tall, so:
-
-      - a course is the FRONT HALF of that ellipse and SAGS by a full
-        A/2 at the centre — for an 11px radius that is five and a half
-        pixels, not two. The sag is the single cue that says "round".
-      - the tile columns sit at fixed PLAN ANGLES, so they crowd
-        toward the silhouette edges on their own. Even spacing across
-        the width is the same mistake as evenly spaced mullions on the
-        curved glass.
-      - shading ramps by angle, not by three flat zones.
-      - the top is a WHOLE ellipse (you look down on it from a storey
-        up), and the foot FLARES on a power curve, as photographed.
-
-    Only one is drawn. The companion at the far end of the glass is
-    deliberately absent (user, same day): from this vantage the
-    building would hide it anyway, and the pass that put one mid-run
-    stood it between two courtyard piers, where it read as a chimney
-    dropped into the middle of the colonnade.
+    Its +u flank and its front face both turn toward this camera; the
+    -u flank (the bonded one) does not, which is exactly why the cut
+    never shows.
     """
-    bx, by = base
-    n = 14                                # samples across the front half
-    grout = hx("#4a4a41")
+    vw, vf = -A_IN, -A_IN + dep
+    fl, tp = -(DROP - 2), -18
+    d.polygon([iso(u_a, vf, fl), iso(u_b, vf, fl),
+               iso(u_b, vf, tp), iso(u_a, vf, tp)],
+              fill=shade(hx("#c2bba8"), f))              # front face
+    d.polygon([iso(u_b, vf, fl), iso(u_b, vw, fl),
+               iso(u_b, vw, tp), iso(u_b, vf, tp)],
+              fill=shade(hx("#9a9384"), f))              # right flank
+    d.polygon([iso(u_a, vf, tp), iso(u_b, vf, tp),
+               iso(u_b, vw, tp), iso(u_a, vw, tp)],
+              fill=shade(hx("#d6cfba"), f))              # soffit return
+    d.line([iso(u_a, vf, fl), iso(u_a, vf, tp)],
+           fill=shade(hx("#e6dfca"), f), width=1)        # lit arris
+    d.line([iso(u_a, vf, fl), iso(u_b, vf, fl)],
+           fill=shade(hx("#7d7768"), f), width=1)        # foot shadow
 
-    def radius(t):                        # t: 0 at the foot, 1 at the top
-        return w_top + (w_bot - w_top) * (1 - t) ** 2.4
 
-    def ring(t):
-        """Front half of the course ellipse at height fraction t, plus
-        the per-sample shading factor."""
-        a = radius(t)
-        y = by - h * t
+def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
+    """THE TILE-CLAD CONE beside the chamber's glass entrance — and it
+    is a HALF-CONE CUT BY THE PANEL'S PLANE, of which this vantage
+    shows only a SLIVER (user, 2026-08-25: "it's a half-cone cut by
+    the wall plane… it would be part of the left half of the cone that
+    remains, but you'd only be able to see a sliver of the cone in
+    this perspective"). Six passes drew a FULL free-standing cone and
+    every one of them read as wrong perspective, because the shape
+    itself was wrong — no amount of moving or resizing a whole cone
+    can fix a cone that should be half buried in a panel.
+
+    THE ANGLES, and they are forced, not chosen. Radii here are PLAN
+    units, so `iso()` places every point and the 2:1 foreshortening
+    comes out on its own. With the cut plane at u = u0 and the cone
+    bonded to the panel's side face:
+      - the retained half is u <= u0, i.e. theta in (90, 270).
+      - a face is turned toward this camera only where its plan normal
+        has a positive dot with the view direction (1,1)/sqrt2, i.e.
+        cos(th) + sin(th) > 0, i.e. theta in (-45, 135).
+      - the intersection is theta in (90, 135) — a 45-degree crescent,
+        and it lies entirely LEFT of the axis on screen (dx runs from
+        -16R at the cut to -22.6R at the silhouette). That is the
+        sliver. The flat semicircular face is bonded against the
+        panel and is never visible.
+
+    So this draws a narrow tapering crescent, not a tower: the cut
+    edge on the right where the cladding dies into the panel, the
+    silhouette on the left, sagging course arcs between them, and a
+    scrap of the mouth's rim at the top. Everything else about the
+    cone — the batter (power 1.35), the coarse ~8px courses that
+    carry the wrap, no per-tile detail (it is under the sampling
+    pitch) — is unchanged and still binding.
+
+    It belongs to the ROTUNDA FLOOR alone; nothing on the gallery or
+    Senate levels reacts to it.
+    """
+    # `cut` is where the panel's face slices the cone, as a fraction
+    # of the radius measured from the axis: 0.0 is a true half-cone,
+    # positive means the cone protrudes PAST the panel's edge by that
+    # much. It is the one dial that controls how much of the cone
+    # survives, and it matters because the visible arc runs from
+    # acos(cut) to 135 degrees and nothing else widens it — a true
+    # half-cone leaves 6.6*R px, about three display pixels here,
+    # which is not a shape anyone can read. Moving or resizing the
+    # cone cannot substitute: the visible FRACTION is fixed by the
+    # projection, only `cut` changes it.
+    TH0, TH1 = math.acos(cut), math.radians(135)
+    n = 10
+    grout = hx("#5b5b50")
+    y0 = -(DROP - 2)                            # courtyard floor
+
+    def radius(t):
+        return r_top + (r_bot - r_top) * (1 - t) ** 1.35
+
+    def arc(t):
+        """The visible crescent at height fraction t, plus per-sample
+        shading: lit where the surface still faces the court, falling
+        away to the silhouette."""
+        rr, dy = radius(t), y0 + h * t
         pts, fac = [], []
         for i in range(n + 1):
-            phi = math.pi * i / n         # 0 = right edge, pi = left
-            pts.append((bx + a * math.cos(phi),
-                        y + a * 0.5 * math.sin(phi)))
-            fac.append(0.84 + 0.32 * (1 - math.cos(phi)) / 2)
+            th = TH0 + (TH1 - TH0) * i / n
+            pts.append(iso(u0 + rr * math.cos(th), v0 + rr * math.sin(th),
+                           dy))
+            # the value FLOOR matters more than the range here: the
+            # silhouette edge sits against the court's near-black
+            # glazing, and at 0.72 it sank into it and the whole
+            # crescent read as a smudge rather than as cladding
+            fac.append(0.86 + 0.28 * (math.cos(th) + math.sin(th))
+                       / 1.41421)
         return pts, fac
 
-    rows = max(4, h // 4)
-    # ground shadow FIRST, so the flare stands on the courtyard
-    ga = radius(0.0) * 1.25
-    d.pieslice([bx - ga, by - ga * 0.5, bx + ga, by + ga * 0.5],
-               0, 180, fill=shade(hx("#8f8a76"), f))
-    prev, prev_f = ring(0.0)
+    # contact shadow, hugging the foot on the court side
+    b_pts, _ = arc(0.0)
+    d.polygon(b_pts + [(px_ + 5, py_ + 3) for px_, py_ in b_pts][::-1],
+              fill=shade(hx("#8f8a76"), f))
+    rows = max(6, int(h) // 8)
+    prev, prev_f = arc(0.0)
     for r in range(1, rows + 1):
-        cur, cur_f = ring(r / rows)
-        for i in range(n):                # one tile per angle segment
+        cur, cur_f = arc(r / rows)
+        wob = 1.0 + 0.022 * math.sin(r * 2.4)   # per COURSE, never per tile
+        for i in range(n):
             tone = (cur_f[i] + cur_f[i + 1]) / 2
-            # a checker, not a random speckle: the tiles are laid
-            # in courses and at display scale noise reads as moss
-            jit = 1.0 + (0.055 if (r + i) % 2 else -0.045)
             d.polygon([prev[i], prev[i + 1], cur[i + 1], cur[i]],
-                      fill=shade(hx("#9b9a89"), f * tone * jit))
-        d.line(cur, fill=shade(grout, f), width=1)      # course joint
+                      fill=shade(hx("#96957f"), f * tone * wob))
+        # the course arc, 2px so it survives the SS downsample
+        d.line(cur, fill=shade(grout, f), width=2)
         prev, prev_f = cur, cur_f
-    # tile joints: verticals at fixed plan angles, so they crowd at the
-    # silhouette edges the way a cylinder's do
-    for i in range(1, n):
-        col = []
-        for r in range(rows + 1):
-            pts, _ = ring(r / rows)
-            col.append(pts[i])
-        d.line(col, fill=shade(grout, f), width=1)
-    # silhouette: lit arris down the left, dark down the right
-    lit_edge = [ring(r / rows)[0][n] for r in range(rows + 1)]
-    dark_edge = [ring(r / rows)[0][0] for r in range(rows + 1)]
-    d.line(lit_edge, fill=shade(hx("#c4c2b2"), f), width=1)
-    d.line(dark_edge, fill=shade(hx("#4f4f46"), f), width=1)
-    # NO CAP. The tower keeps rising behind our own slab — from the
-    # gallery you cannot see its top — so the body ends flush under
-    # the fascia band with a shadow seam, and the band (drawn before
-    # us, standing in front) is never over-painted. The old cap was a
-    # half-visible ellipse shorn along the well mask's diagonal — the
-    # "elements are clipping" report — because the body poked past
-    # the band's bottom edge and out of the hole.
-    a = radius(1.0)
-    ty = by - h
-    d.line([(bx - a, ty), (bx + a, ty)],
-           fill=shade(hx("#3a362e"), f), width=2)
-
-
-    # ONE stack, at the near end of the glass. There is no companion
-    # at the far end (user, 2026-08-24): the building would hide it
-    # from this vantage anyway, and the pass that added one at t 0.65
-    # stood it between two courtyard piers, mid-colonnade, where it
-    # made no sense at all.
-    # t 0.065: far enough off the apex that the FULL foot radius
-    # stays inside the well — at 0.05 the tower's left half crossed
-    # the ʻEwa edge and the mask sheared it along the diagonal.
-    # Height DROP-22: the body ends flush under the fascia band
-    # (which occupies 0-18 and is drawn before us, in front).
-    b = lerp(hole[0], hole[1], 0.065)
-    smokestack(d, (b[0], b[1] + DROP - 2), DROP - 22, 16, 9, 0.92)
-
-    # the mosaic, in the sun
-    paint_mosaic(d, lay, CX, CY + DROP - 12)
-
-    # chain-post ring around the medallion, as in the photos
-    mx, my = CX, CY + DROP - 12
-    ring = []
-    for a in range(12):
-        ang = a * math.pi / 6
-        ring.append((mx + math.cos(ang) * 72, my + math.sin(ang) * 37))
-    for i, (px_, py_) in enumerate(ring):
-        nx, ny = ring[(i + 1) % 12]
-        sag = ((px_ + nx) / 2, (py_ + ny) / 2 + 3)
-        d.line([(px_, py_ - 7), sag], fill=hx("#b9b2a0"), width=1)
-        d.line([sag, (nx, ny - 7)], fill=hx("#b9b2a0"), width=1)
-    for px_, py_ in ring:
-        d.rectangle([px_ - 1, py_ - 7, px_ + 1, py_], fill=hx("#cfc8b6"))
-        d.rectangle([px_ - 1, py_ - 8, px_ + 1, py_ - 7],
-                    fill=hx("#8f8974"))
-
-    # THE BIG STONE PLANTER-BENCHES (2026-08-24, from the user's
-    # atrium photo — "you also forgot those empty planters that are in
-    # the rotunda. the big benches/planters"). Low square stone boxes
-    # with a stepped BENCH ledge all the way around, big enough to sit
-    # on, and mostly EMPTY — bare soil, per the photo. One carries the
-    # courtyard's tree, as in the HABS view. These replace the four
-    # floating kukui canopies, which had no planters under them and
-    # read as bushes growing out of pavement.
-    def planter_bench(x, y, w, treed):
-        h = w // 2                          # iso: 2:1
-        stone, soil = hx("#c9b88f"), hx("#3a2e22")
-
-        def dia(cx_, cy_, ww):
-            hh = ww // 2
-            return [(cx_ - ww, cy_), (cx_, cy_ - hh),
-                    (cx_ + ww, cy_), (cx_, cy_ + hh)]
-
-        # bench step: broad, low
-        for pts, fy, drop_px in ((dia(x, y, w), 1.0, 5),
-                                 (dia(x, y - 6, round(w * 0.72)),
-                                  1.06, 7)):
-            l_, t_, r_, b_ = pts[0], pts[1], pts[2], pts[3]
-            d.polygon([l_, b_, (b_[0], b_[1] + drop_px),
-                       (l_[0], l_[1] + drop_px)],
-                      fill=shade(stone, 0.74 * fy))
-            d.polygon([r_, b_, (b_[0], b_[1] + drop_px),
-                       (r_[0], r_[1] + drop_px)],
-                      fill=shade(stone, 0.60 * fy))
-            d.polygon(pts, fill=shade(stone, fy))
-            d.line([l_, b_], fill=shade(stone, 0.86 * fy), width=1)
-            d.line([b_, r_], fill=shade(stone, 0.80 * fy), width=1)
-        # the soil, sunk a hair inside the rim
-        d.polygon(dia(x, y - 7, round(w * 0.56)), fill=soil)
-        d.polygon(dia(x, y - 8, round(w * 0.56)),
-                  outline=shade(soil, 1.35))
-        if treed:
-            st = round(w * 0.16)
-            d.line([(x, y - 8), (x + 1, y - 8 - w // 2)],
-                   fill=hx("#6b5236"), width=2)
-            ty = y - 8 - w // 2
-            d.ellipse([x - w * 0.52, ty - w * 0.30,
-                       x + w * 0.52, ty + w * 0.18],
-                      fill=hx("#567a4c"))
-            d.ellipse([x - w * 0.30, ty - w * 0.22,
-                       x + w * 0.24, ty + w * 0.02],
-                      fill=hx("#6f9660"))
-        else:
-            # a few dry stalks — the photo's planters are not clean
-            for sx, sh in ((-8, 7), (-2, 10), (5, 6), (9, 9)):
-                d.line([(x + sx, y - 8), (x + sx + 2, y - 8 - sh)],
-                       fill=hx("#8a7a5c"), width=1)
-
-    planter_bench(CX - 64, CY + DROP - 52, 30, treed=True)
-    planter_bench(CX + 64, CY + DROP - 52, 30, treed=False)
-
-    # clip the whole layer to the hole and composite
-    mask = Image.new("L", (W, H), 0)
-    ImageDraw.Draw(mask).polygon(hole, fill=255)
-    m = ImageChops.multiply(mask, lay.getchannel("A"))
-    img.paste(lay.convert("RGB"), (0, 0), m)
-
-
-def court_bay_pt(e0, e1, t, y):
-    """A point on a courtyard-level wall face: parameter t along the
-    hole edge, y pixels BELOW it. The face is extruded straight down,
-    so anything vertical on it is a vertical screen line."""
-    b = lerp(e0, e1, t)
-    return (b[0], b[1] + y)
-
-
-def court_glass(d, e0, e1, f, top, bot):
-    """THE GLASS WALL at courtyard level on the Diamond Head run
-    (executive-floor photo). Two sections, as in the photograph:
-
-    - the CENTRAL section is CURVED (user, 2026-08-24: "the central
-      glass section should look more curved") — it is the chamber
-      drum's glazing bulging into the court. On a flat iso face the
-      curve is carried by three cues working together: the mullions
-      are spaced by ANGLE (dense at the ends, opening toward the
-      middle — a cylinder's foreshortening), the SILL BOWS DOWN
-      toward the viewer at mid-arc while the head bows less, and the
-      sky-reflection band follows the bow. Any one alone reads flat.
-    - the section to its LEFT is the chamber's GLASS ENTRANCE DOORS
-      (user: "the section to the left of it is the glass doors"):
-      paired glazed leaves under a wide transom in a pale surround,
-      per the Senate-entrance photo.
-
-    Dark neutral glazing throughout — a teal pass read as water.
-    """
-    dy = bot - top
-
-    def face_pt(t, yfrac):
-        b = lerp(e0, e1, t)
-        return (b[0], b[1] + top + dy * yfrac)
-
-    # ---- the flat filler panes at the FAR end only. The strip that
-    # used to sit at 0.02-0.10 lived exactly where the smokestack
-    # stands and produced a pale mullion sliver squeezed between the
-    # tower and the first door panel — the stack owns that zone now.
-    for ta, tb in ((0.62, 0.98),):
-        p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
-        d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
-                  fill=shade(hx("#232b2c"), f))
-        d.polygon([p0, p1, (p1[0], p1[1] + dy * 0.30),
-                   (p0[0], p0[1] + dy * 0.30)],
-                  fill=shade(hx("#39443f"), f))       # sky in the panes
-        for b in even_run(p0, p1, 10):                # keep it GLAZING —
-            d.line([(b[0], b[1] + 1), (b[0], b[1] + dy - 1)],
-                   fill=shade(hx("#8f9086"), f), width=1)
-        d.line([p0, p1], fill=shade(hx("#c9c2ac"), f), width=2)
-        d.line([p0, (p0[0], p0[1] + dy)],
-               fill=shade(hx("#a8a08c"), f), width=1)
-
-    # ---- the GLASS DOORS, left of the curve
-    ta, tb = 0.13, 0.36
-    p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
-    d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
-              fill=shade(hx("#d5cdb6"), f))            # pale surround
-    q0, q1 = face_pt(ta + 0.02, 0.10), face_pt(tb - 0.02, 0.10)
-    qdy = dy * 0.88
-    d.polygon([q0, q1, (q1[0], q1[1] + qdy), (q0[0], q0[1] + qdy)],
-              fill=shade(hx("#1d211f"), f))            # dark reveal
-    # transom over the leaves, then the leaves
-    d.line([(q0[0], q0[1] + qdy * 0.38), (q1[0], q1[1] + qdy * 0.38)],
-           fill=shade(hx("#b0b4b0"), f), width=1)
-    for k in range(1, 4):                              # stiles: 4 leaves
-        t = ta + 0.02 + (tb - ta - 0.04) * k / 4
-        b0 = face_pt(t, 0.10)
-        d.line([(b0[0], b0[1] + qdy * 0.38), (b0[0], b0[1] + qdy)],
-               fill=shade(hx("#9aa0a0"), f), width=1)
-    for k in (1, 2):                                   # transom mullions
-        t = ta + 0.02 + (tb - ta - 0.04) * k / 3
-        b0 = face_pt(t, 0.10)
-        d.line([(b0[0], b0[1]), (b0[0], b0[1] + qdy * 0.36)],
-               fill=shade(hx("#8f958f"), f), width=1)
-    # glazing glints on the upper leaves
-    d.polygon([q0, q1, (q1[0], q1[1] + qdy * 0.20),
-               (q0[0], q0[1] + qdy * 0.20)],
-              fill=shade(hx("#39433f"), f))
-    d.line([(q0[0], q0[1] - 2), (q1[0], q1[1] - 2)],
-           fill=shade(hx("#e2dbc6"), f), width=2)      # lit head
-
-    # ---- the CURVED section. It stops at 0.62, not at the corner:
-    # on this run the wall's FLOOR LINE is only inside the well up to
-    # t = 0.66 (solve t + |144t-46|/144 <= 1 against the hole
-    # diamond), and past that our own slab eats the bottom of the
-    # glass. Everything beyond is flat filler panes, whose upper half
-    # is all that shows anyway.
-    ta, tb = 0.34, 0.62
-    n = 22
-    bow_s, bow_h = 9, 3        # sill and head bow, px, at mid-arc
-    tops, sills = [], []
-    for i in range(n + 1):
-        u = i / n
-        # angle-mapped param: cos spacing = cylinder foreshortening
-        t = ta + (tb - ta) * (0.5 - 0.5 * math.cos(math.pi * u))
-        bow = math.sin(math.pi * u)
-        tops.append(face_pt(t, 0)[0:2])
-        tops[-1] = (tops[-1][0], tops[-1][1] + round(bow_h * bow))
-        b = face_pt(t, 1.0)
-        sills.append((b[0], b[1] + round(bow_s * bow)))
-    d.polygon(tops + sills[::-1], fill=shade(hx("#171d1f"), f))
-    # sky reflection following the bow, upper third
-    refl = [lerp(pt, pb, 0.34) for pt, pb in zip(tops, sills)]
-    d.polygon(tops + refl[::-1], fill=shade(hx("#2e3839"), f))
-    d.polygon(tops + [lerp(pt, pb, 0.15) for pt, pb
-                      in zip(tops, sills)][::-1],
-              fill=shade(hx("#414d4b"), f))
-    for i in range(n + 1):                             # angle mullions
-        d.line([tops[i], sills[i]], fill=shade(hx("#9aa093"), f),
-               width=1)
-    for tfr in (0.42, 0.72):                           # transom rails
-        arc = [lerp(pt, pb, tfr) for pt, pb in zip(tops, sills)]
-        d.line(arc, fill=shade(hx("#6f766e"), f), width=1)
-    d.line(tops, fill=shade(hx("#d9d2bc"), f), width=2)   # beam over
-    d.line([(x, y + 2) for x, y in tops],
-           fill=shade(hx("#8f8874"), f), width=1)
-    d.line(sills, fill=shade(hx("#3a352c"), f), width=2)  # sill shadow
-
-
-def court_opening(d, e0, e1, t0, t1, f, top, bot):
-    """A BAY OPEN TO THE OUTSIDE on the ʻEwa wall (2026-08-24, user:
-    "the opening to the outside as well on the left wall"). The court
-    is not sealed — the ground storey runs straight through the wing
-    to the street, and in the photo that bay is the one BRIGHT hole in
-    a dark arcade: daylight, the exterior colonnade in silhouette, and
-    a pale slab of plaza under it.
-
-    It is painted as depth, not as a light patch: sky at the head,
-    the far colonnade standing on a horizon, then plaza. The jamb gets
-    a dark reveal on one side and a lit arris on the other so the wall
-    reads as having thickness.
-    """
-    q0, q1 = court_bay_pt(e0, e1, t0, top), court_bay_pt(e0, e1, t1, top)
-    dy = bot - top
-
-    def band(lo, hi, c):
-        d.polygon([(q0[0], q0[1] + dy * lo), (q1[0], q1[1] + dy * lo),
-                   (q1[0], q1[1] + dy * hi), (q0[0], q0[1] + dy * hi)],
-                  fill=shade(hx(c), f))
-
-    # WHAT IS OUT THERE IS CONCRETE, NOT A SKYLINE (2026-08-24, user:
-    # "instead of showing a fake, made up background for the outside
-    # (beyond the pillars), show the concrete stepped levels etc.").
-    # The breezeway looks out along the building's own structure —
-    # the outer pier rows, the slatted sunshade, and the stepped
-    # concrete terraces of the plaza marching away in bands of light
-    # and shade. An invented skyline of towers and palms was making
-    # up a city that the room cannot actually see; concrete is both
-    # true and easier to read, because every band is the same
-    # material at a different angle to the sun.
-    # ONE strong horizon (the shade/sun line where the covered walk
-    # ends), and the steps only in the bottom third. A first pass ran
-    # even bands the full height and read as a striped awning — a
-    # terrace is legible because it is a LIT TREAD over a DARK RISER,
-    # which needs room, so three big steps beat six small ones.
-    band(0.00, 1.00, "#8e8b7c")                       # the covered walk
-    band(0.00, 0.11, "#514f47")                       # deep under-slab
-    band(0.11, 0.17, "#c6c1ac")                       # the sunshade run
-    band(0.17, 0.55, "#8b8879")                       # walk, in shade
-    band(0.55, 0.74, "#ece6ce")                       # plaza, full sun
-    d.line([(q0[0], q0[1] + dy * 0.55), (q1[0], q1[1] + dy * 0.55)],
-           fill=shade(hx("#8b8878"), f), width=2)     # the shade line
-    # the STEPPED LEVELS, marching toward us
-    for frac, lit, dark in ((0.74, "#e4dec6", "#8f8b7c"),
-                            (0.83, "#dcd6be", "#87836f"),
-                            (0.92, "#d3ccb4", "#7e7a68")):
-        band(frac, min(frac + 0.09, 1.0), lit)
-        d.line([(q0[0], q0[1] + dy * frac), (q1[0], q1[1] + dy * frac)],
-               fill=shade(hx(dark), f), width=2)
-    span = q1[0] - q0[0]
-    # the OUTER pier rows, standing in the shaded walk — offset from
-    # the near row's 0.18/0.5/0.82 or the two rows read as one pier
-    # with a shadow. Two ranks, the far one paler and shorter.
-    for pf, wd, lo, hi, c in ((0.33, 5, 0.10, 0.62, "#6a675c"),
-                              (0.67, 5, 0.10, 0.62, "#6a675c"),
-                              (0.21, 3, 0.14, 0.50, "#767366"),
-                              (0.50, 3, 0.14, 0.50, "#767366"),
-                              (0.79, 3, 0.14, 0.50, "#767366")):
-        x = round(q0[0] + span * pf)
-        yb = q0[1] + (q1[1] - q0[1]) * pf
-        d.polygon([(x - wd, yb + dy * lo), (x + wd, yb + dy * lo),
-                   (x + wd - 1, yb + dy * hi), (x - wd + 1, yb + dy * hi)],
-                  fill=shade(hx(c), f))
-        d.line([(x - wd, yb + dy * lo), (x - wd + 1, yb + dy * hi)],
-               fill=shade(hx("#cbc7b4"), f), width=1)
-    # the slatted sunshade fins over the outer walk
-    sl0 = (q0[0], q0[1] + dy * 0.11)
-    sl1 = (q1[0], q1[1] + dy * 0.11)
-    for b in even_run(sl0, sl1, 8):
-        d.line([(b[0], b[1]), (b[0], b[1] + 6)],
-               fill=shade(hx("#9d9a88"), f), width=2)
-    d.line([sl0, sl1], fill=shade(hx("#f2ecd8"), f), width=2)
-    d.line([q0, (q0[0], q0[1] + dy)], fill=shade(hx("#2a231c"), f),
-           width=2)                                    # dark reveal
-    d.line([q1, (q1[0], q1[1] + dy)], fill=shade(hx("#e8e2ce"), f),
-           width=1)                                    # lit arris
-    d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
-
-
-def smokestack(d, base, h, w_bot, w_top, f=1.0):
-    """THE TILE-CLAD TAPERED TOWER at the end of the chamber's curved
-    glass (2026-08-24, user: "the smokestack should be moved to the
-    glass side"). Every atrium photograph shows one: a battered round
-    tower faced in small square tiles, standing like a chimney base —
-    which is why the user calls it a smokestack.
-
-    IT IS A CYLINDER, AND THE PERSPECTIVE IS THE WHOLE JOB (rebuilt
-    2026-08-24 after "you almost got the curved smokestack right,
-    except the perspective is wrong"). The first pass drew a tapered
-    BOX with flat horizontal courses and a 2px kink in the middle,
-    which is a pyramid with stripes. In this 2:1 iso a plan circle of
-    radius A projects to an ellipse A wide and A/2 tall, so:
-
-      - a course is the FRONT HALF of that ellipse and SAGS by a full
-        A/2 at the centre — for an 11px radius that is five and a half
-        pixels, not two. The sag is the single cue that says "round".
-      - the tile columns sit at fixed PLAN ANGLES, so they crowd
-        toward the silhouette edges on their own. Even spacing across
-        the width is the same mistake as evenly spaced mullions on the
-        curved glass.
-      - shading ramps by angle, not by three flat zones.
-      - the top is a WHOLE ellipse (you look down on it from a storey
-        up), and the foot FLARES on a power curve, as photographed.
-
-    Only one is drawn. The companion at the far end of the glass is
-    deliberately absent (user, same day): from this vantage the
-    building would hide it anyway, and the pass that put one mid-run
-    stood it between two courtyard piers, where it read as a chimney
-    dropped into the middle of the colonnade.
-    """
-    bx, by = base
-    n = 14                                # samples across the front half
-    grout = hx("#4a4a41")
-
-    def radius(t):                        # t: 0 at the foot, 1 at the top
-        return w_top + (w_bot - w_top) * (1 - t) ** 2.4
-
-    def ring(t):
-        """Front half of the course ellipse at height fraction t, plus
-        the per-sample shading factor."""
-        a = radius(t)
-        y = by - h * t
-        pts, fac = [], []
-        for i in range(n + 1):
-            phi = math.pi * i / n         # 0 = right edge, pi = left
-            pts.append((bx + a * math.cos(phi),
-                        y + a * 0.5 * math.sin(phi)))
-            fac.append(0.84 + 0.32 * (1 - math.cos(phi)) / 2)
-        return pts, fac
-
-    rows = max(4, h // 4)
-    prev, prev_f = ring(0.0)
-    for r in range(1, rows + 1):
-        cur, cur_f = ring(r / rows)
-        for i in range(n):                # one tile per angle segment
-            tone = (cur_f[i] + cur_f[i + 1]) / 2
-            # a checker, not a random speckle: the tiles are laid
-            # in courses and at display scale noise reads as moss
-            jit = 1.0 + (0.055 if (r + i) % 2 else -0.045)
-            d.polygon([prev[i], prev[i + 1], cur[i + 1], cur[i]],
-                      fill=shade(hx("#9b9a89"), f * tone * jit))
-        d.line(cur, fill=shade(grout, f), width=1)      # course joint
-        prev, prev_f = cur, cur_f
-    # tile joints: verticals at fixed plan angles, so they crowd at the
-    # silhouette edges the way a cylinder's do
-    for i in range(1, n):
-        col = []
-        for r in range(rows + 1):
-            pts, _ = ring(r / rows)
-            col.append(pts[i])
-        d.line(col, fill=shade(grout, f), width=1)
-    # silhouette: lit arris down the left, dark down the right
-    lit_edge = [ring(r / rows)[0][n] for r in range(rows + 1)]
-    dark_edge = [ring(r / rows)[0][0] for r in range(rows + 1)]
-    d.line(lit_edge, fill=shade(hx("#c4c2b2"), f), width=1)
-    d.line(dark_edge, fill=shade(hx("#4f4f46"), f), width=1)
-    # the cap: a WHOLE ellipse — from a storey up you see the top face
-    a = radius(1.0)
-    ty = by - h
-    d.ellipse([bx - a, ty - a * 0.5, bx + a, ty + a * 0.5],
-              fill=shade(hx("#a3a192"), f))
-    d.ellipse([bx - a + 2, ty - a * 0.5 + 1, bx + a - 2, ty + a * 0.5 - 1],
-              fill=shade(hx("#8b8a7c"), f))
-    d.arc([bx - a, ty - a * 0.5, bx + a, ty + a * 0.5], 180, 360,
-          fill=shade(hx("#c9c7b6"), f), width=1)
-
+    top_pts, _ = arc(1.0)
+    cut_edge = [arc(r / rows)[0][0] for r in range(rows + 1)]
+    sil_edge = [arc(r / rows)[0][n] for r in range(rows + 1)]
+    d.line(cut_edge, fill=shade(hx("#6d6a5c"), f), width=1)   # into panel
+    # a real keyline on the silhouette — 2px, so it survives the SS
+    # downsample and separates the cone from the glazing behind it
+    d.line(sil_edge, fill=shade(hx("#3d3d36"), f), width=2)   # silhouette
+    # the scrap of rim that shows at the top — we are a storey above it
+    d.line(top_pts, fill=shade(hx("#c4c2b2"), f), width=2)
+    d.line([(px_, py_ + 2) for px_, py_ in top_pts],
+           fill=shade(hx("#2b2924"), f), width=1)
 
 def paint_mosaic(d, lay, cx, cy):
     """A round glass-tile floor medallion in sea colours. The REAL
@@ -1357,8 +1031,7 @@ def paint_rail_pots(d):
     for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):  # near edges
         for t in (0.34, 0.72):
             p = lerp(e0, e1, t)
-            # tight to the rail: the walkway is only 40px deep here and
-            # the makai cut wall claims its outer CUT_H
+            # tight to the rail: the walkway is only 40px deep here
             x, y = p[0], p[1] + 16
             d.ellipse([x - 7, y + 1, x + 7, y + 6],
                       fill=shade(FLOOR, 0.72))              # cast shadow
@@ -1619,6 +1292,36 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
     return p
 
 
+FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19}
+
+
+def bay_columns(d, e0, e1, f, feats, reflect=False):
+    """Dark bronze columns between the bays — placed at the CORNERS
+    and at the MIDPOINTS of the gaps between features, and only where
+    they actually CLEAR the neighbouring frames (2026-08-24, user:
+    "many of the columns in general are clipping into other
+    elements"). The old fixed i/8 grid landed columns inside door
+    architraves all along both walls — doors draw after columns, so
+    every collision left a bronze sliver poking out of a frame. A
+    column that cannot clear its gap is simply not drawn: on the
+    door-dense gallery runs the koa leaves carry the rhythm alone."""
+    span = abs(e1[0] - e0[0])
+    ts = sorted(t for _, t, _ in feats)
+    cand = [0.0, 1.0] + [(a + b) / 2 for a, b in zip(ts, ts[1:])]
+    for t in cand:
+        if any(abs(t - ft) * span < FEAT_HW[k] + 6 for _, ft, k in feats):
+            continue
+        b = lerp(e0, e1, t)
+        d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
+                    fill=shade(hx("#241c15"), f))
+        d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
+                    fill=shade(hx("#6b5c4a"), f))
+        if reflect:
+            # column reflection in the walkway tile
+            d.line([(b[0], b[1] + 3), (b[0], b[1] + 9)],
+                   fill=mix(FLOOR, hx("#241c15"), 0.45), width=2)
+
+
 def paint_upper_level(d):
     """The third level — Senate offices — stepped BACK a full bay.
 
@@ -1698,12 +1401,7 @@ def paint_upper_level(d):
         for y in (24, 41):
             d.line([up(e0, y), up(e1, y)],
                    fill=shade(CONC, f * 0.90), width=1)
-        for i in range(9):
-            b = lerp(e0, e1, i / 8)
-            d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
-                        fill=shade(hx("#241c15"), f))
-            d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
-                        fill=shade(hx("#6b5c4a"), f))
+        bay_columns(d, e0, e1, f, feats)
         for did, t, kind in feats:
             if kind == "door":
                 pos = door_at(d, e0, e1, t, "koa")
@@ -1722,18 +1420,28 @@ def paint_upper_level(d):
         d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
         d.line([a0, a1], fill=shade(FLOOR_SH, f), width=1)
 
-        # ---- the rail at its inner edge (nearest, so last)
-        d.polygon([a0, a1, up(a1, 4), up(a0, 4)],
-                  fill=shade(hx("#ddd6c1"), f * 0.98))
-        d.line([up(a0, 4), up(a1, 4)], fill=shade(hx("#8a8474"), f),
-               width=1)
-        for b in even_run(a0, a1, PICKET_PITCH):
-            d.line([up(b, 5), up(b, RAIL_H)],
-                   fill=shade(hx("#4a4238"), f), width=PICKET_W)
-        for i in range(1, 8):
-            b = lerp(a0, a1, i / 8.0)
-            d.rectangle([b[0] - 1, b[1] - RAIL_H, b[0] + 1, b[1] - 4],
-                        fill=shade(hx("#57503f"), f))
+        # ---- the rail at its inner edge (nearest, so last): a SOLID
+        # white fluted PARAPET with the koa cap on top — NO pickets
+        # (2026-08-24, user: "the pickets for the railings are
+        # showing over the white, which is incorrect"). Open pickets
+        # cannot work up here: the terrace strip behind the rail
+        # thins to nothing toward the ʻEwa/Diamond Head ends (an iso
+        # diamond offset outward moves edges up-screen only near the
+        # apex), so the dark bars stood against the pale wall base
+        # and the white slab band and read as pickets painted OVER
+        # the white. The executive-floor photo's upper balconies are
+        # white fluted parapets anyway — the koa cap riding the TOP
+        # of the white band is what says "railing" at this distance.
+        d.polygon([a0, a1, up(a1, RAIL_H), up(a0, RAIL_H)],
+                  fill=shade(hx("#ece6d4"), f))
+        for b in even_run(a0, a1, FLUTE_PITCH):
+            d.line([up(b, 2), up(b, RAIL_H - 2)],
+                   fill=shade(hx("#9d9683"), f), width=2)
+        # seam at the slab line, so the parapet stands ON the floor
+        # instead of merging with the fascia band below
+        d.line([a0, a1], fill=shade(hx("#8a8474"), f), width=1)
+        d.line([up(a0, RAIL_H), up(a1, RAIL_H)],
+               fill=shade(hx("#f7f3e6"), f), width=1)
         d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
                fill=shade(hx("#54391f"), f), width=2)
         d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
@@ -1802,17 +1510,9 @@ def paint_walls(d):
             d.rectangle([b[0] - mw // 2, b[1] - my0 - int(rng.integers(4, 9)),
                          b[0] + mw // 2, b[1] - my0],
                         fill=shade(CONC, f * rng.uniform(0.94, 1.06)))
-        # dark bronze columns between the bays
-        for i in range(9):
-            t = i / 8
-            b = lerp(e0, e1, t)
-            d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
-                        fill=shade(hx("#241c15"), f))
-            d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
-                        fill=shade(hx("#6b5c4a"), f))
-            # column reflection in the walkway tile
-            d.line([(b[0], b[1] + 3), (b[0], b[1] + 9)],
-                   fill=mix(FLOOR, hx("#241c15"), 0.45), width=2)
+        # dark bronze columns between the bays (clearance-placed —
+        # see bay_columns)
+        bay_columns(d, e0, e1, f, feats, reflect=True)
         # doors, hallway portals, elevator lobbies
         for did, t, kind in feats:
             if kind == "door":
@@ -1824,16 +1524,21 @@ def paint_walls(d):
                                   elevator=(kind == "lift"))
             if did:
                 doors[did] = pos
-        # the slab above, fluted, then the dollhouse cut
+        # the slab above, fluted. NO white top-face strip on it any
+        # more (2026-08-24, "the white strips for third floor railings
+        # are completely wrong"): the old dollhouse top-face polygon —
+        # up(e, 72) offset (±9, -5) — was written for a wall with sky
+        # behind it, and once the third level stood there its slanted
+        # parallelogram covered ~10px ABOVE the slab line, painting
+        # white over the upper rail's kerb and the bottom half of its
+        # pickets. The rail read as a gold pinstripe in a white belt
+        # (measured on the staged bake: the picket band went #efeadb
+        # after paint_walls ran). The terrace floor drawn by
+        # paint_upper_level is what meets the slab line now.
         q(58, 72, shade(hx("#ece6d4"), f))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
                    fill=shade(hx("#9d9683"), f), width=2)
-        off = (-9, -5) if e0 is out[3] else (9, -5)
-        p0, p1 = up(e0, 72), up(e1, 72)
-        d.polygon([p0, p1, (p1[0] + off[0], p1[1] + off[1]),
-                   (p0[0] + off[0], p0[1] + off[1])],
-                  fill=hx("#efeadb"))
         # NO benches: drawn floating mid-walkway they read as brown
         # bars sitting on the railing (user-caught, removed 2026-08-22)
     return doors
@@ -1870,52 +1575,22 @@ def paint_cut_ends(d):
                fill=hx("#fffdf5"), width=2)
 
 
-def paint_cut_wall(d, e0, e1, off):
-    """The makai walls, drawn RPG CUTAWAY. The wall is really there —
-    the same precast fluted exterior the rest of the building wears —
-    but SLICED at knee height so the side nearest the camera can never
-    hide the room behind it, with the cut left bright on top so the
-    slice reads as deliberate rather than as a missing wall.
-
-    We see these walls from OUTSIDE (their exterior faces the camera),
-    which is why the face is fluted fins and not the mauka walls'
-    lava-brick bays. `off` is the wall's thickness as a screen offset,
-    pointing outward — down-screen on a near wall, which is the whole
-    reason the cut face is visible at all."""
-    t0, t1 = up(e0, CUT_H), up(e1, CUT_H)
-    fluted_band(d, t0, t1, 0, CUT_H, 0.97)       # exterior, above slab
-    # a reveal at the slab line, or the stub's fins and the fascia's
-    # below run together and the whole thing reads as one tall parapet
-    # instead of a wall standing on a floor
-    d.line([e0, e1], fill=hx("#a49d8a"), width=1)
-    # the CUT itself. It must NOT be another shade of the white flutes
-    # (tried: pale-on-pale, and the slice vanished at game zoom) — it
-    # is the wall's CORE, raw aggregate, well below the dressed face in
-    # value, with a bright arris where the blade came through.
-    cut_face(d, t0, t1, off)
-    # where the stub meets the walkway: contact occlusion, so the wall
-    # sits ON the floor instead of being pasted over it
-    d.line([up(e0, CUT_H + 1), up(e1, CUT_H + 1)],
-           fill=shade(FLOOR, 0.80), width=2)
-    d.line([up(e0, CUT_H + 3), up(e1, CUT_H + 3)],
-           fill=shade(FLOOR, 0.90), width=1)
-
-
 def paint_front_edge(d):
+    """The makai edge is JUST THE WALKWAY now (2026-08-24, user:
+    "don't need the walls, just showing the walkway is fine") — the
+    knee-high cutaway stub walls were removed. The floor ends at the
+    slab edge with its own fluted fascia hanging below, exactly the
+    band the well edges wear, and nothing stands on it."""
     out = diamond(A_OUT)
     gap = 30
     for e0, e1 in ((out[1], out[2]), (out[2], out[3])):   # SE, SW
-        # outward normal is DOWN-screen on both near edges; x follows
-        # the edge's own direction
-        off = CUT_T if e1 is out[2] else (-CUT_T[0], CUT_T[1])
-        # cut wall, broken at the S corner for the stairs
+        # fascia broken at the S corner for the stairs
         span = 32.0 * A_OUT   # edge's horizontal extent, px
         if e1 is out[2]:      # SE runs E->S: stop short of S
             e1 = lerp(e0, e1, 1 - gap / span)
         else:                 # SW runs S->W: start past S
             e0 = lerp(e0, e1, gap / span)
         fluted_band(d, e0, e1, 0, FASCIA_D, 0.92)
-        paint_cut_wall(d, e0, e1, off)
     # stairs down from the S corner, out of the room
     s = out[2]
     for i in range(5):

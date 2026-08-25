@@ -2000,19 +2000,49 @@ user's call).
     pass bracketed the ʻEwa run down here on the theory that portals
     shouldn't stack between storeys, and that was not the ask).
     Both of its portals sit on the DIAMOND HEAD run — a hallway hard
-    against the top point (t 0.07) and the governor's lift lobby past
-    the rightmost door (`gov`, t 0.94) — and the ʻEwa run is all
-    doors. It used to carry a hall at ʻEwa 0.45 and a lift at Diamond
-    Head 0.47, both mid-wall. `gov` is a named hotspot, so it CHANGED
-    RUNS to become the closing portal; the re-spacing moved the other
-    named doors too (`wam` .57→.40, `finance` .35→.32,
-    `house` .80→.70). Hotspot px come out of the bake, so nothing is
-    hand-maintained — but CAP_V must be bumped or the stale JSON
-    points at the old doors.
+    against the top point (t 0.07, same as the storey above) and the
+    governor's lift lobby past the rightmost door (`gov`, t 0.94) —
+    and the ʻEwa run is all doors. It used to carry a hall at ʻEwa
+    0.45 and a lift at Diamond Head 0.47, both mid-wall. `gov` is a named hotspot, so it CHANGED RUNS to become
+    the closing portal; the re-spacing moved the other named doors
+    too (`wam` .57→.40, `finance` .35→.32, `house` .80→.70). Hotspot
+    px come out of the bake, so nothing is hand-maintained — but
+    CAP_V must be bumped or the stale JSON points at the old doors.
   - Painted far-to-near WITHIN each run — wall, then the walkway
     standing in front of it, then the rail at its inner edge. On the
     mauka side the OUTER ring is the FAR one, which is the opposite of
     the intuition that "outer" means "nearer".
+  - **The lower wall carries NO white top-face strip any more**
+    (2026-08-24, user: "the white strips for third floor railings are
+    completely wrong"). The old dollhouse top-face polygon — up(e,72)
+    offset (±9,-5) in paint_walls — was written for a wall with sky
+    behind it; with the third level standing there, its slanted
+    parallelogram covered ~10px ABOVE the slab line and painted white
+    over the upper rail, so it read as a gold pinstripe in a white
+    belt (measured on the staged bake). The terrace floor is what
+    meets the slab line now.
+  - **The third-floor rail is a SOLID white fluted PARAPET with the
+    koa cap on TOP — no pickets** (2026-08-24, user: "the pickets for
+    the railings are showing over the white, which is incorrect").
+    Open pickets cannot work up here: the terrace strip behind the
+    rail thins to NOTHING toward the ʻEwa/Diamond Head ends (an iso
+    diamond offset outward moves edges up-screen only near the apex),
+    so the dark bars stood against the pale wall base and the white
+    slab band — pickets painted over white. The executive-floor
+    photo's upper balconies are white fluted parapets anyway; the koa
+    cap riding the TOP edge of the white band is what says "railing"
+    at this distance. The WELL railing keeps its open pickets — the
+    dark drop behind it is what they read against.
+  - **Bay columns are CLEARANCE-PLACED, both levels** (`bay_columns`;
+    2026-08-24, user: "many of the columns in general are clipping
+    into other elements"). The old fixed i/8 grid landed bronze
+    columns inside door architraves all along both walls — doors
+    draw after columns, so every collision left a sliver poking out
+    of a frame. Columns now sit at the corners and at feature-gap
+    midpoints, and only where they clear the neighbouring frames
+    (FEAT_HW + 6px); a column that cannot clear its gap is not
+    drawn — on the door-dense gallery runs the koa leaves carry the
+    rhythm alone.
   - No form mottle on purpose: most distant thing in the room, and
     skipping it keeps the level off the shared `rng`, so adding a
     storey cannot reshuffle the level below's wall texture.
@@ -2092,52 +2122,78 @@ user's call).
       kukui canopies, which had no planters under them and read as
       bushes growing out of pavement. Keep the empty one empty —
       that is what the photograph shows.
-    - **THE TILE-CLAD SMOKESTACK** (`smokestack`; user, 2026-08-24:
-      "the smokestack should be moved to the glass side"). A battered
-      round tower faced in small square tiles at the near end of the
-      chamber's curved glass, like a chimney base. It replaced
-      `paint_chamber_wall`'s flaring lava-brick drums, which sat at
-      BOTH court corners including the ʻEwa one, where the court is
-      an open breezeway and no chamber wall exists at all: a drum
-      there was inventing a chamber.
-    - **IT IS A CYLINDER, AND THE PERSPECTIVE IS THE WHOLE JOB**
-      (rebuilt same day after "you almost got the curved smokestack
-      right, except the perspective is wrong"). The first pass drew a
-      tapered BOX with flat courses and a 2px kink — a pyramid with
-      stripes. In 2:1 iso a plan circle of radius A projects to an
-      ellipse A wide and A/2 tall, so a course is the FRONT HALF of
-      that ellipse and SAGS a full A/2 at its centre: five and a half
-      pixels on an 11px radius, not two. That sag is the cue that
-      says "round". The tile columns sit at fixed PLAN ANGLES so they
-      crowd toward the silhouette on their own (evenly spaced tiles
-      are the same mistake as evenly spaced mullions on the curved
-      glass), shading ramps by angle rather than in flat zones, and
-      the foot flares on a power curve onto a ground-shadow half
-      ellipse.
-    - **NO CAP, and the body ends flush under the fascia band**
-      (2026-08-24, after "it looks off and elements are clipping").
-      The tower keeps rising behind our own slab — from the gallery
-      you cannot see its top — so the body stops at 20px below the
-      hole edge (the band owns 0-18 and is drawn before it, in
-      front) with a 2px shadow seam. The first version drew a cap
-      ellipse that poked past the band and out of the well, where
-      the mask shore it off along the diagonal — that shear was the
-      clipping report. Same trap as the stack's POSITION: at t 0.05
-      its left half crossed the ʻEwa edge and was sheared; it sits
-      at t 0.065 with foot radius 16, the largest that stays inside
-      the hole. The left filler-pane strip (0.02-0.10) was deleted
-      with this — it lived exactly where the tower stands and
-      squeezed a pale mullion sliver between tower and doors, and
-      OPEN_BAY runs to 0.985 so the ʻEwa margin cannot leave a dark
-      wedge at the apex corner.
-    - **The doors START UNDER the tower (ta 0.075), and that is what
-      makes it WRAP** (2026-08-24, after "it looks like a standalone
-      column"). The tower's foot spans ~0.01-0.12 and is drawn after
-      the wall, in front — so the door bay's glazing emerges from
-      behind the tapering cylinder instead of starting beside it
-      with a seam. A tower with a visible seam on both sides is a
-      column; a wall that visibly passes behind it is a corner being
-      wrapped.
+    - **THE SMOKESTACK IS A HALF-CONE CUT BY THE PANEL'S PLANE, AND
+      ONLY A SLIVER OF IT IS VISIBLE** (`smokestack`; settled
+      2026-08-25 by the user's courtyard photograph plus "it's a
+      half-cone cut by the wall plane… it would be part of the left
+      half of the cone that remains, but you'd only be able to see a
+      sliver of the cone in this perspective"). SIX passes drew a
+      FULL cone — free-standing in the court, straddling the corner,
+      wrapped by the balcony, abutting the wall — and every one read
+      as wrong perspective, because **the SHAPE was wrong, not the
+      placement or the size.** No amount of moving or resizing a
+      whole cone fixes a cone that should be half buried in a panel.
+      Don't re-derive this from "it looks too small".
+    - **THE ANGLES ARE FORCED BY THE PROJECTION, not chosen.** Radii
+      are PLAN units so `iso()` places every point and the 2:1
+      foreshortening comes out for free. With the cut plane at
+      u = u0 (the panel's side face) and the cone bonded to it:
+      - retained half is u <= u0, i.e. theta in (90, 270);
+      - a face is turned toward this camera only where its plan
+        normal has a positive dot with the view direction (1,1)/√2,
+        i.e. cos+sin > 0, i.e. theta in (-45, 135);
+      - the intersection is **theta in (90, 135)** — a 45° crescent
+        lying entirely LEFT of the axis (dx runs -16R at the cut to
+        -22.6R at the silhouette), about 0.29 of the full circle's
+        screen width. That is the sliver, and the flat semicircular
+        face is bonded against the panel and never visible.
+      So it draws as a narrow tapering crescent, NOT a tower: cut
+      edge right (dying into the panel), silhouette left, sagging
+      course arcs between, a scrap of rim on top.
+    - **THE PANEL MUST BE A PROJECTING MASS, OR THE SLIVER COMES
+      LOOSE** (`court_panel`; 2026-08-25, user: "it looks like it's
+      not even part of the wall"). The cone's flat cut face has its
+      normal along +u, and **+u faces THIS camera** (dot 0.707 with
+      the view direction) — so against a FLAT wall that face is
+      visible and the crescent floats in open paving with floor
+      showing behind it. Something solid has to occupy the space it
+      is bonded to. A pier therefore projects from the curtain wall
+      into the court, DEEPER than the cone's widest point at the cut
+      (v0 + sin(acos(cut))*R), and is drawn AFTER the cone: its -u
+      flank is the bonded face and never shows, its +u flank and its
+      front face do, and the cladding dies into it. The door bay
+      starts where the pier ends (`court_glass` ta 0.145); the strip
+      from the corner to the pier is filler glazing (0.01-0.108), not
+      bare wall, or the corner reads as a dark wedge.
+    - **`cut` IS THE ONLY DIAL THAT CHANGES HOW MUCH SHOWS.** It is
+      where the panel's face slices the cone as a fraction of the
+      radius from the axis: 0.0 is a true half-cone, positive means
+      the cone protrudes past the panel's edge. The visible arc runs
+      from acos(cut) to 135°, so a true half-cone leaves 6.6*R px —
+      about THREE display px here, not a shape anyone can read.
+      Moving or resizing the cone cannot substitute: the visible
+      FRACTION is fixed by the projection. Shipped at cut 0.5.
+    - **The value FLOOR of the shading matters more than its range.**
+      The silhouette edge sits against the court's near-black
+      glazing; at 0.72 it sank in and the crescent read as a smudge.
+      It is 0.86 now, with a 2px keyline on the silhouette so the
+      cone separates from the glass behind it.
+    - **It belongs to the ROTUNDA FLOOR and nothing else** (user:
+      "it's only for the rotunda floor. not for floors above it").
+      The gallery and Senate corners stay SHARP, their slab edges
+      STRAIGHT, walkways unbroken. **A pass that rounded the court's
+      mauka corner — bending the fascia into a ∨, wrapping the
+      balcony around a drum, dropping the corner post — is exactly
+      what the photograph rules out.**
+    - Surviving cone rules: batter power 1.35; coarse ~8px course
+      arcs drawn 2px wide so they survive the SS downsample (they
+      carry the wrap); **no per-tile detail and no vertical joints
+      at all** — a photo-true tile is ~1.5 DISPLAY px here, under the
+      sampling pitch (the wall the railing pickets hit), so tiles
+      resolve to grey mush and full-height joints become FLUTES;
+      per-COURSE weathering only.
+    - The photograph shows a PAIR flanking the entrance; only the
+      near one is drawn, per the standing one-stack call.
     - **The pier between the doors and the curve is an explicit
       drawn thing, and it LANDS** (same day: "the middle column
       going through the glass also isn't meeting the ground"). It
@@ -2157,11 +2213,18 @@ user's call).
       only inside the hole up to t = 0.66 (solve
       `t + |144t-46|/144 <= 1` against the well diamond), because the
       court floor is a storey down and our own slab eats the near end
-      of every wall. So the stacks sit at 0.05 and 0.65, the curved
-      glass ends at 0.62, and beyond it are flat filler panes whose
-      upper half is all that ever shows. A stack at the far corner is
-      masked away entirely, top included. Same arithmetic is why the
-      ʻEwa run's own corner shows nothing.
+      of every wall. So the curved glass ends at 0.62, and beyond it
+      are flat filler panes whose upper half is all that ever shows.
+      Same arithmetic is why the ʻEwa run's own corner shows nothing.
+      The smokestack sits well inside that limit (its axis is at
+      t ≈ 0.11), so the mask never reaches it.
+    - **The courtyard piers keep off the glazed run** (2026-08-24,
+      "many of the columns in general are clipping into other
+      elements"): the fixed 0.18/0.5/0.82 pier grid stood piers
+      straight through the glass doors and the middle of the curved
+      section. The curtain wall carries its own structure — the
+      drawn pier at 0.352 and the mullions; only the open ʻEwa
+      breezeway keeps the pier rows, which make its depth.
     - **The light it throws is the cheap half of the effect and does
       more than anything drawn inside the opening**: a graded wedge
       on the court floor along the wall's own inward normal, painted
@@ -2346,31 +2409,20 @@ stairs hotspot or Esc. Rules:
   added: the executive-floor white band and the overhead cone flanks
   the photo shows — both would reintroduce the rolled-back upper
   floors; the one-level call stands.
-- **The makai side is an RPG CUTAWAY** (2026-08-22, user's call: "the
-  closest side rendered RPG style, with cutaway walls — usually in
-  RPGs they won't obscure that side"). The near walls are REAL, not
-  absent: the same precast fluted exterior the building wears, sliced
-  at `CUT_H` with the wall's core (`CUT_CORE`) left facing us as the
-  cut. `cut_face()` is the ONE routine for every slice in the room —
-  the two makai stubs AND `paint_cut_ends`, which faces the mauka
-  walls where they are sawn off at the ʻEwa/Diamond Head corners. A
-  single shared core colour is what makes the room read as one
-  building cut open rather than as a set with two walls missing; if a
-  third cut ever appears, route it through `cut_face` too. Three
-  things were measured, not guessed:
-  - **`CUT_H` is measured against the 40px WALKWAY, not the mauka
-    walls' 72.** At 18 the stub ate half the balcony; 13 leaves the
-    walkway, the pots and the rail clear. Raising it means moving
-    `paint_rail_pots`' offset in the same edit — the pots sit at +16
-    on a 40px walkway and the stub claims the outer `CUT_H`.
-  - **The cut face must clear the dressed flutes in VALUE.** A pale
-    cut (#f6f2e4, then #c8bfa6 against #ece6d4 flutes) was invisible
-    at the 0.5 game zoom, which is the only scale that matters — the
-    whole near side read as one tall white parapet. Judge any change
-    to it on the DOWNSCALED bake, never at 1:1.
-  - **A reveal line at the slab line** separates the stub's fins from
-    the fascia's below; without it the two fluted bands run together
-    and the wall stops reading as standing on a floor.
+- **The makai side is JUST THE WALKWAY now** (2026-08-24, user's
+  call: "on the cutaway walls facing user: don't need the walls, just
+  showing the walkway is fine" — superseding the 2026-08-22 knee-high
+  cut-stub treatment). `paint_cut_wall`, `CUT_H` and `CUT_T` are
+  deleted: the near edges show the floor ending at its own slab edge
+  with the fluted fascia hanging below (the same band the well edges
+  wear), and nothing stands on them. Don't reintroduce stub walls.
+  `cut_face()` survives for the cuts that remain — `paint_cut_ends`
+  (the mauka walls sawn off at the ʻEwa/Diamond Head corners) and the
+  third level's sliced ends — and its two measured rules still bind:
+  the cut core (`CUT_CORE`) must clear the dressed flutes in VALUE
+  (a pale cut vanished at the 0.5 game zoom, the only scale that
+  matters), and any new slice routes through `cut_face` so every cut
+  in the room is the same material.
 - **Dressing pass (2026-08-22, later): NO FLAGS** — the flag pairs
   flanking the chamber doors were removed at the user's request
   (`paint_flag` deleted; don't reintroduce). Koa doors are PAIRED
