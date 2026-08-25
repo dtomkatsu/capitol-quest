@@ -2245,6 +2245,29 @@ stairs hotspot or Esc. Rules:
   watch the chambers from gallery level. (make_sprites.py's cone
   comments had Senate/House swapped until today; the scene and the
   hotspot text are the corrected authority.)
+- **THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP** (`START_ROOM` in
+  main.js; 2026-08-24, user's call: "make that the default view
+  (replacing the map) for now. keep the map in case we want to use it
+  later"). Set it to `null` to put the overworld back — that is the
+  ONLY edit needed, which is the whole reason it is a switch and not a
+  rewrite of the boot path:
+  - **WorldScene still RUNS.** It builds the map, flows and labels AND
+    initialises every panel — Money, Policy, Session, Island, Sfx all
+    live in its `create()`. Booting a room directly instead would
+    leave the entire game uninitialised. The map is built, then slept
+    behind the room; nothing is deleted and nothing sits on a second
+    code path that can rot.
+  - **The map is still reachable, by the stairs.** `exitTo: "world"`
+    is unchanged, so the room's exit hotspot and Esc wake the map with
+    the HUD, toolbar and meters live. The intro dive is skipped and
+    the camera PARKED where the dive would have landed
+    (`parkOnCapitol`), or the stairs arrive on a half-tweened
+    archipelago.
+  - **The week-1 boot pop is suppressed while it is set**
+    (`SessionPanel.init`): the point is to land on the ROOM, and an
+    overlay opening over it defeats that. The creation funnel is not
+    lost — it is `renderHub`'s early bail, so it fires the moment the
+    session is opened from the map.
 - **HOTSPOT NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS**
   (2026-08-24, user's call: "don't have those big labels over all the
   doors"). `RoomScene.create` still builds every label, but anything

@@ -28,6 +28,25 @@ const MAP_V = 8;
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
 const CAP_V = 13;
+/* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
+   call: "make that the default view (replacing the map) for now. keep
+   the map in case we want to use it later"). Set to null to put the
+   overworld back — that is the ONLY edit needed, and it is why this is
+   a switch rather than a rewrite of the boot path:
+   - WorldScene still RUNS. It builds the map, the flows and the
+     labels and it initialises every panel (Money/Policy/Session/
+     Island/Sfx), all of which live in its create(). Booting straight
+     into a room instead would leave the whole game uninitialised.
+     The map is built, then slept — nothing is deleted, nothing is
+     behind a second code path that can rot.
+   - The intro dive is SKIPPED and the camera parked where the dive
+     would have LANDED, so leaving the room by the stairs arrives on
+     the Capitol rather than on a half-tweened archipelago.
+   - The week-1 overlay's boot pop is suppressed while this is set
+     (see SessionPanel.init) — the point is to land on the room, and
+     an overlay that opens over it defeats that. The map and the
+     session are both still reachable: take the stairs. */
+const START_ROOM = "capitol";
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
 const OFF_V = 2;
@@ -4674,8 +4693,12 @@ const SessionPanel = {
     syncScore();
     renderHead();
     const cal0 = calFor(S.week);
-    if (eventPending(cal0) ||
-        (cal0.agenda && !S.agendaLocked)) {
+    // START_ROOM lands the player in a room; an overlay popping over
+    // it on boot would defeat that. The funnel is not lost — it is
+    // renderHub's early bail, so it fires the moment the session is
+    // opened from the map.
+    if (!START_ROOM && (eventPending(cal0) ||
+        (cal0.agenda && !S.agendaLocked))) {
       openOverlay(true);            // the FIRST week arriving
       // skill investment / bill agenda comes first when it's pending —
       // the narrative event follows once that's locked in (see sess-lock)
@@ -4863,6 +4886,28 @@ class WorldScene extends Phaser.Scene {
       this.recomputeMinZoom();
       this.applyLabelScale();
     });
+
+    // ---- hand straight off to the landing room, if there is one.
+    // Everything above has already run, so the map is fully built and
+    // every panel is initialised; the scene just goes to sleep behind
+    // the room. See START_ROOM.
+    if (START_ROOM) {
+      this.stopIntro();
+      this.parkOnCapitol(world);
+      this.scene.switch(START_ROOM);
+    }
+  }
+
+  /* Put the camera where the intro dive would have ENDED — used when
+     a landing room skips the dive, so the stairs arrive on the
+     Capitol instead of on the whole archipelago. */
+  parkOnCapitol(world) {
+    const cam = this.cameras.main;
+    const [cx, cy] = world.capitol;
+    const z = Math.min(1.7, this.maxZoom);
+    cam.setZoom(z);
+    cam.centerOn(cx, cy - 40);
+    this.applyLabelScale();
   }
 
   /* ---- lazy island manager: detailed slices, labels and sparkles load
