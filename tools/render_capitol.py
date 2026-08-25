@@ -524,40 +524,99 @@ def court_bay_pt(e0, e1, t, y):
     return (b[0], b[1] + y)
 
 
-def court_glass(d, e0, e1, f, top, bot, t0=0.03, t1=0.97):
-    """THE GLASS CURTAIN WALL at courtyard level (2026-08-24, user:
-    "show the glass facade in particular", from the executive-floor
-    atrium photo). The court's ground storey is not a solid wall — one
-    whole side is a tall glazed screen on a tight mullion grid, dark
-    against the daylit court, and it is the most distinctive thing in
-    the photograph after the balconies themselves.
+def court_glass(d, e0, e1, f, top, bot):
+    """THE GLASS WALL at courtyard level on the Diamond Head run
+    (executive-floor photo). Two sections, as in the photograph:
 
-    Drawn as: dark glazing, a lighter SKY REFLECTION in the upper
-    third (glass is only legible as glass when it reflects something),
-    a fine even mullion run and three transoms, and a bright head
-    reveal where the beam lands on it. The mullions go through
-    even_run for the same reason every other repeating run does.
+    - the CENTRAL section is CURVED (user, 2026-08-24: "the central
+      glass section should look more curved") — it is the chamber
+      drum's glazing bulging into the court. On a flat iso face the
+      curve is carried by three cues working together: the mullions
+      are spaced by ANGLE (dense at the ends, opening toward the
+      middle — a cylinder's foreshortening), the SILL BOWS DOWN
+      toward the viewer at mid-arc while the head bows less, and the
+      sky-reflection band follows the bow. Any one alone reads flat.
+    - the section to its LEFT is the chamber's GLASS ENTRANCE DOORS
+      (user: "the section to the left of it is the glass doors"):
+      paired glazed leaves under a wide transom in a pale surround,
+      per the Senate-entrance photo.
+
+    Dark neutral glazing throughout — a teal pass read as water.
     """
-    p0, p1 = court_bay_pt(e0, e1, t0, top), court_bay_pt(e0, e1, t1, top)
     dy = bot - top
+
+    def face_pt(t, yfrac):
+        b = lerp(e0, e1, t)
+        return (b[0], b[1] + top + dy * yfrac)
+
+    # ---- the flat filler panes at the far left edge
+    for ta, tb in ((0.02, 0.10),):
+        p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
+        d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
+                  fill=shade(hx("#20262a"), f))
+        d.line([p0, (p0[0], p0[1] + dy)],
+               fill=shade(hx("#a8a08c"), f), width=1)
+
+    # ---- the GLASS DOORS, left of the curve
+    ta, tb = 0.10, 0.34
+    p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
     d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
-              fill=shade(hx("#1a2021"), f))
-    # sky reflection: the upper panes catch the open rotunda above
-    for k, (lo, hi, c) in enumerate((
-            (0.00, 0.13, "#3c4746"), (0.13, 0.26, "#2f3a3a"),
-            (0.26, 0.40, "#242c2d"))):
-        d.polygon([(p0[0], p0[1] + dy * lo), (p1[0], p1[1] + dy * lo),
-                   (p1[0], p1[1] + dy * hi), (p0[0], p0[1] + dy * hi)],
-                  fill=shade(hx(c), f))
-    for b in even_run(p0, p1, 10):                    # mullions
-        d.line([(b[0], b[1] + 1), (b[0], b[1] + dy - 1)],
-               fill=shade(hx("#a8a08c"), f), width=2)
-    for fr in (0.30, 0.58, 0.84):                     # transoms
-        d.line([(p0[0], p0[1] + dy * fr), (p1[0], p1[1] + dy * fr)],
-               fill=shade(hx("#8f8874"), f), width=1)
-    d.line([p0, p1], fill=shade(hx("#d9d2bc"), f), width=2)   # head
-    d.line([(p0[0], p0[1] + dy), (p1[0], p1[1] + dy)],
-           fill=shade(hx("#6d6656"), f), width=1)
+              fill=shade(hx("#d5cdb6"), f))            # pale surround
+    q0, q1 = face_pt(ta + 0.02, 0.10), face_pt(tb - 0.02, 0.10)
+    qdy = dy * 0.88
+    d.polygon([q0, q1, (q1[0], q1[1] + qdy), (q0[0], q0[1] + qdy)],
+              fill=shade(hx("#1d211f"), f))            # dark reveal
+    # transom over the leaves, then the leaves
+    d.line([(q0[0], q0[1] + qdy * 0.38), (q1[0], q1[1] + qdy * 0.38)],
+           fill=shade(hx("#b0b4b0"), f), width=1)
+    for k in range(1, 4):                              # stiles: 4 leaves
+        t = ta + 0.02 + (tb - ta - 0.04) * k / 4
+        b0 = face_pt(t, 0.10)
+        d.line([(b0[0], b0[1] + qdy * 0.38), (b0[0], b0[1] + qdy)],
+               fill=shade(hx("#9aa0a0"), f), width=1)
+    for k in (1, 2):                                   # transom mullions
+        t = ta + 0.02 + (tb - ta - 0.04) * k / 3
+        b0 = face_pt(t, 0.10)
+        d.line([(b0[0], b0[1]), (b0[0], b0[1] + qdy * 0.36)],
+               fill=shade(hx("#8f958f"), f), width=1)
+    # glazing glints on the upper leaves
+    d.polygon([q0, q1, (q1[0], q1[1] + qdy * 0.20),
+               (q0[0], q0[1] + qdy * 0.20)],
+              fill=shade(hx("#39433f"), f))
+    d.line([(q0[0], q0[1] - 2), (q1[0], q1[1] - 2)],
+           fill=shade(hx("#e2dbc6"), f), width=2)      # lit head
+
+    # ---- the CURVED section
+    ta, tb = 0.34, 0.98
+    n = 22
+    bow_s, bow_h = 9, 3        # sill and head bow, px, at mid-arc
+    tops, sills = [], []
+    for i in range(n + 1):
+        u = i / n
+        # angle-mapped param: cos spacing = cylinder foreshortening
+        t = ta + (tb - ta) * (0.5 - 0.5 * math.cos(math.pi * u))
+        bow = math.sin(math.pi * u)
+        tops.append(face_pt(t, 0)[0:2])
+        tops[-1] = (tops[-1][0], tops[-1][1] + round(bow_h * bow))
+        b = face_pt(t, 1.0)
+        sills.append((b[0], b[1] + round(bow_s * bow)))
+    d.polygon(tops + sills[::-1], fill=shade(hx("#171d1f"), f))
+    # sky reflection following the bow, upper third
+    refl = [lerp(pt, pb, 0.34) for pt, pb in zip(tops, sills)]
+    d.polygon(tops + refl[::-1], fill=shade(hx("#2e3839"), f))
+    d.polygon(tops + [lerp(pt, pb, 0.15) for pt, pb
+                      in zip(tops, sills)][::-1],
+              fill=shade(hx("#414d4b"), f))
+    for i in range(n + 1):                             # angle mullions
+        d.line([tops[i], sills[i]], fill=shade(hx("#9aa093"), f),
+               width=1)
+    for tfr in (0.42, 0.72):                           # transom rails
+        arc = [lerp(pt, pb, tfr) for pt, pb in zip(tops, sills)]
+        d.line(arc, fill=shade(hx("#6f766e"), f), width=1)
+    d.line(tops, fill=shade(hx("#d9d2bc"), f), width=2)   # beam over
+    d.line([(x, y + 2) for x, y in tops],
+           fill=shade(hx("#8f8874"), f), width=1)
+    d.line(sills, fill=shade(hx("#3a352c"), f), width=2)  # sill shadow
 
 
 def court_opening(d, e0, e1, t0, t1, f, top, bot):
@@ -575,23 +634,48 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     """
     q0, q1 = court_bay_pt(e0, e1, t0, top), court_bay_pt(e0, e1, t1, top)
     dy = bot - top
-    for lo, hi, c in ((0.00, 0.26, "#cfd8dd"),        # sky
-                      (0.26, 0.44, "#dfe2dc"),
-                      (0.44, 0.62, "#c9c8b6"),        # far greenery/haze
-                      (0.62, 1.00, "#a9a693")):       # plaza slab
+
+    def band(lo, hi, c):
         d.polygon([(q0[0], q0[1] + dy * lo), (q1[0], q1[1] + dy * lo),
                    (q1[0], q1[1] + dy * hi), (q0[0], q0[1] + dy * hi)],
                   fill=shade(hx(c), f))
-    d.line([(q0[0], q0[1] + dy * 0.62), (q1[0], q1[1] + dy * 0.62)],
-           fill=shade(hx("#8d8a78"), f), width=1)
-    # the exterior colonnade, seen through: slim silhouettes standing
-    # on the horizon. Two is enough — this is a glimpse, not a view.
+
+    # what the HABS courtyard photo actually shows through the bays:
+    # bright sky-glare, the far towers standing on a shaded tree
+    # line, then the sunlit plaza. NOT flat colour bands — the broken
+    # tower/palm silhouette is what reads as "outdoors" at this size.
+    band(0.00, 1.00, "#dce6ee")                       # sky glare
+    band(0.30, 0.52, "#e7ecef")                       # horizon haze
     span = q1[0] - q0[0]
-    for fr in (0.34, 0.68):
+    for fr, wd, ht in ((0.16, 9, 0.20), (0.42, 12, 0.26),
+                       (0.74, 8, 0.15)):              # far towers
         x = round(q0[0] + span * fr)
-        yb = q0[1] + (q1[1] - q0[1]) * fr
-        d.rectangle([x - 2, yb + dy * 0.20, x + 2, yb + dy * 0.66],
-                    fill=shade(hx("#8c8878"), f))
+        yb = q0[1] + (q1[1] - q0[1]) * fr + dy * 0.56
+        d.rectangle([x - wd // 2, yb - dy * ht, x + wd // 2, yb],
+                    fill=shade(hx("#b3b9bb"), f))
+        d.rectangle([x - wd // 2, yb - dy * ht, x - wd // 2 + 1, yb],
+                    fill=shade(hx("#969c9e"), f))
+    band(0.56, 0.70, "#55694e")                       # tree line
+    band(0.70, 0.77, "#425537")
+    band(0.77, 1.00, "#cac4ae")                       # sunlit plaza
+    # palms: a trunk and a FAN — a disc on a stick is a street lamp
+    for fr, ht in ((0.28, 0.32), (0.62, 0.26)):
+        x = round(q0[0] + span * fr)
+        yb = q0[1] + (q1[1] - q0[1]) * fr + dy * 0.80
+        ty = yb - dy * ht
+        d.line([(x, yb), (x + 1, ty)],
+               fill=shade(hx("#57553f"), f), width=2)
+        for ang in (-2.5, -1.2, -0.4, 0.4, 1.2, 2.5):
+            d.line([(x + 1, ty),
+                    (x + 1 + ang * 4, ty + abs(ang) * 1.6 + 3)],
+                   fill=shade(hx("#3c4f38"), f), width=2)
+    # one exterior pier of the colonnade, in silhouette — the bay is a
+    # passage under the building, not a window
+    x = round(q0[0] + span * 0.50)
+    yb = q0[1] + (q1[1] - q0[1]) * 0.50
+    d.polygon([(x - 4, yb + dy * 0.06), (x + 4, yb + dy * 0.06),
+               (x + 3, yb + dy * 0.92), (x - 3, yb + dy * 0.92)],
+              fill=shade(hx("#6a675c"), f))
     d.line([q0, (q0[0], q0[1] + dy)], fill=shade(hx("#2a231c"), f),
            width=2)                                    # dark reveal
     d.line([q1, (q1[0], q1[1] + dy)], fill=shade(hx("#e8e2ce"), f),

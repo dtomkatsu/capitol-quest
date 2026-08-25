@@ -2048,18 +2048,36 @@ user's call).
     and the opening to the outside as well on the left wall"). Both
     runs used to be the same koa-slat screen, which is why the court
     read as a sealed box. Now:
-    - **Diamond Head = a full-height GLASS CURTAIN WALL**
-      (`court_glass`): dark neutral glazing, a sky reflection in the
-      upper third — glass is only legible as glass when it reflects
-      something — an even mullion run through `even_run` (pitch 10)
-      and three transoms. It runs to the floor, so it takes no
-      plinth. Keep the glazing NEUTRAL: a first pass was teal and
-      read as water, not glass.
-    - **ʻEwa = dark arcade with ONE BAY OPEN TO THE STREET**
-      (`court_opening` + `OPEN_BAY`): sky, the exterior colonnade in
-      silhouette on a horizon, plaza under it, a dark jamb reveal one
-      side and a lit arris the other. The bay skips the slats, the
-      plinth and the arch.
+    - **Diamond Head = the GLASS WALL, in TWO sections**
+      (`court_glass`; reworked 2026-08-24 from the HABS courtyard
+      photo). The CENTRAL section is CURVED — it is the chamber
+      drum's glazing bulging into the court, and on a flat iso face
+      the curve is carried by three cues that only work TOGETHER:
+      mullions spaced by ANGLE (cos-mapped — dense at the ends,
+      opening mid-arc, a cylinder's foreshortening), the SILL BOWING
+      DOWN toward the viewer at mid-arc (9px, head 3px), and the
+      sky-reflection band following the bow. Any one alone reads
+      flat; the first pass had evenly spaced bars on a straight run
+      and did. The section to its LEFT is the chamber's GLASS
+      ENTRANCE DOORS: paired glazed leaves under a wide transom in a
+      pale surround (Senate-entrance photo). Keep the glazing
+      NEUTRAL: a teal pass read as water, not glass. No plinth — the
+      glass runs to the floor.
+      NB an intermediate pass replaced this whole layout with an
+      open colonnade on both runs and the user rejected it outright
+      ("you just messed the whole thing up") — the LAYOUT (glass on
+      Diamond Head, one open bay on ʻEwa, koa slats elsewhere) is
+      settled; only the rendering inside each section was wrong.
+    - **ʻEwa = dark arcade with ONE BAY OPEN TO THE OUTSIDE**
+      (`court_opening` + `OPEN_BAY`): what shows through it is the
+      HABS photo's view out — sky GLARE, far towers standing on a
+      shaded tree line, sunlit plaza, palms drawn as trunk + FAN
+      (a disc on a stick is a street lamp), and one exterior pier in
+      silhouette so the bay reads as a passage UNDER the building,
+      not a window. The broken silhouette is what says "outdoors";
+      the first version's flat bands + two stubby colonnade
+      rectangles did not. Dark jamb reveal one side, lit arris the
+      other; the bay skips the slats, the plinth and the arch.
     - **`OPEN_BAY` is at the TOP POINT end (0.53–0.79), not the ʻEwa
       corner, and that is forced by the well.** The court floor is a
       storey down, so the near end of each wall — its foot included —
