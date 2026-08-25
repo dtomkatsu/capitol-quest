@@ -154,6 +154,25 @@ OPEN_BAY = (0.02, 1.0)    # the ʻEwa run's open extent — effectively
                            # daylight behind, no wall. Only thin
                            # margins remain so the corner posts read.
 
+# THE SMOKESTACK, ITS PIER AND THE DOOR BAY ARE ONE ASSEMBLY.
+# The glass door section's start is DERIVED from the pier's
+# right-facing flank (user, 2026-08-25: "the right-facing wall should
+# be attached to the side of the glass facade (door section)") — the
+# two were set independently before, so the doors began 0.8 plan units
+# behind the pier and ran on underneath it instead of butting against
+# its side. Deriving it means moving the stack can never leave the
+# glass starting somewhere else again.
+STACK_U = -A_IN + 2.15     # cone axis along the Diamond Head run
+STACK_V = -A_IN + 0.10     # how far it stands off that wall
+STACK_R = 1.45             # base radius, PLAN units (see smokestack)
+STACK_CUT = 0.5            # where the pier's face slices the cone
+PIER_W = 0.55              # the pier's width along the run
+PIER_DEP = 1.35            # how far it projects into the court
+PIER_U0 = STACK_U + STACK_CUT * STACK_R   # bonded face — never seen
+PIER_U1 = PIER_U0 + PIER_W                # right-facing flank
+DOOR_TA = (PIER_U1 + A_IN) / (2 * A_IN)   # the glass starts HERE
+DOOR_TB = 0.36
+
 rng = np.random.default_rng(7)
 
 
@@ -455,13 +474,12 @@ def paint_well(img):
     # court, deeper than the cone's radius, and is drawn AFTER the
     # cone — it hides the cut face, the cladding dies into its flank,
     # and the whole assembly reads as one piece of wall.
-    S_U, S_V, S_R, S_CUT = -A_IN + 2.15, -A_IN + 0.1, 1.45, 0.5
-    smokestack(d, S_U, S_V, DROP - 24, S_R, 0.55, S_CUT, 0.92)
+    smokestack(d, STACK_U, STACK_V, DROP - 24, STACK_R, 0.55,
+               STACK_CUT, 0.92)
     # the pier's bonded face IS the cut plane, and it must project
     # past the cone's widest point there (v0 + sin(acos(cut))*R) or
     # the flat cut shows and the sliver comes loose again
-    court_panel(d, S_U + S_CUT * S_R, S_U + S_CUT * S_R + 0.55,
-                1.35, 0.9)
+    court_panel(d, PIER_U0, PIER_U1, PIER_DEP, 0.9)
 
     # the mosaic, in the sun
     paint_mosaic(d, lay, CX, CY + DROP - 12)
@@ -595,13 +613,14 @@ def court_glass(d, e0, e1, f, top, bot):
         d.line([p0, (p0[0], p0[1] + dy)],
                fill=shade(hx("#a8a08c"), f), width=1)
 
-    # ---- the GLASS DOORS. The bay STARTS AT THE SMOKESTACK (2026-08-25):
-    # the half-cone is bonded to this panel's corner-side edge, so the
-    # panel has to begin there — that abutment is what "connected to
-    # the side of the panel" means. The strip between the corner and
-    # the cone is filler glazing (the 0.01-0.10 pane above), not bare
-    # wall, or the court's corner reads as a dark wedge.
-    ta, tb = 0.145, 0.40
+    # ---- the GLASS DOORS. The bay begins exactly at the PIER'S
+    # RIGHT-FACING FLANK (`DOOR_TA`, derived — see the constants at the
+    # top): the door section is attached to the side of the pier the
+    # smokestack is bonded into, so the three read as one assembly.
+    # The strip between the corner and the pier is filler glazing (the
+    # 0.01-0.108 pane above), not bare wall, or the corner reads as a
+    # dark wedge.
+    ta, tb = DOOR_TA, DOOR_TB
     p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
     d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
               fill=shade(hx("#d5cdb6"), f))            # pale surround
