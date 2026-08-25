@@ -431,13 +431,13 @@ def paint_well(img):
                         fill=shade(hx("#9a9384"), f))
     # the tile-clad SMOKESTACKS, flanking the chamber's glass wall on
     # the Diamond Head run — never on the ʻEwa side, which is open
-    # 0.05 and 0.65, NOT the run's two corners: the DH wall's floor
-    # line leaves the well at t = 0.66, so a stack at the far corner
-    # would be masked away entirely, top included. The pair flanks
-    # the curved section, which is what the atrium photos show.
-    for t in (0.05, 0.65):
-        b = lerp(hole[0], hole[1], t)
-        smokestack(d, (b[0], b[1] + DROP - 2), DROP - 18, 11, 7, 0.92)
+    # ONE stack, at the near end of the glass. There is no companion
+    # at the far end (user, 2026-08-24): the building would hide it
+    # from this vantage anyway, and the pass that added one at t 0.65
+    # stood it between two courtyard piers, mid-colonnade, where it
+    # made no sense at all.
+    b = lerp(hole[0], hole[1], 0.05)
+    smokestack(d, (b[0], b[1] + DROP - 2), DROP - 18, 17, 8, 0.92)
 
     # the mosaic, in the sun
     paint_mosaic(d, lay, CX, CY + DROP - 12)
@@ -716,54 +716,91 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
 
 
 def smokestack(d, base, h, w_bot, w_top, f=1.0):
-    """THE TILE-CLAD TAPERED TOWERS THAT FLANK THE CHAMBER GLASS
-    (2026-08-24, user: "the smokestack should be moved to the glass
-    side. it wraps around the glass area"). Every atrium photograph
-    shows the pair: battered round towers faced in small square
-    tiles, standing at each end of the chamber's curved glass wall
-    like chimney bases — which is exactly what they read as, and why
-    the user calls them smokestacks.
+    """THE TILE-CLAD TAPERED TOWER at the end of the chamber's curved
+    glass (2026-08-24, user: "the smokestack should be moved to the
+    glass side"). Every atrium photograph shows one: a battered round
+    tower faced in small square tiles, standing like a chimney base —
+    which is why the user calls it a smokestack.
 
-    They replace `paint_chamber_wall`'s flaring lava-brick drums,
-    which sat at BOTH court corners — including the ʻEwa one, where
-    the court is an open breezeway and no chamber wall exists at all.
-    A drum on the open side was inventing a chamber that is not
-    there; the pair belongs on the glass side, wrapping its ends.
+    IT IS A CYLINDER, AND THE PERSPECTIVE IS THE WHOLE JOB (rebuilt
+    2026-08-24 after "you almost got the curved smokestack right,
+    except the perspective is wrong"). The first pass drew a tapered
+    BOX with flat horizontal courses and a 2px kink in the middle,
+    which is a pyramid with stripes. In this 2:1 iso a plan circle of
+    radius A projects to an ellipse A wide and A/2 tall, so:
 
-    Round, so the tile grid is shaded in three vertical zones (lit
-    left, body, dark right) and the courses BOW — a flat grid on a
-    tapered box reads as a pyramid, not a tower.
+      - a course is the FRONT HALF of that ellipse and SAGS by a full
+        A/2 at the centre — for an 11px radius that is five and a half
+        pixels, not two. The sag is the single cue that says "round".
+      - the tile columns sit at fixed PLAN ANGLES, so they crowd
+        toward the silhouette edges on their own. Even spacing across
+        the width is the same mistake as evenly spaced mullions on the
+        curved glass.
+      - shading ramps by angle, not by three flat zones.
+      - the top is a WHOLE ellipse (you look down on it from a storey
+        up), and the foot FLARES on a power curve, as photographed.
+
+    Only one is drawn. The companion at the far end of the glass is
+    deliberately absent (user, same day): from this vantage the
+    building would hide it anyway, and the pass that put one mid-run
+    stood it between two courtyard piers, where it read as a chimney
+    dropped into the middle of the colonnade.
     """
     bx, by = base
-    tile, lit, dark = hx("#8f8f80"), hx("#a8a696"), hx("#6b6b60")
-    grout = hx("#5c5c52")
-    for row in range(0, h, 4):
-        t = row / h                       # 0 at the foot, 1 at the top
-        w = w_bot + (w_top - w_bot) * t
-        y = by - row
-        bow = round(2 * (1 - t))          # courses sag on a round face
-        d.polygon([(bx - w, y), (bx + w, y),
-                   (bx + w, y - 4), (bx - w, y - 4)], fill=tile)
-        # the three vertical zones of a cylinder
-        d.rectangle([bx - w, y - 4, bx - w * 0.42, y], fill=lit)
-        d.rectangle([bx + w * 0.30, y - 4, bx + w, y], fill=dark)
-        # course line, bowed
-        d.line([(bx - w, y + bow), (bx, y + bow + 1), (bx + w, y + bow)],
-               fill=grout, width=1)
-        # the tiles themselves
-        x = bx - w
-        while x < bx + w:
-            d.line([(x, y - 4), (x, y)], fill=grout, width=1)
-            x += 4
-    # a bright arris down the lit edge, and the cap
-    d.line([(bx - w_bot, by), (bx - w_top, by - h)],
-           fill=hx("#c4c2b2"), width=1)
-    d.line([(bx + w_bot, by), (bx + w_top, by - h)],
-           fill=hx("#4f4f46"), width=1)
-    d.ellipse([bx - w_top, by - h - 3, bx + w_top, by - h + 3],
-              fill=hx("#9d9b8c"))
-    d.arc([bx - w_top, by - h - 3, bx + w_top, by - h + 3], 180, 360,
-          fill=hx("#c4c2b2"), width=1)
+    n = 14                                # samples across the front half
+    grout = hx("#4a4a41")
+
+    def radius(t):                        # t: 0 at the foot, 1 at the top
+        return w_top + (w_bot - w_top) * (1 - t) ** 2.4
+
+    def ring(t):
+        """Front half of the course ellipse at height fraction t, plus
+        the per-sample shading factor."""
+        a = radius(t)
+        y = by - h * t
+        pts, fac = [], []
+        for i in range(n + 1):
+            phi = math.pi * i / n         # 0 = right edge, pi = left
+            pts.append((bx + a * math.cos(phi),
+                        y + a * 0.5 * math.sin(phi)))
+            fac.append(0.84 + 0.32 * (1 - math.cos(phi)) / 2)
+        return pts, fac
+
+    rows = max(4, h // 4)
+    prev, prev_f = ring(0.0)
+    for r in range(1, rows + 1):
+        cur, cur_f = ring(r / rows)
+        for i in range(n):                # one tile per angle segment
+            tone = (cur_f[i] + cur_f[i + 1]) / 2
+            # a checker, not a random speckle: the tiles are laid
+            # in courses and at display scale noise reads as moss
+            jit = 1.0 + (0.055 if (r + i) % 2 else -0.045)
+            d.polygon([prev[i], prev[i + 1], cur[i + 1], cur[i]],
+                      fill=shade(hx("#9b9a89"), f * tone * jit))
+        d.line(cur, fill=shade(grout, f), width=1)      # course joint
+        prev, prev_f = cur, cur_f
+    # tile joints: verticals at fixed plan angles, so they crowd at the
+    # silhouette edges the way a cylinder's do
+    for i in range(1, n):
+        col = []
+        for r in range(rows + 1):
+            pts, _ = ring(r / rows)
+            col.append(pts[i])
+        d.line(col, fill=shade(grout, f), width=1)
+    # silhouette: lit arris down the left, dark down the right
+    lit_edge = [ring(r / rows)[0][n] for r in range(rows + 1)]
+    dark_edge = [ring(r / rows)[0][0] for r in range(rows + 1)]
+    d.line(lit_edge, fill=shade(hx("#c4c2b2"), f), width=1)
+    d.line(dark_edge, fill=shade(hx("#4f4f46"), f), width=1)
+    # the cap: a WHOLE ellipse — from a storey up you see the top face
+    a = radius(1.0)
+    ty = by - h
+    d.ellipse([bx - a, ty - a * 0.5, bx + a, ty + a * 0.5],
+              fill=shade(hx("#a3a192"), f))
+    d.ellipse([bx - a + 2, ty - a * 0.5 + 1, bx + a - 2, ty + a * 0.5 - 1],
+              fill=shade(hx("#8b8a7c"), f))
+    d.arc([bx - a, ty - a * 0.5, bx + a, ty + a * 0.5], 180, 360,
+          fill=shade(hx("#c9c7b6"), f), width=1)
 
 
 def paint_mosaic(d, lay, cx, cy):

@@ -2092,18 +2092,33 @@ user's call).
       kukui canopies, which had no planters under them and read as
       bushes growing out of pavement. Keep the empty one empty —
       that is what the photograph shows.
-    - **THE TILE-CLAD SMOKESTACKS FLANK THE GLASS** (`smokestack`;
-      user, 2026-08-24: "the smokestack should be moved to the glass
-      side. it wraps around the glass area"). Every atrium photo
-      shows the pair — battered round towers faced in small square
-      tiles, standing at each end of the chamber's curved glass like
-      chimney bases. They replaced `paint_chamber_wall`'s flaring
-      lava-brick drums, which sat at BOTH court corners including the
-      ʻEwa one, where the court is an open breezeway and no chamber
-      wall exists at all: a drum there was inventing a chamber.
-      Round, so the tile grid is shaded in three vertical zones and
-      the courses BOW — a flat grid on a tapered box is a pyramid,
-      not a tower.
+    - **THE TILE-CLAD SMOKESTACK** (`smokestack`; user, 2026-08-24:
+      "the smokestack should be moved to the glass side"). A battered
+      round tower faced in small square tiles at the near end of the
+      chamber's curved glass, like a chimney base. It replaced
+      `paint_chamber_wall`'s flaring lava-brick drums, which sat at
+      BOTH court corners including the ʻEwa one, where the court is
+      an open breezeway and no chamber wall exists at all: a drum
+      there was inventing a chamber.
+    - **IT IS A CYLINDER, AND THE PERSPECTIVE IS THE WHOLE JOB**
+      (rebuilt same day after "you almost got the curved smokestack
+      right, except the perspective is wrong"). The first pass drew a
+      tapered BOX with flat courses and a 2px kink — a pyramid with
+      stripes. In 2:1 iso a plan circle of radius A projects to an
+      ellipse A wide and A/2 tall, so a course is the FRONT HALF of
+      that ellipse and SAGS a full A/2 at its centre: five and a half
+      pixels on an 11px radius, not two. That sag is the cue that
+      says "round". The tile columns sit at fixed PLAN ANGLES so they
+      crowd toward the silhouette on their own (evenly spaced tiles
+      are the same mistake as evenly spaced mullions on the curved
+      glass), shading ramps by angle rather than in flat zones, the
+      cap is a WHOLE ellipse because you look down on it from a
+      storey up, and the foot flares on a power curve.
+    - **There is only ONE, and no companion at the far end of the
+      glass** (user, same day): from this vantage the building hides
+      it anyway, and the pass that added one at t 0.65 stood it
+      between two courtyard piers, mid-colonnade, where it read as a
+      chimney dropped into the middle of the arcade.
     - **Everything on the Diamond Head run stops at t ≈ 0.65, and the
       WELL decides that, not composition.** The wall's floor line is
       only inside the hole up to t = 0.66 (solve
