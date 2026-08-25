@@ -2016,6 +2016,32 @@ user's call).
   - No form mottle on purpose: most distant thing in the room, and
     skipping it keeps the level off the shared `rng`, so adding a
     storey cannot reshuffle the level below's wall texture.
+  - **THE COURTYARD STOREY IS THE TALLEST ONE, and `DROP` is the
+    number** (user, 2026-08-24: "the two floors are very tall in
+    comparison to the rotunda; the rotunda floor should look much
+    taller because it is"). DROP was 64 against 72px office storeys —
+    the ground level read SHORTER than a floor of offices, so the
+    section looked like three equal decks and the whole room read
+    squashed. It is 100 now: the real court is a double-height
+    arcade whose piers run to the underside of the gallery slab.
+    Everything in the well is expressed against DROP, so it is one
+    edit — but two things ride on it:
+    - **The ceiling on DROP is the WELL, not taste.** The courtyard
+      floor slides DOWN as the court deepens, so our own slab starts
+      cutting the floor medallion — the composition's focal object.
+      The bound is `hypot(62/288, 32/144) + (DROP-12)/144 <= 1`
+      against the well diamond, i.e. ~100. At 108 the medallion was
+      sliced and sat jammed against the near rail. Deeper than the
+      bound means giving up the medallion; that is the trade.
+    - **Anything standing ON the courtyard floor has to be re-placed,
+      because a deep court hides its own near half** under the
+      gallery slab. The kukui pair that used to stand below the
+      medallion now FLANKS it (the far pair is unmoved), the chain
+      ring came in to 72x37, and the arcade's arch head and rise are
+      FRACTIONS of DROP (0.47 / 0.11) instead of a fixed 30/7 under
+      the slab, or the heads bunch at the top of a tall wall with a
+      blank field hanging under them. A pale stone PLINTH along the
+      wall foot is what tells you that tall dark wall meets a floor.
   - **`CY` is framing, not geometry.** The storey grows the room
     UPWARD only, so the content centre drifted 90px above the frame's
     and the room hung high in the viewport with dead space under it;

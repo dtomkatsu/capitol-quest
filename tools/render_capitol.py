@@ -92,8 +92,24 @@ A_OUT = 11.5               # ring outer diamond half-size (iso units) —
                            # the walkway is a NARROW balcony (user's
                            # call), not a wide deck
 A_IN = 9                   # the rotunda well
-DROP = 64                  # the player stands on a LOW gallery just
-                           # above the chamber level
+DROP = 100                 # COURTYARD STOREY HEIGHT — the drop from
+                           # the gallery floor to the courtyard, and
+                           # deliberately MUCH TALLER than the 72px
+                           # office storeys above it (user, 2026-08-24:
+                           # "the two floors are very tall in
+                           # comparison to the rotunda; the rotunda
+                           # floor should look much taller because it
+                           # is"). It was 64 — SHORTER than a storey —
+                           # which read as three equal floors and made
+                           # the whole section look squashed. The real
+                           # court is a double-height arcade: the piers
+                           # run a full two storeys to the underside of
+                           # the gallery slab. Everything in the well
+                           # is expressed against DROP, so this is the
+                           # one number; the ceiling on it is the HOLE,
+                           # since the courtyard floor slides DOWN as
+                           # the court deepens and our own slab starts
+                           # eating the medallion past ~110.
 # ---- the THIRD level (2026-08-24, user's call), Senate territory.
 # It is RECESSED, and that is the entire design. A flush stack was
 # drawn 2026-08-22 and rolled back the same day because two rows of
@@ -365,17 +381,28 @@ def paint_well(img):
             b = lerp(e0, e1, t)
             d.line([(b[0], b[1] + 22), (b[0], b[1] + DROP - 4)],
                    fill=shade(hx("#5f452c"), f), width=2)
+        # stone PLINTH along the foot of the court wall. The taller
+        # storey left a big flat dark field under the arches with
+        # nothing to read against; the base band is what tells you the
+        # wall meets a floor (and it is in the panorama).
+        q(DROP - 15, DROP - 1, shade(hx("#b0a893"), f))
+        d.line([up(e0, -DROP + 15), up(e1, -DROP + 15)],
+               fill=shade(hx("#cdc5ae"), f), width=1)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
         # arched arcade heads between the piers (gallery-corner photo:
         # the courtyard level reads as arches in the lava-brick wall)
+        # arch head and rise are FRACTIONS of the storey — a fixed
+        # 30/7 under the slab left the heads bunched at the top of a
+        # tall court with a blank wall hanging under them
+        a_y, a_r = round(DROP * 0.47), round(DROP * 0.11)
         for t0, t1 in ((0.21, 0.47), (0.53, 0.79)):
             pts = []
             for k in range(13):
                 tt = t0 + (t1 - t0) * k / 12
                 b = lerp(e0, e1, tt)
                 s = 2 * k / 12 - 1
-                pts.append((b[0], b[1] + 30 - round(7 * (1 - s * s))))
+                pts.append((b[0], b[1] + a_y - round(a_r * (1 - s * s))))
             d.line(pts, fill=shade(hx("#8a7a66"), f), width=2)
             d.line([(px_, py_ + 2) for px_, py_ in pts],
                    fill=shade(hx("#2c241c"), f), width=1)
@@ -399,7 +426,7 @@ def paint_well(img):
     ring = []
     for a in range(12):
         ang = a * math.pi / 6
-        ring.append((mx + math.cos(ang) * 78, my + math.sin(ang) * 40))
+        ring.append((mx + math.cos(ang) * 72, my + math.sin(ang) * 37))
     for i, (px_, py_) in enumerate(ring):
         nx, ny = ring[(i + 1) % 12]
         sag = ((px_ + nx) / 2, (py_ + ny) / 2 + 3)
@@ -411,8 +438,13 @@ def paint_well(img):
                     fill=hx("#8f8974"))
 
     # four kukui canopies from above, flanking the breezeway
-    for x, y in ((CX - 60, CY + DROP - 62), (CX + 60, CY + DROP - 62),
-                 (CX - 64, CY + DROP + 34), (CX + 64, CY + DROP + 34)):
+    # Two up-court, two flanking the medallion. The pair that used to
+    # stand BELOW it is gone: a deep court hides its own near half
+    # under our slab, and anything down there is sliced by the well
+    # edge. Flanking keeps four trees on the visible floor and keeps
+    # the group symmetrical about the medallion.
+    for x, y in ((CX - 60, CY + DROP - 50), (CX + 60, CY + DROP - 50),
+                 (CX - 88, CY + DROP - 16), (CX + 88, CY + DROP - 16)):
         st = hx("#c9b88f")
         d.polygon([(x - 14, y + 6), (x, y - 1), (x + 14, y + 6),
                    (x, y + 13)], fill=st)
