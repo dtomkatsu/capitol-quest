@@ -148,6 +148,20 @@ CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # the 0.5 game zoom, which is the only scale
                            # that matters here.
 
+OPEN_BAY = (0.53, 0.79)    # the ʻEwa courtyard bay that is a hole
+                           # through the wing to the street — see
+                           # court_opening(). Shared: the wall skips
+                           # its slats/plinth there and the floor
+                           # takes a daylight spill in front of it.
+                           # It is the bay toward the TOP POINT on
+                           # purpose: the court floor is a storey down,
+                           # so the near end of each wall — its foot
+                           # included — falls outside the well and is
+                           # hidden by our own slab. Put the opening
+                           # near the ʻEwa corner instead (tried
+                           # first, 0.20-0.48) and only its head shows
+                           # and the light it throws is invisible.
+
 rng = np.random.default_rng(7)
 
 
@@ -359,6 +373,25 @@ def paint_well(img):
                    (e0s[0], e0s[1] + DROP + 7)],
                   fill=shade(COURT, 0.76))
 
+    # DAYLIGHT SPILLING IN THROUGH THE OPEN BAY. The bay only reads
+    # as a hole through the building if the sun it lets in lands on
+    # something: a bright wedge on the court floor, aimed along the
+    # wall's own inward normal (+u at the ʻEwa wall), is the cheap
+    # half of the effect and does more than anything drawn inside the
+    # opening itself.
+    for k, tone in ((5.0, 0.55), (3.2, 0.75), (1.6, 1.0)):
+        pts = []
+        for t in (OPEN_BAY[0] - 0.02, OPEN_BAY[1] + 0.02):
+            u = -A_IN + (0.02 if t else 0)
+            v = A_IN - 2 * A_IN * t
+            pts.append(iso(-A_IN, v, -DROP))
+        far = [iso(-A_IN + k, A_IN - 2 * A_IN * (OPEN_BAY[0] - 0.02),
+                   -DROP),
+               iso(-A_IN + k, A_IN - 2 * A_IN * (OPEN_BAY[1] + 0.02),
+                   -DROP)]
+        d.polygon([pts[0], pts[1], far[1], far[0]],
+                  fill=mix(COURT, COURT_SUN, 0.32 * tone))
+
     # breezeway band, mauka-makai
     d.polygon([iso(-1.1, -A_IN, -DROP), iso(1.1, -A_IN, -DROP),
                iso(1.1, A_IN, -DROP), iso(-1.1, A_IN, -DROP)],
@@ -367,27 +400,48 @@ def paint_well(img):
     # far inner walls: ONE storey down to the chamber level — the
     # player stands on a low gallery, so below our slab's fluted
     # fascia there is only the ground colonnade. Piers rise through.
-    for e0, e1, f in ((hole[3], hole[0], 1.0), (hole[0], hole[1], 0.86)):
+    # The two runs are NOT the same wall (executive-floor photo,
+    # 2026-08-24): the Diamond Head side is a full-height GLASS
+    # CURTAIN WALL, and the ʻEwa side is dark arcade with one bay OPEN
+    # TO THE OUTSIDE. Before this both were the same koa-slat screen,
+    # which is why the court read as a sealed box.
+    for e0, e1, f, glazed in ((hole[3], hole[0], 1.0, False),
+                              (hole[0], hole[1], 0.86, True)):
         def q(y0, y1, col):
             d.polygon([up(e0, -y0), up(e1, -y0), up(e1, -y1),
                        up(e0, -y1)], fill=col)
         fluted_band(d, e0, e1, 0, 18, f)              # our slab's fins
         q(18, DROP, shade(RECESS_D, f))               # ground level
-        # vertical koa-slat screens (the chamber walls in the photos)
-        ln_w = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
-        n_sl = max(2, int(ln_w // 4))
-        for i in range(n_sl):
-            t = (i + 0.5) / n_sl
-            b = lerp(e0, e1, t)
-            d.line([(b[0], b[1] + 22), (b[0], b[1] + DROP - 4)],
-                   fill=shade(hx("#5f452c"), f), width=2)
+        if glazed:
+            court_glass(d, e0, e1, f, 21, DROP - 2)
+        else:
+            court_opening(d, e0, e1, OPEN_BAY[0], OPEN_BAY[1], f,
+                          22, DROP - 2)
+            # vertical koa-slat screens (the chamber walls in the
+            # photos) — everywhere the bay is not open
+            ln_w = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
+            n_sl = max(2, int(ln_w // 4))
+            for i in range(n_sl):
+                t = (i + 0.5) / n_sl
+                if OPEN_BAY[0] <= t <= OPEN_BAY[1]:
+                    continue
+                b = lerp(e0, e1, t)
+                d.line([(b[0], b[1] + 22), (b[0], b[1] + DROP - 4)],
+                       fill=shade(hx("#5f452c"), f), width=2)
         # stone PLINTH along the foot of the court wall. The taller
         # storey left a big flat dark field under the arches with
         # nothing to read against; the base band is what tells you the
         # wall meets a floor (and it is in the panorama).
-        q(DROP - 15, DROP - 1, shade(hx("#b0a893"), f))
-        d.line([up(e0, -DROP + 15), up(e1, -DROP + 15)],
-               fill=shade(hx("#cdc5ae"), f), width=1)
+        # ... but glass runs to the floor and the open bay has no
+        # wall to plinth, so both skip it
+        if not glazed:
+            for b0, b1 in ((0.0, OPEN_BAY[0]), (OPEN_BAY[1], 1.0)):
+                c0 = court_bay_pt(e0, e1, b0, DROP - 15)
+                c1 = court_bay_pt(e0, e1, b1, DROP - 15)
+                d.polygon([c0, c1, (c1[0], c1[1] + 14),
+                           (c0[0], c0[1] + 14)],
+                          fill=shade(hx("#b0a893"), f))
+                d.line([c0, c1], fill=shade(hx("#cdc5ae"), f), width=1)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
         # arched arcade heads between the piers (gallery-corner photo:
@@ -396,7 +450,7 @@ def paint_well(img):
         # 30/7 under the slab left the heads bunched at the top of a
         # tall court with a blank wall hanging under them
         a_y, a_r = round(DROP * 0.47), round(DROP * 0.11)
-        for t0, t1 in ((0.21, 0.47), (0.53, 0.79)):
+        for t0, t1 in (() if glazed else ((0.21, 0.47),)):
             pts = []
             for k in range(13):
                 tt = t0 + (t1 - t0) * k / 12
@@ -460,6 +514,89 @@ def paint_well(img):
     ImageDraw.Draw(mask).polygon(hole, fill=255)
     m = ImageChops.multiply(mask, lay.getchannel("A"))
     img.paste(lay.convert("RGB"), (0, 0), m)
+
+
+def court_bay_pt(e0, e1, t, y):
+    """A point on a courtyard-level wall face: parameter t along the
+    hole edge, y pixels BELOW it. The face is extruded straight down,
+    so anything vertical on it is a vertical screen line."""
+    b = lerp(e0, e1, t)
+    return (b[0], b[1] + y)
+
+
+def court_glass(d, e0, e1, f, top, bot, t0=0.03, t1=0.97):
+    """THE GLASS CURTAIN WALL at courtyard level (2026-08-24, user:
+    "show the glass facade in particular", from the executive-floor
+    atrium photo). The court's ground storey is not a solid wall — one
+    whole side is a tall glazed screen on a tight mullion grid, dark
+    against the daylit court, and it is the most distinctive thing in
+    the photograph after the balconies themselves.
+
+    Drawn as: dark glazing, a lighter SKY REFLECTION in the upper
+    third (glass is only legible as glass when it reflects something),
+    a fine even mullion run and three transoms, and a bright head
+    reveal where the beam lands on it. The mullions go through
+    even_run for the same reason every other repeating run does.
+    """
+    p0, p1 = court_bay_pt(e0, e1, t0, top), court_bay_pt(e0, e1, t1, top)
+    dy = bot - top
+    d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
+              fill=shade(hx("#1a2021"), f))
+    # sky reflection: the upper panes catch the open rotunda above
+    for k, (lo, hi, c) in enumerate((
+            (0.00, 0.13, "#3c4746"), (0.13, 0.26, "#2f3a3a"),
+            (0.26, 0.40, "#242c2d"))):
+        d.polygon([(p0[0], p0[1] + dy * lo), (p1[0], p1[1] + dy * lo),
+                   (p1[0], p1[1] + dy * hi), (p0[0], p0[1] + dy * hi)],
+                  fill=shade(hx(c), f))
+    for b in even_run(p0, p1, 10):                    # mullions
+        d.line([(b[0], b[1] + 1), (b[0], b[1] + dy - 1)],
+               fill=shade(hx("#a8a08c"), f), width=2)
+    for fr in (0.30, 0.58, 0.84):                     # transoms
+        d.line([(p0[0], p0[1] + dy * fr), (p1[0], p1[1] + dy * fr)],
+               fill=shade(hx("#8f8874"), f), width=1)
+    d.line([p0, p1], fill=shade(hx("#d9d2bc"), f), width=2)   # head
+    d.line([(p0[0], p0[1] + dy), (p1[0], p1[1] + dy)],
+           fill=shade(hx("#6d6656"), f), width=1)
+
+
+def court_opening(d, e0, e1, t0, t1, f, top, bot):
+    """A BAY OPEN TO THE OUTSIDE on the ʻEwa wall (2026-08-24, user:
+    "the opening to the outside as well on the left wall"). The court
+    is not sealed — the ground storey runs straight through the wing
+    to the street, and in the photo that bay is the one BRIGHT hole in
+    a dark arcade: daylight, the exterior colonnade in silhouette, and
+    a pale slab of plaza under it.
+
+    It is painted as depth, not as a light patch: sky at the head,
+    the far colonnade standing on a horizon, then plaza. The jamb gets
+    a dark reveal on one side and a lit arris on the other so the wall
+    reads as having thickness.
+    """
+    q0, q1 = court_bay_pt(e0, e1, t0, top), court_bay_pt(e0, e1, t1, top)
+    dy = bot - top
+    for lo, hi, c in ((0.00, 0.26, "#cfd8dd"),        # sky
+                      (0.26, 0.44, "#dfe2dc"),
+                      (0.44, 0.62, "#c9c8b6"),        # far greenery/haze
+                      (0.62, 1.00, "#a9a693")):       # plaza slab
+        d.polygon([(q0[0], q0[1] + dy * lo), (q1[0], q1[1] + dy * lo),
+                   (q1[0], q1[1] + dy * hi), (q0[0], q0[1] + dy * hi)],
+                  fill=shade(hx(c), f))
+    d.line([(q0[0], q0[1] + dy * 0.62), (q1[0], q1[1] + dy * 0.62)],
+           fill=shade(hx("#8d8a78"), f), width=1)
+    # the exterior colonnade, seen through: slim silhouettes standing
+    # on the horizon. Two is enough — this is a glimpse, not a view.
+    span = q1[0] - q0[0]
+    for fr in (0.34, 0.68):
+        x = round(q0[0] + span * fr)
+        yb = q0[1] + (q1[1] - q0[1]) * fr
+        d.rectangle([x - 2, yb + dy * 0.20, x + 2, yb + dy * 0.66],
+                    fill=shade(hx("#8c8878"), f))
+    d.line([q0, (q0[0], q0[1] + dy)], fill=shade(hx("#2a231c"), f),
+           width=2)                                    # dark reveal
+    d.line([q1, (q1[0], q1[1] + dy)], fill=shade(hx("#e8e2ce"), f),
+           width=1)                                    # lit arris
+    d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
 
 
 def paint_chamber_wall(d, corner, senate):

@@ -2042,6 +2042,34 @@ user's call).
       the slab, or the heads bunch at the top of a tall wall with a
       blank field hanging under them. A pale stone PLINTH along the
       wall foot is what tells you that tall dark wall meets a floor.
+  - **THE COURT'S TWO WALLS ARE NOT THE SAME WALL** (2026-08-24,
+    from the user's own copy of `Interior of Hawaii State Capitol
+    from Executive Floor.jpg`: "show the glass facade in particular,
+    and the opening to the outside as well on the left wall"). Both
+    runs used to be the same koa-slat screen, which is why the court
+    read as a sealed box. Now:
+    - **Diamond Head = a full-height GLASS CURTAIN WALL**
+      (`court_glass`): dark neutral glazing, a sky reflection in the
+      upper third — glass is only legible as glass when it reflects
+      something — an even mullion run through `even_run` (pitch 10)
+      and three transoms. It runs to the floor, so it takes no
+      plinth. Keep the glazing NEUTRAL: a first pass was teal and
+      read as water, not glass.
+    - **ʻEwa = dark arcade with ONE BAY OPEN TO THE STREET**
+      (`court_opening` + `OPEN_BAY`): sky, the exterior colonnade in
+      silhouette on a horizon, plaza under it, a dark jamb reveal one
+      side and a lit arris the other. The bay skips the slats, the
+      plinth and the arch.
+    - **`OPEN_BAY` is at the TOP POINT end (0.53–0.79), not the ʻEwa
+      corner, and that is forced by the well.** The court floor is a
+      storey down, so the near end of each wall — its foot included —
+      falls outside the hole and is hidden by our own slab. At
+      0.20–0.48 (tried first) only the opening's head showed and the
+      daylight it throws was clipped away entirely.
+    - **The light it throws is the cheap half of the effect and does
+      more than anything drawn inside the opening**: a graded wedge
+      on the court floor along the wall's own inward normal, painted
+      with the floor and before the walls.
   - **`CY` is framing, not geometry.** The storey grows the room
     UPWARD only, so the content centre drifted 90px above the frame's
     and the room hung high in the viewport with dead space under it;
