@@ -2092,12 +2092,28 @@ user's call).
       kukui canopies, which had no planters under them and read as
       bushes growing out of pavement. Keep the empty one empty —
       that is what the photograph shows.
-    - **`OPEN_BAY` is at the TOP POINT end (0.53–0.79), not the ʻEwa
-      corner, and that is forced by the well.** The court floor is a
-      storey down, so the near end of each wall — its foot included —
-      falls outside the hole and is hidden by our own slab. At
-      0.20–0.48 (tried first) only the opening's head showed and the
-      daylight it throws was clipped away entirely.
+    - **THE TILE-CLAD SMOKESTACKS FLANK THE GLASS** (`smokestack`;
+      user, 2026-08-24: "the smokestack should be moved to the glass
+      side. it wraps around the glass area"). Every atrium photo
+      shows the pair — battered round towers faced in small square
+      tiles, standing at each end of the chamber's curved glass like
+      chimney bases. They replaced `paint_chamber_wall`'s flaring
+      lava-brick drums, which sat at BOTH court corners including the
+      ʻEwa one, where the court is an open breezeway and no chamber
+      wall exists at all: a drum there was inventing a chamber.
+      Round, so the tile grid is shaded in three vertical zones and
+      the courses BOW — a flat grid on a tapered box is a pyramid,
+      not a tower.
+    - **Everything on the Diamond Head run stops at t ≈ 0.65, and the
+      WELL decides that, not composition.** The wall's floor line is
+      only inside the hole up to t = 0.66 (solve
+      `t + |144t-46|/144 <= 1` against the well diamond), because the
+      court floor is a storey down and our own slab eats the near end
+      of every wall. So the stacks sit at 0.05 and 0.65, the curved
+      glass ends at 0.62, and beyond it are flat filler panes whose
+      upper half is all that ever shows. A stack at the far corner is
+      masked away entirely, top included. Same arithmetic is why the
+      ʻEwa run's own corner shows nothing.
     - **The light it throws is the cheap half of the effect and does
       more than anything drawn inside the opening**: a graded wedge
       on the court floor along the wall's own inward normal, painted

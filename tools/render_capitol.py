@@ -429,10 +429,15 @@ def paint_well(img):
                         fill=shade(hx("#c2bba8"), f))
             d.rectangle([b[0] + 3, b[1] + 18, b[0] + 6, b[1] + DROP - 2],
                         fill=shade(hx("#9a9384"), f))
-    # the chamber drums, at courtyard level only — nothing of the
-    # cones shows above the galleries from this vantage
-    paint_chamber_wall(d, hole[3], senate=True)    # W' corner, ʻEwa
-    paint_chamber_wall(d, hole[1], senate=False)   # E' corner, DH
+    # the tile-clad SMOKESTACKS, flanking the chamber's glass wall on
+    # the Diamond Head run — never on the ʻEwa side, which is open
+    # 0.05 and 0.65, NOT the run's two corners: the DH wall's floor
+    # line leaves the well at t = 0.66, so a stack at the far corner
+    # would be masked away entirely, top included. The pair flanks
+    # the curved section, which is what the atrium photos show.
+    for t in (0.05, 0.65):
+        b = lerp(hole[0], hole[1], t)
+        smokestack(d, (b[0], b[1] + DROP - 2), DROP - 18, 11, 7, 0.92)
 
     # the mosaic, in the sun
     paint_mosaic(d, lay, CX, CY + DROP - 12)
@@ -548,11 +553,18 @@ def court_glass(d, e0, e1, f, top, bot):
         b = lerp(e0, e1, t)
         return (b[0], b[1] + top + dy * yfrac)
 
-    # ---- the flat filler panes at the far left edge
-    for ta, tb in ((0.02, 0.10),):
+    # ---- the flat filler panes at both ends
+    for ta, tb in ((0.02, 0.10), (0.62, 0.98)):
         p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
         d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
-                  fill=shade(hx("#20262a"), f))
+                  fill=shade(hx("#232b2c"), f))
+        d.polygon([p0, p1, (p1[0], p1[1] + dy * 0.30),
+                   (p0[0], p0[1] + dy * 0.30)],
+                  fill=shade(hx("#39443f"), f))       # sky in the panes
+        for b in even_run(p0, p1, 10):                # keep it GLAZING —
+            d.line([(b[0], b[1] + 1), (b[0], b[1] + dy - 1)],
+                   fill=shade(hx("#8f9086"), f), width=1)
+        d.line([p0, p1], fill=shade(hx("#c9c2ac"), f), width=2)
         d.line([p0, (p0[0], p0[1] + dy)],
                fill=shade(hx("#a8a08c"), f), width=1)
 
@@ -585,8 +597,13 @@ def court_glass(d, e0, e1, f, top, bot):
     d.line([(q0[0], q0[1] - 2), (q1[0], q1[1] - 2)],
            fill=shade(hx("#e2dbc6"), f), width=2)      # lit head
 
-    # ---- the CURVED section
-    ta, tb = 0.34, 0.98
+    # ---- the CURVED section. It stops at 0.62, not at the corner:
+    # on this run the wall's FLOOR LINE is only inside the well up to
+    # t = 0.66 (solve t + |144t-46|/144 <= 1 against the hole
+    # diamond), and past that our own slab eats the bottom of the
+    # glass. Everything beyond is flat filler panes, whose upper half
+    # is all that shows anyway.
+    ta, tb = 0.34, 0.62
     n = 22
     bow_s, bow_h = 9, 3        # sill and head bow, px, at mid-arc
     tops, sills = [], []
@@ -639,44 +656,58 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
                    (q1[0], q1[1] + dy * hi), (q0[0], q0[1] + dy * hi)],
                   fill=shade(hx(c), f))
 
-    # what the HABS courtyard photo actually shows through the bays:
-    # bright sky-glare, the far towers standing on a shaded tree
-    # line, then the sunlit plaza. NOT flat colour bands — the broken
-    # tower/palm silhouette is what reads as "outdoors" at this size.
-    band(0.00, 1.00, "#dce6ee")                       # sky glare
-    band(0.30, 0.52, "#e7ecef")                       # horizon haze
+    # WHAT IS OUT THERE IS CONCRETE, NOT A SKYLINE (2026-08-24, user:
+    # "instead of showing a fake, made up background for the outside
+    # (beyond the pillars), show the concrete stepped levels etc.").
+    # The breezeway looks out along the building's own structure —
+    # the outer pier rows, the slatted sunshade, and the stepped
+    # concrete terraces of the plaza marching away in bands of light
+    # and shade. An invented skyline of towers and palms was making
+    # up a city that the room cannot actually see; concrete is both
+    # true and easier to read, because every band is the same
+    # material at a different angle to the sun.
+    # ONE strong horizon (the shade/sun line where the covered walk
+    # ends), and the steps only in the bottom third. A first pass ran
+    # even bands the full height and read as a striped awning — a
+    # terrace is legible because it is a LIT TREAD over a DARK RISER,
+    # which needs room, so three big steps beat six small ones.
+    band(0.00, 1.00, "#8e8b7c")                       # the covered walk
+    band(0.00, 0.11, "#514f47")                       # deep under-slab
+    band(0.11, 0.17, "#c6c1ac")                       # the sunshade run
+    band(0.17, 0.55, "#8b8879")                       # walk, in shade
+    band(0.55, 0.74, "#ece6ce")                       # plaza, full sun
+    d.line([(q0[0], q0[1] + dy * 0.55), (q1[0], q1[1] + dy * 0.55)],
+           fill=shade(hx("#8b8878"), f), width=2)     # the shade line
+    # the STEPPED LEVELS, marching toward us
+    for frac, lit, dark in ((0.74, "#e4dec6", "#8f8b7c"),
+                            (0.83, "#dcd6be", "#87836f"),
+                            (0.92, "#d3ccb4", "#7e7a68")):
+        band(frac, min(frac + 0.09, 1.0), lit)
+        d.line([(q0[0], q0[1] + dy * frac), (q1[0], q1[1] + dy * frac)],
+               fill=shade(hx(dark), f), width=2)
     span = q1[0] - q0[0]
-    for fr, wd, ht in ((0.16, 9, 0.20), (0.42, 12, 0.26),
-                       (0.74, 8, 0.15)):              # far towers
-        x = round(q0[0] + span * fr)
-        yb = q0[1] + (q1[1] - q0[1]) * fr + dy * 0.56
-        d.rectangle([x - wd // 2, yb - dy * ht, x + wd // 2, yb],
-                    fill=shade(hx("#b3b9bb"), f))
-        d.rectangle([x - wd // 2, yb - dy * ht, x - wd // 2 + 1, yb],
-                    fill=shade(hx("#969c9e"), f))
-    band(0.56, 0.70, "#55694e")                       # tree line
-    band(0.70, 0.77, "#425537")
-    band(0.77, 1.00, "#cac4ae")                       # sunlit plaza
-    # palms: a trunk and a FAN — a disc on a stick is a street lamp
-    for fr, ht in ((0.28, 0.32), (0.62, 0.26)):
-        x = round(q0[0] + span * fr)
-        yb = q0[1] + (q1[1] - q0[1]) * fr + dy * 0.80
-        ty = yb - dy * ht
-        d.line([(x, yb), (x + 1, ty)],
-               fill=shade(hx("#57553f"), f), width=2)
-        for ang in (-2.5, -1.2, -0.4, 0.4, 1.2, 2.5):
-            d.line([(x + 1, ty),
-                    (x + 1 + ang * 4, ty + abs(ang) * 1.6 + 3)],
-                   fill=shade(hx("#3c4f38"), f), width=2)
-    # the OUTER row of the breezeway's piers, in silhouette — offset
-    # from the near row's 0.18/0.5/0.82 so the two rows read as depth,
-    # not as one pier with a shadow
-    for pf in (0.33, 0.67):
+    # the OUTER pier rows, standing in the shaded walk — offset from
+    # the near row's 0.18/0.5/0.82 or the two rows read as one pier
+    # with a shadow. Two ranks, the far one paler and shorter.
+    for pf, wd, lo, hi, c in ((0.33, 5, 0.10, 0.62, "#6a675c"),
+                              (0.67, 5, 0.10, 0.62, "#6a675c"),
+                              (0.21, 3, 0.14, 0.50, "#767366"),
+                              (0.50, 3, 0.14, 0.50, "#767366"),
+                              (0.79, 3, 0.14, 0.50, "#767366")):
         x = round(q0[0] + span * pf)
         yb = q0[1] + (q1[1] - q0[1]) * pf
-        d.polygon([(x - 4, yb + dy * 0.06), (x + 4, yb + dy * 0.06),
-                   (x + 3, yb + dy * 0.92), (x - 3, yb + dy * 0.92)],
-                  fill=shade(hx("#6a675c"), f))
+        d.polygon([(x - wd, yb + dy * lo), (x + wd, yb + dy * lo),
+                   (x + wd - 1, yb + dy * hi), (x - wd + 1, yb + dy * hi)],
+                  fill=shade(hx(c), f))
+        d.line([(x - wd, yb + dy * lo), (x - wd + 1, yb + dy * hi)],
+               fill=shade(hx("#cbc7b4"), f), width=1)
+    # the slatted sunshade fins over the outer walk
+    sl0 = (q0[0], q0[1] + dy * 0.11)
+    sl1 = (q1[0], q1[1] + dy * 0.11)
+    for b in even_run(sl0, sl1, 8):
+        d.line([(b[0], b[1]), (b[0], b[1] + 6)],
+               fill=shade(hx("#9d9a88"), f), width=2)
+    d.line([sl0, sl1], fill=shade(hx("#f2ecd8"), f), width=2)
     d.line([q0, (q0[0], q0[1] + dy)], fill=shade(hx("#2a231c"), f),
            width=2)                                    # dark reveal
     d.line([q1, (q1[0], q1[1] + dy)], fill=shade(hx("#e8e2ce"), f),
@@ -684,32 +715,55 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
 
 
-def paint_chamber_wall(d, corner, senate):
-    """The chamber's flaring lava-brick drum, seen ONLY at courtyard
-    level (user-corrected: the cones are NOT visible from the
-    balconies — the galleries wrap straight around them, so all that
-    shows in the well is the drum's curved wall at the courtyard's
-    end, disappearing under our own floor slab)."""
-    cx, cy = corner
-    sgn = 1 if senate else -1        # the face bulges toward the well
-    top_y = cy + 20                  # just under our slab's fascia
-    bot_y = cy + DROP                # courtyard floor
-    n = 20
-    top_arc, bot_arc = [], []
-    for i in range(n + 1):
-        a = math.pi * (-0.47 + 0.94 * i / n)
-        top_arc.append((cx + sgn * math.cos(a) * DRUM_RT,
-                        top_y + math.sin(a) * DRUM_RT * 0.5))
-        bot_arc.append((cx + sgn * math.cos(a) * DRUM_RB,
-                        bot_y + math.sin(a) * DRUM_RB * 0.5))
-    d.polygon(top_arc + bot_arc[::-1], fill=LAVA)
-    # brick courses following the flare
-    for t in (0.3, 0.55, 0.8):
-        arc = [lerp(pt, pb, t) for pt, pb in zip(top_arc, bot_arc)]
-        d.line(arc, fill=shade(LAVA, 0.84), width=2)
-    # light catches the upper courses, dark meets the ground
-    d.line(top_arc, fill=LAVA_LT, width=3)
-    d.line(bot_arc, fill=LAVA_D, width=2)
+def smokestack(d, base, h, w_bot, w_top, f=1.0):
+    """THE TILE-CLAD TAPERED TOWERS THAT FLANK THE CHAMBER GLASS
+    (2026-08-24, user: "the smokestack should be moved to the glass
+    side. it wraps around the glass area"). Every atrium photograph
+    shows the pair: battered round towers faced in small square
+    tiles, standing at each end of the chamber's curved glass wall
+    like chimney bases — which is exactly what they read as, and why
+    the user calls them smokestacks.
+
+    They replace `paint_chamber_wall`'s flaring lava-brick drums,
+    which sat at BOTH court corners — including the ʻEwa one, where
+    the court is an open breezeway and no chamber wall exists at all.
+    A drum on the open side was inventing a chamber that is not
+    there; the pair belongs on the glass side, wrapping its ends.
+
+    Round, so the tile grid is shaded in three vertical zones (lit
+    left, body, dark right) and the courses BOW — a flat grid on a
+    tapered box reads as a pyramid, not a tower.
+    """
+    bx, by = base
+    tile, lit, dark = hx("#8f8f80"), hx("#a8a696"), hx("#6b6b60")
+    grout = hx("#5c5c52")
+    for row in range(0, h, 4):
+        t = row / h                       # 0 at the foot, 1 at the top
+        w = w_bot + (w_top - w_bot) * t
+        y = by - row
+        bow = round(2 * (1 - t))          # courses sag on a round face
+        d.polygon([(bx - w, y), (bx + w, y),
+                   (bx + w, y - 4), (bx - w, y - 4)], fill=tile)
+        # the three vertical zones of a cylinder
+        d.rectangle([bx - w, y - 4, bx - w * 0.42, y], fill=lit)
+        d.rectangle([bx + w * 0.30, y - 4, bx + w, y], fill=dark)
+        # course line, bowed
+        d.line([(bx - w, y + bow), (bx, y + bow + 1), (bx + w, y + bow)],
+               fill=grout, width=1)
+        # the tiles themselves
+        x = bx - w
+        while x < bx + w:
+            d.line([(x, y - 4), (x, y)], fill=grout, width=1)
+            x += 4
+    # a bright arris down the lit edge, and the cap
+    d.line([(bx - w_bot, by), (bx - w_top, by - h)],
+           fill=hx("#c4c2b2"), width=1)
+    d.line([(bx + w_bot, by), (bx + w_top, by - h)],
+           fill=hx("#4f4f46"), width=1)
+    d.ellipse([bx - w_top, by - h - 3, bx + w_top, by - h + 3],
+              fill=hx("#9d9b8c"))
+    d.arc([bx - w_top, by - h - 3, bx + w_top, by - h + 3], 180, 360,
+          fill=hx("#c4c2b2"), width=1)
 
 
 def paint_mosaic(d, lay, cx, cy):
