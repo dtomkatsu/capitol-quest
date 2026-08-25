@@ -2111,9 +2111,42 @@ user's call).
       says "round". The tile columns sit at fixed PLAN ANGLES so they
       crowd toward the silhouette on their own (evenly spaced tiles
       are the same mistake as evenly spaced mullions on the curved
-      glass), shading ramps by angle rather than in flat zones, the
-      cap is a WHOLE ellipse because you look down on it from a
-      storey up, and the foot flares on a power curve.
+      glass), shading ramps by angle rather than in flat zones, and
+      the foot flares on a power curve onto a ground-shadow half
+      ellipse.
+    - **NO CAP, and the body ends flush under the fascia band**
+      (2026-08-24, after "it looks off and elements are clipping").
+      The tower keeps rising behind our own slab — from the gallery
+      you cannot see its top — so the body stops at 20px below the
+      hole edge (the band owns 0-18 and is drawn before it, in
+      front) with a 2px shadow seam. The first version drew a cap
+      ellipse that poked past the band and out of the well, where
+      the mask shore it off along the diagonal — that shear was the
+      clipping report. Same trap as the stack's POSITION: at t 0.05
+      its left half crossed the ʻEwa edge and was sheared; it sits
+      at t 0.065 with foot radius 16, the largest that stays inside
+      the hole. The left filler-pane strip (0.02-0.10) was deleted
+      with this — it lived exactly where the tower stands and
+      squeezed a pale mullion sliver between tower and doors, and
+      OPEN_BAY runs to 0.985 so the ʻEwa margin cannot leave a dark
+      wedge at the apex corner.
+    - **The doors START UNDER the tower (ta 0.075), and that is what
+      makes it WRAP** (2026-08-24, after "it looks like a standalone
+      column"). The tower's foot spans ~0.01-0.12 and is drawn after
+      the wall, in front — so the door bay's glazing emerges from
+      behind the tapering cylinder instead of starting beside it
+      with a seam. A tower with a visible seam on both sides is a
+      column; a wall that visibly passes behind it is a corner being
+      wrapped.
+    - **The pier between the doors and the curve is an explicit
+      drawn thing, and it LANDS** (same day: "the middle column
+      going through the glass also isn't meeting the ground"). It
+      used to be implied — the doors' right surround against the
+      curve's dense left mullions — and the curve's sill shadow cut
+      across its foot, so it hung in the glass. It is drawn LAST in
+      court_glass, proud of both neighbours: full height, lit head,
+      shaded flank, and a darker plinth block at the bottom that the
+      floor line crosses.
     - **There is only ONE, and no companion at the far end of the
       glass** (user, same day): from this vantage the building hides
       it anyway, and the pass that added one at t 0.65 stood it
