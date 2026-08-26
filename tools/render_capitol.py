@@ -145,6 +145,54 @@ CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # the 0.5 game zoom, which is the only scale
                            # that matters here.
 
+# THE GROUND FLOOR IS A LOGGIA: THE WALL IS SET BACK AND THE COLUMNS
+# STAND IN FRONT OF IT (2026-08-25, from the executive-floor photo —
+# user: "fix the column taper and the loggia setback"). Until now the
+# courtyard walls stood ON the well line, so the ground storey was a
+# flat elevation with piers pasted to it. In the photograph the wall
+# is set back the better part of a bay and the columns are free-
+# standing out in the court, with a deep shaded gap behind them; that
+# gap is most of what says "ground floor" rather than "wall".
+#
+# THE SET-BACK IS FREE, GEOMETRICALLY: paint_well already clips its
+# whole layer to the hole diamond, and the mask is exactly the right
+# occluder. A point (u, v) at height dy below the gallery floor casts
+# to floor coordinates (u + s, v + s) with s = (DROP - dy)/16, so the
+# wall is visible only while |u + s| <= A_IN — i.e. from its foot up
+# to dy = DROP - 16*GND_BACK. At 1.6 that is the bottom 74%, and the
+# gallery slab eats the top quarter, which is precisely what the
+# photograph shows. Deepen GND_BACK and you buy recess by hiding more
+# of the glass wall; that is the trade, and it is the only one.
+GND_BACK = 2.4
+GND_OUT = A_IN + GND_BACK  # the ground storey's wall plane
+# THE COLUMNS RUN THE WHOLE HEIGHT — courtyard floor to the top of the
+# third floor (user, 2026-08-25: "those columns go all the way up to
+# top of third floor"), which is what the photo's vertical strips
+# show: one shaft passing BEHIND every walkway and railing, emerging
+# again between them. They stand on the COURT EDGE (the A_IN line),
+# which is the railing line at every level above — so the same line
+# serves the ground colonnade and the upper balustrades, and the
+# loggia depth falls out as GND_OUT - A_IN.
+COL_DY0, COL_DY1 = -DROP, LVL2_Y + 72     # foot / head, world height
+# Half-width at foot / head. The RATIO is what has to survive the SS
+# downsample — at display scale the shaft is only ~6px at the foot,
+# so a photo-true ~1.5 taper rounds away to a straight post. 1.75 is
+# the exaggeration that still reads as one continuous flare.
+COL_HW0, COL_HW1 = 6.0, 14.0
+COL_FLARE = 1.0            # LINEAR, and measured: a power curve was
+                           # tried first to concentrate the swell at
+                           # the head, and it cannot work here. Only
+                           # two stretches of any shaft are ever seen
+                           # — the loggia (t 0 to .34) and above the
+                           # gallery cap (t .5 to 1) — and an
+                           # exponent that flares one flattens the
+                           # other. Straight batter gives BOTH about
+                           # 1.4, which is what the photo shows per
+                           # storey. The full-height 6->14 ratio is
+                           # not what the eye gets; the per-stretch
+                           # ratio is.
+COL_N = 4                  # stations per mauka run, before nudging
+
 OPEN_BAY = (0.02, 1.0)    # the ʻEwa run's open extent — effectively
                            # the WHOLE run (2026-08-24, breezeway
                            # photo, user: "the slats shouldn't be on
@@ -154,23 +202,72 @@ OPEN_BAY = (0.02, 1.0)    # the ʻEwa run's open extent — effectively
                            # daylight behind, no wall. Only thin
                            # margins remain so the corner posts read.
 
-# THE SMOKESTACK, ITS PIER AND THE DOOR BAY ARE ONE ASSEMBLY.
-# The glass door section's start is DERIVED from the pier's
-# right-facing flank (user, 2026-08-25: "the right-facing wall should
-# be attached to the side of the glass facade (door section)") — the
-# two were set independently before, so the doors began 0.8 plan units
-# behind the pier and ran on underneath it instead of butting against
-# its side. Deriving it means moving the stack can never leave the
-# glass starting somewhere else again.
-STACK_U = -A_IN + 2.15     # cone axis along the Diamond Head run
-STACK_V = -A_IN + 0.10     # how far it stands off that wall
+# THE SMOKESTACK, ITS WALL AND THE DOOR BAY ARE ONE ASSEMBLY, AND THE
+# WALL IS THE COURT'S CORNER (user, 2026-08-25: "do you see that blank
+# wall it's attached to? imagine that wall is part of the CORNER
+# formed with the glass facade"). The blank wall is not a mid-facade
+# buttress with more glazing running on past it — it TERMINATES the
+# glass facade: its ʻEwa flank sits exactly ON the ʻEwa plane
+# (u = -A_IN), so the wall and the glass form the court's mauka
+# corner, the door section attaches to its other flank (DOOR_TA is
+# DERIVED from it), and the old filler-glazing strip between wall and
+# apex is gone because there is no longer any wall for it to live on.
+# The cone is bonded to the ʻEwa flank, which puts its body AROUND
+# the corner in the open breezeway — matching the photograph, where
+# the cones stand in the open lanai at the chamber volume's corner —
+# and only its sliver peeks back into the court past the corner.
+# Everything below is derived from PIER_U0 = -A_IN; reposition the
+# assembly by changing that one anchor.
+#
+# AND THE ASSEMBLY IS SLID IN, TUCKED UNDER THE 2ND FLOOR (user,
+# 2026-08-25, second correction: "it should look like it's under the
+# 2nd floor… imagine that the wall is slid in more (also sliding the
+# attached stack in more)"). ASM_IN slides wall AND cone together in
+# -v (mauka), so the bond between them never moves; the mass that
+# slides behind the facade plane is inside the building and simply
+# not drawn (the wall still draws from v = -A_IN), which is why the
+# slide reads as the wall protruding LESS rather than standing in
+# front of the glass. PIER_DEP is DERIVED now — the front face lands
+# exactly on the cone's widest visible point at any slide — so the
+# bond seam can never show past the front arris again. The "under
+# the 2nd floor" half is in smokestack(): the cone runs tall and the
+# gallery slab's fascia SHEARS it (it continues above, unseen).
+#
+# ASM_IN HAS A HARD CEILING AND IT IS THE CONE, NOT TASTE (measured
+# 2026-08-25 when the user asked to slide it in further). Only the
+# wall's DEPTH answers to the slide — its u position never moves — so
+# "slid in" means PIER_DEP shrinking, and PIER_DEP hits 0 at
+# ASM_IN = 0.10 + sin(acos(CUT))*R = 1.3557. Past that the front face
+# would sit MAUKA of the facade plane, i.e. the corner mass would
+# stand behind its own glass and the bond seam would show. The
+# assertion below is the guard; the practical ceiling is lower still,
+# because the RIGHT FLANK is the only face the depth is spent on and
+# it is 16*dep scene px = 8*dep DISPLAY px after the SS downsample:
+# 1.20 leaves 1.2 display px (the last value with any depth at all),
+# 1.30 leaves 0.4 and LANCZOS erases it, so the corner reads as a
+# flat pale band rather than a projecting mass. Shipped at 1.20.
+# NB the anchor is the GROUND STOREY's plane (GND_OUT), not the well
+# line: when the wall went back for the loggia the whole assembly went
+# with it, because it IS that wall's corner. Everything below is
+# expressed against GND_OUT for that reason — the slide (ASM_IN) is
+# still measured from the facade, so the 2026-08-25 tuning survives
+# the set-back unchanged.
+PIER_U0 = -GND_OUT         # the wall's ʻEwa flank IS the ʻEwa plane
+PIER_W = 0.55              # the wall's width along the run
+ASM_IN = 1.20              # how far the whole assembly is slid mauka
 STACK_R = 1.45             # base radius, PLAN units (see smokestack)
-STACK_CUT = 0.5            # where the pier's face slices the cone
-PIER_W = 0.55              # the pier's width along the run
-PIER_DEP = 1.35            # how far it projects into the court
-PIER_U0 = STACK_U + STACK_CUT * STACK_R   # bonded face — never seen
+STACK_CUT = 0.5            # where the wall's flank slices the cone
+STACK_U = PIER_U0 - STACK_CUT * STACK_R   # axis, west of the plane
+STACK_V = -GND_OUT + 0.10 - ASM_IN        # axis, slid with the wall
+# projection into the court: exactly to the cone's widest visible
+# point (v = STACK_V + sin(acos(CUT)) * R) — derived, never a number
+PIER_DEP = (STACK_V + math.sin(math.acos(STACK_CUT)) * STACK_R) + GND_OUT
+assert PIER_DEP > 0, (
+    "ASM_IN %.3f slides the corner wall behind its own facade plane "
+    "(PIER_DEP %.3f): the bond seam would show. Ceiling is %.4f."
+    % (ASM_IN, PIER_DEP, 0.10 + math.sin(math.acos(STACK_CUT)) * STACK_R))
 PIER_U1 = PIER_U0 + PIER_W                # right-facing flank
-DOOR_TA = (PIER_U1 + A_IN) / (2 * A_IN)   # the glass starts HERE
+DOOR_TA = (PIER_U1 + GND_OUT) / (2 * GND_OUT)   # the glass starts HERE
 DOOR_TB = 0.36
 
 rng = np.random.default_rng(7)
@@ -198,8 +295,23 @@ CONC_D = hx("#38352f")
 # photos (gallery-corner shot: warm terracotta, light grout, a sheen)
 FLOOR = hx("#563d2b")
 FLOOR_SH = hx("#3f2c1f")
-COURT = hx("#b3ac97")      # courtyard below
-COURT_SUN = hx("#e4dbbc")
+# THE COURTYARD FLOOR IS STONE PAVING, AND IT IS DARKER THAN IT LOOKS
+# (re-based 2026-08-25 from the executive-floor photo). It was
+# #b3ac97 — lum 167 against the fluted band's 226, a ratio of 1.35,
+# which made the court one of the BRIGHTEST surfaces in the room and
+# left the pale columns with nothing to stand against. Measured off
+# the photograph the white band runs 1.79x the open floor (165 vs 92),
+# so the floor belongs at 226/1.79 = 126. It is also far more NEUTRAL
+# than the old value: the photo's paving is R-B 10, a warm grey, where
+# #b3ac97 was R-B 28 and read as sand. NB the column/floor ratio was
+# already right at 1.13 and is unchanged by this — the error was
+# entirely in the floor's relation to the white bands.
+COURT = hx("#8a8378")      # courtyard below — lum 130, R-B 18
+# The sun patch comes down with it. Left at #e4dbbc it stood 1.64x the
+# new floor and read as a spotlight; the oculus throws daylight, not a
+# follow-spot.
+COURT_SUN = hx("#bcb4a0")
+SLAB = 1.9                 # paving module, plan units
 FASCIA = hx("#e6dfca")     # white floor-edge bands
 POST = hx("#dbd4bf")
 RAIL = hx("#d5cdb6")
@@ -342,6 +454,116 @@ def paint_sun(img):
 
 
 # ------------------------------------------------------ the well
+def court_paving(img):
+    """The courtyard's stone paving: LARGE slabs, each its own tone,
+    under a broad low-frequency drift.
+
+    The floor used to be one flat fill with a faint 2-unit grid on
+    top, which is why it read as poured concrete. In the photograph
+    it is big square pavers with real blotchiness — no two slabs the
+    same value, plus staining that wanders across several at once —
+    and that mottle is most of what says "stone" at this size.
+
+    TWO tone terms, and they do different jobs. The per-slab jitter
+    alone gives television static; the smooth drift alone gives a
+    gradient with slab joints drawn over it. Together the staining
+    reads as following the paving, which is what the photo shows.
+    Amplitude is set by MEASUREMENT, not taste: the photo's open
+    paving runs sd/lum 10-21%, and the first pass at +-4% jitter
+    came out flat.
+
+    THE SUN PATCH IS COMPOSITED THROUGH A MASK, NOT PAINTED OVER.
+    It used to be two big flat quads drawn on top of the floor, which
+    covered most of the court and wiped out every bit of this mottle
+    — the paving texture was there all along and simply invisible.
+    Painting the whole floor once per sun level and pasting through
+    the quad's own mask keeps the CRISP oculus edge (a soft pool was
+    tried years-ago-equivalent and rejected: the oculus is square)
+    while the stone keeps its blotches inside the light.
+
+    It carries its OWN generator rather than the shared `rng`, and
+    reseeds it per pass so the mottle registers across the sun edge.
+    Every draw here would otherwise shift the sequence for
+    paint_walls' form mottle downstream — the same coupling the upper
+    level's docstring avoids by taking no mottle at all — so adding a
+    slab would silently reshuffle the wall texture two storeys up.
+    """
+    a = GND_OUT
+
+    def slabs(d, base):
+        rf = np.random.default_rng(11)
+        d.polygon(diamond(a, -DROP), fill=base)
+        k = int(math.ceil(2 * a / SLAB))
+        for i in range(k):
+            for j in range(k):
+                u0, v0 = -a + i * SLAB, -a + j * SLAB
+                u1, v1 = min(a, u0 + SLAB), min(a, v0 + SLAB)
+                if u1 <= u0 or v1 <= v0:
+                    continue
+                uc, vc = (u0 + u1) / 2, (v0 + v1) / 2
+                drift = (0.075 * math.sin(0.55 * uc + 1.3)
+                         * math.cos(0.42 * vc - 0.7)
+                         + 0.045 * math.sin(0.21 * (uc + vc) + 2.1))
+                d.polygon([iso(u0, v0, -DROP), iso(u1, v0, -DROP),
+                           iso(u1, v1, -DROP), iso(u0, v1, -DROP)],
+                          fill=shade(base, 1.0 + drift
+                                     + rf.uniform(-0.085, 0.085)))
+        # the joints, drawn last and KEPT FAINT: in the photo they are
+        # hairlines you read the grid from, not a drawn lattice
+        m = int(a / SLAB)
+        for q in range(-m, m + 1):
+            c = q * SLAB
+            d.line([iso(c, -a, -DROP), iso(c, a, -DROP)],
+                   fill=shade(base, 0.88), width=1)
+            d.line([iso(-a, c, -DROP), iso(a, c, -DROP)],
+                   fill=shade(base, 0.88), width=1)
+
+    regions = []
+    # light through the SQUARE oculus lands as an offset quadrilateral,
+    # not a soft ellipse — crisp edge, then a softer halo where bounce
+    # fills in.
+    for a_, ox, oy, t in ((A_IN - 1.0, -46, 14, 0.62),
+                          (A_IN - 2.4, -62, 18, 1.0)):
+        regions.append(([(px_ + ox, py_ + oy)
+                         for px_, py_ in diamond(a_, -DROP)],
+                        mix(COURT, COURT_SUN, t)))
+    # DAYLIGHT SPILLING IN THROUGH THE OPEN BAY. The bay only reads as
+    # a hole through the building if the sun it lets in lands on
+    # something: a wedge on the court floor, aimed along the wall's own
+    # inward normal (+u at the ʻEwa wall), does more than anything
+    # drawn inside the opening itself. It starts at the SET-BACK wall,
+    # because that is where the breezeway now is.
+    for k, tone in ((5.0, 0.55), (3.2, 0.75), (1.6, 1.0)):
+        v0 = a - 2 * a * (OPEN_BAY[0] - 0.02)
+        v1 = a - 2 * a * (OPEN_BAY[1] + 0.02)
+        regions.append(([iso(-a, v0, -DROP), iso(-a, v1, -DROP),
+                         iso(-a + k, v1, -DROP), iso(-a + k, v0, -DROP)],
+                        mix(COURT, COURT_SUN, 0.32 * tone)))
+    # the breezeway band, mauka-makai
+    regions.append(([iso(-1.1, -a, -DROP), iso(1.1, -a, -DROP),
+                     iso(1.1, a, -DROP), iso(-1.1, a, -DROP)],
+                    mix(FASCIA, COURT, 0.45)))
+    # THE LOGGIA FLOOR IS IN SHADE, and this band is what makes the
+    # set-back read at all. The strip behind the columns came out the
+    # same bright stone as the open court, so it read as a wall further
+    # away and not as a recess. The gallery slab covers it, so it is
+    # the one part of the floor that never sees the oculus — hence
+    # LAST, after every light region.
+    hd, gd = diamond(A_IN, -DROP), diamond(GND_OUT, -DROP)
+    for i, j in ((3, 0), (0, 1)):
+        regions.append(([hd[i], hd[j], gd[j], gd[i]], shade(COURT, 0.72)))
+
+    lay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    slabs(ImageDraw.Draw(lay), COURT)
+    for poly, base in regions:
+        tint = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        slabs(ImageDraw.Draw(tint), base)
+        mask = Image.new("L", img.size, 0)
+        ImageDraw.Draw(mask).polygon(poly, fill=255)
+        lay.paste(tint, (0, 0), mask)
+    img.alpha_composite(lay)
+
+
 def paint_well(img):
     """Everything seen THROUGH the hole: the sunlit chamber-level
     courtyard one storey down, the far inner walls (fluted slab
@@ -350,31 +572,19 @@ def paint_well(img):
     lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(lay)
     hole = diamond(A_IN)                     # N', E', S', W'
+    gnd = diamond(GND_OUT)                   # the set-back wall plane
 
-    # courtyard floor, deep below
-    court = diamond(A_IN, -DROP)
-    d.polygon(court, fill=COURT)
-    for k in range(2, 2 * A_IN, 2):
-        a = -A_IN + k
-        d.line([iso(a, -A_IN, -DROP), iso(a, A_IN, -DROP)],
-               fill=shade(COURT, 0.90), width=1)
-        d.line([iso(-A_IN, a, -DROP), iso(A_IN, a, -DROP)],
-               fill=shade(COURT, 0.90), width=1)
+    # the courtyard floor and every tint that lands on it — see
+    # court_paving, which composites them all through masks so the
+    # paving keeps its mottle under the light
+    court_paving(lay)
     d.line(diamond(A_IN - 0.7, -DROP) + [diamond(A_IN - 0.7, -DROP)[0]],
            fill=shade(COURT, 0.88), width=2)
-    # the sun patch: light through the SQUARE oculus lands as an
-    # offset quadrilateral, not a soft ellipse — crisp edge, then a
-    # softer halo where bounce fills in
-    def sun_quad(a, ox, oy, t):
-        pts = [(px_ + ox, py_ + oy)
-               for px_, py_ in diamond(a, -DROP)]
-        d.polygon(pts, fill=mix(COURT, COURT_SUN, t))
-    sun_quad(A_IN - 1.0, -46, 14, 0.62)
-    sun_quad(A_IN - 2.4, -62, 18, 1.0)
 
-    # the galleries' overhang shades the courtyard along the far
-    # walls — the lit centre reads against this
-    for e0s, e1s in ((hole[3], hole[0]), (hole[0], hole[1])):
+    # the galleries' overhang shades the courtyard along the far walls
+    # — the lit centre reads against this. These stay flat fills: they
+    # are narrow shadow bands hugging the wall foot, not floor.
+    for e0s, e1s in ((gnd[3], gnd[0]), (gnd[0], gnd[1])):
         d.polygon([(e0s[0], e0s[1] + DROP), (e1s[0], e1s[1] + DROP),
                    (e1s[0], e1s[1] + DROP + 16),
                    (e0s[0], e0s[1] + DROP + 16)],
@@ -384,30 +594,6 @@ def paint_well(img):
                    (e0s[0], e0s[1] + DROP + 7)],
                   fill=shade(COURT, 0.76))
 
-    # DAYLIGHT SPILLING IN THROUGH THE OPEN BAY. The bay only reads
-    # as a hole through the building if the sun it lets in lands on
-    # something: a bright wedge on the court floor, aimed along the
-    # wall's own inward normal (+u at the ʻEwa wall), is the cheap
-    # half of the effect and does more than anything drawn inside the
-    # opening itself.
-    for k, tone in ((5.0, 0.55), (3.2, 0.75), (1.6, 1.0)):
-        pts = []
-        for t in (OPEN_BAY[0] - 0.02, OPEN_BAY[1] + 0.02):
-            u = -A_IN + (0.02 if t else 0)
-            v = A_IN - 2 * A_IN * t
-            pts.append(iso(-A_IN, v, -DROP))
-        far = [iso(-A_IN + k, A_IN - 2 * A_IN * (OPEN_BAY[0] - 0.02),
-                   -DROP),
-               iso(-A_IN + k, A_IN - 2 * A_IN * (OPEN_BAY[1] + 0.02),
-                   -DROP)]
-        d.polygon([pts[0], pts[1], far[1], far[0]],
-                  fill=mix(COURT, COURT_SUN, 0.32 * tone))
-
-    # breezeway band, mauka-makai
-    d.polygon([iso(-1.1, -A_IN, -DROP), iso(1.1, -A_IN, -DROP),
-               iso(1.1, A_IN, -DROP), iso(-1.1, A_IN, -DROP)],
-              fill=mix(FASCIA, COURT, 0.45))
-
     # far inner walls: ONE storey down to the chamber level — the
     # player stands on a low gallery, so below our slab's fluted
     # fascia there is only the ground colonnade. Piers rise through.
@@ -416,13 +602,22 @@ def paint_well(img):
     # CURTAIN WALL, and the ʻEwa side is dark arcade with one bay OPEN
     # TO THE OUTSIDE. Before this both were the same koa-slat screen,
     # which is why the court read as a sealed box.
-    for e0, e1, f, glazed in ((hole[3], hole[0], 1.0, False),
-                              (hole[0], hole[1], 0.86, True)):
+    # THE WALL IS SET BACK, THE FASCIA IS NOT. The fluted band is our
+    # own slab's EDGE and stays on the well line; only the wall behind
+    # it retreats to GND_OUT, and the shaded gap between the two is
+    # the loggia. Drawing both off one edge is what made the ground
+    # storey a flat elevation for so long.
+    for (h0, h1), (e0, e1), f, glazed in (
+            ((hole[3], hole[0]), (gnd[3], gnd[0]), 1.0, False),
+            ((hole[0], hole[1]), (gnd[0], gnd[1]), 0.86, True)):
         def q(y0, y1, col):
             d.polygon([up(e0, -y0), up(e1, -y0), up(e1, -y1),
                        up(e0, -y1)], fill=col)
-        fluted_band(d, e0, e1, 0, 18, f)              # our slab's fins
-        q(18, DROP, shade(RECESS_D, f))               # ground level
+        fluted_band(d, h0, h1, 0, 18, f)              # our slab's fins
+        # the loggia's own shade, thrown from the slab down the
+        # set-back wall: the recess has to be DARKER than the court
+        # floor or the columns have nothing to stand against
+        q(-6, DROP, shade(RECESS_D, f * 0.82))        # ground level
         if glazed:
             court_glass(d, e0, e1, f, 21, DROP - 2)
         else:
@@ -438,48 +633,34 @@ def paint_well(img):
         # screen, gone with it)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
-        # LARGE pale square piers, as in the courtyard panorama — on
-        # the OPEN ʻEwa run only (2026-08-24, "columns … clipping into
-        # other elements"): on the glazed run the fixed 0.18/0.5/0.82
-        # grid stood piers straight through the glass doors and the
-        # middle of the curved section. The curtain wall carries its
-        # own structure (the drawn pier at 0.352 and the mullions);
-        # the breezeway keeps the pier rows that make its depth.
-        if not glazed:
-            for t in (0.18, 0.5, 0.82):
-                b = lerp(e0, e1, t)
-                d.rectangle([b[0] - 6, b[1] + 18, b[0] + 6,
-                             b[1] + DROP - 2],
-                            fill=shade(hx("#c2bba8"), f))
-                d.rectangle([b[0] + 3, b[1] + 18, b[0] + 6,
-                             b[1] + DROP - 2],
-                            fill=shade(hx("#9a9384"), f))
-    # THE SMOKESTACK stands OUT ON THE PAVING, not against the wall
-    # (user's photograph, 2026-08-25): in the court, in front of the
-    # colonnade, beside the chamber's glass entrance. `fwd` is how far
-    # it steps off the Diamond Head wall into the room — that step is
-    # what makes it free-standing, and it is also what keeps its foot
-    # clear of the well mask's diagonal without hugging the apex.
-    # Height stops it 26px under the hole edge, so its MOUTH clears
-    # the fascia band (which owns 0-18) with daylight over it: the
-    # open top is the whole round read, and it must never be sheared.
-    # THE HALF-CONE AND THE PANEL IT IS BONDED TO. The panel has to
-    # be a PROJECTING mass, not a line on a flat wall (2026-08-25,
-    # user: "it looks like it's not even part of the wall"): the
-    # cone's flat cut face has its normal along +u, and +u faces THIS
-    # camera (dot 0.707 with the view direction), so on a flat wall
-    # that face is visible and the crescent reads as a loose scrap
-    # standing in open floor. Something solid must occupy the space it
-    # is bonded to. So a pier projects from the curtain wall into the
-    # court, deeper than the cone's radius, and is drawn AFTER the
-    # cone — it hides the cut face, the cladding dies into its flank,
-    # and the whole assembly reads as one piece of wall.
-    smokestack(d, STACK_U, STACK_V, DROP - 24, STACK_R, 0.55,
+        # the flat pale piers that used to be pasted on this wall are
+        # GONE — they were a ground-storey-only device standing on the
+        # wall plane. The real columns are free-standing, full height
+        # and live in court_column(); paint_columns() draws them.
+    # THE SMOKESTACK-AND-CORNER ASSEMBLY (the STACK_*/PIER_* constants
+    # carry the full story): the blank corner wall terminates the
+    # glass facade with its ʻEwa flank ON the ʻEwa plane, the cone is
+    # bonded to that flank with its body around the corner in the open
+    # breezeway, and only its sliver peeks back past the corner into
+    # the court. Cone first — over the bay backdrop the loop above
+    # already painted — then the wall over its bond seam. The cone
+    # runs TALL and the slab fascia SHEARS it (2026-08-25, user: "it
+    # should look like it's under the 2nd floor") — the mouth is never
+    # seen because the stack continues above the slab, off-stage;
+    # smokestack() clamps every point to the fascia's bottom line.
+    smokestack(d, STACK_U, STACK_V, DROP - 14, STACK_R, 0.55,
                STACK_CUT, 0.92)
-    # the pier's bonded face IS the cut plane, and it must project
-    # past the cone's widest point there (v0 + sin(acos(cut))*R) or
-    # the flat cut shows and the sliver comes loose again
     court_panel(d, PIER_U0, PIER_U1, PIER_DEP, 0.9)
+
+    # THE COLUMNS, lower half — foot to the gallery floor. Drawn here
+    # rather than with the upper half ON PURPOSE: this layer is
+    # clipped to the hole, which is exactly the occlusion a column
+    # standing at the court edge needs. Its shadow rises as the shaft
+    # does (s = (DROP - dy)/16), so each shaft fades out behind the
+    # slab right where it reaches the gallery, and a station too far
+    # makai is hidden altogether — both for free, no per-column test.
+    for b, cf in column_stations():
+        court_column(d, b, COL_DY0, 0, cf)
 
     # the mosaic, in the sun
     paint_mosaic(d, lay, CX, CY + DROP - 12)
@@ -595,31 +776,11 @@ def court_glass(d, e0, e1, f, top, bot):
         b = lerp(e0, e1, t)
         return (b[0], b[1] + top + dy * yfrac)
 
-    # ---- the flat filler panes at the FAR end only. The strip that
-    # used to sit at 0.02-0.10 lived exactly where the smokestack
-    # stands and produced a pale mullion sliver squeezed between the
-    # tower and the first door panel — the stack owns that zone now.
-    for ta, tb in ((0.01, 0.108), (0.62, 0.98)):
-        p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
-        d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
-                  fill=shade(hx("#232b2c"), f))
-        d.polygon([p0, p1, (p1[0], p1[1] + dy * 0.30),
-                   (p0[0], p0[1] + dy * 0.30)],
-                  fill=shade(hx("#39443f"), f))       # sky in the panes
-        for b in even_run(p0, p1, 10):                # keep it GLAZING —
-            d.line([(b[0], b[1] + 1), (b[0], b[1] + dy - 1)],
-                   fill=shade(hx("#8f9086"), f), width=1)
-        d.line([p0, p1], fill=shade(hx("#c9c2ac"), f), width=2)
-        d.line([p0, (p0[0], p0[1] + dy)],
-               fill=shade(hx("#a8a08c"), f), width=1)
-
-    # ---- the GLASS DOORS. The bay begins exactly at the PIER'S
-    # RIGHT-FACING FLANK (`DOOR_TA`, derived — see the constants at the
-    # top): the door section is attached to the side of the pier the
-    # smokestack is bonded into, so the three read as one assembly.
-    # The strip between the corner and the pier is filler glazing (the
-    # 0.01-0.108 pane above), not bare wall, or the corner reads as a
-    # dark wedge.
+    # ---- the GLASS DOORS. The bay begins exactly at the CORNER
+    # WALL'S RIGHT-FACING FLANK (`DOOR_TA`, derived — see the
+    # constants at the top): the wall terminates the facade at the
+    # corner, the door section attaches to its side, and the cone is
+    # bonded to its other flank — the three read as one assembly.
     ta, tb = DOOR_TA, DOOR_TB
     p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
     d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
@@ -648,23 +809,47 @@ def court_glass(d, e0, e1, f, top, bot):
     d.line([(q0[0], q0[1] - 2), (q1[0], q1[1] - 2)],
            fill=shade(hx("#e2dbc6"), f), width=2)      # lit head
 
-    # ---- the CURVED section. It stops at 0.62, not at the corner:
-    # on this run the wall's FLOOR LINE is only inside the well up to
-    # t = 0.66 (solve t + |144t-46|/144 <= 1 against the hole
-    # diamond), and past that our own slab eats the bottom of the
-    # glass. Everything beyond is flat filler panes, whose upper half
-    # is all that shows anyway.
-    ta, tb = 0.34, 0.62
-    n = 22
-    bow_s, bow_h = 9, 3        # sill and head bow, px, at mid-arc
+    # ---- the CURVED section: THE WHOLE REST OF THE RUN, one sheet of
+    # glazing (reworked 2026-08-25 from the executive-floor photo).
+    # It used to stop at 0.62 with flat filler panes beyond, on a
+    # sparser mullion pitch, so the wall read as "mullions over the
+    # left third and then a dark slab". The photograph is one
+    # continuous curtain of bars from the door pier to the corner.
+    # Where the sill goes past the well limit (t ~ 0.66 — solve
+    # t + |144t-46|/144 <= 1 against the hole diamond) our own slab
+    # eats it, so the bow out there costs nothing and is never seen.
+    #
+    # THE SPACING IS ASYMMETRIC, and that is the correction. The old
+    # map was `0.5 - 0.5*cos(pi*u)`: dense at BOTH ends, open in the
+    # middle — a half-cylinder seen face-on. This drum is seen
+    # OBLIQUELY. The bars compress monotonically toward the far
+    # (mauka) end and open toward the near one, because spacing goes
+    # as cos(theta) about the point where the drum faces the camera,
+    # and that point sits at the near end of the visible arc. Sill
+    # bow follows the SAME cos(theta), so the two cues finally agree
+    # — before, a symmetric bow was arguing with the mullions.
+    #
+    # NO TRANSOM RAILS. Two horizontal arcs used to cross the glass
+    # at 0.42/0.72; the photograph has none — the mullions run head
+    # to sill unbroken, and the horizontals were what made this read
+    # as a shopfront rather than a chamber drum.
+    ta, tb = DOOR_TB, 0.98
+    n = 20
+    TH_A = math.radians(-64)   # the arc's far edge, turning away. Any
+                               # steeper and the compressed end falls
+                               # under the sampling pitch and mushes:
+                               # cos(64) = .44, so the tightest gap is
+                               # ~44% of the mean — see the printout
+                               # in the docstring test below.
+    sa = math.sin(TH_A)
+    bow_s, bow_h = 9, 3        # sill and head bow, px, where it faces us
     tops, sills = [], []
     for i in range(n + 1):
-        u = i / n
-        # angle-mapped param: cos spacing = cylinder foreshortening
-        t = ta + (tb - ta) * (0.5 - 0.5 * math.cos(math.pi * u))
-        bow = math.sin(math.pi * u)
-        tops.append(face_pt(t, 0)[0:2])
-        tops[-1] = (tops[-1][0], tops[-1][1] + round(bow_h * bow))
+        th = TH_A * (1 - i / n)                  # TH_A .. 0
+        t = ta + (tb - ta) * (math.sin(th) - sa) / (0 - sa)
+        bow = (math.cos(th) - math.cos(TH_A)) / (1 - math.cos(TH_A))
+        p = face_pt(t, 0)
+        tops.append((p[0], p[1] + round(bow_h * bow)))
         b = face_pt(t, 1.0)
         sills.append((b[0], b[1] + round(bow_s * bow)))
     d.polygon(tops + sills[::-1], fill=shade(hx("#171d1f"), f))
@@ -674,12 +859,14 @@ def court_glass(d, e0, e1, f, top, bot):
     d.polygon(tops + [lerp(pt, pb, 0.15) for pt, pb
                       in zip(tops, sills)][::-1],
               fill=shade(hx("#414d4b"), f))
+    # 2px, not 1 — the picket rule again (PICKET_W): at SS 2 a 1px
+    # bar is half a display pixel and LANCZOS renders the whole run
+    # as a bluish haze instead of glazing. 20 bays at 2px gives the
+    # bar-and-gap rhythm that survives the downsample; denser was
+    # tried (30, 24) and both mushed at the compressed end.
     for i in range(n + 1):                             # angle mullions
-        d.line([tops[i], sills[i]], fill=shade(hx("#9aa093"), f),
-               width=1)
-    for tfr in (0.42, 0.72):                           # transom rails
-        arc = [lerp(pt, pb, tfr) for pt, pb in zip(tops, sills)]
-        d.line(arc, fill=shade(hx("#6f766e"), f), width=1)
+        d.line([tops[i], sills[i]], fill=shade(hx("#a7ad9f"), f),
+               width=2)
     d.line(tops, fill=shade(hx("#d9d2bc"), f), width=2)   # beam over
     d.line([(x, y + 2) for x, y in tops],
            fill=shade(hx("#8f8874"), f), width=1)
@@ -788,19 +975,149 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
 
 
+def column_stations():
+    """Plan positions of the full-height columns, as screen points at
+    GALLERY FLOOR level, with each run's shading factor. ONE list,
+    shared by both halves of every shaft and by both call sites, so
+    the piece below the gallery and the piece above cannot drift onto
+    different centres.
+
+    A shaft runs the whole height, so it has to clear the doorways on
+    BOTH upper storeys, not just one — and those two schedules sit on
+    different diamonds from each other and from the column line, so
+    the clearance test is in SCREEN X (see run_x). Two rules earned
+    the hard way when this was first wired:
+
+    - **Only the NAMED doors are protected.** Clearing every doorway
+      is impossible and asking for it returned zero columns: the runs
+      carry 13 and 16 features, spaced 20-50px apart on the column
+      line, against a shaft that needs ~30px of room either side.
+      Passing in front of an anonymous office door is not the 08-24
+      "clipping" complaint — that was bronze columns drawn ON the
+      wall plane, where a collision left a sliver poking out of a
+      frame. These stand a full bay in front of the wall and occlude
+      it honestly, exactly as they do in the photograph. The named
+      doors are protected because they are HOTSPOTS: covering one
+      costs the player a door they need to click.
+    - **The gap to test is the range of valid CENTRES, not the space
+      between doors.** Requiring a clear span as wide as the shaft
+      itself threw away every position on the Diamond Head run,
+      where two named doors 61px apart still leave a perfectly good
+      centre between them.
+
+    Stations start on a regular pitch — a colonnade is structural and
+    wants to look it — and a blocked one is NUDGED to the nearest
+    clear x rather than dropped, so the rhythm survives contact with
+    the door schedule instead of losing a whole bay to it.
+    """
+    hole = diamond(A_IN)
+    out = []
+    for (e0, e1), f, r in (((hole[3], hole[0]), 1.0, 0),
+                           ((hole[0], hole[1]), 0.86, 1)):
+        span = 32.0 * A_IN
+        blocked = [(run_x(r, a, ft), FEAT_HW[k])
+                   for feats, a in ((GALLERY_FEATS[r], A_OUT),
+                                    (UPPER_FEATS[r], LVL2_OUT))
+                   for nm, ft, k in feats if nm]
+
+        def clears(t):
+            x = run_x(r, A_IN, t)
+            # HALF the frame, not all of it: the shaft may graze an
+            # architrave but must leave the leaf and its centre — the
+            # clickable part — clear. Demanding the whole frame put
+            # every column on the Diamond Head run into its left half
+            # and left the House door's end of the wall bare.
+            return all(abs(x - bx) >= COL_HW1 + hw * 0.5 + 4
+                       for bx, hw in blocked)
+
+        for i in range(COL_N):
+            t0 = (i + 0.5) / COL_N
+            t = next((t0 + s * j / span for j in range(0, 44, 2)
+                      for s in (1, -1)
+                      if 0.03 < t0 + s * j / span < 0.97
+                      and clears(t0 + s * j / span)), None)
+            if t is not None:
+                out.append((lerp(e0, e1, t), f))
+    return out
+
+
+def col_hw(dy):
+    """Half-width of a courtyard column at world height dy. ONE
+    function, because the shaft is drawn in two pieces — the part
+    below the gallery floor goes into paint_well's clipped layer, the
+    part above is painted after the walls — and if the two halves
+    computed their own taper they would step at the join."""
+    t = (dy - COL_DY0) / (COL_DY1 - COL_DY0)
+    t = min(1.0, max(0.0, t))
+    return COL_HW0 + (COL_HW1 - COL_HW0) * t ** COL_FLARE
+
+
+def court_column(d, b, dy_lo, dy_hi, f=1.0):
+    """One of the courtyard's FULL-HEIGHT columns, drawn between two
+    world heights (the caller splits the shaft at the gallery floor).
+
+    THE TAPER IS THE POINT (2026-08-25, from the executive-floor
+    photo). These read as plain posts until they FLARE: the Capitol's
+    columns are broad at the head and draw down to a narrow foot, and
+    that one profile is the building's whole architectural idea. They
+    were constant-width rectangles here, which is why the ground
+    storey looked like scaffolding holding up a wall.
+
+    `b` is the screen point of the column's plan position AT GALLERY
+    FLOOR LEVEL, so screen y is just b[1] - dy: a vertical column has
+    a fixed screen x, and only the width answers to height.
+    """
+    steps = 14
+    lo, hi = min(dy_lo, dy_hi), max(dy_lo, dy_hi)
+    left, right, inner, lit = [], [], [], []
+    for i in range(steps + 1):
+        dy = lo + (hi - lo) * i / steps
+        hw, y = col_hw(dy), round(b[1] - dy)
+        left.append((round(b[0] - hw), y))
+        right.append((round(b[0] + hw), y))
+        inner.append((round(b[0] + hw * 0.10), y))
+        lit.append((round(b[0] - hw * 0.52), y))
+    # THREE tones, not two: these shafts are faceted and nearly a
+    # storey wide at the head, so a single flat face with one dark
+    # edge read as a pale ribbon taped over the wall. Bright return,
+    # mid front, shaded flank — the court's light comes over the
+    # makai shoulder, so +x is the turned-away side, the same
+    # convention the piers and the cone already use.
+    d.polygon(left + right[::-1], fill=shade(hx("#c9c1ab"), f))
+    d.polygon(left + lit[::-1], fill=shade(hx("#ddd6c0"), f))
+    d.polygon(inner + right[::-1], fill=shade(hx("#948c7b"), f))
+    # BOTH edges get a real keyline. The ʻEwa run's backdrop is the
+    # open breezeway — bright plaza bands — so a pale shaft against it
+    # has no silhouette at all without one; same lesson the cone's
+    # 2px keyline records against the glazing.
+    d.line(left, fill=shade(hx("#e2dbc6"), f), width=1)      # lit arris
+    d.line(right, fill=shade(hx("#6d6657"), f), width=2)     # dark edge
+    # ONE pour joint per storey — the photo's shafts are cast in
+    # lifts and the horizontal break is what keeps a tall shaft from
+    # reading as an extruded sliver. Nothing finer: at display scale
+    # a second line per storey is noise.
+    for dy in (0, LVL2_Y):
+        if lo < dy < hi:
+            hw, y = col_hw(dy), round(b[1] - dy)
+            d.line([(round(b[0] - hw) + 1, y), (round(b[0] + hw) - 1, y)],
+                   fill=shade(hx("#b3ab95"), f), width=1)
+
+
 def court_panel(d, u_a, u_b, dep, f=1.0):
     """The PROJECTING PIER at the edge of the chamber's glass bay —
-    the "panel" the half-cone is bonded to. It has to stand proud of
-    the curtain wall by more than the cone's radius, or there is
-    nothing to hide the cone's flat cut face and the sliver reads as
-    detached (2026-08-25). Drawn AFTER the cone, so the cladding dies
-    into its hidden ʻEwa-side flank.
+    the "panel" the half-cone is bonded to. It must stand proud of
+    the curtain wall exactly far enough to hide the cone's flat cut
+    face (PIER_DEP is derived from the cone for that reason); since
+    the 2026-08-25 slide (ASM_IN) that projection is shallow — the
+    wall reads as tucked under the gallery slab, not standing out in
+    the well. Drawn AFTER the cone, so the cladding dies into its
+    hidden ʻEwa-side flank.
 
     Its +u flank and its front face both turn toward this camera; the
     -u flank (the bonded one) does not, which is exactly why the cut
     never shows.
     """
-    vw, vf = -A_IN, -A_IN + dep
+    vw, vf = -GND_OUT, -GND_OUT + dep
     fl, tp = -(DROP - 2), -18
     d.polygon([iso(u_a, vf, fl), iso(u_b, vf, fl),
                iso(u_b, vf, tp), iso(u_a, vf, tp)],
@@ -844,11 +1161,20 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
 
     So this draws a narrow tapering crescent, not a tower: the cut
     edge on the right where the cladding dies into the panel, the
-    silhouette on the left, sagging course arcs between them, and a
-    scrap of the mouth's rim at the top. Everything else about the
-    cone — the batter (power 1.35), the coarse ~8px courses that
-    carry the wrap, no per-tile detail (it is under the sampling
-    pitch) — is unchanged and still binding.
+    silhouette on the left, sagging course arcs between them.
+    Everything else about the cone — the batter (power 1.35), the
+    coarse ~8px courses that carry the wrap, no per-tile detail (it
+    is under the sampling pitch) — is unchanged and still binding.
+
+    THE TOP IS SHEARED BY THE GALLERY SLAB, NOT CAPPED (2026-08-25,
+    user: "it should look like it's under the 2nd floor"): every
+    drawn point is clamped to the fascia band's BOTTOM line
+    (y = apex + 18 + |x - CX| / 2), so the courses die under the
+    slab and the stack reads as continuing above it, off-stage. The
+    mouth rim is gone with it — a mouth you can see means the stack
+    ended in the well, which is exactly the old floating read this
+    replaces. Don't shorten h back to "stop under the hole edge";
+    the shear line IS the top.
 
     It belongs to the ROTUNDA FLOOR alone; nothing on the gallery or
     Senate levels reacts to it.
@@ -867,6 +1193,14 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
     n = 10
     grout = hx("#5b5b50")
     y0 = -(DROP - 2)                            # courtyard floor
+    # the gallery slab's fascia BOTTOM, as a screen line: the band
+    # hangs 18px under the hole edge, and both mauka edges fall away
+    # from the apex at the iso 1:2 — one expression covers the cone
+    # whichever side of the corner a point lands on
+    y_sh = CY - 16 * A_IN + 18
+
+    def sh(p):
+        return (p[0], max(p[1], round(y_sh + abs(p[0] - CX) / 2)))
 
     def radius(t):
         return r_top + (r_bot - r_top) * (1 - t) ** 1.35
@@ -874,13 +1208,13 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
     def arc(t):
         """The visible crescent at height fraction t, plus per-sample
         shading: lit where the surface still faces the court, falling
-        away to the silhouette."""
+        away to the silhouette. Every point is sheared by the slab."""
         rr, dy = radius(t), y0 + h * t
         pts, fac = [], []
         for i in range(n + 1):
             th = TH0 + (TH1 - TH0) * i / n
-            pts.append(iso(u0 + rr * math.cos(th), v0 + rr * math.sin(th),
-                           dy))
+            pts.append(sh(iso(u0 + rr * math.cos(th),
+                              v0 + rr * math.sin(th), dy)))
             # the value FLOOR matters more than the range here: the
             # silhouette edge sits against the court's near-black
             # glazing, and at 0.72 it sank into it and the whole
@@ -905,17 +1239,15 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
         # the course arc, 2px so it survives the SS downsample
         d.line(cur, fill=shade(grout, f), width=2)
         prev, prev_f = cur, cur_f
-    top_pts, _ = arc(1.0)
     cut_edge = [arc(r / rows)[0][0] for r in range(rows + 1)]
     sil_edge = [arc(r / rows)[0][n] for r in range(rows + 1)]
     d.line(cut_edge, fill=shade(hx("#6d6a5c"), f), width=1)   # into panel
     # a real keyline on the silhouette — 2px, so it survives the SS
-    # downsample and separates the cone from the glazing behind it
+    # downsample and separates the cone from the glazing behind it.
+    # Its sheared top run doubles as the shadow gap under the slab.
     d.line(sil_edge, fill=shade(hx("#3d3d36"), f), width=2)   # silhouette
-    # the scrap of rim that shows at the top — we are a storey above it
-    d.line(top_pts, fill=shade(hx("#c4c2b2"), f), width=2)
-    d.line([(px_, py_ + 2) for px_, py_ in top_pts],
-           fill=shade(hx("#2b2924"), f), width=1)
+    # NO mouth rim: the stack is sheared by the slab and continues
+    # above it — a visible rim would put its top back in the well
 
 def paint_mosaic(d, lay, cx, cy):
     """A round glass-tile floor medallion in sea colours. The REAL
@@ -1313,6 +1645,41 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
 
 FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19}
 
+# THE TWO DOOR SCHEDULES, hoisted to module level (2026-08-25) so the
+# column placer can thread its shafts between them. paint_walls and
+# paint_upper_level draw from these and column_stations() reads them;
+# a second copy would let a shaft "clear" a door that had since moved.
+# Index 0 is the ʻEwa run, index 1 the Diamond Head run, matching the
+# order both painters iterate in.
+GALLERY_FEATS = (
+    (("senate", 0.13, "door"), (None, 0.26, "office"),
+     ("wam", 0.40, "door"), (None, 0.53, "office"),
+     (None, 0.64, "office"), (None, 0.75, "office"),
+     (None, 0.87, "office")),
+    ((None, 0.07, "hall"), (None, 0.20, "office"),
+     ("finance", 0.32, "door"), (None, 0.45, "office"),
+     (None, 0.57, "office"), ("house", 0.70, "door"),
+     (None, 0.82, "office"), ("gov", 0.94, "lift")),
+)
+UPPER_FEATS = (
+    (("senpres", 0.22, "door"), (None, 0.37, "office"),
+     (None, 0.49, "office"), (None, 0.63, "office"),
+     (None, 0.75, "office"), (None, 0.87, "office")),
+    ((None, 0.07, "hall"), (None, 0.20, "office"),
+     (None, 0.32, "office"), ("senclerk", 0.44, "door"),
+     (None, 0.58, "office"), (None, 0.71, "office"),
+     (None, 0.84, "office"), (None, 0.95, "hall")),
+)
+
+
+def run_x(r, a, t):
+    """Screen x of parameter t along a mauka run of half-size `a`.
+    The column line, the gallery wall and the Senate wall sit on
+    THREE different diamonds, so the same t is three different
+    screen positions — comparing raw t between them (the obvious
+    mistake) would clear a door that is nowhere near the shaft."""
+    return CX + 32.0 * a * (t - 1 if r == 0 else t)
+
 
 def bay_columns(d, e0, e1, f, feats, reflect=False):
     """Dark bronze columns between the bays — placed at the CORNERS
@@ -1392,20 +1759,8 @@ def paint_upper_level(d):
         # rightmost door, so the recesses bracket the run instead of
         # punching a hole through the middle of it. Mid-wall portals
         # broke the door rhythm exactly where the eye travels.
-        (3, 0, (("senpres", 0.22, "door"),
-                (None, 0.37, "office"),
-                (None, 0.49, "office"),
-                (None, 0.63, "office"),
-                (None, 0.75, "office"),
-                (None, 0.87, "office")), 1.10),
-        (0, 1, ((None, 0.07, "hall"),
-                (None, 0.20, "office"),
-                (None, 0.32, "office"),
-                ("senclerk", 0.44, "door"),
-                (None, 0.58, "office"),
-                (None, 0.71, "office"),
-                (None, 0.84, "office"),
-                (None, 0.95, "hall")), 0.97),
+        (3, 0, UPPER_FEATS[0], 1.10),
+        (0, 1, UPPER_FEATS[1], 0.97),
     ):
         a0, a1 = inn[i0], inn[i1]
         e0, e1 = out[i0], out[i1]
@@ -1495,21 +1850,8 @@ def paint_walls(d):
     # where the eye travels the wall. `gov` is the lift lobby that
     # closes the run — a named hotspot, so it moved runs with it.
     for e0, e1, feats, f in (
-        (out[3], out[0], (("senate", 0.13, "door"),
-                          (None, 0.26, "office"),
-                          ("wam", 0.40, "door"),
-                          (None, 0.53, "office"),
-                          (None, 0.64, "office"),
-                          (None, 0.75, "office"),
-                          (None, 0.87, "office")), 1.0),
-        (out[0], out[1], ((None, 0.07, "hall"),
-                          (None, 0.20, "office"),
-                          ("finance", 0.32, "door"),
-                          (None, 0.45, "office"),
-                          (None, 0.57, "office"),
-                          ("house", 0.70, "door"),
-                          (None, 0.82, "office"),
-                          ("gov", 0.94, "lift")), 0.88),
+        (out[3], out[0], GALLERY_FEATS[0], 1.0),
+        (out[0], out[1], GALLERY_FEATS[1], 0.88),
     ):
         def q(y0, y1, col):
             d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
@@ -1696,6 +2038,19 @@ def render(raw=False):
     upper = paint_upper_level(d)          # furthest: before the walls
     doors = paint_walls(d)
     doors.update(upper)
+    # THE COLUMNS, upper half — gallery floor to the top of the third
+    # storey. After the walls and the upper level, because a shaft on
+    # the court edge stands in front of both; the half below the
+    # gallery went in with paint_well, where the hole mask trims it.
+    # starts ABOVE the gallery parapet's koa cap: the balustrade
+    # stands on the same A_IN line as the shaft, so it is the one
+    # thing at this level genuinely in FRONT of it. The photo's
+    # strips show exactly this — a shaft passing behind each balcony
+    # and emerging between them. Everything higher (the Senate level)
+    # is recessed to A_OUT and therefore BEHIND the shaft, so it
+    # needs no such break.
+    for b, cf in column_stations():
+        court_column(d, b, RAIL_H + 7, COL_DY1, cf)
     # planters AFTER walls: the W/E corner planters sit in front of
     # the corner-most doors' floor reflections and must occlude them
     paint_planters(d)

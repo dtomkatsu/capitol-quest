@@ -2080,15 +2080,42 @@ user's call).
     read as a sealed box. Now:
     - **Diamond Head = the GLASS WALL, in TWO sections**
       (`court_glass`; reworked 2026-08-24 from the HABS courtyard
-      photo). The CENTRAL section is CURVED — it is the chamber
-      drum's glazing bulging into the court, and on a flat iso face
-      the curve is carried by three cues that only work TOGETHER:
-      mullions spaced by ANGLE (cos-mapped — dense at the ends,
-      opening mid-arc, a cylinder's foreshortening), the SILL BOWING
-      DOWN toward the viewer at mid-arc (9px, head 3px), and the
+      photo, glazing re-cut 2026-08-25 from the executive-floor one).
+      The CURVED section is the chamber drum's glazing bulging into
+      the court, and on a flat iso face the curve is carried by cues
+      that only work TOGETHER: mullions spaced by ANGLE, the SILL
+      BOWING DOWN toward the viewer (9px, head 3px), and the
       sky-reflection band following the bow. Any one alone reads
       flat; the first pass had evenly spaced bars on a straight run
-      and did. The section to its LEFT is the chamber's GLASS
+      and did. Four things about the bars, all from the photograph
+      (user, 2026-08-25: "fix the mullions on the curved glass"):
+      - **It is ONE curtain over the whole rest of the run**
+        (`DOOR_TB` → 0.98). It used to stop at 0.62 with flat filler
+        panes beyond on a sparser pitch, so the wall read as
+        "mullions over the left third, then a dark slab". Past the
+        well limit (t ≈ 0.66) our own slab eats the sill, so the bow
+        out there costs nothing and is never seen.
+      - **NO TRANSOM RAILS.** Two horizontal arcs used to cross the
+        glass at 0.42/0.72. The photograph has none — bars run head
+        to sill unbroken, and the horizontals were what made this
+        read as a shopfront rather than a chamber drum.
+      - **The spacing is ASYMMETRIC.** The old map was
+        `0.5 - 0.5*cos(pi*u)`: dense at BOTH ends, open mid-arc — a
+        half-cylinder seen FACE-ON. This drum is seen OBLIQUELY, so
+        the bars compress monotonically toward the far (mauka) end
+        and open toward the near one. Spacing goes as cos(theta)
+        about the point where the drum faces the camera, and that
+        point is at the near end of the visible arc. The sill bow
+        now follows the SAME cos(theta), so the two cues agree —
+        before, a symmetric bow was arguing with the mullions.
+      - **20 bays at 2px, and that is the picket rule again.** At
+        SS 2 a 1px bar is half a display pixel and LANCZOS renders
+        the run as a bluish haze instead of glazing. 30 and 24 bays
+        were both baked and both mushed at the compressed end
+        (`TH_A` −64° puts the tightest gap at ~44% of the mean, so
+        30 bays lands at 2.1 DISPLAY px). Judge this on the
+        downscaled bake, never at 1:1.
+      The section to its LEFT is the chamber's GLASS
       ENTRANCE DOORS: paired glazed leaves under a wide transom in a
       pale surround (Senate-entrance photo). Keep the glazing
       NEUTRAL: a teal pass read as water, not glass. No plinth — the
@@ -2122,49 +2149,86 @@ user's call).
       kukui canopies, which had no planters under them and read as
       bushes growing out of pavement. Keep the empty one empty —
       that is what the photograph shows.
-    - **THE SMOKESTACK IS A HALF-CONE CUT BY THE PANEL'S PLANE, AND
-      ONLY A SLIVER OF IT IS VISIBLE** (`smokestack`; settled
-      2026-08-25 by the user's courtyard photograph plus "it's a
-      half-cone cut by the wall plane… it would be part of the left
-      half of the cone that remains, but you'd only be able to see a
-      sliver of the cone in this perspective"). SIX passes drew a
-      FULL cone — free-standing in the court, straddling the corner,
-      wrapped by the balcony, abutting the wall — and every one read
-      as wrong perspective, because **the SHAPE was wrong, not the
-      placement or the size.** No amount of moving or resizing a
-      whole cone fixes a cone that should be half buried in a panel.
-      Don't re-derive this from "it looks too small".
+    - **THE SMOKESTACK IS A HALF-CONE CUT BY THE BLANK WALL'S PLANE,
+      AND THE BLANK WALL IS THE COURT'S CORNER** (`smokestack` +
+      `court_panel`; settled 2026-08-25 by the user's courtyard
+      photograph plus two corrections: "it's a half-cone cut by the
+      wall plane… you'd only be able to see a sliver of the cone in
+      this perspective", then "do you see that blank wall it's
+      attached to? imagine that wall is part of the CORNER formed
+      with the glass facade"). SEVEN passes failed in sequence — a
+      full cone free-standing, straddling the apex, wrapped by the
+      balcony, abutting the wall, then a half-cone bonded to a
+      MID-FACADE buttress with glazing running on past it — because
+      the SHAPE was wrong, then because the WALL was: the wall is
+      not a buttress in the middle of the glass, it TERMINATES the
+      facade. In the photograph the cones stand in the open lanai at
+      the chamber volume's corner; in this room's language that is
+      the court's mauka corner, where the glass facade meets the
+      ʻEwa plane.
+    - **THE ASSEMBLY, one anchor**: everything hangs off
+      `PIER_U0 = -A_IN` — the blank wall's ʻEwa flank sits exactly ON
+      the ʻEwa plane, so wall + glass form the court's corner. The
+      cone is bonded to that flank (`STACK_U = PIER_U0 - CUT*R`, axis
+      WEST of the plane), which puts its body around the corner IN
+      THE OPEN BREEZEWAY — drawn over the bay backdrop, before the
+      wall — and only its sliver peeks back into the court past the
+      corner. The door section attaches to the wall's other flank
+      (`DOOR_TA` derived), and there is NO filler glazing between
+      wall and apex any more: a pane there would be glass standing
+      where the facade has already ended, which is exactly the
+      mid-facade-buttress read the corner fix removed. `PIER_DEP`
+      is NOT free — it must reach the cone's widest visible point,
+      v = STACK_V + sin(acos(CUT))*R, or the bond seam shows past
+      the wall's front arris; since 2026-08-25 it is DERIVED from
+      exactly that expression, so it can never drift again.
+    - **SLID IN AND TUCKED UNDER THE 2ND FLOOR** (2026-08-25, second
+      correction: "it should look like it's under the 2nd floor…
+      imagine that the wall is slid in more (also sliding the
+      attached stack in more)"; pushed further the same day on "slide
+      the wall in even more"). `ASM_IN` (1.20) slides wall AND
+      cone together in -v, preserving the bond; the mass that slides
+      behind the facade plane is inside the building and simply not
+      drawn (the wall still draws from v = -A_IN), so the slide
+      reads as LESS protrusion, never as a wall standing in front of
+      the glass. And the cone's top is SHEARED BY THE GALLERY SLAB:
+      it runs tall (h = DROP - 14) and smokestack() clamps every
+      point to the fascia band's bottom line
+      (y = apex + 18 + |x-CX|/2), so the courses die under the slab
+      and the stack reads as continuing above, off-stage. The mouth
+      rim is GONE — a visible rim means the stack ended in the well,
+      the floating read this replaced. Don't shorten h back to "24px
+      under the hole edge"; the shear line IS the top.
+    - **`ASM_IN` HAS A HARD CEILING, AND IT IS THE CONE** (measured
+      2026-08-25). Only the wall's DEPTH answers to the slide — its
+      u position never moves — so "slid in" means `PIER_DEP`
+      shrinking, and PIER_DEP hits 0 at
+      `0.10 + sin(acos(CUT))*R` = **1.3557**, where the front face
+      would sit mauka of the facade plane (the corner mass standing
+      behind its own glass, bond seam showing). There is an assert on
+      it. The PRACTICAL ceiling is lower: the depth is spent entirely
+      on the RIGHT FLANK, which is 16*dep scene px = **8*dep DISPLAY
+      px** after the SS downsample — 1.20 leaves 1.2 display px (the
+      last value with any depth at all), 1.30 leaves 0.4 and LANCZOS
+      erases it, so the corner flattens to a pale band instead of a
+      projecting mass. Sliding further than 1.20 means shrinking the
+      CONE or deepening `cut`, not nudging this number.
     - **THE ANGLES ARE FORCED BY THE PROJECTION, not chosen.** Radii
       are PLAN units so `iso()` places every point and the 2:1
       foreshortening comes out for free. With the cut plane at
-      u = u0 (the panel's side face) and the cone bonded to it:
-      - retained half is u <= u0, i.e. theta in (90, 270);
+      u = u0 and the cone bonded to its west flank:
+      - retained solid is cos(theta) <= CUT, i.e. theta in
+        (acos(CUT), 360-acos(CUT));
       - a face is turned toward this camera only where its plan
         normal has a positive dot with the view direction (1,1)/√2,
         i.e. cos+sin > 0, i.e. theta in (-45, 135);
-      - the intersection is **theta in (90, 135)** — a 45° crescent
-        lying entirely LEFT of the axis (dx runs -16R at the cut to
-        -22.6R at the silhouette), about 0.29 of the full circle's
-        screen width. That is the sliver, and the flat semicircular
-        face is bonded against the panel and never visible.
+      - the intersection at CUT 0.5 is **theta in (60, 135)** — a
+        crescent lying entirely LEFT of the axis. That is the
+        sliver, and the flat cut face is bonded against the wall
+        and never visible.
       So it draws as a narrow tapering crescent, NOT a tower: cut
-      edge right (dying into the panel), silhouette left, sagging
-      course arcs between, a scrap of rim on top.
-    - **THE PANEL MUST BE A PROJECTING MASS, OR THE SLIVER COMES
-      LOOSE** (`court_panel`; 2026-08-25, user: "it looks like it's
-      not even part of the wall"). The cone's flat cut face has its
-      normal along +u, and **+u faces THIS camera** (dot 0.707 with
-      the view direction) — so against a FLAT wall that face is
-      visible and the crescent floats in open paving with floor
-      showing behind it. Something solid has to occupy the space it
-      is bonded to. A pier therefore projects from the curtain wall
-      into the court, DEEPER than the cone's widest point at the cut
-      (v0 + sin(acos(cut))*R), and is drawn AFTER the cone: its -u
-      flank is the bonded face and never shows, its +u flank and its
-      front face do, and the cladding dies into it. The door bay
-      starts where the pier ends (`court_glass` ta 0.145); the strip
-      from the corner to the pier is filler glazing (0.01-0.108), not
-      bare wall, or the corner reads as a dark wedge.
+      edge right (dying behind the corner wall), silhouette left,
+      sagging course arcs between, top sheared by the slab (no rim).
     - **`cut` IS THE ONLY DIAL THAT CHANGES HOW MUCH SHOWS.** It is
       where the panel's face slices the cone as a fraction of the
       radius from the axis: 0.0 is a true half-cone, positive means
@@ -2218,13 +2282,119 @@ user's call).
       Same arithmetic is why the ʻEwa run's own corner shows nothing.
       The smokestack sits well inside that limit (its axis is at
       t ≈ 0.11), so the mask never reaches it.
-    - **The courtyard piers keep off the glazed run** (2026-08-24,
-      "many of the columns in general are clipping into other
-      elements"): the fixed 0.18/0.5/0.82 pier grid stood piers
-      straight through the glass doors and the middle of the curved
-      section. The curtain wall carries its own structure — the
-      drawn pier at 0.352 and the mullions; only the open ʻEwa
-      breezeway keeps the pier rows, which make its depth.
+    - **The flat pale piers pasted on the ground wall are GONE**
+      (superseded 2026-08-25 by the full-height columns below). The
+      2026-08-24 rule that produced them — "the courtyard piers keep
+      off the glazed run", from "many of the columns in general are
+      clipping into other elements" — was about piers drawn ON the
+      wall plane, where a collision left a sliver poking out of a
+      frame. It does not govern the real columns, which stand a bay
+      in FRONT of the wall and occlude it honestly.
+  - **THE GROUND FLOOR IS A LOGGIA AND THE COLUMNS RUN FULL HEIGHT**
+    (2026-08-25, from the executive-floor photo — user: "fix the
+    column taper and the loggia setback… those columns go all the way
+    up to top of third floor"). Until this the ground storey was a
+    flat elevation with straight posts stuck to it. Rules:
+    - **`GND_BACK` sets the wall back; the FASCIA does not move.**
+      The fluted band is our own slab's edge and stays on the well
+      line — drawing both off one edge is what kept the storey flat.
+      The smokestack assembly is the corner of THAT wall, so it is
+      anchored to `GND_OUT` and rides the set-back; the ASM_IN slide
+      is still measured from the facade, so its tuning survives.
+    - **The set-back is free geometrically — paint_well already
+      clips to the hole, and that mask is exactly the right
+      occluder.** A point at height dy below the gallery casts to
+      floor coords `(u + s, v + s)` with `s = (DROP - dy)/16`, so the
+      wall shows from its foot up to `dy = DROP - 16*GND_BACK` and
+      the slab eats the rest — which is what the photo shows. **This
+      is the trade and it is the only one: recess is bought by
+      hiding more of the glass wall.** 1.6 was too shallow to read
+      (a 13px band, wholly covered by the overhang shade); 3.2 buries
+      the glazing. Shipped at 2.4 — wall visible to dy 61 of 100.
+    - **Moving the wall buys NOTHING without shading the loggia
+      floor.** The strip behind the columns came out the same bright
+      stone as the open court, so it read as a wall further away and
+      not as a recess. One band at `shade(COURT, .72)` between the
+      A_IN and GND_OUT floor lines is what makes the set-back exist.
+    - **The taper is LINEAR (`COL_FLARE` 1.0), and that is
+      measured.** A power curve was tried first to put the swell at
+      the head; it cannot work, because only two stretches of any
+      shaft are ever seen — the loggia (t 0-.34) and above the
+      gallery cap (t .5-1) — and an exponent that flares one
+      flattens the other. Straight batter gives both ≈1.4, which is
+      the per-storey taper the photo shows. **The full-height 6→14
+      ratio is not what the eye gets; the per-stretch ratio is.**
+    - **The shaft is drawn in TWO pieces and `col_hw()` is why they
+      line up**: the part below the gallery goes into paint_well's
+      clipped layer, the part above is painted after the walls.
+      Separate taper maths in each would step at the join.
+    - **It breaks at the gallery parapet, and nowhere else.** That
+      balustrade stands on the same A_IN line as the shaft, so it is
+      the one thing genuinely in front of it — the photo's vertical
+      strips show a shaft passing behind each balcony and emerging
+      between them. Everything higher is recessed to A_OUT and
+      therefore BEHIND the shaft.
+    - **Only the NAMED doors are protected, and the clearance is
+      HALF the frame.** Clearing every doorway returns literally
+      zero columns (the runs carry 13 and 16 features, 20-50px apart
+      on the column line, against a shaft needing ~30px a side);
+      demanding whole frames for the named ones drove every Diamond
+      Head column into its left half and left the House door's end
+      bare. Named doors are protected because they are HOTSPOTS.
+    - **The gap to test is the range of valid CENTRES, not the space
+      between doors** — requiring a clear span as wide as the shaft
+      threw away good positions between doors only 61px apart.
+    - Stations start on a regular pitch (`COL_N`) and a blocked one
+      is NUDGED to the nearest clear x rather than dropped, so the
+      colonnade keeps its rhythm. `GALLERY_FEATS`/`UPPER_FEATS` are
+      module-level for this: the placer must read exactly what the
+      painters draw or it will clear a door that has since moved.
+    - Three tones, not two: at nearly a storey wide at the head a
+      single face with one dark edge read as a pale ribbon taped to
+      the wall. Both edges carry a keyline — against the ʻEwa
+      breezeway's bright plaza bands a pale shaft has no silhouette
+      otherwise, the same lesson the cone's keyline records.
+    - **THE COURTYARD FLOOR IS STONE PAVING, AND IT WAS TOO BRIGHT
+      BY A THIRD** (`court_paving`, re-based 2026-08-25 from the
+      executive-floor photo). Three separate faults, all measured:
+      - **Tone.** `COURT` was #b3ac97 — lum 167 against the fluted
+        band's 226, a ratio of 1.35, which made the court one of the
+        brightest surfaces in the room and left the pale columns
+        nothing to stand against. In the photograph the white band
+        runs **1.79x** the open floor (165 vs 92), so the floor
+        belongs at 226/1.79 = 126; it ships at 130. It is also far
+        more NEUTRAL now — the photo's paving is R-B 10, where
+        #b3ac97 was R-B 28 and read as sand. **The column/floor
+        ratio was already right at 1.13 and is unchanged**: the
+        error was entirely the floor's relation to the white bands.
+      - **Texture.** It was one flat fill with a faint 2-unit grid,
+        which reads as poured concrete. It is now large slabs, each
+        its own tone, under a broad low-frequency drift. BOTH terms
+        are needed: per-slab jitter alone is television static, the
+        drift alone is a gradient with joints drawn on it. Amplitude
+        is measured, not taste — the photo's open paving runs
+        sd/lum 10-21% and the first pass at ±4% came out flat; it
+        ships at 20.6%. Joints stay FAINT (hairlines you read the
+        grid from, not a drawn lattice).
+      - **EVERY TINT ON THE FLOOR IS A MASK OVER THE PAVING, NEVER A
+        FLAT FILL.** This is the one that cost the debugging. The
+        mottle was drawn correctly all along and was invisible,
+        because the sun quads, the breezeway daylight wedge and the
+        breezeway band were opaque polygons painted on top of it and
+        between them they covered most of the court. The floor is
+        now painted once per lighting region and each is composited
+        through its own mask, which keeps the CRISP square-oculus
+        edge while the stone keeps its blotches inside the light.
+        Anything new that tints this floor goes in that region list.
+        (The narrow overhang shadow bands at the wall foot stay flat
+        — they are wall, not floor.)
+      - `court_paving` carries its OWN generator and reseeds per
+        pass, so the mottle registers across a mask edge and so a
+        slab added here cannot reshuffle paint_walls' form mottle
+        downstream through the shared `rng`.
+      (The glazing and column items formerly parked in this note
+      were both fixed the same day — see the mullion bullets under
+      the GLASS WALL, and the full-height column bullets above.)
     - **The light it throws is the cheap half of the effect and does
       more than anything drawn inside the opening**: a graded wedge
       on the court floor along the wall's own inward normal, painted
