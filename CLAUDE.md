@@ -2328,12 +2328,20 @@ user's call).
       line up**: the part below the gallery goes into paint_well's
       clipped layer, the part above is painted after the walls.
       Separate taper maths in each would step at the join.
-    - **It breaks at the gallery parapet, and nowhere else.** That
-      balustrade stands on the same A_IN line as the shaft, so it is
-      the one thing genuinely in front of it — the photo's vertical
-      strips show a shaft passing behind each balcony and emerging
-      between them. Everything higher is recessed to A_OUT and
-      therefore BEHIND the shaft.
+    - **IT NEVER BREAKS. ONE SHAFT, ROTUNDA FLOOR TO THE TOP**
+      (user-corrected 2026-08-25: "the columns on the rotunda floor
+      go up through each floor. so it appears as a single column that
+      goes all the way from rotunda to top of the building"). The
+      first pass started the upper half above the gallery parapet's
+      koa cap, on a misreading of the photo's vertical strips as a
+      shaft passing BEHIND each balcony. The parapet stands on the
+      SAME A_IN line as the shaft, so it abuts the column rather than
+      crossing in front of it, and the break cut the one element that
+      ties the storeys together. Drawn continuously the column is
+      what makes the room read as one tall space instead of three
+      stacked decks — don't reintroduce a break at any level.
+      Everything higher is recessed to A_OUT and therefore BEHIND the
+      shaft, so nothing above needs one either.
     - **Only the NAMED doors are protected, and the clearance is
       HALF the frame.** Clearing every doorway returns literally
       zero columns (the runs carry 13 and 16 features, 20-50px apart

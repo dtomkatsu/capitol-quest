@@ -2042,15 +2042,20 @@ def render(raw=False):
     # storey. After the walls and the upper level, because a shaft on
     # the court edge stands in front of both; the half below the
     # gallery went in with paint_well, where the hole mask trims it.
-    # starts ABOVE the gallery parapet's koa cap: the balustrade
-    # stands on the same A_IN line as the shaft, so it is the one
-    # thing at this level genuinely in FRONT of it. The photo's
-    # strips show exactly this — a shaft passing behind each balcony
-    # and emerging between them. Everything higher (the Senate level)
-    # is recessed to A_OUT and therefore BEHIND the shaft, so it
-    # needs no such break.
+    # UNBROKEN from the gallery floor to the head. A first pass
+    # started this at RAIL_H + 7 so the balustrade crossed in front,
+    # on the theory that the photo's strips show a shaft passing
+    # BEHIND each balcony — the user corrected it (2026-08-25: "the
+    # columns on the rotunda floor go up through each floor. so it
+    # appears as a single column that goes all the way from rotunda
+    # to top of the building"). The parapet stands on the SAME A_IN
+    # line as the shaft, so it abuts the column, it does not pass in
+    # front of it; the break just cut the one thing that ties the
+    # storeys together. Together with the paint_well half below, the
+    # shaft is continuous from the courtyard floor to the top of the
+    # third storey — one column, the whole height of the room.
     for b, cf in column_stations():
-        court_column(d, b, RAIL_H + 7, COL_DY1, cf)
+        court_column(d, b, 0, COL_DY1, cf)
     # planters AFTER walls: the W/E corner planters sit in front of
     # the corner-most doors' floor reflections and must occlude them
     paint_planters(d)
