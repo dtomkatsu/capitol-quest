@@ -12,7 +12,9 @@ w1-opening banner, in the game's 2:1 iso language, dollhouse-cut on
 the makai side so the room reads.
 
 Reference: Wikimedia Commons, Category:Hawaii State Capitol interior
-photos, plus a user-supplied gallery-corner atrium photo (2026-08-22)
+photos, a user-supplied courtyard view from the rotunda floor
+(2026-08-25 — the column count: a corner column and two to a side),
+plus a user-supplied gallery-corner atrium photo (2026-08-22)
 — all reference only, drawn from scratch, so the output is original
 work. The corner photo settled: chunky GLOSSY koa cap over a white
 kerb plate (the rail is the dominant near element), arched arcade
@@ -165,14 +167,32 @@ CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
 # of the glass wall; that is the trade, and it is the only one.
 GND_BACK = 2.4
 GND_OUT = A_IN + GND_BACK  # the ground storey's wall plane
-# THE COLUMNS RUN THE WHOLE HEIGHT — courtyard floor to the top of the
-# third floor (user, 2026-08-25: "those columns go all the way up to
-# top of third floor"), which is what the photo's vertical strips
-# show: one shaft passing BEHIND every walkway and railing, emerging
-# again between them. They stand on the COURT EDGE (the A_IN line),
-# which is the railing line at every level above — so the same line
-# serves the ground colonnade and the upper balustrades, and the
-# loggia depth falls out as GND_OUT - A_IN.
+# THE COLUMNS RUN THE WHOLE HEIGHT, BUT THEY ONLY STAND FREE ON THE
+# GROUND FLOOR — ON THE SECOND AND THIRD THEY ARE FLUSH IN THE WALL
+# (user, 2026-08-25: "you're misreading the columns. they should be
+# flush with the walls on the second and third floors"). The
+# executive-floor photograph is unambiguous once you follow ONE stack
+# down: a tapered shaft standing free in the loggia, then above each
+# balcony a pale strip lying IN the wall face between the doors, with
+# the walkway and its parapet crossing in front of it. The ground
+# storey is the only one whose wall is set back far enough for the
+# column to come out of it.
+#
+# Two earlier readings are now both retired. The first broke the
+# shaft at every parapet (a shaft passing behind each balcony); the
+# second ran it unbroken up the COURT EDGE, which put a free-standing
+# pole in front of both upper balconies — nine of them, standing
+# between the camera and the room like a fence. Flush is the third
+# reading and it is the photograph's.
+#
+# What survives from the second is the ALIGNMENT: the flush strip on
+# each upper wall is drawn at the SAME SCREEN X as the shaft below
+# it, so the eye still reads one column from the rotunda floor to the
+# top. It is a cheat — the walls really do stand a walkway further
+# back, and a true projection would step the strip 20 display px
+# sideways per storey — but the storey's own floor and slab fix the
+# strip's vertical extent, so screen x is the only thing tying the
+# pieces together and it is the one that has to be honest.
 COL_DY0, COL_DY1 = -DROP, LVL2_Y + 72     # foot / head, world height
 # Half-width at foot / head. The RATIO is what has to survive the SS
 # downsample — at display scale the shaft is only ~6px at the foot,
@@ -181,17 +201,117 @@ COL_DY0, COL_DY1 = -DROP, LVL2_Y + 72     # foot / head, world height
 COL_HW0, COL_HW1 = 6.0, 14.0
 COL_FLARE = 1.0            # LINEAR, and measured: a power curve was
                            # tried first to concentrate the swell at
-                           # the head, and it cannot work here. Only
-                           # two stretches of any shaft are ever seen
-                           # — the loggia (t 0 to .34) and above the
-                           # gallery cap (t .5 to 1) — and an
-                           # exponent that flares one flattens the
-                           # other. Straight batter gives BOTH about
-                           # 1.4, which is what the photo shows per
-                           # storey. The full-height 6->14 ratio is
-                           # not what the eye gets; the per-stretch
-                           # ratio is.
-COL_N = 4                  # stations per mauka run, before nudging
+                           # the head, and it cannot work here. A
+                           # column is only ever seen in SHORT
+                           # STRETCHES — the loggia, then the band of
+                           # each upper wall between one balcony's
+                           # cap and the slab above — and an exponent
+                           # that flares one flattens the others.
+                           # Straight batter gives every stretch
+                           # about 1.4, which is what the photo shows
+                           # per storey. The full-height 6->14 ratio
+                           # is not what the eye gets; the
+                           # per-stretch ratio is.
+# THE COLUMNS COME FIRST AND THE DOORS FILL THE BAYS BETWEEN THEM.
+# That dependency used to run the other way — stations were nudged
+# along the run until they cleared the named doorways — and it cannot
+# survive the columns being flush: a free-standing shaft may pass in
+# front of a door honestly, a strip lying IN the wall may not, and a
+# collision is a pale sliver poking out either side of a frame (the
+# 2026-08-24 "clipping into other elements" complaint). Measured
+# before the rewrite: with both schedules where they were, a strip of
+# any width had ZERO clear positions on the Diamond Head run and one
+# 12px window on the ʻEwa run. So each run is divided into bays by
+# its own columns, and place_feats() lays that wall's doors out
+# inside them.
+# COUNT: A CORNER COLUMN, AND TWO TO A SIDE (user, 2026-08-25, with
+# a courtyard photograph: "look at how there's corner columns, but
+# then aside from that it's two columns to a side"). Three per run
+# read as a picket fence; the corner one is what makes the fold
+# structural, and it is FREE — the mauka apex is the one place every
+# diamond shares a screen x (x = 16(u - v) = 0 when u == v), so the
+# same column lands at CX on the court edge and on both walls, and
+# each run draws its own half of it against its own slope.
+#
+# The ʻEwa and Diamond Head corners get no column: a vertical line at
+# the well diamond's W or E point meets the hole at exactly ONE pixel,
+# so paint_well's mask eats any shaft standing there. Those two ends
+# are the dollhouse cut anyway — a sawn face, not a fold.
+COL_T = (1 / 3.0, 2 / 3.0)  # the interior pair; the apex is added per run
+
+# THE FLUSH COLUMN'S SURFACE, as bands across its width. `u` runs -1
+# at the left arris to +1 at the right, as a FRACTION of the
+# half-width, so every band tapers with the shaft. Each band carries
+# a colour at the storey's FOOT and at its HEAD and is drawn as a
+# vertical gradient between them; bands paint in order, so a later
+# one may overlay an earlier.
+#
+# THE RESOLUTION CEILING IS THE WHOLE DESIGN PROBLEM. The strip is
+# ~19 scene px wide on the second floor and ~27 on the third, and the
+# bake is LANCZOS-downsampled 2x, so that is 9 and 13 DISPLAY px —
+# four or five distinguishable bands at the very most, and anything
+# under ~2 scene px is mush. Judge any change to this on the
+# DOWNSCALED bake, never at 1:1.
+# It shipped as ONE flat fill and the user's verdict was exact: "the
+# columns appear to lose their shape as they get higher. they look
+# less like 3d objects, more like splotches." Measured, it was 13
+# identical pixels — self-contrast under 1% — at 0.86 of the white
+# slab band, where the photographs put a flush column at 0.48.
+#
+# What replaced it is the profile the photographs actually carry, and
+# it is a TWO-FACET STEP, not a smooth cylinder: a narrow reveal, a
+# ramp, a WIDE nearly-flat lit facet (~60% of the width), ONE hard
+# arris, a shadow facet at ~0.6 of the lit one, and a keyline DARKER
+# THAN THE WALL. Three rules that came out of the measuring and must
+# not be undone:
+#   - NO pixel at either outer edge is brighter than the body. Not
+#     one, in either photograph, on any of eight columns sampled. The
+#     old 1px #ddd6c0 arris was brighter than everything in both
+#     photographs, and a bright edge is a projecting-object cue.
+#   - The keyline must be darker than the WALL (#3a3732 is 0.78 of
+#     CONC), not merely darker than the column. A midtone edge is
+#     what makes a strip look pasted ON a surface instead of cut
+#     INTO it.
+#   - The shadow facet must NOT be floored to the wall: measured, a
+#     real flush column's darkest sample is 1.5x its wall (#6a655a
+#     is 1.44x CONC). Darker than that and the column loses a
+#     quarter of its width into the concrete.
+# The strip is FLAT up its height (the photographs are flat to 3-8%);
+# the 5% head droop is the whole vertical variation there should be.
+COL_FACETS = (
+    (-1.00, -0.84, "#726d62", "#6c685d"),   # lit-side reveal
+    (-0.84, -0.66, "#9b9484", "#938d7d"),   # ramp in
+    (-0.66,  0.10, "#b0a896", "#a7a08e"),   # the lit facet
+    ( 0.10,  0.24, "#a9a290", "#a19a89"),   # its inner droop
+    ( 0.24,  0.40, "#898375", "#827c6f"),   # the arris: ONE hard step
+    ( 0.40,  0.84, "#6a655a", "#656056"),   # the shadow facet
+    ( 0.84,  1.00, "#3a3732", "#373430"),   # keyline, darker than wall
+)
+COL_EDGE_L = ("#726d62", 1)     # matches the reveal — never brighter
+COL_EDGE_R = ("#3a3732", 2)     # the recessed joint
+# Optional CAPITAL: (height in px, half-width multiplier at the very
+# top, soffit-shadow colour or None). The real columns trumpet out
+# where they meet the slab; whether that survives at 4 display px of
+# height is a question for the bake, not for taste.
+COL_CAP = (0, 1.0, None)
+# THE STRIP GETS DARKER AS IT RISES, and this is measured, not mood.
+# Against the white slab band as a common white, the photographs put
+# the flush column's lit face at 0.67 of white on the second floor
+# and 0.48 on the third, while the WALL beside it gets lighter with
+# height (0.19 -> 0.23). The bake was doing the exact opposite: the
+# third-floor run carries f = 1.10, so the topmost strip was the
+# widest AND the palest thing in the room — which is precisely the
+# "they lose their shape as they get higher" report.
+COL_DIM_UP = 0.78
+PIL_PAD = 0                # clear px between a flush column and a frame
+FEAT_GAP = 6               # clear px between two frames in one bay
+# Both measured, not chosen: at PIL_PAD 1 / FEAT_GAP 10 the Diamond
+# Head gallery wall could seat only five of its eight features, and
+# the cliffs are savage — one bay missing the hall-plus-office pair
+# by 0.4px cascades into three lost doors. Zero pad is also what the
+# photograph shows: the door architraves run tight against the
+# columns. A frame that rounds onto a strip by a pixel is dark koa
+# over pale stone and invisible.
 
 OPEN_BAY = (0.02, 1.0)    # the ʻEwa run's open extent — effectively
                            # the WHOLE run (2026-08-24, breezeway
@@ -313,7 +433,6 @@ COURT = hx("#8a8378")      # courtyard below — lum 130, R-B 18
 COURT_SUN = hx("#bcb4a0")
 SLAB = 1.9                 # paving module, plan units
 FASCIA = hx("#e6dfca")     # white floor-edge bands
-POST = hx("#dbd4bf")
 RAIL = hx("#d5cdb6")
 KOA = hx("#7d5734")
 KOA_LT = hx("#a97e4f")
@@ -635,8 +754,10 @@ def paint_well(img):
                fill=shade(COURT, f), width=2)
         # the flat pale piers that used to be pasted on this wall are
         # GONE — they were a ground-storey-only device standing on the
-        # wall plane. The real columns are free-standing, full height
-        # and live in court_column(); paint_columns() draws them.
+        # wall plane. THIS storey's columns are the real ones and they
+        # stand free out in the loggia (court_column, just below);
+        # from the second floor up the same column is flush in the
+        # wall and wall_column() paints it there.
     # THE SMOKESTACK-AND-CORNER ASSEMBLY (the STACK_*/PIER_* constants
     # carry the full story): the blank corner wall terminates the
     # glass facade with its ʻEwa flank ON the ʻEwa plane, the cone is
@@ -976,85 +1097,47 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
 
 
 def column_stations():
-    """Plan positions of the full-height columns, as screen points at
-    GALLERY FLOOR level, with each run's shading factor. ONE list,
-    shared by both halves of every shaft and by both call sites, so
-    the piece below the gallery and the piece above cannot drift onto
-    different centres.
+    """Plan positions of the courtyard columns, as screen points at
+    GALLERY FLOOR level, with each run's shading factor.
 
-    A shaft runs the whole height, so it has to clear the doorways on
-    BOTH upper storeys, not just one — and those two schedules sit on
-    different diamonds from each other and from the column line, so
-    the clearance test is in SCREEN X (see run_x). Two rules earned
-    the hard way when this was first wired:
+    An EVEN division of each mauka run into COL_N + 1 bays, and
+    nothing else — no door-dodging, because the doors are laid out
+    around these now (place_feats) rather than the other way round.
+    A colonnade is structural and this is what structural looks like.
 
-    - **Only the NAMED doors are protected.** Clearing every doorway
-      is impossible and asking for it returned zero columns: the runs
-      carry 13 and 16 features, spaced 20-50px apart on the column
-      line, against a shaft that needs ~30px of room either side.
-      Passing in front of an anonymous office door is not the 08-24
-      "clipping" complaint — that was bronze columns drawn ON the
-      wall plane, where a collision left a sliver poking out of a
-      frame. These stand a full bay in front of the wall and occlude
-      it honestly, exactly as they do in the photograph. The named
-      doors are protected because they are HOTSPOTS: covering one
-      costs the player a door they need to click.
-    - **The gap to test is the range of valid CENTRES, not the space
-      between doors.** Requiring a clear span as wide as the shaft
-      itself threw away every position on the Diamond Head run,
-      where two named doors 61px apart still leave a perfectly good
-      centre between them.
-
-    Stations start on a regular pitch — a colonnade is structural and
-    wants to look it — and a blocked one is NUDGED to the nearest
-    clear x rather than dropped, so the rhythm survives contact with
-    the door schedule instead of losing a whole bay to it.
+    ONE list, shared by the free-standing shaft in the loggia and by
+    the flush strip on each upper wall, so the three pieces of a
+    column cannot drift onto different centres.
     """
     hole = diamond(A_IN)
     out = []
-    for (e0, e1), f, r in (((hole[3], hole[0]), 1.0, 0),
-                           ((hole[0], hole[1]), 0.86, 1)):
-        span = 32.0 * A_IN
-        blocked = [(run_x(r, a, ft), FEAT_HW[k])
-                   for feats, a in ((GALLERY_FEATS[r], A_OUT),
-                                    (UPPER_FEATS[r], LVL2_OUT))
-                   for nm, ft, k in feats if nm]
-
-        def clears(t):
-            x = run_x(r, A_IN, t)
-            # HALF the frame, not all of it: the shaft may graze an
-            # architrave but must leave the leaf and its centre — the
-            # clickable part — clear. Demanding the whole frame put
-            # every column on the Diamond Head run into its left half
-            # and left the House door's end of the wall bare.
-            return all(abs(x - bx) >= COL_HW1 + hw * 0.5 + 4
-                       for bx, hw in blocked)
-
-        for i in range(COL_N):
-            t0 = (i + 0.5) / COL_N
-            t = next((t0 + s * j / span for j in range(0, 44, 2)
-                      for s in (1, -1)
-                      if 0.03 < t0 + s * j / span < 0.97
-                      and clears(t0 + s * j / span)), None)
-            if t is not None:
-                out.append((lerp(e0, e1, t), f))
+    for (e0, e1), f in (((hole[3], hole[0]), 1.0),
+                        ((hole[0], hole[1]), 0.86)):
+        for t in COL_T:
+            out.append((lerp(e0, e1, t), f))
+    # the CORNER column, once: both runs claim the mauka apex and it
+    # is one shaft, not two standing in the same place
+    out.append((hole[0], 1.0))
     return out
 
 
 def col_hw(dy):
     """Half-width of a courtyard column at world height dy. ONE
-    function, because the shaft is drawn in two pieces — the part
-    below the gallery floor goes into paint_well's clipped layer, the
-    part above is painted after the walls — and if the two halves
-    computed their own taper they would step at the join."""
+    function, because a column is drawn in THREE pieces on three
+    different surfaces — free-standing in the loggia (paint_well's
+    clipped layer), then flush in the gallery wall, then flush in the
+    Senate wall — and separate taper maths in each would step at
+    every join."""
     t = (dy - COL_DY0) / (COL_DY1 - COL_DY0)
     t = min(1.0, max(0.0, t))
     return COL_HW0 + (COL_HW1 - COL_HW0) * t ** COL_FLARE
 
 
 def court_column(d, b, dy_lo, dy_hi, f=1.0):
-    """One of the courtyard's FULL-HEIGHT columns, drawn between two
-    world heights (the caller splits the shaft at the gallery floor).
+    """A column WHERE IT STANDS FREE — the loggia, and only there.
+    Above the gallery floor the same shaft is flush in the wall and
+    wall_column() draws it; the two share col_hw(), so the taper runs
+    straight through the storeys the eye cannot see.
 
     THE TAPER IS THE POINT (2026-08-25, from the executive-floor
     photo). These read as plain posts until they FLARE: the Capitol's
@@ -1645,30 +1728,34 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
 
 FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19}
 
-# THE TWO DOOR SCHEDULES, hoisted to module level (2026-08-25) so the
-# column placer can thread its shafts between them. paint_walls and
-# paint_upper_level draw from these and column_stations() reads them;
-# a second copy would let a shaft "clear" a door that had since moved.
-# Index 0 is the ʻEwa run, index 1 the Diamond Head run, matching the
-# order both painters iterate in.
+# THE TWO DOOR SCHEDULES — ORDER AND KIND ONLY, NO POSITIONS
+# (re-cut 2026-08-25 when the columns went flush). The t values used
+# to be written here by hand and the columns were nudged around them;
+# now place_feats() lays each list out in the bays between the
+# columns, so a wall re-spaces itself when COL_N or the column line
+# moves instead of leaving a hand-tuned schedule lying against the
+# new bays. Index 0 is the ʻEwa run, index 1 the Diamond Head run,
+# matching the order both painters iterate in.
+#
+# ORDER IS THE CONTRACT: place_feats never reorders, so the Diamond
+# Head run's portals still BRACKET it — a hallway mouth first, the
+# lift lobby last — and the ʻEwa run is still all doors. An unnamed
+# office is filler and may be dropped if its wall runs out of room;
+# a named one is a hotspot and never is.
 GALLERY_FEATS = (
-    (("senate", 0.13, "door"), (None, 0.26, "office"),
-     ("wam", 0.40, "door"), (None, 0.53, "office"),
-     (None, 0.64, "office"), (None, 0.75, "office"),
-     (None, 0.87, "office")),
-    ((None, 0.07, "hall"), (None, 0.20, "office"),
-     ("finance", 0.32, "door"), (None, 0.45, "office"),
-     (None, 0.57, "office"), ("house", 0.70, "door"),
-     (None, 0.82, "office"), ("gov", 0.94, "lift")),
+    (("senate", "door"), (None, "office"), ("wam", "door"),
+     (None, "office"), (None, "office"), (None, "office"),
+     (None, "office")),
+    ((None, "hall"), (None, "office"), ("finance", "door"),
+     (None, "office"), (None, "office"), ("house", "door"),
+     (None, "office"), ("gov", "lift")),
 )
 UPPER_FEATS = (
-    (("senpres", 0.22, "door"), (None, 0.37, "office"),
-     (None, 0.49, "office"), (None, 0.63, "office"),
-     (None, 0.75, "office"), (None, 0.87, "office")),
-    ((None, 0.07, "hall"), (None, 0.20, "office"),
-     (None, 0.32, "office"), ("senclerk", 0.44, "door"),
-     (None, 0.58, "office"), (None, 0.71, "office"),
-     (None, 0.84, "office"), (None, 0.95, "hall")),
+    (("senpres", "door"), (None, "office"), (None, "office"),
+     (None, "office"), (None, "office"), (None, "office")),
+    ((None, "hall"), (None, "office"), (None, "office"),
+     ("senclerk", "door"), (None, "office"), (None, "office"),
+     (None, "office"), (None, "hall")),
 )
 
 
@@ -1681,7 +1768,228 @@ def run_x(r, a, t):
     return CX + 32.0 * a * (t - 1 if r == 0 else t)
 
 
-def bay_columns(d, e0, e1, f, feats, reflect=False):
+def run_t(r, a, x):
+    """Inverse of run_x — the parameter along a mauka run of half-size
+    `a` that lands on screen x. The bay layout is computed in screen
+    x (it has to be: the column line and the two walls sit on three
+    different diamonds) and the painters all speak t, so this is the
+    one place the two coordinates meet."""
+    return (x - CX) / (32.0 * a) + (1.0 if r == 0 else 0.0)
+
+
+def col_ts(r):
+    """The columns as run parameters: the interior pair, plus the
+    CORNER column at the mauka apex — t = 1 on the ʻEwa run, t = 0 on
+    the Diamond Head one, which is the same column seen from either
+    side."""
+    return list(COL_T) + [1.0] if r == 0 else [0.0] + list(COL_T)
+
+
+def col_xs(r):
+    """Screen x of every column on run `r`. ONE source — the shaft in
+    the loggia, the flush strip on each upper wall and the bays the
+    doors are laid out in all read this, so a column cannot be in
+    three places at once."""
+    return [run_x(r, A_IN, t) for t in col_ts(r)]
+
+
+def wall_bays(r, a, hw):
+    """The clear spans of a wall run, in screen x, between the FLUSH
+    columns — where doors are allowed to be. `hw` is the widest the
+    strip gets on this storey (it tapers, so the head is what has to
+    clear). The two end bays reach the corners, which is why they are
+    the wide ones: the wall diamond is bigger than the column line's,
+    so each run's wall carries mass past its outermost column."""
+    x0, x1 = sorted((run_x(r, a, 0.0), run_x(r, a, 1.0)))
+    out, lo = [], x0
+    for cx in sorted(col_xs(r)):
+        out.append((lo, cx - hw - PIL_PAD))
+        lo = cx + hw + PIL_PAD
+    out.append((lo, x1))
+    # the apex column stands ON the run's end, so the bay it closes
+    # off has no width at all — drop it rather than let the allocator
+    # hand it a door it cannot hold
+    return [(p_, q_) for p_, q_ in out if q_ - p_ > 8]
+
+
+def _lay_bays(bays, items):
+    """Screen x for each item, or None if this many will not fit.
+
+    An EXHAUSTIVE split, not a heuristic: the bays are ordered, the
+    items are ordered, so the whole question is where to cut the list
+    into one contiguous group per bay — a handful of possibilities at
+    these sizes. Every feasible cut is scored by its FULLEST bay and
+    the loosest one wins, which spreads the doors instead of packing
+    the first bay and starving the rest.
+
+    A proportional-share pass with a repair loop was tried first and
+    ping-ponged one door between two bays that could each hold it
+    only without the other, then gave up and dropped it — three doors
+    lost off the Diamond Head gallery wall. Order is the constraint
+    that makes the exhaustive form cheap; use it.
+    """
+    n, k = len(items), len(bays)
+    if not n:
+        return []
+    if not k:
+        return None
+
+    def span(seg):
+        return (sum(2 * FEAT_HW[kk] for _, kk in seg)
+                + FEAT_GAP * (len(seg) - 1)) if seg else 0.0
+
+    best = [None, None]
+
+    def walk(j, i, cuts):
+        if j == k:
+            if i != n:
+                return
+            fill, s0 = 0.0, 0
+            for c, (p_, q_) in zip(cuts, bays):
+                fill = max(fill, span(items[s0:s0 + c]) / (q_ - p_))
+                s0 += c
+            if best[0] is None or fill < best[0]:
+                best[0], best[1] = fill, list(cuts)
+            return
+        p_, q_ = bays[j]
+        for c in range(0, n - i + 1):
+            if span(items[i:i + c]) > q_ - p_:
+                break
+            cuts.append(c)
+            walk(j + 1, i + c, cuts)
+            cuts.pop()
+
+    walk(0, 0, [])
+    if best[1] is None:
+        return None
+
+    xs, s0 = [], 0
+    for c, (a_, b_) in zip(best[1], bays):
+        ks = items[s0:s0 + c]
+        s0 += c
+        if not ks:
+            continue
+        m = ((b_ - a_) - span(ks)) / (len(ks) + 1)
+        x = a_ + m
+        for _, kk in ks:
+            xs.append(x + FEAT_HW[kk])
+            x += 2 * FEAT_HW[kk] + FEAT_GAP + m
+    return xs
+
+
+def place_feats(r, a, hw, feats):
+    """One wall's door schedule, laid out in the bays between the
+    flush columns. `feats` is the ORDERED list — names and kinds, no
+    positions — and the t values come out of the geometry, so moving
+    a column or changing COL_N re-spaces the doors instead of leaving
+    a hand-tuned schedule lying against the new bays.
+
+    A wall that cannot hold its whole list loses UNNAMED office doors
+    from the far end, one at a time, until it can: the named ones are
+    HOTSPOTS and dropping one costs the player a door they need to
+    click. The dense-doors call (2026-08-22, "in reality there would
+    be many more doors") is served by filling every bay, not by a
+    fixed count.
+    """
+    bays = wall_bays(r, a, hw)
+    items = list(feats)
+    while True:
+        xs = _lay_bays(bays, items)
+        if xs is not None:
+            return [(nm, run_t(r, a, x), k)
+                    for (nm, k), x in zip(items, xs)]
+        i = next((i for i in range(len(items) - 1, -1, -1)
+                  if items[i][0] is None), None)
+        assert i is not None, "no room on this wall for the named doors"
+        items.pop(i)
+
+
+def wall_column(d, r, e0, e1, y_lo, y_hi, dy_lo, dy_hi, f):
+    """THE COLUMN WHERE IT IS FLUSH IN THE WALL — the second and third
+    storeys. Drawn with the wall and before anything that stands in
+    front of it, so the walkway and its parapet cross it exactly as
+    they do in the photograph, and it shows only in the band between
+    one balcony's cap and the slab above.
+
+    FLAT, deliberately: one face, a light arris and a shadowed
+    reveal. The loggia shaft below is modelled in three tones because
+    it is a solid standing in the open; giving the strip the same
+    treatment would make it read as projecting again, which is the
+    whole thing being fixed here.
+
+    The taper carries straight through from the shaft (`col_hw` on
+    the storey's own world heights), so the column keeps thickening
+    as it rises even though the middle of every storey is hidden.
+    """
+    hw_lo, hw_hi = col_hw(dy_lo), col_hw(dy_hi)
+    x_lo, x_hi = sorted((e0[0], e1[0]))
+    sl = (e1[1] - e0[1]) / (e1[0] - e0[0])       # ±0.5 on every run
+    for cx in col_xs(r):
+        if not x_lo <= cx <= x_hi:
+            continue
+        yb = e0[1] + (cx - e0[0]) * sl
+
+        def pt(dx, y):
+            """A point `dx` along the RUN from the column's centre.
+            The strip has to SHEAR with the wall: its foot and head
+            are lines running with the 2:1 face, not horizontals.
+            Drawn as an axis-aligned rectangle it read as a pale
+            panel pasted flat on a receding wall — and its lower
+            corner hung below the wall's own foot, which is the
+            white nub that showed up along the base of both upper
+            storeys (user, 2026-08-25)."""
+            return (round(cx + dx), round(yb + dx * sl - y))
+
+        # a corner column stands ON the run's end and only its half
+        # belongs to this face; the other half is the next run's, and
+        # the two meet at the fold
+        a_lo, a_hi = max(-hw_hi, x_lo - cx), min(hw_hi, x_hi - cx)
+
+        def cl(w):
+            return max(a_lo, min(a_hi, w))
+
+        cap_h, cap_w, cap_c = COL_CAP
+        f = f * (COL_DIM_UP if dy_lo >= LVL2_Y else 1.0)
+
+        def cap(w, y):
+            """The capital's extra flare, if any — a widening confined
+            to the top `cap_h` px, in the WALL PLANE, so it can never
+            read as the column stepping out of the wall."""
+            if cap_h <= 0 or y < y_hi - cap_h:
+                return w
+            return w * (1.0 + (cap_w - 1.0) * (y - (y_hi - cap_h)) / cap_h)
+
+        # the surface, band by band. Each band is SLICED up the
+        # storey so its foot->head gradient is a real ramp: PIL fills
+        # a polygon flat, and one flat quad per band is exactly the
+        # "splotch" this exists to fix. Slices overlap by a pixel
+        # upward and the next one paints over the seam.
+        n = max(6, int(abs(y_hi - y_lo) / 3))
+        for u0, u1, c0, c1 in COL_FACETS:
+            a, b = hx(c0), hx(c1)
+            for i in range(n):
+                t0, t1 = i / n, (i + 1) / n
+                yA = y_lo + (y_hi - y_lo) * t0
+                yB = y_lo + (y_hi - y_lo) * t1 + 1
+                wA = hw_lo + (hw_hi - hw_lo) * t0
+                wB = hw_lo + (hw_hi - hw_lo) * t1
+                wA, wB = cap(wA, yA), cap(wB, yB)
+                d.polygon([pt(cl(u0 * wA), yA), pt(cl(u1 * wA), yA),
+                           pt(cl(u1 * wB), yB), pt(cl(u0 * wB), yB)],
+                          fill=shade(mix(a, b, (t0 + t1) / 2), f))
+        for u, (c, w) in ((-1.0, COL_EDGE_L), (1.0, COL_EDGE_R)):
+            if a_lo <= u * hw_lo <= a_hi:
+                d.line([pt(u * hw_lo, y_lo),
+                        pt(u * cap(hw_hi, y_hi), y_hi)],
+                       fill=shade(hx(c), f), width=w)
+        if cap_c:
+            # the slab's soffit shadow across the column head
+            w = cap(hw_hi, y_hi)
+            d.line([pt(cl(-w), y_hi - 1), pt(cl(w), y_hi - 1)],
+                   fill=shade(hx(cap_c), f), width=2)
+
+
+def bay_columns(d, r, e0, e1, f, feats, reflect=False):
     """Dark bronze columns between the bays — placed at the CORNERS
     and at the MIDPOINTS of the gaps between features, and only where
     they actually CLEAR the neighbouring frames (2026-08-24, user:
@@ -1698,6 +2006,10 @@ def bay_columns(d, e0, e1, f, feats, reflect=False):
         if any(abs(t - ft) * span < FEAT_HW[k] + 6 for _, ft, k in feats):
             continue
         b = lerp(e0, e1, t)
+        # …and off the FLUSH COLUMNS, which are the same wall face and
+        # would otherwise take a bronze stripe down their middle
+        if any(abs(b[0] - cx) < COL_HW1 + 6 for cx in col_xs(r)):
+            continue
         d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
                     fill=shade(hx("#241c15"), f))
         d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
@@ -1753,15 +2065,17 @@ def paint_upper_level(d):
         d.line([c0, up(c0, top)], fill=hx("#fffdf5"), width=2)  # arris
         d.line([c1, up(c1, top)], fill=hx("#6f6957"), width=1)
     doors = {}
-    for i0, i1, feats, f in (
+    for r, (i0, i1, f) in enumerate((
         # Both HALLWAY MOUTHS sit on the Diamond Head run (user,
         # 2026-08-24): one hard against the top point and one past the
         # rightmost door, so the recesses bracket the run instead of
         # punching a hole through the middle of it. Mid-wall portals
         # broke the door rhythm exactly where the eye travels.
-        (3, 0, UPPER_FEATS[0], 1.10),
-        (0, 1, UPPER_FEATS[1], 0.97),
-    ):
+        (3, 0, 1.10),
+        (0, 1, 0.97),
+    )):
+        feats = place_feats(r, LVL2_OUT, col_hw(LVL2_Y + 58),
+                            UPPER_FEATS[r])
         a0, a1 = inn[i0], inn[i1]
         e0, e1 = out[i0], out[i1]
 
@@ -1770,12 +2084,19 @@ def paint_upper_level(d):
                       fill=col)
 
         # ---- the wall (far)
-        q(0, 8, shade(POST, f))
-        q(8, 58, shade(CONC, f))
+        # NO pale base strip: the wall is concrete to its own foot
+        # (user, 2026-08-25 — "get rid of that white base strip too").
+        # It was a white skirting under every door on both upper
+        # storeys and the photographs have nothing like it; the
+        # walkway's own slab edge is what the wall meets.
+        q(0, 58, shade(CONC, f))
         for y in (24, 41):
             d.line([up(e0, y), up(e1, y)],
                    fill=shade(CONC, f * 0.90), width=1)
-        bay_columns(d, e0, e1, f, feats)
+        # the column, FLUSH in this wall — before the doors and long
+        # before the walkway that crosses it
+        wall_column(d, r, e0, e1, 0, 58, LVL2_Y, LVL2_Y + 58, f)
+        bay_columns(d, r, e0, e1, f, feats)
         for did, t, kind in feats:
             if kind == "door":
                 pos = door_at(d, e0, e1, t, "koa")
@@ -1849,15 +2170,18 @@ def paint_walls(d):
     # a lift at 0.47, punching holes through the door rhythm right
     # where the eye travels the wall. `gov` is the lift lobby that
     # closes the run — a named hotspot, so it moved runs with it.
-    for e0, e1, feats, f in (
-        (out[3], out[0], GALLERY_FEATS[0], 1.0),
-        (out[0], out[1], GALLERY_FEATS[1], 0.88),
-    ):
+    for r, (e0, e1, f) in enumerate((
+        (out[3], out[0], 1.0),
+        (out[0], out[1], 0.88),
+    )):
+        feats = place_feats(r, A_OUT, col_hw(58), GALLERY_FEATS[r])
+
         def q(y0, y1, col):
             d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
                       fill=col)
-        q(0, 8, shade(POST, f))                       # base strip
-        q(8, 58, shade(CONC, f))                      # concrete bays
+        # concrete to the foot — no pale base strip (see the same
+        # removal in paint_upper_level)
+        q(0, 58, shade(CONC, f))                      # concrete bays
         # concrete reads as POUR JOINTS + form mottle, not brick
         # courses (user-corrected: "the texture of the walls is more
         # concrete-like")
@@ -1871,9 +2195,13 @@ def paint_walls(d):
             d.rectangle([b[0] - mw // 2, b[1] - my0 - int(rng.integers(4, 9)),
                          b[0] + mw // 2, b[1] - my0],
                         fill=shade(CONC, f * rng.uniform(0.94, 1.06)))
+        # the column, FLUSH in this wall — under the doors and under
+        # the walkway and parapet that cross it (both drawn well
+        # after this, at the well line a whole bay nearer the camera)
+        wall_column(d, r, e0, e1, 0, 58, 0, 58, f)
         # dark bronze columns between the bays (clearance-placed —
         # see bay_columns)
-        bay_columns(d, e0, e1, f, feats, reflect=True)
+        bay_columns(d, r, e0, e1, f, feats, reflect=True)
         # doors, hallway portals, elevator lobbies
         for did, t, kind in feats:
             if kind == "door":
@@ -2038,24 +2366,15 @@ def render(raw=False):
     upper = paint_upper_level(d)          # furthest: before the walls
     doors = paint_walls(d)
     doors.update(upper)
-    # THE COLUMNS, upper half — gallery floor to the top of the third
-    # storey. After the walls and the upper level, because a shaft on
-    # the court edge stands in front of both; the half below the
-    # gallery went in with paint_well, where the hole mask trims it.
-    # UNBROKEN from the gallery floor to the head. A first pass
-    # started this at RAIL_H + 7 so the balustrade crossed in front,
-    # on the theory that the photo's strips show a shaft passing
-    # BEHIND each balcony — the user corrected it (2026-08-25: "the
-    # columns on the rotunda floor go up through each floor. so it
-    # appears as a single column that goes all the way from rotunda
-    # to top of the building"). The parapet stands on the SAME A_IN
-    # line as the shaft, so it abuts the column, it does not pass in
-    # front of it; the break just cut the one thing that ties the
-    # storeys together. Together with the paint_well half below, the
-    # shaft is continuous from the courtyard floor to the top of the
-    # third storey — one column, the whole height of the room.
-    for b, cf in column_stations():
-        court_column(d, b, 0, COL_DY1, cf)
+    # NO free-standing column above the gallery floor any more: from
+    # the second storey up the shaft is FLUSH in the wall and was
+    # already painted there, by wall_column() inside paint_walls and
+    # paint_upper_level. The piece below the gallery went in with
+    # paint_well, where the hole mask trims it. Drawing a shaft out
+    # here — on the court edge, after everything — is what put nine
+    # poles in front of both balconies (user, 2026-08-25: "you're
+    # misreading the columns. they should be flush with the walls on
+    # the second and third floors").
     # planters AFTER walls: the W/E corner planters sit in front of
     # the corner-most doors' floor reflections and must occlude them
     paint_planters(d)

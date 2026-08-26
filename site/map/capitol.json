@@ -14,32 +14,32 @@
    "id": "senate",
    "name": "Senate Gallery",
    "kind": "door",
-   "px": 520,
-   "py": 662,
+   "px": 503,
+   "py": 670,
    "text": "The ʻEwa cone, below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
   },
   {
    "id": "house",
    "name": "House Gallery",
    "kind": "door",
-   "px": 1098,
-   "py": 631,
+   "px": 1139,
+   "py": 651,
    "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
   {
    "id": "wam",
    "name": "Ways & Means",
    "kind": "door",
-   "px": 619,
-   "py": 612,
+   "px": 606,
+   "py": 619,
    "text": "The Senate's money committee. A revenue bill that cannot clear Ways & Means goes no further."
   },
   {
    "id": "finance",
    "name": "House Finance",
    "kind": "door",
-   "px": 958,
-   "py": 561,
+   "px": 984,
+   "py": 574,
    "text": "The House's money committee — every appropriation in the state budget passes across these tables."
   },
   {
@@ -54,16 +54,16 @@
    "id": "senpres",
    "name": "Senate President",
    "kind": "door",
-   "px": 491,
-   "py": 565,
+   "px": 432,
+   "py": 594,
    "text": "Third level, and this floor is the Senate's. Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
   },
   {
    "id": "senclerk",
    "name": "Senate Clerk",
    "kind": "door",
-   "px": 1037,
-   "py": 489,
+   "px": 1075,
+   "py": 507,
    "text": "Every measure is filed, numbered and journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
   },
   {

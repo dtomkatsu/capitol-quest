@@ -2033,7 +2033,10 @@ user's call).
     cap riding the TOP edge of the white band is what says "railing"
     at this distance. The WELL railing keeps its open pickets — the
     dark drop behind it is what they read against.
-  - **Bay columns are CLEARANCE-PLACED, both levels** (`bay_columns`;
+  - **Bay columns are CLEARANCE-PLACED, both levels** — and since
+    2026-08-25 they also keep off the FLUSH columns, which are the
+    same wall face and would otherwise take a bronze stripe down
+    their middle (`bay_columns`;
     2026-08-24, user: "many of the columns in general are clipping
     into other elements"). The old fixed i/8 grid landed bronze
     columns inside door architraves all along both walls — doors
@@ -2290,6 +2293,11 @@ user's call).
       wall plane, where a collision left a sliver poking out of a
       frame. It does not govern the real columns, which stand a bay
       in FRONT of the wall and occlude it honestly.
+  - **NO PALE BASE STRIP ON THE UPPER WALLS** (2026-08-25, user: "get
+    rid of that white base strip too"). `q(0, 8, POST)` put a white
+    skirting under every door on both upper storeys; the photographs
+    have nothing like it, and the walkway's own slab edge is what the
+    wall meets. `POST` is gone with it — it had no other use.
   - **THE GROUND FLOOR IS A LOGGIA AND THE COLUMNS RUN FULL HEIGHT**
     (2026-08-25, from the executive-floor photo — user: "fix the
     column taper and the loggia setback… those columns go all the way
@@ -2318,50 +2326,150 @@ user's call).
       A_IN and GND_OUT floor lines is what makes the set-back exist.
     - **The taper is LINEAR (`COL_FLARE` 1.0), and that is
       measured.** A power curve was tried first to put the swell at
-      the head; it cannot work, because only two stretches of any
-      shaft are ever seen — the loggia (t 0-.34) and above the
-      gallery cap (t .5-1) — and an exponent that flares one
-      flattens the other. Straight batter gives both ≈1.4, which is
-      the per-storey taper the photo shows. **The full-height 6→14
+      the head; it cannot work, because a column is only ever seen in
+      short stretches — the loggia, then the band of each upper wall
+      between one balcony's cap and the slab above — and an exponent
+      that flares one flattens the others. Straight batter gives
+      every stretch ≈1.4, which is the per-storey taper the photo
+      shows. **The full-height 6→14
       ratio is not what the eye gets; the per-stretch ratio is.**
-    - **The shaft is drawn in TWO pieces and `col_hw()` is why they
-      line up**: the part below the gallery goes into paint_well's
-      clipped layer, the part above is painted after the walls.
-      Separate taper maths in each would step at the join.
-    - **IT NEVER BREAKS. ONE SHAFT, ROTUNDA FLOOR TO THE TOP**
-      (user-corrected 2026-08-25: "the columns on the rotunda floor
-      go up through each floor. so it appears as a single column that
-      goes all the way from rotunda to top of the building"). The
-      first pass started the upper half above the gallery parapet's
-      koa cap, on a misreading of the photo's vertical strips as a
-      shaft passing BEHIND each balcony. The parapet stands on the
-      SAME A_IN line as the shaft, so it abuts the column rather than
-      crossing in front of it, and the break cut the one element that
-      ties the storeys together. Drawn continuously the column is
-      what makes the room read as one tall space instead of three
-      stacked decks — don't reintroduce a break at any level.
-      Everything higher is recessed to A_OUT and therefore BEHIND the
-      shaft, so nothing above needs one either.
-    - **Only the NAMED doors are protected, and the clearance is
-      HALF the frame.** Clearing every doorway returns literally
-      zero columns (the runs carry 13 and 16 features, 20-50px apart
-      on the column line, against a shaft needing ~30px a side);
-      demanding whole frames for the named ones drove every Diamond
-      Head column into its left half and left the House door's end
-      bare. Named doors are protected because they are HOTSPOTS.
-    - **The gap to test is the range of valid CENTRES, not the space
-      between doors** — requiring a clear span as wide as the shaft
-      threw away good positions between doors only 61px apart.
-    - Stations start on a regular pitch (`COL_N`) and a blocked one
-      is NUDGED to the nearest clear x rather than dropped, so the
-      colonnade keeps its rhythm. `GALLERY_FEATS`/`UPPER_FEATS` are
-      module-level for this: the placer must read exactly what the
-      painters draw or it will clear a door that has since moved.
-    - Three tones, not two: at nearly a storey wide at the head a
-      single face with one dark edge read as a pale ribbon taped to
-      the wall. Both edges carry a keyline — against the ʻEwa
-      breezeway's bright plaza bands a pale shaft has no silhouette
-      otherwise, the same lesson the cone's keyline records.
+    - **THE COLUMN STANDS FREE ONLY ON THE GROUND FLOOR. ON THE
+      SECOND AND THIRD IT IS FLUSH IN THE WALL** (user-corrected
+      2026-08-25: "you're misreading the columns. they should be
+      flush with the walls on the second and third floors"). Follow
+      one stack down the executive-floor photograph and it is not
+      ambiguous: a tapered shaft standing out in the loggia, then
+      above each balcony a pale strip lying IN the wall face between
+      the doors, with the walkway and its parapet crossing in front
+      of it. The ground storey is the only one whose wall is set back
+      far enough for the column to come out of it. Two earlier
+      readings are retired — one broke the shaft at every parapet,
+      the next ran it unbroken up the COURT EDGE and put nine
+      free-standing poles between the camera and the room.
+    - **A column is drawn in THREE pieces on three surfaces and
+      `col_hw()` is why they line up**: free-standing in paint_well's
+      clipped layer (`court_column`), then flush in the gallery wall
+      and flush in the Senate wall (`wall_column`, called from
+      paint_walls and paint_upper_level BEFORE the doors and long
+      before the walkway). Separate taper maths in any of them would
+      step at a join, and the middle of every storey is hidden, so
+      the taper has to run through the parts nobody sees.
+    - **The upper strips are drawn at the SAME SCREEN X as the shaft
+      below, and that is a deliberate cheat.** The walls really do
+      stand a walkway further back, and a true projection would step
+      each strip ~20 display px sideways per storey — three
+      unrelated marks instead of a column. The storey's own floor and
+      slab fix the strip's vertical extent, so screen x is the only
+      thing tying the pieces together and it is the one that has to
+      be honest. `col_xs()` is the single source all three read.
+    - **THE STRIP'S SURFACE IS A TWO-FACET STEP, AND EVERY NUMBER IN
+      IT IS MEASURED** (`COL_FACETS`; rebuilt 2026-08-25 after the
+      user: "the columns appear to lose their shape as they get
+      higher. they look less like 3d objects, more like splotches").
+      It had shipped as ONE flat fill — 13 identical pixels, self-
+      contrast under 1%, at 0.86 of the white slab band where the
+      photographs put a flush column at 0.48. The real profile is a
+      narrow reveal, a ramp, a WIDE nearly-flat lit facet (~60% of
+      the width), ONE hard arris, a shadow facet at ~0.6 of the lit
+      one, and a keyline. Three rules survived measurement and a
+      four-lens judge panel and must not be undone:
+      - **No pixel at either outer edge is brighter than the body.**
+        Not one, in either photograph, across eight columns sampled.
+        The old 1px #ddd6c0 arris was brighter than everything in
+        both photographs; a bright edge is a projecting-object cue.
+      - **The keyline is darker than the WALL**, not merely darker
+        than the column (#3a3732 is 0.78 of CONC). A midtone edge is
+        what makes a strip look pasted ON a surface rather than cut
+        INTO it — the old #8a8272 was 1.9x the wall.
+      - **The shadow facet is NOT floored to the wall.** A real flush
+        column's darkest sample measures 1.5x its wall (#6a655a is
+        1.44x CONC). Darker than that and a quarter of the strip's
+        width disappears into the concrete — which is exactly how the
+        rival "storey-ramp" candidate failed.
+      The strip is FLAT up its height (the photographs are flat to
+      3-8%); the 5% head droop is all the vertical variation there
+      should be. The loggia shaft keeps its own three-tone modelling
+      and both keylines — it is a solid standing in the open.
+    - **AND IT GETS DARKER AS IT RISES** (`COL_DIM_UP` 0.78). Scaled
+      to the white slab band as a common white, the photographs put
+      the flush column's lit face at 0.67 on the second floor and
+      0.48 on the third, while the WALL beside it gets lighter with
+      height. The bake did the exact opposite — the third-floor run
+      carries f = 1.10, so the topmost strip was the widest AND the
+      palest thing in the room. That, not the cross-section alone, is
+      what "as they get higher" was pointing at.
+    - **The sweep harness is worth rebuilding if this is ever
+      retuned.** `COL_FACETS`/`COL_EDGE_*`/`COL_CAP`/`COL_DIM_UP` are
+      module-level ON PURPOSE so a variant is a monkeypatch plus a
+      re-render (0.3s) into a scratch path, never an edit to this
+      file. Judge every candidate on the DOWNSCALED bake: at 9 display
+      px (2F) and 13 (3F) a band under ~2 scene px is mush, and two of
+      the eight candidates tried looked best at 8x and vanished at
+      1:1. `COL_CAP` (a capital flare / soffit shadow) is wired and
+      shipped OFF: both photo agents looked for a flare and measured
+      the real strip dead-constant in width right up to the slab.
+    - **THE STRIP SHEARS WITH THE WALL — it is a parallelogram, never
+      an axis-aligned rectangle** (user, 2026-08-25: "the perspective
+      is off now… you also added white trim to base of the wall on
+      second and third floors"). BOTH complaints were this one bug.
+      Drawn with horizontal foot and head lines on a 2:1 face, the
+      strip read as a pale panel pasted flat on a receding wall, AND
+      its lower corner hung ~11px below the wall's own foot — a row
+      of those along each storey is the "white trim" that appeared at
+      the base. Foot and head run WITH the face (`sl = ±0.5`),
+      exactly the way `door_at` already builds its frames. Anything
+      else drawn on a wall follows the same rule.
+    - **A CORNER COLUMN, AND TWO TO A SIDE** (user, 2026-08-25, with
+      a courtyard photograph: "there's corner columns, but then aside
+      from that it's two columns to a side"). Three a side read as a
+      picket fence. The corner column is FREE: the mauka apex is the
+      one place every diamond shares a screen x (`x = 16(u - v) = 0`
+      when `u == v`), so the same column lands on the court edge and
+      on both walls at CX, and each run draws its own HALF of it
+      against its own slope — the two meet at the fold as a chevron,
+      which is what a corner column looks like in this projection.
+      The ʻEwa and Diamond Head corners get none: a vertical line at
+      the well diamond's W or E point meets the hole at exactly ONE
+      pixel, so paint_well's mask eats any shaft standing there, and
+      those two ends are the dollhouse cut anyway — a sawn face, not
+      a fold.
+    - **THE COLUMNS COME FIRST AND THE DOORS FILL THE BAYS BETWEEN
+      THEM** (`place_feats`; the dependency used to run the other
+      way). A free-standing shaft may pass in front of a door
+      honestly; a strip lying IN the wall may not, and a collision is
+      a pale sliver poking out either side of a frame — the
+      2026-08-24 "clipping into other elements" complaint. Measured
+      before the rewrite: with the hand-written schedules where they
+      were, a strip of ANY width had zero clear positions on the
+      Diamond Head run and one 12px window on the ʻEwa run. So each
+      run is divided into `COL_N + 1` even bays and every wall lays
+      its own doors out inside them.
+    - **`GALLERY_FEATS`/`UPPER_FEATS` carry ORDER AND KIND, no
+      positions.** t comes out of the geometry, so moving a column or
+      changing `COL_N` re-spaces the doors instead of leaving a
+      hand-tuned schedule lying against the new bays. Order is the
+      contract — place_feats never reorders — which is what keeps the
+      hallway mouths bracketing the Diamond Head run and the lift
+      lobby closing it. A wall that runs out of room drops UNNAMED
+      office doors from the far end, one at a time; the named ones
+      are hotspots and never go. Current cost is ONE filler office
+      door, off the Diamond Head gallery wall.
+    - **The split is EXHAUSTIVE, not proportional** (`_lay_bays`).
+      Bays and items are both ordered, so the whole question is where
+      to cut the list into one contiguous group per bay — a handful
+      of possibilities at these sizes — and the cut whose FULLEST bay
+      is loosest wins, which spreads the doors instead of packing the
+      first bay. A proportional-share pass with a repair loop was
+      tried first and ping-ponged one door between two bays that
+      could each hold it only without the other, then gave up and
+      dropped it: three doors lost off one wall.
+    - **`PIL_PAD` 0 / `FEAT_GAP` 6 are measured.** At 1 and 10 the
+      Diamond Head gallery wall seated five of its eight features,
+      and the cliffs are savage — one bay missing the hall-plus-office
+      pair by 0.4px cascades into three lost doors. Zero pad is also
+      what the photograph shows: architraves run tight against the
+      columns, and a frame that rounds onto a strip by a pixel is
+      dark koa over pale stone.
     - **THE COURTYARD FLOOR IS STONE PAVING, AND IT WAS TOO BRIGHT
       BY A THIRD** (`court_paving`, re-based 2026-08-25 from the
       executive-floor photo). Three separate faults, all measured:
@@ -2495,6 +2603,10 @@ five passes because of these, not because of how it was drawn:**
 `Interior of Hawaii State Capitol from Executive Floor.jpg` (view DOWN
 the atrium — source of: dark-brown walkway floors edged in white
 fluted fascia, dark bronze wall columns, tall koa doors, wall benches)
+plus a third the user supplied 2026-08-25, a wide view of the
+courtyard FROM THE ROTUNDA FLOOR looking up (source of the column
+count — a corner column and two to a side — and of the coffered
+balcony soffits cantilevering out past the loggia columns),
 and `Hawaii State Capitol - Interior Rotunda (5683208622).jpg` (the
 courtyard panorama — source of: large pale square ground piers,
 vertical koa-slat chamber screens, tan stone planters, the chain-post
