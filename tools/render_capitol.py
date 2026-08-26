@@ -238,6 +238,24 @@ COL_FLARE = 1.0            # LINEAR, and measured: a power curve was
 # so paint_well's mask eats any shaft standing there. Those two ends
 # are the dollhouse cut anyway — a sawn face, not a fold.
 COL_T = (1 / 3.0, 2 / 3.0)  # the interior pair; the apex is added per run
+# THE CORNER COLUMN STANDS ON THE WALL CORNER, NOT THE COURT EDGE
+# (user, 2026-08-25: "the central column should be further back. the
+# top point of the graphic, next to the hallway, is where a little
+# alcove is. the column goes up through there"). Measured off the
+# executive-floor photograph: the corner strip's foot sits at y=250.5
+# where the two wall faces' intersection extrapolates to y=251.0 and
+# 251.3 from the left and right runs — one full walkway width behind
+# the railing, and plumb under the strips on the floors above. The
+# mid-run ground columns are NOT affected: those really are
+# free-standing in the loggia with the koa wall a bay behind them.
+#
+# It costs nothing in screen x. u == v at the apex, so x = 16(u - v)
+# is CX on every diamond — the shaft still lines up with the flush
+# strips above. It moves UP 16*(GND_OUT - A_IN) = 38 scene px, and
+# paint_well's hole mask then trims its top 38 px, so it emerges from
+# under our own slab already deep in the corner. That is the whole
+# effect and it is free.
+COL_APEX_U = GND_OUT
 
 # THE FLUSH COLUMN'S SURFACE, as bands across its width. `u` runs -1
 # at the left arris to +1 at the right, as a FRACTION of the
@@ -771,6 +789,14 @@ def paint_well(img):
     # smokestack() clamps every point to the fascia's bottom line.
     smokestack(d, STACK_U, STACK_V, DROP - 14, STACK_R, 0.55,
                STACK_CUT, 0.92)
+    # THE CORNER COLUMN, and it is drawn HERE — between the cone and
+    # the panel — because that is the depth order at the apex. The
+    # cone's axis is at v = STACK_V (farthest), the shaft at
+    # v = -COL_APEX_U, and the panel's face nearer still, so the cone
+    # goes behind the shaft and the corner wall in front of it. Drawn
+    # with the other stations at the end of this function it would
+    # paint over the corner mass instead of standing in it.
+    court_column(d, iso(-COL_APEX_U, -COL_APEX_U), COL_DY0, 0, 1.0)
     court_panel(d, PIER_U0, PIER_U1, PIER_DEP, 0.9)
 
     # THE COLUMNS, lower half — foot to the gallery floor. Drawn here
@@ -1115,9 +1141,6 @@ def column_stations():
                         ((hole[0], hole[1]), 0.86)):
         for t in COL_T:
             out.append((lerp(e0, e1, t), f))
-    # the CORNER column, once: both runs claim the mauka apex and it
-    # is one shaft, not two standing in the same place
-    out.append((hole[0], 1.0))
     return out
 
 
@@ -1645,6 +1668,123 @@ def door_at(d, e0, e1, t, kind, hw=17):
     return p
 
 
+def bench_at(d, e0, e1, t, f):
+    """A DARK WOODEN BENCH standing against the wall on the walkway.
+
+    Benches were drawn here once before and deleted; CLAUDE.md records
+    why — "drawn mid-walkway with no wall contact they read as brown
+    bars floating on the railings". Both halves of that are fixed by
+    measurement, not by redrawing:
+
+    CONTACT IS OVERLAP, NOT PROXIMITY. The seat's back edge sits ON
+    the wall's foot line and the bench OCCLUDES the bottom of the wall
+    face, so it is painted after the wall and after the doors. A bar
+    that merely stops near the wall has nothing holding it there.
+
+    AND IT IS FOUND BY ITS SHADOW. Measured on the executive-floor
+    photograph, the bench body is 0.89 of the walkway it stands on —
+    11% DARKER than its own deck, so it never separates from the floor
+    by value. What separates it is the contact shadow at 0.57 of the
+    floor. Draw the bench and skip the shadow and it floats again.
+
+    Proportions are measured too: length 1.5 office-leaf widths, seat
+    8-9 px, depth equal to the height, backless, and no daylight
+    under the seat (the underside samples flat, sd 2.5). The render
+    exaggerates height ~2.8x against plan, so the top plane is only
+    ~3 px of screen y and the front face 8 — the bench is mostly front
+    face, and the lit lip has to carry the whole object in two px.
+
+    ON THE COLOUR. The real bench measures NEUTRAL — R-B of 9 against
+    koa's 53 — because it sits in shade; the user asked for dark wood.
+    This splits the difference deliberately: dark enough and desatur-
+    ated enough (R-B 7-17) that it cannot camouflage against the warm
+    quarry-tile deck (R-B 43), which is the other half of why the last
+    attempt read as a brown bar.
+    """
+    p = lerp(e0, e1, t)
+    ex = (e1[0] - e0[0], e1[1] - e0[1])
+    ln = math.hypot(*ex)
+    ux, uy = ex[0] / ln, ex[1] / ln
+    # OUTWARD, toward the court: the wall's normal in screen space.
+    # Run 0 falls to the right (slope -0.5) and its normal is
+    # (+2, +1); run 1 rises and its normal mirrors to (-2, +1).
+    sgn = 1 if ex[1] / ex[0] < 0 else -1
+    dx, dy = 6 * sgn, 3                     # 0.375 plan units of depth
+    hw, ht = FEAT_HW["bench"] - 2, 9
+
+    def pt(w, y, out=0):
+        return (round(p[0] + ux * w + dx * out),
+                round(p[1] + uy * w + dy * out - y))
+
+    def quad(w0, w1, a, b, col):
+        d.polygon([pt(w0, *a), pt(w1, *a), pt(w1, *b), pt(w0, *b)],
+                  fill=col)
+
+    # the contact shadow FIRST, on the floor. It has to be a SHADOW
+    # and not a hole: at 0.48 of the tile it merged with the bench's
+    # own front face and the pair read as one dark blob, which is a
+    # different failure from floating but just as bad. 0.62 of the
+    # tile, and only 1.8 units deep.
+    quad(-hw, hw, (0, 0), (-1, 1.8), mix(FLOOR, hx("#120c08"), 0.38))
+    # the front face and the solid under-mass, as one dark plane
+    quad(-hw, hw, (ht, 1), (0, 1), shade(hx("#26221c"), f))
+    # the seat's top plane: dark where it meets the wall, and it is
+    # only ~3 px of screen y, so this is nearly all lip
+    quad(-hw, hw, (ht, 0), (ht, 1), shade(hx("#3b352d"), f))
+    # THE LIT LIP — 1.45x the body, full strength, no gradient. At
+    # display scale this single line IS the bench, so it is the one
+    # thing here that must not be feathered or dimmed.
+    d.line([pt(-hw, ht, 1), pt(hw, ht, 1)],
+           fill=shade(hx("#564e42"), f), width=2)
+    # a dark seam where the seat back bites into the wall
+    d.line([pt(-hw, ht, 0), pt(hw, ht, 0)],
+           fill=shade(hx("#1b1814"), f), width=1)
+    return p
+
+
+def alcove_at(d, e0, e1, t, f):
+    """THE LITTLE ALCOVE at the court's corner — a shallow, full-height
+    dark pocket in the wall, beside the corner column (user,
+    2026-08-25: "the top point of the graphic, next to the hallway, is
+    where a little alcove is").
+
+    Measured on the executive-floor photograph: at every level a
+    near-black zone about one door bay wide flanks the corner column
+    on BOTH runs, stepped at its edges rather than graded, as dark as
+    the ground-floor loggia recess (13-20 against a wall of 33-45) and
+    the only full-height feature of its kind on either run. Only the
+    ʻEwa side gets one here — on the Diamond Head side the hallway
+    mouth already is the recess, which is exactly the asymmetry the
+    user described.
+
+    It is SHALLOW — the one 6px reveal it can be measured from puts it
+    at about a quarter of a walkway width — so this is a pocket, not a
+    room: no receding floor, no far wall, no corridor perspective.
+    corridor_at() is the wrong model and would spill a lit floor wedge
+    across the wall face.
+    """
+    p = lerp(e0, e1, t)
+    ex = (e1[0] - e0[0], e1[1] - e0[1])
+    ln = math.hypot(*ex)
+    ux, uy = ex[0] / ln, ex[1] / ln
+    hw = FEAT_HW["alcove"] - 3
+
+    def pt(w, y):
+        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+
+    def quad(w0, w1, y0, y1, col):
+        d.polygon([pt(w0, y0), pt(w1, y0), pt(w1, y1), pt(w0, y1)],
+                  fill=col)
+
+    quad(-hw, hw, 0, 56, shade(hx("#1c1b18"), f))          # the pocket
+    quad(-hw, -hw + 3, 0, 56, shade(hx("#2c2a26"), f))     # near cheek
+    d.line([pt(-hw, 56), pt(hw, 56)],
+           fill=shade(hx("#131210"), f), width=2)          # soffit
+    d.line([pt(-hw, 1), pt(hw, 1)],
+           fill=shade(hx("#26241f"), f), width=1)          # its floor
+    return p
+
+
 def corridor_at(d, e0, e1, t, f, elevator=False):
     """A HALLWAY portal in the wall — the offshoots that lead deeper
     into the building (the balconies are not a closed ring). A
@@ -1726,7 +1866,8 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
     return p
 
 
-FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19}
+FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19,
+           "bench": 21, "alcove": 17}
 
 # THE TWO DOOR SCHEDULES — ORDER AND KIND ONLY, NO POSITIONS
 # (re-cut 2026-08-25 when the columns went flush). The t values used
@@ -1742,20 +1883,27 @@ FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19}
 # lift lobby last — and the ʻEwa run is still all doors. An unnamed
 # office is filler and may be dropped if its wall runs out of room;
 # a named one is a hotspot and never is.
+# FEWER INERT DOORS, AND BENCHES BESIDE THE ONES THAT REMAIN (user,
+# 2026-08-25: "remove some of the inert doors and put dark wooden
+# benches next to them"). The count is measured, not chosen: a full
+# run of the executive-floor photograph carries three doors and ONE
+# bench, and the balcony above it the same — about one bench per two
+# door bays, two to a run, never one per bay. A bench is also SHORTER
+# than a door, so converting one hands wall room back to the bay
+# layout. The corner-most slot on each ʻEwa run is the ALCOVE (see
+# alcove_at); the Diamond Head runs already close on a portal.
 GALLERY_FEATS = (
     (("senate", "door"), (None, "office"), ("wam", "door"),
-     (None, "office"), (None, "office"), (None, "office"),
-     (None, "office")),
+     (None, "bench"), (None, "office"), (None, "alcove")),
     ((None, "hall"), (None, "office"), ("finance", "door"),
-     (None, "office"), (None, "office"), ("house", "door"),
-     (None, "office"), ("gov", "lift")),
+     (None, "bench"), ("house", "door"), ("gov", "lift")),
 )
 UPPER_FEATS = (
-    (("senpres", "door"), (None, "office"), (None, "office"),
-     (None, "office"), (None, "office"), (None, "office")),
-    ((None, "hall"), (None, "office"), (None, "office"),
-     ("senclerk", "door"), (None, "office"), (None, "office"),
-     (None, "office"), (None, "hall")),
+    (("senpres", "door"), (None, "office"), (None, "bench"),
+     (None, "office"), (None, "bench"), (None, "alcove")),
+    ((None, "hall"), (None, "office"), (None, "bench"),
+     ("senclerk", "door"), (None, "office"), (None, "bench"),
+     (None, "hall")),
 )
 
 
@@ -1884,12 +2032,17 @@ def place_feats(r, a, hw, feats):
     a column or changing COL_N re-spaces the doors instead of leaving
     a hand-tuned schedule lying against the new bays.
 
-    A wall that cannot hold its whole list loses UNNAMED office doors
-    from the far end, one at a time, until it can: the named ones are
-    HOTSPOTS and dropping one costs the player a door they need to
-    click. The dense-doors call (2026-08-22, "in reality there would
-    be many more doors") is served by filling every bay, not by a
-    fixed count.
+    A wall that cannot hold its whole list loses FILLER from the far
+    end, one item at a time, until it can — and only filler. Named
+    entries are HOTSPOTS, so dropping one costs the player a door they
+    need to click; a portal or an ALCOVE is a piece of the building's
+    plan rather than dressing, and the corner alcove in particular is
+    the whole point of the corner (it was silently dropped the first
+    time this ran, which is what this rule exists to prevent). So the
+    drop order is: unnamed office doors first, then unnamed benches,
+    then nothing. The dense-doors call (2026-08-22, "in reality there
+    would be many more doors") is served by filling every bay, not by
+    a fixed count.
     """
     bays = wall_bays(r, a, hw)
     items = list(feats)
@@ -1898,9 +2051,10 @@ def place_feats(r, a, hw, feats):
         if xs is not None:
             return [(nm, run_t(r, a, x), k)
                     for (nm, k), x in zip(items, xs)]
-        i = next((i for i in range(len(items) - 1, -1, -1)
-                  if items[i][0] is None), None)
-        assert i is not None, "no room on this wall for the named doors"
+        i = next((i for kinds in (("office",), ("bench",))
+                  for i in range(len(items) - 1, -1, -1)
+                  if items[i][0] is None and items[i][1] in kinds), None)
+        assert i is not None, "no room on this wall for its fixed features"
         items.pop(i)
 
 
@@ -2097,11 +2251,17 @@ def paint_upper_level(d):
         # before the walkway that crosses it
         wall_column(d, r, e0, e1, 0, 58, LVL2_Y, LVL2_Y + 58, f)
         bay_columns(d, r, e0, e1, f, feats)
+        benches = []
         for did, t, kind in feats:
             if kind == "door":
                 pos = door_at(d, e0, e1, t, "koa")
             elif kind == "office":
                 pos = door_at(d, e0, e1, t, "office", hw=11)
+            elif kind == "alcove":
+                pos = alcove_at(d, e0, e1, t, f)
+            elif kind == "bench":
+                benches.append(t)
+                continue
             else:
                 pos = corridor_at(d, e0, e1, t, f)
             if did:
@@ -2114,6 +2274,12 @@ def paint_upper_level(d):
         # ---- the walkway, standing in front of the wall
         d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
         d.line([a0, a1], fill=shade(FLOOR_SH, f), width=1)
+        # THE BENCHES GO HERE, not in the feature loop: up on this
+        # level the walkway is painted AFTER the wall, so a bench
+        # drawn with the doors would end up underneath its own floor —
+        # and its contact shadow, which is the whole anchor, with it.
+        for bt in benches:
+            bench_at(d, e0, e1, bt, f)
 
         # ---- the rail at its inner edge (nearest, so last): a SOLID
         # white fluted PARAPET with the koa cap on top — NO pickets
@@ -2175,6 +2341,7 @@ def paint_walls(d):
         (out[0], out[1], 0.88),
     )):
         feats = place_feats(r, A_OUT, col_hw(58), GALLERY_FEATS[r])
+        benches = []
 
         def q(y0, y1, col):
             d.polygon([up(e0, y0), up(e1, y0), up(e1, y1), up(e0, y1)],
@@ -2208,11 +2375,21 @@ def paint_walls(d):
                 pos = door_at(d, e0, e1, t, "koa")
             elif kind == "office":
                 pos = door_at(d, e0, e1, t, "office", hw=11)
+            elif kind == "alcove":
+                pos = alcove_at(d, e0, e1, t, f)
+            elif kind == "bench":
+                # benches LAST on this run, after every door, so the
+                # seat can bite into the wall foot — that overlap is
+                # the wall contact
+                benches.append(t)
+                continue
             else:
                 pos = corridor_at(d, e0, e1, t, f,
                                   elevator=(kind == "lift"))
             if did:
                 doors[did] = pos
+        for bt in benches:
+            bench_at(d, e0, e1, bt, f)
         # the slab above, fluted. NO white top-face strip on it any
         # more (2026-08-24, "the white strips for third floor railings
         # are completely wrong"): the old dollhouse top-face polygon —

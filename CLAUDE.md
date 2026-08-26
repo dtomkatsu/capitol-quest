@@ -2293,6 +2293,47 @@ user's call).
       wall plane, where a collision left a sliver poking out of a
       frame. It does not govern the real columns, which stand a bay
       in FRONT of the wall and occlude it honestly.
+  - **THE WALL BENCHES ARE BACK, AND THE CONTACT PROBLEM IS SOLVED**
+    (`bench_at`; user, 2026-08-26: "remove some of the inert doors and
+    put dark wooden benches next to them"). The 2026-08-22 note said
+    don't reintroduce them without solving why they read as "brown
+    bars floating on the railings". Both halves of that were measured
+    on the executive-floor photograph:
+    - **CONTACT IS OVERLAP, NOT PROXIMITY.** The seat's back edge
+      sits ON the wall's foot line and the bench OCCLUDES the bottom
+      of the wall face — so it is painted after the wall and after
+      the doors. A bar that merely stops near the wall has nothing
+      holding it there.
+    - **AND IT IS FOUND BY ITS SHADOW.** The bench body measures 0.89
+      of the walkway it stands on — 11% DARKER than its own deck — so
+      it never separates from the floor by value. What separates it
+      is the contact shadow at 0.57 of the floor. Draw the bench and
+      skip the shadow and it floats again. But the shadow must read
+      as a SHADOW, not a hole: at 0.48 of the tile it merged with the
+      bench's own front face and the pair read as one dark blob.
+    - **IT IS NOT KOA-COLOURED.** The real bench measures R-B 9
+      against koa's 53. Ours ships at R-B 7-17 — dark wood, as asked,
+      but nowhere near the warm quarry-tile deck (R-B 43) it stands
+      on. A koa-hued bar on a koa-hued deck is the other half of why
+      the last attempt vanished.
+    - Proportions are measured: length 1.5 office-leaf widths, seat
+      8-9 px, depth equal to the height, BACKLESS, and no daylight
+      under the seat. The render exaggerates height ~2.8x against
+      plan, so the top plane is only ~3 px of screen y and the bench
+      is mostly front face — the lit lip carries the whole object in
+      two px and must never be feathered.
+    - **On the UPPER level benches are drawn after the walkway, not
+      in the feature loop**: up there the walkway is painted AFTER
+      the wall, so a bench drawn with the doors ends up underneath
+      its own floor, taking its contact shadow with it.
+    - Count is measured too — a full run of the photograph carries
+      three doors and ONE bench, about one per two door bays, never
+      one per bay. Six ship, across four runs.
+  - **`place_feats` DROPS ONLY FILLER, AND IN ORDER**: unnamed office
+    doors first, then unnamed benches, then nothing. Portals and the
+    corner ALCOVE are pieces of the building's plan, not dressing —
+    the alcove was silently dropped the first time this ran, which is
+    what the rule exists to prevent.
   - **NO PALE BASE STRIP ON THE UPPER WALLS** (2026-08-25, user: "get
     rid of that white base strip too"). `q(0, 8, POST)` put a white
     skirting under every door on both upper storeys; the photographs
@@ -2419,6 +2460,36 @@ user's call).
       the base. Foot and head run WITH the face (`sl = ±0.5`),
       exactly the way `door_at` already builds its frames. Anything
       else drawn on a wall follows the same rule.
+    - **THE CORNER COLUMN STANDS ON THE WALL CORNER, NOT THE COURT
+      EDGE** (`COL_APEX_U`; user, 2026-08-26: "the central column
+      should be further back… the column goes up through there").
+      Measured on the executive-floor photograph: the corner strip's
+      foot sits at y=250.5 where the two wall faces' intersection
+      extrapolates to 251.0 and 251.3 from the left and right runs —
+      one full walkway width behind the railing, plumb under the
+      strips above. The MID-RUN ground columns are not affected;
+      those really are free-standing in the loggia with the koa wall
+      a bay behind them.
+      It costs nothing in screen x — u == v at the apex, so it stays
+      at CX on every diamond — and it moves UP 38 scene px, after
+      which paint_well's hole mask trims its top 38 px, so it emerges
+      from under our own slab already deep in the corner.
+      **It is drawn between `smokestack()` and `court_panel()`**, not
+      with the other stations at the end of paint_well: the cone's
+      axis is farther out than the shaft and the corner wall's face
+      nearer, so that is the depth order at the apex. Drawn last it
+      painted over the corner mass instead of standing in it.
+    - **THE LITTLE ALCOVE** (`alcove_at`) — a shallow, full-height
+      dark pocket beside the corner column, one per ʻEwa run. At
+      every level the photograph carries a near-black zone about one
+      door bay wide flanking the corner column, stepped at its edges,
+      as dark as the loggia recess (13-20 against a wall of 33-45)
+      and the only full-height feature of its kind on either run.
+      Only the ʻEwa side gets one drawn: on the Diamond Head side the
+      hallway mouth already IS the recess, which is exactly the
+      asymmetry the user described ("next to the hallway"). It is
+      SHALLOW — a pocket, not a room — so `corridor_at` is the wrong
+      model and would spill a lit floor wedge across the wall face.
     - **A CORNER COLUMN, AND TWO TO A SIDE** (user, 2026-08-25, with
       a courtyard photograph: "there's corner columns, but then aside
       from that it's two columns to a side"). Three a side read as a

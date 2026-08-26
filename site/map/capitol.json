@@ -22,8 +22,8 @@
    "id": "house",
    "name": "House Gallery",
    "kind": "door",
-   "px": 1139,
-   "py": 651,
+   "px": 1128,
+   "py": 646,
    "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
   {
@@ -46,24 +46,24 @@
    "id": "gov",
    "name": "Governor · Level 5",
    "kind": "door",
-   "px": 1186,
-   "py": 675,
+   "px": 1181,
+   "py": 672,
    "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. The veto pen lives up there."
   },
   {
    "id": "senpres",
    "name": "Senate President",
    "kind": "door",
-   "px": 432,
-   "py": 594,
+   "px": 429,
+   "py": 595,
    "text": "Third level, and this floor is the Senate's. Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
   },
   {
    "id": "senclerk",
    "name": "Senate Clerk",
    "kind": "door",
-   "px": 1075,
-   "py": 507,
+   "px": 1123,
+   "py": 532,
    "text": "Every measure is filed, numbered and journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
   },
   {
