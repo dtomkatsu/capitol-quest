@@ -3,7 +3,7 @@
  "image": "capitol_scene.png",
  "w": 1680,
  "h": 1240,
- "scale": 2,
+ "scale": 1,
  "bg": "#080c16",
  "spawn": [
   840,
@@ -16,15 +16,13 @@
    "kind": "door",
    "px": 503,
    "py": 670,
-   "text": "The ʻEwa cone, below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
-  },
-  {
-   "id": "house",
-   "name": "House Gallery",
-   "kind": "door",
-   "px": 1128,
-   "py": 646,
-   "text": "The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
+   "zone": [
+    503,
+    641,
+    55,
+    96
+   ],
+   "text": "Second level, and this floor is the Senate's. The ʻEwa cone below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
   },
   {
    "id": "wam",
@@ -32,15 +30,41 @@
    "kind": "door",
    "px": 606,
    "py": 619,
-   "text": "The Senate's money committee. A revenue bill that cannot clear Ways & Means goes no further."
+   "zone": [
+    606,
+    590,
+    55,
+    96
+   ],
+   "text": "The Senate's money committee, on the Senate's own floor. A revenue bill that cannot clear Ways & Means goes no further."
   },
   {
-   "id": "finance",
-   "name": "House Finance",
+   "id": "senpres",
+   "name": "Senate President",
    "kind": "door",
    "px": 984,
    "py": 574,
-   "text": "The House's money committee — every appropriation in the state budget passes across these tables."
+   "zone": [
+    984,
+    545,
+    55,
+    96
+   ],
+   "text": "Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
+  },
+  {
+   "id": "senclerk",
+   "name": "Senate Clerk",
+   "kind": "door",
+   "px": 1128,
+   "py": 646,
+   "zone": [
+    1128,
+    617,
+    52,
+    94
+   ],
+   "text": "Every Senate measure is journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
   },
   {
    "id": "gov",
@@ -48,23 +72,69 @@
    "kind": "door",
    "px": 1181,
    "py": 672,
-   "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. The veto pen lives up there."
+   "zone": [
+    1181,
+    642,
+    50,
+    93
+   ],
+   "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. It belongs to neither chamber, which is why it opens off the floor you are standing on. The veto pen lives up there."
   },
   {
-   "id": "senpres",
-   "name": "Senate President",
+   "id": "house",
+   "name": "House Gallery",
    "kind": "door",
-   "px": 429,
-   "py": 595,
-   "text": "Third level, and this floor is the Senate's. Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
+   "px": 1214,
+   "py": 577,
+   "zone": [
+    1214,
+    548,
+    52,
+    93
+   ],
+   "text": "Third level, and this floor is the House's. The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
   {
-   "id": "senclerk",
-   "name": "Senate Clerk",
+   "id": "finance",
+   "name": "House Finance",
    "kind": "door",
-   "px": 1123,
+   "px": 1124,
    "py": 532,
-   "text": "Every measure is filed, numbered and journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
+   "zone": [
+    1124,
+    503,
+    55,
+    96
+   ],
+   "text": "The House's money committee, on the House's own floor — every appropriation in the state budget passes across these tables."
+  },
+  {
+   "id": "speaker",
+   "name": "Speaker of the House",
+   "kind": "door",
+   "px": 427,
+   "py": 597,
+   "zone": [
+    427,
+    568,
+    55,
+    96
+   ],
+   "text": "The Speaker refers every House bill to committee and decides what reaches the floor calendar. A measure nobody schedules is not voted down; it simply never comes up."
+  },
+  {
+   "id": "houseclerk",
+   "name": "House Clerk",
+   "kind": "door",
+   "px": 600,
+   "py": 510,
+   "zone": [
+    600,
+    481,
+    55,
+    96
+   ],
+   "text": "Bills are filed, numbered and time-stamped here. A measure that misses a filing deadline by an hour is as dead as one voted down, and this counter is where the hour is decided."
   },
   {
    "id": "mosaic",
@@ -72,6 +142,12 @@
    "kind": "poi",
    "px": 840,
    "py": 786,
+   "zone": [
+    840,
+    768,
+    142,
+    82
+   ],
    "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside."
   },
   {

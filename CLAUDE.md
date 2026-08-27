@@ -1967,9 +1967,11 @@ lava drum walls at courtyard level (user-corrected 2026-08-22: the
 cones are NOT visible from the balconies — the galleries wrap
 straight around them; an earlier version drew glowing cone caps in
 the well and was wrong), koa doors on the mauka walls of
-THREE levels — the courtyard, the gallery ring the player stands on,
-and a SENATE floor above it (2026-08-24, user's call, reversing the
-standing one-level rule) — with open HALLWAY MOUTHS and recessed
+THREE levels — the courtyard, the gallery ring the player stands on
+(**level 2, the SENATE's floor**), and **level 3, the HOUSE's floor**
+above it (a third storey landed 2026-08-24, reversing the standing
+one-level rule; its chamber ownership was settled 2026-08-27 — see
+"THE FLOOR HAS AN OWNER" below) — with open HALLWAY MOUTHS and recessed
 ELEVATOR LOBBIES branching deeper into the building (corridor_at:
 dark opening, floor running in, steel doors + call light for a
 lift), and exit stairs at the makai corner. The courtyard has no
@@ -2636,6 +2638,32 @@ five passes because of these, not because of how it was drawn:**
     filtering**. This is the old option (b): the interiors are a
     painted illustration now, not crisp pixel art. The island map is
     untouched and keeps `pixelArt: true`.
+  - *2026-08-27* — **the Capitol's `SS` is back to 1, and that is not
+    a repeal of the above; it is the same rule applied to a framing
+    that changed underneath it.** The whole 08-24 argument rests on
+    "fit() SNAPS to zoom 0.5 and the renderer point-samples". Two days
+    later the Capitol became the main view and got a `view` rect with
+    CONTINUOUS zoom and a LINEAR-filtered texture — no 0.5 snap, no
+    point sampling, so nothing decimates any more and the premise is
+    gone. The COST stayed: at the old 0.9 ceiling the 840x620 PNG was
+    already being blown up 1.8x, i.e. the bake was throwing away
+    exactly the resolution the new framing wanted. `SS = 1` ships the
+    full 1680x1240 authored space, which is what let the ceiling go to
+    1.6. Notes:
+    - **This raises DELIVERED resolution, never AUTHORED resolution.**
+      Every painter is written in scene px with hardcoded literals
+      (frame insets, 1px flute lines, FEAT_HW), so doubling W/H means
+      rewriting all of them — 1680x1240 is what the art contains.
+    - The PNG got SMALLER (123KB -> 112KB): the LANCZOS downsample had
+      been inventing intermediate colours that PNG could not pack.
+    - The trade is at the SMALL end — a phone at zoom ~0.35 now gets a
+      Canvas2D reduction of full-res art where it used to get a clean
+      blit of half-res art. Verified at 375px: no aliasing, no moire
+      on the pickets, framing identical (mobile is width-constrained,
+      so the ceiling was never what bound it there).
+    - **`render_office.py` still supersamples** (office_finance.json
+      is `scale: 2`) and should, because that room is still snap-fit.
+      SS is per-bake, and the rule is the FRAMING, not the file.
   - **Never reintroduce the dpr form.** Besides the decimation it hid
     a real bug: at dpr 1, `Math.max(step, floor(fitZ/1)*1)` can only
     ever return 1, so dpr-1 users got the room at 1:1 and CROPPED
@@ -2766,14 +2794,28 @@ stairs hotspot or Esc. Rules:
     `noExit` is per-room. The greet text lost its "stairs makai" line.
   - **`ROOM_CAPITOL.view: [x0,y0,x1,y1]`** (scene px) — `fit()` frames
     this rect instead of the whole canvas, with CONTINUOUS zoom capped
-    at 0.9, and `create()` switches that room's texture to LINEAR
+    at **1.6**, and `create()` switches that room's texture to LINEAR
     filtering (per-texture setFilter works on Canvas; a filtered
-    fractional resample of the LANCZOS-baked painting is clean, so the
-    snap quantum doesn't apply — snap-fitted rooms keep NEAREST). The
+    fractional resample of the painting is clean, so the snap quantum
+    doesn't apply — snap-fitted rooms keep NEAREST). The
     rect is the measured content bbox + margin; REMEASURE it after any
     re-bake that moves the composition. The wing (below) deliberately
     extends PAST the rect — cropped at the frame edge it reads as the
     building continuing, which is the point.
+    **The ceiling is a TEXTURE-UPSCALE budget and it moved 0.9 -> 1.6
+    on 2026-08-27** with the `SS 2 -> 1` re-bake (full argument in the
+    render-quality section below). At 0.9 the room was a FIXED 965x619
+    however big the window got — 65% of a 1280x720 laptop, 46% of a
+    1440x900, **28% of a 1080p monitor, the rest empty ink**. Measured
+    against the shipped `fit()` afterwards:
+    `1280x720 -> 1.05 (88%)`, `1440x900 -> 1.31 (97%)`,
+    `1920x1080 -> 1.57 (88%)`. 1.6 is LESS magnification than the old
+    0.9 x ss 2 = 1.8x, from four times the source pixels.
+    **It is a real limit, not a placeholder**: past ~1.6 a 1680px
+    painting softens. Known consequence — a 1440p monitor HITS the
+    ceiling (51% filled) and a 34" ultrawide more so (38%). Both are
+    still 3x the old coverage, and the only way past it is authoring
+    the room bigger, not raising this number.
 - **THE ELONGATED PLAN — the whole room is a RECTANGLE now**
   (2026-08-26, two user calls: "extend the right side of the second
   and third floors so that they are more rectangular", then the
@@ -2825,6 +2867,78 @@ stairs hotspot or Esc. Rules:
     (shared-rng rule, same as court_paving). The E sliced ends
     (paint_upper_level's mass face, paint_cut_ends' arris) sit at the
     extended corners.
+- **THE FLOOR HAS AN OWNER — level 2 is the SENATE's, level 3 is the
+  HOUSE's** (2026-08-27, user's call: "third floor is for house and
+  second for senate"; scope settled with the user as *whole floors*,
+  not offices-only). `GALLERY_FEATS` / `UPPER_FEATS` in
+  render_capitol.py carry it, and BOTH runs of a level belong to that
+  level's chamber. Before this, every public room (both galleries,
+  both money committees) sat on the walkway and the storey above was
+  labelled Senate — which put the Senate Clerk on the Diamond Head run
+  and left no floor with an owner at all.
+  - Level 2 (the walkway the player stands on): Senate Gallery + Ways
+    & Means on the ʻEwa run, Senate President + Senate Clerk on the
+    Diamond Head run.
+  - Level 3 (the stepped-back storey): Speaker of the House + House
+    Clerk on ʻEwa, House Finance + House Gallery on Diamond Head.
+    `speaker` and `houseclerk` are NEW ids; `senpres`/`senclerk` kept
+    theirs and moved down a floor.
+  - **The ʻEwa / Diamond Head rule still stands and does NOT conflict**
+    — it governs what is BELOW (Senate cone ʻEwa, House cone Diamond
+    Head), not the door runs above it. Each chamber's gallery door is
+    still on its own cone's side of its own floor, so the two rules
+    agree exactly where they touch.
+  - **`gov` is the deliberate exception.** The Level 5 lift belongs to
+    neither chamber and stays on the walkway, because that is the
+    floor the player is standing on and the way up has to be reachable
+    from where you are. Its hotspot text says so.
+  - Consequence to keep in step: the hotspot TEXTS name their floor
+    ("Second level, and this floor is the Senate's"), which is the
+    whole teaching. A door that moves floors moves its sentence too.
+  - `ROOM_CAPITOL.enter` is keyed by hotspot ID, so `finance` still
+    opens the office from its new storey — verified in the pane.
+- **A HOTSPOT'S TAP TARGET COMES OUT OF THE BAKE** (2026-08-27),
+  `zone: [cx, cy, w, h]` in scene px, from `feat_rect()` /
+  `zones_for()` in render_capitol.py — the same geometry that drew the
+  feature, which is the one-source rule the columns already follow.
+  `RoomScene.create` reads it, falling back to the old fixed box for a
+  bake that predates the field (office_finance.json). What it replaced:
+  a hardcoded `120x84` at `(px, py + 6)` — three times the width of a
+  door, sitting about a door-height BELOW it out on the walkway floor.
+  Measured consequences, both real: on the near runs the box missed
+  its door entirely, and **House Gallery and Governor overlapped by
+  39% of a zone** — Phaser resolves a hit by BUILD ORDER, so a third
+  of the gallery's target silently opened the lift. Rules:
+  - **The padding is a CEILING, not a flat amount** (`ZONE_PAD` 9,
+    applied by `zones_for`). The wall is not evenly packed: most named
+    doors have most of a bay of air beside them, while the Senate
+    Clerk sits one `FEAT_GAP` from the lift lobby that closes its run.
+    Baked flat at 9 those two overlap by 2px. Two boxes are disjoint
+    if they clear on EITHER axis, so a pair's budget is
+    `max(gap_x, gap_y) / 2` and each box takes the smallest budget any
+    neighbour allows — symmetric, or a third box could push one into a
+    neighbour from its far side.
+  - **`render()` ASSERTS that no two zones overlap**, and it earned
+    its keep on the first run. Grow `ZONE_PAD` past what the bay
+    layout leaves clear and the build fails instead of shipping a tap
+    that opens the wrong door.
+  - `FEAT_BOX` is read straight off `door_at` / `corridor_at` (a koa
+    leaf is hw 17 in a ±hw+4 threshold, head at y 53). The runs are
+    2:1 diagonals, so a box symmetric in WALL coordinates is a sheared
+    parallelogram on screen — `feat_rect` takes all four corners; the
+    width alone leaves the AABB short by the ±hw*uy the diagonal
+    contributes.
+  - The mosaic goes through the same solve (its rect is the
+    medallion's own ellipse) so it is padded against the same set.
+  - Shipped sizes are 50-58 x 93-100 screen px at zoom ~1.05 —
+    comfortably over the 44px tap floor, where the old boxes were both
+    too big and in the wrong place. Verified in the pane: all nine
+    doors plus the medallion each resolve to exactly one label, and
+    the old house/gov overlap midpoint now belongs to neither.
+  - **Not changed, and still worth fixing**: the bouncing marker still
+    hangs at `py - 30`, which is MID-LEAF on a 53px door, so it reads
+    as door hardware rather than a "this is live" flag. Moving it above
+    the transom needs a check against the storey above.
 - **HOTSPOT NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS**
   (2026-08-24, user's call: "don't have those big labels over all the
   doors"). `RoomScene.create` still builds every label, but anything

@@ -66,21 +66,44 @@ OUT_PNG = ROOT / "site" / "assets" / "map" / "capitol_scene.png"
 OUT_JSON = ROOT / "site" / "map" / "capitol.json"
 
 W, H = 1680, 1240
-# SUPERSAMPLE. Everything below is drawn in the FULL scene space
-# above, but the room is only ever SEEN at half of it: fit() snaps to
-# zoom 0.5 on any window shorter than the scene, and the renderer
-# point-samples, so every other row and column was thrown away on the
-# way to the screen. Measured 2026-08-24 on a rail crop: 83 unique
-# colours reached the canvas where the source has 87 and a resample
-# gives 376. That decimation is what read as jagged railings — the
-# picket run is 1px lines on a 2px pitch, so WHICH half survived
-# drifted as the diagonal advanced, and no redrawing can fix detail
-# sampled below its own pitch. Resolving here means the AA is baked
-# once by a real filter; the sprite then carries scale=SS, so zoom
-# 0.5 x scale 2 is an exact 1:1 blit with no runtime filtering.
-# The JSON keeps SCENE coordinates (w/h/spawn/hotspots) — only the
-# PNG shrinks — so nothing downstream has to move.
-SS = 2
+# SS 2 -> 1 (2026-08-27). The supersample was right for the framing it
+# was written against and wrong for the one we have now.
+#
+# The 2026-08-24 rationale: the room was only ever SEEN at half the
+# scene space, because fit() SNAPPED to zoom 0.5 and the renderer
+# point-sampled, throwing away every other row and column. Measured on
+# a rail crop, 83 unique colours reached the canvas where the source
+# has 87 and a resample gives 376 — that decimation is what read as
+# jagged railings, since the picket run is 1px lines on a 2px pitch
+# and WHICH half survived drifted as the diagonal advanced. Baking the
+# AA once with a real filter fixed it: zoom 0.5 x scale 2 is an exact
+# 1:1 blit.
+#
+# Two days later the Capitol became the game's main view and got a
+# `view` rect with CONTINUOUS zoom and a LINEAR-filtered texture
+# (main.js fit()). There is no 0.5 snap on this room any more and
+# nothing point-samples it, so the premise is gone — and the cost is
+# not: at the old 0.9 cap the 840x620 PNG was already being blown up
+# 1.8x, i.e. the bake was discarding exactly the resolution the new
+# framing wants. Shipping the full 1680x1240 authored space instead
+# lets the cap go to 1.6, which fills a 1080p window with real pixels.
+#
+# What this does NOT do is raise the AUTHORED resolution: every
+# painter below is written in scene px with hardcoded literals (frame
+# insets, 1px flute lines, FEAT_HW), so doubling the drawing means
+# rewriting all of them. 1680x1240 is what the art actually contains;
+# this just stops throwing half of it away.
+#
+# Downscale (small windows) is now the runtime's job rather than
+# LANCZOS's. That is the trade: a phone at zoom ~0.35 gets a Canvas2D
+# bilinear reduction of full-res art where it used to get a clean
+# blit of half-res art. Acceptable because the phone framing is
+# already the weak case for other reasons (see CLAUDE.md), and the
+# desktop main view is what this bake is for.
+#
+# The JSON has always kept SCENE coordinates (w/h/spawn/hotspots) and
+# still does — only `scale` changes, from 2 to 1.
+SS = 1
 CX, CY = 840, 680          # centre of the gallery ring, at floor level.
                            # CY moved 590 -> 680 when the third level
                            # landed (2026-08-24): the new storey grows
@@ -1408,8 +1431,8 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
     replaces. Don't shorten h back to "stop under the hole edge";
     the shear line IS the top.
 
-    It belongs to the ROTUNDA FLOOR alone; nothing on the gallery or
-    Senate levels reacts to it.
+    It belongs to the ROTUNDA FLOOR alone; nothing on the two office
+    levels above it reacts to it.
     """
     # `cut` is where the panel's face slices the cone, as a fraction
     # of the radius measured from the axis: 0.0 is a true half-cone,
@@ -1997,6 +2020,85 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
 FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19,
            "bench": 21, "alcove": 17}
 
+# THE CLICKABLE BOX OF A WALL FEATURE, in the same wall coordinates
+# the painters use: (half-width along the RUN, y_lo, y_hi) where y is
+# height above the wall foot, exactly as door_at/corridor_at's inner
+# pt(w, y) reads them. Straight off those two painters — a koa leaf
+# is hw 17 with a frame proud of it and a threshold at ±hw+4, and its
+# head/transom quad closes at y 53; a corridor portal is hw 16 in a
+# ±hw+4 frame, ht 48 plus its head.
+#
+# This exists because the runtime used to size every zone 120x84 at
+# (px, py+6), which is a box three times the width of a door sitting
+# roughly a door-height BELOW it, out on the walkway floor. Two
+# consequences, both measured 2026-08-27: House Gallery and Governor
+# overlapped by 39% of a zone (and the later-built one won, so a third
+# of the gallery's target opened the lift instead), and on the near
+# runs the box missed its door entirely. Deriving the box from the
+# drawing is the one-source rule the columns already follow.
+FEAT_BOX = {"door": (21, -7, 53), "office": (15, -7, 53),
+            "hall": (20, -7, 54), "lift": (20, -7, 54)}
+# The most a zone may grow on every side before it ships: a door frame
+# is only ~38 screen px across and the box wants to forgive a near
+# miss. It is a CEILING, not a flat amount — see zones_for.
+ZONE_PAD = 9
+
+
+def feat_rect(e0, e1, t, kind):
+    """The screen-space AABB (scene px) of the feature `place_feats`
+    put at run parameter `t`. The run is a 2:1 iso diagonal, so a box
+    that is symmetric in WALL coordinates is a sheared parallelogram
+    on screen and its bounding box has to take all four corners —
+    using the width alone (the obvious version) leaves the box short
+    by the ±hw*uy the diagonal contributes to its height."""
+    p = lerp(e0, e1, t)
+    ex, ey = e1[0] - e0[0], e1[1] - e0[1]
+    ln = math.hypot(ex, ey)
+    ux, uy = ex / ln, ey / ln
+    a, y_lo, y_hi = FEAT_BOX[kind]
+    xs = [p[0] - ux * a, p[0] + ux * a]
+    ys = [p[1] + uy * w - y
+          for w in (-a, a) for y in (y_lo, y_hi)]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def zones_for(rects, pad=ZONE_PAD):
+    """Every hotspot rect as the `[cx, cy, w, h]` the runtime builds a
+    Phaser zone from (centre and size, SCENE px), grown toward `pad` on
+    all sides but never into a neighbour.
+
+    A FLAT pad is the wrong shape for this wall, because the wall is
+    not evenly packed: most named doors have most of a bay of air
+    beside them and can take the full 9, while the Senate Clerk sits
+    one FEAT_GAP from the lift lobby that closes its run and has about
+    8 to give. Baked flat at 9 those two overlap by 2px — measured, it
+    is what the assert in render() caught first time out.
+
+    Two axis-aligned boxes are disjoint if they clear on EITHER axis,
+    so a pair's whole budget is `max(gap_x, gap_y) / 2` and each box
+    takes the smallest budget any neighbour allows. Symmetric on
+    purpose: give one box of a pair the slack and the other could still
+    be pushed into it from its far side by a third."""
+    ids = list(rects)
+    room = {k: float(pad) for k in ids}
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            a, b = rects[ids[i]], rects[ids[j]]
+            gx = (abs((a[0] + a[2] - b[0] - b[2]) / 2)
+                  - ((a[2] - a[0]) + (b[2] - b[0])) / 2)
+            gy = (abs((a[1] + a[3] - b[1] - b[3]) / 2)
+                  - ((a[3] - a[1]) + (b[3] - b[1])) / 2)
+            # the 0.5 is the rounding headroom the ints below can eat
+            lim = max(gx, gy) / 2 - 0.5
+            room[ids[i]] = min(room[ids[i]], lim)
+            room[ids[j]] = min(room[ids[j]], lim)
+    out = {}
+    for k, (x0, y0, x1, y1) in rects.items():
+        p = max(0.0, room[k])
+        out[k] = [round((x0 + x1) / 2), round((y0 + y1) / 2),
+                  int(x1 - x0 + 2 * p), int(y1 - y0 + 2 * p)]
+    return out
+
 # THE TWO DOOR SCHEDULES — ORDER AND KIND ONLY, NO POSITIONS
 # (re-cut 2026-08-25 when the columns went flush). The t values used
 # to be written here by hand and the columns were nudged around them;
@@ -2020,17 +2122,36 @@ FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19,
 # than a door, so converting one hands wall room back to the bay
 # layout. The corner-most slot on each ʻEwa run is the ALCOVE (see
 # alcove_at); the Diamond Head runs already close on a portal.
-GALLERY_FEATS = (
+# THE FLOOR HAS AN OWNER (2026-08-27, user's call: "third floor is
+# for house and second for senate"). Level 2 — the gallery walkway
+# the player stands on — is the SENATE's floor on BOTH of its runs;
+# level 3 is the HOUSE's on both of its. Before this the two levels
+# were split the other way: every public room (both galleries, both
+# money committees) sat on the walkway and the offices above were
+# labelled Senate, which put the Senate Clerk on the Diamond Head run
+# and left no floor with an owner at all.
+#
+# The ʻEwa / Diamond Head rule still stands, but it governs what is
+# BELOW — Senate cone ʻEwa, House cone Diamond Head — not the door
+# runs above it. Each chamber's gallery door is still on its own
+# cone's side of its own floor (senate on GALLERY[0], house on
+# UPPER[1]), so the two rules agree where they touch.
+#
+# `gov` is the deliberate exception: the Level 5 lift belongs to
+# neither chamber, and it stays on the walkway because that is the
+# floor the player is standing on — the way up has to be reachable
+# from where you are.
+GALLERY_FEATS = (                       # LEVEL 2 — the Senate's floor
     (("senate", "door"), (None, "office"), ("wam", "door"),
      (None, "bench"), (None, "office"), (None, "alcove")),
-    ((None, "hall"), (None, "office"), ("finance", "door"),
-     (None, "bench"), ("house", "door"), ("gov", "lift")),
+    ((None, "hall"), (None, "office"), ("senpres", "door"),
+     (None, "bench"), ("senclerk", "door"), ("gov", "lift")),
 )
-UPPER_FEATS = (
-    (("senpres", "door"), (None, "office"), (None, "bench"),
-     (None, "office"), (None, "bench"), (None, "alcove")),
+UPPER_FEATS = (                         # LEVEL 3 — the House's floor
+    (("speaker", "door"), (None, "office"), (None, "bench"),
+     ("houseclerk", "door"), (None, "bench"), (None, "alcove")),
     ((None, "hall"), (None, "office"), (None, "bench"),
-     ("senclerk", "door"), (None, "office"), (None, "bench"),
+     ("finance", "door"), (None, "office"), ("house", "door"),
      (None, "hall")),
 )
 
@@ -2332,7 +2453,7 @@ def upper_parapet(d, a0, a1, f, phase0=None):
 
 
 def paint_upper_level(d):
-    """The third level — Senate offices — stepped BACK a full bay.
+    """The third level — the HOUSE's floor — stepped BACK a full bay.
 
     Only the two MAUKA runs are drawn: a makai half would stand
     between the camera and the room, which is exactly what the
@@ -2427,7 +2548,9 @@ def paint_upper_level(d):
             else:
                 pos = corridor_at(d, e0, e1, t, f)
             if did:
-                doors[did] = pos
+                # position AND the box the runtime will make
+                # clickable, from the geometry that drew it
+                doors[did] = (pos, feat_rect(e0, e1, t, kind))
         q(58, 72, shade(hx("#ece6d4"), f))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
@@ -2558,7 +2681,9 @@ def paint_walls(d):
                 pos = corridor_at(d, e0, e1, t, f,
                                   elevator=(kind == "lift"))
             if did:
-                doors[did] = pos
+                # position AND the box the runtime will make
+                # clickable, from the geometry that drew it
+                doors[did] = (pos, feat_rect(e0, e1, t, kind))
         for bt in benches:
             bench_at(d, e0, e1, bt, f)
         # the slab above, fluted. NO white top-face strip on it any
@@ -2784,55 +2909,94 @@ def render(raw=False):
 
     # ---- hotspots, computed from the same geometry
     out = diamond(A_OUT)
-    dpx = {k: (int(p[0]), int(p[1])) for k, p in doors.items()}
+    dpx = {k: (int(p[0]), int(p[1])) for k, (p, _) in doors.items()}
+    # the mosaic goes in with the doors so it is inside the same
+    # no-overlap solve, not padded against a set it isn't part of.
+    # Its rect is the medallion's own ellipse (paint_mosaic: rx 62,
+    # ry 32 with its kerb), which sits a little above the hotspot's
+    # label anchor.
+    rects = {k: r for k, (_, r) in doors.items()}
+    rects["mosaic"] = (CX - 62, CY + DROP - 44, CX + 62, CY + DROP + 20)
+    dz = zones_for(rects)
     meta = {
         "name": "Hawaiʻi State Capitol",
         "image": "capitol_scene.png",
         "w": W, "h": H, "scale": SS, "bg": bg,
         "spawn": [CX, int(out[2][1]) - 60],
+        # LEVEL 2 IS THE SENATE'S, LEVEL 3 IS THE HOUSE'S — see the
+        # note over GALLERY_FEATS/UPPER_FEATS. The text says which
+        # floor you are on, because the whole point of the split is
+        # that the floor tells you whose house you are in.
         "hotspots": [
+            # --- level 2, the walkway the player stands on: SENATE
             dict(id="senate", name="Senate Gallery", kind="door",
                  px=dpx["senate"][0], py=dpx["senate"][1] + 6,
-                 text="The ʻEwa cone, below this door: Hawaiʻi's 25 "
+                 zone=dz["senate"],
+                 text="Second level, and this floor is the Senate's. "
+                      "The ʻEwa cone below this door: Hawaiʻi's 25 "
                       "senators under the Moon — a chandelier of 620 "
                       "chambered nautilus shells. The public watches "
                       "from up here, at the rail."),
-            dict(id="house", name="House Gallery", kind="door",
-                 px=dpx["house"][0], py=dpx["house"][1] + 6,
-                 text="The Diamond Head cone: the 51 representatives "
-                      "under the Sun, a chandelier of gold-plated "
-                      "globes. Every state law begins as a bill read "
-                      "in one of the two cones below."),
             dict(id="wam", name="Ways & Means", kind="door",
                  px=dpx["wam"][0], py=dpx["wam"][1] + 6,
-                 text="The Senate's money committee. A revenue bill "
-                      "that cannot clear Ways & Means goes no "
-                      "further."),
-            dict(id="finance", name="House Finance", kind="door",
-                 px=dpx["finance"][0], py=dpx["finance"][1] + 6,
-                 text="The House's money committee — every "
-                      "appropriation in the state budget passes "
-                      "across these tables."),
-            dict(id="gov", name="Governor · Level 5", kind="door",
-                 px=dpx["gov"][0], py=dpx["gov"][1] + 6,
-                 text="The elevator to Level 5, where the Governor "
-                      "and Lieutenant Governor look down into the "
-                      "rotunda. The veto pen lives up there."),
+                 zone=dz["wam"],
+                 text="The Senate's money committee, on the Senate's "
+                      "own floor. A revenue bill that cannot clear "
+                      "Ways & Means goes no further."),
             dict(id="senpres", name="Senate President", kind="door",
                  px=dpx["senpres"][0], py=dpx["senpres"][1] + 6,
-                 text="Third level, and this floor is the Senate's. "
-                      "Referrals are settled behind this door — which "
+                 zone=dz["senpres"],
+                 text="Referrals are settled behind this door — which "
                       "committees a measure must clear before it can "
                       "reach the floor, and so how many ways it can "
                       "quietly die."),
             dict(id="senclerk", name="Senate Clerk", kind="door",
                  px=dpx["senclerk"][0], py=dpx["senclerk"][1] + 6,
-                 text="Every measure is filed, numbered and journaled "
-                      "here. What the chamber did is whatever this "
-                      "office wrote down — the journal is the record, "
-                      "not anyone's memory of the vote."),
+                 zone=dz["senclerk"],
+                 text="Every Senate measure is journaled here. What "
+                      "the chamber did is whatever this office wrote "
+                      "down — the journal is the record, not anyone's "
+                      "memory of the vote."),
+            dict(id="gov", name="Governor · Level 5", kind="door",
+                 px=dpx["gov"][0], py=dpx["gov"][1] + 6,
+                 zone=dz["gov"],
+                 text="The elevator to Level 5, where the Governor "
+                      "and Lieutenant Governor look down into the "
+                      "rotunda. It belongs to neither chamber, which "
+                      "is why it opens off the floor you are standing "
+                      "on. The veto pen lives up there."),
+            # --- level 3, the stepped-back storey above: HOUSE
+            dict(id="house", name="House Gallery", kind="door",
+                 px=dpx["house"][0], py=dpx["house"][1] + 6,
+                 zone=dz["house"],
+                 text="Third level, and this floor is the House's. "
+                      "The Diamond Head cone: the 51 representatives "
+                      "under the Sun, a chandelier of gold-plated "
+                      "globes. Every state law begins as a bill read "
+                      "in one of the two cones below."),
+            dict(id="finance", name="House Finance", kind="door",
+                 px=dpx["finance"][0], py=dpx["finance"][1] + 6,
+                 zone=dz["finance"],
+                 text="The House's money committee, on the House's "
+                      "own floor — every appropriation in the state "
+                      "budget passes across these tables."),
+            dict(id="speaker", name="Speaker of the House",
+                 kind="door",
+                 px=dpx["speaker"][0], py=dpx["speaker"][1] + 6,
+                 zone=dz["speaker"],
+                 text="The Speaker refers every House bill to "
+                      "committee and decides what reaches the floor "
+                      "calendar. A measure nobody schedules is not "
+                      "voted down; it simply never comes up."),
+            dict(id="houseclerk", name="House Clerk", kind="door",
+                 px=dpx["houseclerk"][0], py=dpx["houseclerk"][1] + 6,
+                 zone=dz["houseclerk"],
+                 text="Bills are filed, numbered and time-stamped "
+                      "here. A measure that misses a filing deadline "
+                      "by an hour is as dead as one voted down, and "
+                      "this counter is where the hour is decided."),
             dict(id="mosaic", name="Aquarius", kind="poi",
-                 px=CX, py=CY + DROP + 6,
+                 px=CX, py=CY + DROP + 6, zone=dz["mosaic"],
                  text="The floor medallion below marks where Tadashi "
                       "Sato's sea-stone mosaic lies. Look up instead: "
                       "no dome — the rotunda "
@@ -2843,6 +3007,22 @@ def render(raw=False):
                  text=""),
         ],
     }
+    # NO TWO HOTSPOT ZONES MAY OVERLAP. Phaser resolves a hit by the
+    # order the zones were built, so an overlap is a tap that silently
+    # opens the wrong door — House Gallery and Governor overlapped by
+    # 39% of a zone under the old fixed 120x84 boxes, and the lift won.
+    # This is the gate on ZONE_PAD: grow the padding past what the bay
+    # layout leaves clear and the build fails here instead of shipping.
+    zs = [(h["id"], h["zone"]) for h in meta["hotspots"] if "zone" in h]
+    for i in range(len(zs)):
+        for j in range(i + 1, len(zs)):
+            (ai, a), (bi, b) = zs[i], zs[j]
+            ox = (a[2] + b[2]) / 2 - abs(a[0] - b[0])
+            oy = (a[3] + b[3]) / 2 - abs(a[1] - b[1])
+            assert ox <= 0 or oy <= 0, (
+                f"hotspot zones {ai} and {bi} overlap by "
+                f"{ox:.0f}x{oy:.0f} px — lower ZONE_PAD or re-space "
+                f"the door schedule")
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
           f" (scene {W}x{H} @ {SS}x)", "and", OUT_JSON.name)

@@ -27,7 +27,7 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 36;
+const CAP_V = 37;
 /* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
    call: "make that the default view (replacing the map) for now. keep
    the map in case we want to use it later"). Set to null to put the
@@ -5785,7 +5785,22 @@ class RoomScene extends Phaser.Scene {
       // bouncing marker is what says "this door is live" now; the EXIT
       // keeps its label, because the way out must never need hunting.
       if (h.kind !== "exit") lab.setVisible(false);
-      const zone = this.add.zone(h.px, h.py + 6, 120, 84)
+      /* THE TAP TARGET IS THE THING IT NAMES. `h.zone` is
+         [cx, cy, w, h] in SCENE px, emitted by the bake from the same
+         geometry that drew the feature (render_capitol.py `feat_rect`
+         / `zones_for`), which is the one-source rule the columns
+         already follow. The old fixed 120x84 at (px, py + 6) was a box
+         three times the width of a door sitting about a door-height
+         BELOW it, out on the walkway floor: on the near runs it missed
+         its door entirely, and House Gallery and Governor overlapped
+         by 39% of a zone — Phaser resolves a hit by build order, so a
+         third of the gallery's target opened the lift instead.
+         The fallback is that same old box, for a room whose bake
+         predates the field (office_finance.json). */
+      const z = h.zone;
+      const zone = this.add
+        .zone(z ? z[0] : h.px, z ? z[1] : h.py + 6,
+              z ? z[2] : 120, z ? z[3] : 84)
         .setInteractive({ useHandCursor: true });
       if (h.kind !== "exit") {
         zone.on("pointerover", () => lab.setVisible(true));
@@ -5834,11 +5849,22 @@ class RoomScene extends Phaser.Scene {
        CONTINUOUS here, not snapped: the texture is LINEAR-filtered for
        exactly this room (see create()), so a fractional resample is a
        clean filtered scale, not the uneven nearest-neighbour picking
-       the snap rule exists to prevent. Capped at 0.9 — past that the
-       840px texture is being blown up ~1.8x and reads as mush. */
+       the snap rule exists to prevent.
+
+       THE CEILING IS 1.6, RAISED FROM 0.9 (2026-08-27). It is a
+       TEXTURE-UPSCALE budget, and what it is spent on changed when the
+       bake stopped supersampling (SS 2 -> 1 in render_capitol.py — the
+       whole argument is there). The sprite draws at `zoom x ss`, so
+       the old 0.9 was already blowing an 840x620 image up 1.8x, and
+       the room still only ever covered 965x619 px — 28% of a 1080p
+       window, the rest empty ink. At ss 1 the ceiling IS the upscale:
+       1.6 is LESS magnification than before, from four times the
+       source pixels, and it fills a 1920x1080 window (which wants
+       1.57) with room to spare. Above ~1.6 a 1680px painting does
+       start to soften, so this is a real limit, not a placeholder. */
     if (this.cfg.view) {
       const [vx0, vy0, vx1, vy1] = this.cfg.view;
-      const z = Math.min(0.9, w / (vx1 - vx0), h / (vy1 - vy0));
+      const z = Math.min(1.6, w / (vx1 - vx0), h / (vy1 - vy0));
       cam.setZoom(z);
       cam.centerOn((vx0 + vx1) / 2, (vy0 + vy1) / 2);
       const inv = Math.min(1 / z, 1.7);
@@ -5891,7 +5917,10 @@ const ROOM_CAPITOL = {
   noExit: true,
   // Content bbox of the bake, measured against the ink (scene px, then
   // a ~24px breathing margin): with the elongated well (rdiamond) the
-  // building lives at [392,312..1416,952] of the 1680x1240 canvas.
+  // building lives at [390,313..1416,951] of the 1680x1240 canvas.
+  // Re-measured after the 2026-08-27 re-bake (SS 1 + the floor swap)
+  // and unchanged within 2px — the swap moved which door is where, not
+  // where the walls are, and the SCENE space never changed size.
   // Framing this rect instead of the canvas is what "zoomed in more"
   // means — remeasure after any re-bake that moves the composition
   // (CY, storey heights, WING_EXT).
