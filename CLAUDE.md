@@ -2737,17 +2737,94 @@ stairs hotspot or Esc. Rules:
     leave the entire game uninitialised. The map is built, then slept
     behind the room; nothing is deleted and nothing sits on a second
     code path that can rot.
-  - **The map is still reachable, by the stairs.** `exitTo: "world"`
-    is unchanged, so the room's exit hotspot and Esc wake the map with
-    the HUD, toolbar and meters live. The intro dive is skipped and
-    the camera PARKED where the dive would have landed
-    (`parkOnCapitol`), or the stairs arrive on a half-tweened
-    archipelago.
+  - **The map is no longer player-reachable** (2026-08-26, `noExit` —
+    see the HUD bullet below; before that the stairs/Esc led out).
+    `exitTo: "world"` remains in the config and `parkOnCapitol` still
+    parks the camera on the Capitol at boot, so dropping `noExit` is
+    the one edit that restores the whole route.
   - **The week-1 boot pop is suppressed while it is set**
     (`SessionPanel.init`): the point is to land on the ROOM, and an
     overlay opening over it defeats that. The creation funnel is not
     lost — it is `renderHub`'s early bail, so it fires the moment the
     session is opened from the map.
+- **THE CAPITOL CARRIES THE FULL GAME HUD NOW** (2026-08-26, user's
+  call: "move all the ui stuff from the map to the view of the capitol
+  … this is supposed to be the main actual view of the game. so then
+  remove the 'back to oahu' button too. the view should be zoomed in
+  more"). Three changes, each with a rule:
+  - `body.in-capitol` no longer hides `#hud` — it hides only the
+    MAP-facing chrome (`#island-chip`, `#island-menu`, `#hint`,
+    `#chips`); toolbar, End Turn, fund chip, standing and timeline all
+    live over the room. End Turn is safe because `advanceWeek` skips
+    the week-beat camera ritual whenever WorldScene `sys.isSleeping()`
+    — without that guard the beat would stall 4s on the fallback timer
+    every turn (the tween clock sleeps with the scene).
+  - **`ROOM_CAPITOL.noExit: true`** — no exit hotspot is built, Esc is
+    not bound, `leave()` bails. The map is unreachable by the player
+    (still built and asleep underneath; drop `noExit` to restore the
+    stairs). The office's own exit back to the capitol is untouched —
+    `noExit` is per-room. The greet text lost its "stairs makai" line.
+  - **`ROOM_CAPITOL.view: [x0,y0,x1,y1]`** (scene px) — `fit()` frames
+    this rect instead of the whole canvas, with CONTINUOUS zoom capped
+    at 0.9, and `create()` switches that room's texture to LINEAR
+    filtering (per-texture setFilter works on Canvas; a filtered
+    fractional resample of the LANCZOS-baked painting is clean, so the
+    snap quantum doesn't apply — snap-fitted rooms keep NEAREST). The
+    rect is the measured content bbox + margin; REMEASURE it after any
+    re-bake that moves the composition. The wing (below) deliberately
+    extends PAST the rect — cropped at the frame edge it reads as the
+    building continuing, which is the point.
+- **THE ELONGATED PLAN — the whole room is a RECTANGLE now**
+  (2026-08-26, two user calls: "extend the right side of the second
+  and third floors so that they are more rectangular", then the
+  correction that settled the design — "i wanted the railing to also
+  reflect this new length. it's still in the same square". A first
+  cut extended only the walls, leaving the well/railing square; that
+  was wrong). `WING_EXT` (8.0 iso units) + **`rdiamond(a, dy)`** in
+  render_capitol.py — diamond()'s elongated counterpart, E and S
+  corners slid +WING_EXT in u, same corner ORDER so every (i, j)
+  edge-pair loop works unchanged. Everything derived from the well
+  follows it: ring floor, ring shade, sun spill, BOTH railing rings
+  (pickets + pots at gallery, upper_parapet — the extracted single
+  source — at Senate), courtyard paving + oculus light quads + loggia
+  bands, the slab fins, the makai fascia edges. Rules:
+  - **The rotunda-centred furniture does NOT follow**: mosaic, chain
+    ring, planter benches, breezeway band, and the whole ʻEwa corner
+    assembly (smokestack/panel/doors) stay in absolute u/v — the
+    rotunda is where it is; the COURT is what got longer. That the
+    mosaic now sits left-of-centre in the long court is true to the
+    real building.
+  - **`column_stations()` keeps the ORIGINAL square hole** — its
+    stations must land on `col_xs()`'s screen x or the loggia shaft
+    and the flush wall strips above it split apart (the one-source
+    column rule). The extension got ONE extra loggia-only station
+    (mid-extension) with no flush strip above it — survivable because
+    the strips are the subtlest element in the room.
+  - **The drum glazing CONTINUES PAST ITS APEX** (court_glass's `ext`
+    param): the assembly (corner wall, doors, pier, main arc) is
+    still parameterised on the ORIGINAL run — paint_well passes
+    `iso(GND_OUT, -GND_OUT)` as e1 and the extended corner as `ext` —
+    and the continuation mirrors the cylinder's physics (theta 0 →
+    +52°, bars re-compressing toward the far corner, sill bow easing
+    back up), starting AT the main arc's last mullion so the curtain
+    is one sheet. Flat filler is exactly the "mullions then a dark
+    slab" read the 2026-08-25 rework removed — don't regress to it.
+  - **The stairs KEEP their spot**: `iso(A_OUT, A_OUT)`, the old S
+    corner, now an ordinary point on the longer SW edge (a rectangle
+    has no bottom apex). spawn and the (noExit-skipped) exit hotspot
+    both still derive from `diamond(A_OUT)[2]` in render(), so
+    nothing moved — hotspot json stayed byte-identical through the
+    whole change.
+  - The upper storeys' wall extensions (the wing blocks at the end of
+    paint_walls and paint_upper_level) carry only UNNAMED filler (an
+    office door and a bench each, on their own local span) —
+    place_feats never sees the wing, so never put a named feature
+    there. Flute phase steps from the ORIGINAL run start (even_run
+    over the full span, filtered to the wing) so the 6px rhythm can't
+    beat at the seam; wing form mottle uses a LOCAL generator
+    (shared-rng rule, same as court_paving). The E sliced ends
+    (paint_upper_level's mass face, paint_cut_ends' arris) sit at the
+    extended corners.
 - **HOTSPOT NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS**
   (2026-08-24, user's call: "don't have those big labels over all the
   doors"). `RoomScene.create` still builds every label, but anything

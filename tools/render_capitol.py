@@ -125,6 +125,37 @@ DROP = 100                 # COURTYARD STOREY HEIGHT — the drop from
 LVL2_IN = A_OUT
 LVL2_OUT = 14.0
 LVL2_Y = 72
+# ---- THE ELONGATED PLAN (2026-08-26, two user calls: "extend the
+# right side of the second and third floors so that they are more
+# rectangular", then the correction that settled it — "i wanted the
+# railing to also reflect this new length. it's still in the same
+# square"; a first cut extended only the walls and was wrong). The
+# whole room is a RECTANGLE, WING_EXT iso units longer in u than in
+# v: rdiamond() is diamond()'s elongated counterpart and everything
+# derived from the well reads it — ring floor, ring shade, sun
+# spill, both railing rings, courtyard paving/light/loggia bands,
+# slab fins, makai fascia. The upper walls run on past the old E
+# corner (the wing blocks in paint_walls / paint_upper_level),
+# closed by the sliced-end treatment translated +WING_EXT. Rules:
+#   - The PLAY AREA IS UNTOUCHED: place_feats never sees the wing,
+#     so every hotspot keeps its pixel position (json verified
+#     byte-identical); the extensions carry only UNNAMED filler (an
+#     office door and a bench per level), placed on their own local
+#     span. Never put a named feature here.
+#   - ROTUNDA-CENTRED furniture stays in absolute u/v (mosaic, chain
+#     ring, planter benches, breezeway band, the ʻEwa corner
+#     assembly): the rotunda is where it is — the COURT got longer.
+#   - column_stations() keeps the ORIGINAL square (must land on
+#     col_xs' x), plus ONE loggia-only extension station.
+#   - court_glass takes the ORIGINAL run + `ext`: the drum's curtain
+#     continues past its apex with mirrored physics, one sheet.
+#   - Flute phase is CONTINUOUS across the junction: wing flute runs
+#     step even_run from the ORIGINAL run's start and draw only the
+#     wing's span, so the 6px rhythm cannot beat at the seam.
+#   - Wing form mottle uses a LOCAL generator (same rule as
+#     court_paving): the shared rng's sequence textures the mosaic
+#     and both walls' mottle, and the wing must not reshuffle them.
+WING_EXT = 8.0
 RAIL_H = 15                # picket run height
 PICKET_PITCH = 6           # px between pickets — EVEN, see even_run().
 PICKET_W = 2               # judged on the DOWNSCALED bake: at SS 2 a
@@ -486,6 +517,22 @@ def diamond(a, dy=0.0):
     return [iso(-a, -a, dy), iso(a, -a, dy), iso(a, a, dy), iso(-a, a, dy)]
 
 
+def rdiamond(a, dy=0.0):
+    """The ELONGATED (rectangular-plan) counterpart of diamond():
+    N, E, S, W with the E and S corners slid +WING_EXT in u. This is
+    the wing done properly (2026-08-26, user: "i wanted the railing
+    to also reflect this new length. it's still in the same square")
+    — the well, the railing ring, the walkway and the courtyard all
+    follow the longer plan, not just the outer walls. Same corner
+    ORDER as diamond(), so every (i, j) edge-pair loop works
+    unchanged. The rotunda-centred furniture (mosaic, chain ring,
+    planter benches, breezeway band, the ʻEwa corner assembly) stays
+    in absolute u/v and deliberately does NOT follow: the rotunda is
+    where it is — the COURT is what got longer."""
+    return [iso(-a, -a, dy), iso(a + WING_EXT, -a, dy),
+            iso(a + WING_EXT, a, dy), iso(-a, a, dy)]
+
+
 def lerp(p, q, t):
     return (round(p[0] + (q[0] - p[0]) * t),
             round(p[1] + (q[1] - p[1]) * t))
@@ -547,25 +594,30 @@ def mottle_ink(img):
 
 # --------------------------------------------------- ring floor + sun
 def paint_ring_floor(d):
-    d.polygon(diamond(A_OUT), fill=FLOOR)
+    d.polygon(rdiamond(A_OUT), fill=FLOOR)
     # quarry tile: per-cell tone jitter, then light grout joints —
-    # a flat fill read as poured concrete, not tile (atrium photo)
-    n = int(2 * A_OUT)
-    for k in range(n):
-        for l in range(n):
+    # a flat fill read as poured concrete, not tile (atrium photo).
+    # The plan is a RECTANGLE now (see rdiamond/WING_EXT): u runs
+    # WING_EXT further than v, and the well skip-test follows.
+    nu = int(2 * A_OUT + WING_EXT)
+    nv = int(2 * A_OUT)
+    for k in range(nu):
+        for l in range(nv):
             u0, v0 = -A_OUT + k, -A_OUT + l
-            if (-A_IN <= u0 and u0 + 1 <= A_IN
+            if (-A_IN <= u0 and u0 + 1 <= A_IN + WING_EXT
                     and -A_IN <= v0 and v0 + 1 <= A_IN):
                 continue                       # the well covers it
             d.polygon([iso(u0, v0), iso(u0 + 1, v0),
                        iso(u0 + 1, v0 + 1), iso(u0, v0 + 1)],
                       fill=shade(FLOOR, rng.uniform(0.95, 1.07)))
-    for k in range(1, n):
+    for k in range(1, nu):
         a = -A_OUT + k
         d.line([iso(a, -A_OUT), iso(a, A_OUT)], fill=shade(FLOOR, 1.14),
                width=1)
-        d.line([iso(-A_OUT, a), iso(A_OUT, a)], fill=shade(FLOOR, 1.14),
-               width=1)
+    for k in range(1, nv):
+        a = -A_OUT + k
+        d.line([iso(-A_OUT, a), iso(A_OUT + WING_EXT, a)],
+               fill=shade(FLOOR, 1.14), width=1)
 
 
 def paint_ring_shade(img):
@@ -575,9 +627,9 @@ def paint_ring_shade(img):
     a radial vignette; walls/stairs repaint their own ground after."""
     lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ld = ImageDraw.Draw(lay)
-    ld.polygon(diamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
-    ld.polygon(diamond(A_OUT - 0.9), fill=(8, 10, 16, 14))
-    ld.polygon(diamond(A_OUT - 1.8), fill=(0, 0, 0, 0))
+    ld.polygon(rdiamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
+    ld.polygon(rdiamond(A_OUT - 0.9), fill=(8, 10, 16, 14))
+    ld.polygon(rdiamond(A_OUT - 1.8), fill=(0, 0, 0, 0))
     img.alpha_composite(lay)
 
 
@@ -586,7 +638,7 @@ def paint_sun(img):
     lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ld = ImageDraw.Draw(lay)
     for a, al in ((A_IN + 1.8, 22), (A_IN + 1.0, 24), (A_IN + 0.4, 28)):
-        ld.polygon(diamond(a), fill=(255, 244, 214, al))
+        ld.polygon(rdiamond(a), fill=(255, 244, 214, al))
     img.alpha_composite(lay)
 
 
@@ -629,12 +681,14 @@ def court_paving(img):
 
     def slabs(d, base):
         rf = np.random.default_rng(11)
-        d.polygon(diamond(a, -DROP), fill=base)
-        k = int(math.ceil(2 * a / SLAB))
-        for i in range(k):
-            for j in range(k):
+        d.polygon(rdiamond(a, -DROP), fill=base)
+        ku = int(math.ceil((2 * a + WING_EXT) / SLAB))
+        kv = int(math.ceil(2 * a / SLAB))
+        for i in range(ku):
+            for j in range(kv):
                 u0, v0 = -a + i * SLAB, -a + j * SLAB
-                u1, v1 = min(a, u0 + SLAB), min(a, v0 + SLAB)
+                u1 = min(a + WING_EXT, u0 + SLAB)
+                v1 = min(a, v0 + SLAB)
                 if u1 <= u0 or v1 <= v0:
                     continue
                 uc, vc = (u0 + u1) / 2, (v0 + v1) / 2
@@ -648,11 +702,15 @@ def court_paving(img):
         # the joints, drawn last and KEPT FAINT: in the photo they are
         # hairlines you read the grid from, not a drawn lattice
         m = int(a / SLAB)
+        mu = int((a + WING_EXT) / SLAB)
+        for q in range(-m, mu + 1):
+            c = q * SLAB
+            if c <= a + WING_EXT:
+                d.line([iso(c, -a, -DROP), iso(c, a, -DROP)],
+                       fill=shade(base, 0.88), width=1)
         for q in range(-m, m + 1):
             c = q * SLAB
-            d.line([iso(c, -a, -DROP), iso(c, a, -DROP)],
-                   fill=shade(base, 0.88), width=1)
-            d.line([iso(-a, c, -DROP), iso(a, c, -DROP)],
+            d.line([iso(-a, c, -DROP), iso(a + WING_EXT, c, -DROP)],
                    fill=shade(base, 0.88), width=1)
 
     regions = []
@@ -662,7 +720,7 @@ def court_paving(img):
     for a_, ox, oy, t in ((A_IN - 1.0, -46, 14, 0.62),
                           (A_IN - 2.4, -62, 18, 1.0)):
         regions.append(([(px_ + ox, py_ + oy)
-                         for px_, py_ in diamond(a_, -DROP)],
+                         for px_, py_ in rdiamond(a_, -DROP)],
                         mix(COURT, COURT_SUN, t)))
     # DAYLIGHT SPILLING IN THROUGH THE OPEN BAY. The bay only reads as
     # a hole through the building if the sun it lets in lands on
@@ -686,7 +744,7 @@ def court_paving(img):
     # away and not as a recess. The gallery slab covers it, so it is
     # the one part of the floor that never sees the oculus — hence
     # LAST, after every light region.
-    hd, gd = diamond(A_IN, -DROP), diamond(GND_OUT, -DROP)
+    hd, gd = rdiamond(A_IN, -DROP), rdiamond(GND_OUT, -DROP)
     for i, j in ((3, 0), (0, 1)):
         regions.append(([hd[i], hd[j], gd[j], gd[i]], shade(COURT, 0.72)))
 
@@ -708,14 +766,19 @@ def paint_well(img):
     tops at the ʻEwa and Diamond Head ends."""
     lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(lay)
-    hole = diamond(A_IN)                     # N', E', S', W'
-    gnd = diamond(GND_OUT)                   # the set-back wall plane
+    # THE WELL IS A RECTANGLE now (see rdiamond/WING_EXT) — hole,
+    # wall planes, courtyard and every band derived from them run
+    # WING_EXT further in u. The rotunda-centred furniture (mosaic,
+    # chain ring, planter benches) and the ʻEwa corner assembly stay
+    # in absolute u/v below and do not follow.
+    hole = rdiamond(A_IN)                    # N', E', S', W'
+    gnd = rdiamond(GND_OUT)                  # the set-back wall plane
 
     # the courtyard floor and every tint that lands on it — see
     # court_paving, which composites them all through masks so the
     # paving keeps its mottle under the light
     court_paving(lay)
-    d.line(diamond(A_IN - 0.7, -DROP) + [diamond(A_IN - 0.7, -DROP)[0]],
+    d.line(rdiamond(A_IN - 0.7, -DROP) + [rdiamond(A_IN - 0.7, -DROP)[0]],
            fill=shade(COURT, 0.88), width=2)
 
     # the galleries' overhang shades the courtyard along the far walls
@@ -756,7 +819,13 @@ def paint_well(img):
         # floor or the columns have nothing to stand against
         q(-6, DROP, shade(RECESS_D, f * 0.82))        # ground level
         if glazed:
-            court_glass(d, e0, e1, f, 21, DROP - 2)
+            # the ASSEMBLY (corner wall, doors, drum curve, pier) is
+            # anchored in absolute u and parameterised on the
+            # ORIGINAL run — pass that, with the extended corner as
+            # `ext` so the drum's glazing continues past its apex
+            # over the well's new length (see court_glass)
+            court_glass(d, e0, iso(GND_OUT, -GND_OUT), f, 21,
+                        DROP - 2, ext=e1)
         else:
             # the WHOLE run is open — a breezeway, not a wall with a
             # bay (2026-08-24, breezeway photo). The koa slats that
@@ -898,7 +967,7 @@ def court_bay_pt(e0, e1, t, y):
     return (b[0], b[1] + y)
 
 
-def court_glass(d, e0, e1, f, top, bot):
+def court_glass(d, e0, e1, f, top, bot, ext=None):
     """THE GLASS WALL at courtyard level on the Diamond Head run
     (executive-floor photo). Two sections, as in the photograph:
 
@@ -1041,6 +1110,49 @@ def court_glass(d, e0, e1, f, top, bot):
     d.line([(pc[0] - pw, pc[1] - 1), (pc[0] + pw, pc[1] - 1)],
            fill=shade(hx("#e5deca"), f), width=1)      # lit head
 
+    # ---- THE DRUM CONTINUES PAST ITS APEX (the elongated well — see
+    # rdiamond/WING_EXT). The main arc ends where the drum faces the
+    # camera (theta 0, maximum bow, widest mullion gaps); past that
+    # point the same cylinder turns AWAY again, so the continuation
+    # mirrors the physics — bars re-compressing toward the far corner,
+    # sill bow easing back up — rather than running on as flat filler,
+    # which is exactly the "mullions then a dark slab" read the
+    # 2026-08-25 rework removed. It starts AT the last mullion of the
+    # main arc so the curtain is one unbroken sheet.
+    if ext is not None:
+        TH_B = math.radians(52)
+        sb = math.sin(TH_B)
+        n2 = 11                     # ~the main arc's px pitch over
+                                    # the 16*WING_EXT px extension
+        p_end, b_end = tops[-1], sills[-1]
+
+        def ext_pt(t2, yfrac):
+            b = lerp(e1, ext, t2)
+            return (b[0], b[1] + top + dy * yfrac)
+
+        tops2, sills2 = [p_end], [b_end]
+        for i in range(1, n2 + 1):
+            th = TH_B * i / n2
+            t2 = math.sin(th) / sb
+            bow = (math.cos(th) - math.cos(TH_A)) / (1 - math.cos(TH_A))
+            p = ext_pt(t2, 0)
+            tops2.append((p[0], p[1] + round(bow_h * bow)))
+            b = ext_pt(t2, 1.0)
+            sills2.append((b[0], b[1] + round(bow_s * bow)))
+        d.polygon(tops2 + sills2[::-1], fill=shade(hx("#171d1f"), f))
+        refl2 = [lerp(pt, pb, 0.34) for pt, pb in zip(tops2, sills2)]
+        d.polygon(tops2 + refl2[::-1], fill=shade(hx("#2e3839"), f))
+        d.polygon(tops2 + [lerp(pt, pb, 0.15) for pt, pb
+                           in zip(tops2, sills2)][::-1],
+                  fill=shade(hx("#414d4b"), f))
+        for i in range(1, n2 + 1):
+            d.line([tops2[i], sills2[i]], fill=shade(hx("#a7ad9f"), f),
+                   width=2)
+        d.line(tops2, fill=shade(hx("#d9d2bc"), f), width=2)
+        d.line([(x, y + 2) for x, y in tops2],
+               fill=shade(hx("#8f8874"), f), width=1)
+        d.line(sills2, fill=shade(hx("#3a352c"), f), width=2)
+
 
 def court_opening(d, e0, e1, t0, t1, f, top, bot):
     """A BAY OPEN TO THE OUTSIDE on the ʻEwa wall (2026-08-24, user:
@@ -1134,6 +1246,13 @@ def column_stations():
     ONE list, shared by the free-standing shaft in the loggia and by
     the flush strip on each upper wall, so the three pieces of a
     column cannot drift onto different centres.
+
+    Deliberately the ORIGINAL square hole, NOT rdiamond: these
+    stations must land on col_xs()'s screen x (run_x over A_IN with
+    no extension) or the loggia shaft and the flush wall strips
+    above it split apart. The elongated well's extension keeps the
+    colonnade rhythm it inherits — do not re-space it here without
+    re-deriving every wall's door bays.
     """
     hole = diamond(A_IN)
     out = []
@@ -1141,6 +1260,13 @@ def column_stations():
                         ((hole[0], hole[1]), 0.86)):
         for t in COL_T:
             out.append((lerp(e0, e1, t), f))
+    # ONE extra station mid-extension on the elongated DH run (see
+    # rdiamond/WING_EXT): without it the colonnade stops at the old
+    # 2/3 station and the drum glazing runs ~220px bare. A loggia
+    # shaft only — the wing walls above carry no flush strip, which
+    # is survivable because the strips are the subtlest element in
+    # the room; the free shafts are not.
+    out.append((iso(A_IN + WING_EXT / 2, -A_IN), 0.86))
     return out
 
 
@@ -1402,8 +1528,10 @@ def paint_railings(d):
     """The real railing, per the atrium photos, drawn CHUNKY enough to
     survive game zoom: a deep fluted white parapet fascia at the slab
     edge (hanging into the well), an OPEN run of dark metal pickets
-    you see the well through, and a heavy koa handrail. No fat posts."""
-    hole = diamond(A_IN)
+    you see the well through, and a heavy koa handrail. No fat posts.
+    The ring follows the ELONGATED well (rdiamond) — the DH and SW
+    runs are longer and the E'/S' corners sit WING_EXT further out."""
+    hole = rdiamond(A_IN)
     edges = [(hole[3], hole[0], False), (hole[0], hole[1], False),
              (hole[1], hole[2], True), (hole[2], hole[3], True)]
     for e0, e1, near in edges:
@@ -1478,7 +1606,7 @@ def paint_rail_pots(d):
     arcing fronds drawn dark mass first, blades over, light tips
     last — the layering is what reads as a PLANT instead of a green
     blob at this size."""
-    hole = diamond(A_IN)
+    hole = rdiamond(A_IN)
     # (tip dx, tip dy rel. crown, colour) — a fan, asymmetric on
     # purpose; a symmetric fan reads as a printed icon
     fronds = ((-8, -8, "#3f5f3a"), (-5, -12, "#567a4c"),
@@ -2174,6 +2302,35 @@ def bay_columns(d, r, e0, e1, f, feats, reflect=False):
                    fill=mix(FLOOR, hx("#241c15"), 0.45), width=2)
 
 
+def upper_parapet(d, a0, a1, f, phase0=None):
+    """The third level's SOLID white fluted parapet with the koa cap
+    on top — extracted so the wing can continue it without a second
+    copy of the assembly drifting. `phase0` anchors the flute rhythm:
+    pass the ORIGINAL run's start so a wing segment keeps the 6px
+    beat across the junction (flutes are drawn only inside a0..a1)."""
+    d.polygon([a0, a1, up(a1, RAIL_H), up(a0, RAIL_H)],
+              fill=shade(hx("#ece6d4"), f))
+    x_lo, x_hi = sorted((a0[0], a1[0]))
+    for b in even_run(phase0 or a0, a1, FLUTE_PITCH):
+        if not x_lo <= b[0] <= x_hi:
+            continue
+        d.line([up(b, 2), up(b, RAIL_H - 2)],
+               fill=shade(hx("#9d9683"), f), width=2)
+    # seam at the slab line, so the parapet stands ON the floor
+    # instead of merging with the fascia band below
+    d.line([a0, a1], fill=shade(hx("#8a8474"), f), width=1)
+    d.line([up(a0, RAIL_H), up(a1, RAIL_H)],
+           fill=shade(hx("#f7f3e6"), f), width=1)
+    d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
+           fill=shade(hx("#54391f"), f), width=2)
+    d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
+           fill=shade(hx("#9a6a38"), f), width=3)
+    d.line([up(a0, RAIL_H + 5), up(a1, RAIL_H + 5)],
+           fill=shade(hx("#c79a5c"), f), width=2)
+    d.line([up(a0, RAIL_H + 6), up(a1, RAIL_H + 6)],
+           fill=shade(hx("#ecd0a1"), f), width=1)
+
+
 def paint_upper_level(d):
     """The third level — Senate offices — stepped BACK a full bay.
 
@@ -2202,6 +2359,11 @@ def paint_upper_level(d):
     # ink and read as a cantilever. Facing the slice with the same
     # core every other cut uses makes it a sawn-open building instead.
     g_in, g_out = diamond(A_OUT), diamond(LVL2_OUT)
+    # the E-side face rides out with the wing (see WING_EXT) — the
+    # runs continue, so the sawn end has to close them at their NEW
+    # ends or the wing walls hang open over ink
+    g_in[1] = iso(A_OUT + WING_EXT, -A_OUT)
+    g_out[1] = iso(LVL2_OUT + WING_EXT, -LVL2_OUT)
     top = LVL2_Y + 72
     for i in (3, 1):
         c0, c1 = g_in[i], g_out[i]
@@ -2293,24 +2455,33 @@ def paint_upper_level(d):
         # the white. The executive-floor photo's upper balconies are
         # white fluted parapets anyway — the koa cap riding the TOP
         # of the white band is what says "railing" at this distance.
-        d.polygon([a0, a1, up(a1, RAIL_H), up(a0, RAIL_H)],
-                  fill=shade(hx("#ece6d4"), f))
-        for b in even_run(a0, a1, FLUTE_PITCH):
-            d.line([up(b, 2), up(b, RAIL_H - 2)],
-                   fill=shade(hx("#9d9683"), f), width=2)
-        # seam at the slab line, so the parapet stands ON the floor
-        # instead of merging with the fascia band below
-        d.line([a0, a1], fill=shade(hx("#8a8474"), f), width=1)
-        d.line([up(a0, RAIL_H), up(a1, RAIL_H)],
-               fill=shade(hx("#f7f3e6"), f), width=1)
-        d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
-               fill=shade(hx("#54391f"), f), width=2)
-        d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
-               fill=shade(hx("#9a6a38"), f), width=3)
-        d.line([up(a0, RAIL_H + 5), up(a1, RAIL_H + 5)],
-               fill=shade(hx("#c79a5c"), f), width=2)
-        d.line([up(a0, RAIL_H + 6), up(a1, RAIL_H + 6)],
-               fill=shade(hx("#ecd0a1"), f), width=1)
+        upper_parapet(d, a0, a1, f)
+
+    # ---- THE DIAMOND HEAD WING (see WING_EXT): this storey runs on
+    # past the E corner. Same bands, same walkway, same parapet, in
+    # the DH run's own light (f 0.97); UNNAMED filler only, so no
+    # hotspot moves. Drawn in the run's own order — wall, doors, slab
+    # band, walkway, bench, parapet — and phase-anchored to the run's
+    # start so the flute rhythm cannot beat at the junction.
+    fdh = 0.97
+    w0, w1 = out[1], iso(LVL2_OUT + WING_EXT, -LVL2_OUT, LVL2_Y)
+    aw0, aw1 = inn[1], iso(LVL2_IN + WING_EXT, -LVL2_IN, LVL2_Y)
+    d.polygon([w0, w1, up(w1, 58), up(w0, 58)], fill=shade(CONC, fdh))
+    for y in (24, 41):
+        d.line([up(w0, y), up(w1, y)],
+               fill=shade(CONC, fdh * 0.90), width=1)
+    door_at(d, w0, w1, 0.35, "office", hw=11)
+    d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
+              fill=shade(hx("#ece6d4"), fdh))
+    for b in even_run(out[0], w1, FLUTE_PITCH):
+        if b[0] < w0[0]:
+            continue
+        d.line([up(b, 59), up(b, 71)],
+               fill=shade(hx("#9d9683"), fdh), width=2)
+    d.polygon([aw0, aw1, w1, w0], fill=shade(FLOOR, fdh * 0.94))
+    d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
+    bench_at(d, w0, w1, 0.72, fdh)
+    upper_parapet(d, aw0, aw1, fdh, phase0=inn[0])
     return doors
 
 
@@ -2407,6 +2578,42 @@ def paint_walls(d):
                    fill=shade(hx("#9d9683"), f), width=2)
         # NO benches: drawn floating mid-walkway they read as brown
         # bars sitting on the railing (user-caught, removed 2026-08-22)
+
+    # ---- THE DIAMOND HEAD WING (see WING_EXT): the gallery run
+    # continues past the E corner — wall + slab in the run's own
+    # light (f 0.88), unnamed filler only. The FLOOR under it is no
+    # longer drawn here: since the well went rectangular (rdiamond,
+    # 2026-08-26 "the railing should also reflect this new length")
+    # the ring floor, sun spill, railings and slab fins all extend on
+    # their own; the wing is just more wall. Form mottle keeps its
+    # LOCAL generator — the shared rng textures the mosaic and both
+    # walls' mottle, and the wing must not reshuffle them.
+    wrng = np.random.default_rng(23)
+    fw = 0.88
+    out_g = diamond(A_OUT)
+    w0, w1 = out_g[1], iso(A_OUT + WING_EXT, -A_OUT)
+    # wall + slab, continuous with the run — pour joints at the same
+    # heights, flute phase stepped from the run's own start
+    d.polygon([w0, w1, up(w1, 58), up(w0, 58)], fill=shade(CONC, fw))
+    for y in (24, 41):
+        d.line([up(w0, y), up(w1, y)], fill=shade(CONC, fw * 0.90),
+               width=1)
+    for _ in range(4):                            # form mottle, local
+        b = lerp(w0, w1, wrng.uniform(0.05, 0.95))
+        mw = int(wrng.uniform(5, 14))
+        my0 = int(wrng.uniform(12, 44))
+        d.rectangle([b[0] - mw // 2, b[1] - my0 - int(wrng.integers(4, 9)),
+                     b[0] + mw // 2, b[1] - my0],
+                    fill=shade(CONC, fw * wrng.uniform(0.94, 1.06)))
+    door_at(d, w0, w1, 0.35, "office", hw=11)
+    bench_at(d, w0, w1, 0.72, fw)
+    d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
+              fill=shade(hx("#ece6d4"), fw))
+    for b in even_run(out_g[0], w1, FLUTE_PITCH):
+        if b[0] < w0[0]:
+            continue
+        d.line([up(b, 59), up(b, 71)],
+               fill=shade(hx("#9d9683"), fw), width=2)
     return doors
 
 
@@ -2435,7 +2642,10 @@ def paint_cut_ends(d):
     makes the room read as a cutaway of a real building rather than as
     a set with two walls missing."""
     out = diamond(A_OUT)
-    for c, moff in ((out[3], (-9, -5)), (out[1], (9, -5))):
+    # the Diamond Head end rides out with the wing (see WING_EXT) —
+    # the gallery wall now ends at the wing's far corner
+    for c, moff in ((out[3], (-9, -5)),
+                    (iso(A_OUT + WING_EXT, -A_OUT), (9, -5))):
         cut_face(d, c, up(c, 72), moff, arris=False)
         d.line([up(c, 72), (c[0] + moff[0], c[1] + moff[1] - 72)],
                fill=hx("#fffdf5"), width=2)
@@ -2447,18 +2657,22 @@ def paint_front_edge(d):
     knee-high cutaway stub walls were removed. The floor ends at the
     slab edge with its own fluted fascia hanging below, exactly the
     band the well edges wear, and nothing stands on it."""
-    out = diamond(A_OUT)
-    gap = 30
-    for e0, e1 in ((out[1], out[2]), (out[2], out[3])):   # SE, SW
-        # fascia broken at the S corner for the stairs
-        span = 32.0 * A_OUT   # edge's horizontal extent, px
-        if e1 is out[2]:      # SE runs E->S: stop short of S
-            e1 = lerp(e0, e1, 1 - gap / span)
-        else:                 # SW runs S->W: start past S
-            e0 = lerp(e0, e1, gap / span)
-        fluted_band(d, e0, e1, 0, FASCIA_D, 0.92)
-    # stairs down from the S corner, out of the room
-    s = out[2]
+    out = rdiamond(A_OUT)
+    # THE STAIRS KEEP THEIR SPOT: the old S corner, now an ordinary
+    # point on the longer SW edge (the rectangular plan has no bottom
+    # apex). spawn and the (unused) exit hotspot both derive from
+    # diamond(A_OUT)[2] in render(), so nothing else moves.
+    s = iso(A_OUT, A_OUT)
+    # SE edge — the wing's far side, one unbroken band
+    fluted_band(d, out[1], out[2], 0, FASCIA_D, 0.92)
+    # SW edge — broken at the stairs
+    e0, e1 = out[2], out[3]
+    span = float(e0[0] - e1[0])   # horizontal extent, px
+    t_s = (e0[0] - s[0]) / span
+    half = 34.0 / span
+    fluted_band(d, e0, lerp(e0, e1, t_s - half), 0, FASCIA_D, 0.92)
+    fluted_band(d, lerp(e0, e1, t_s + half), e1, 0, FASCIA_D, 0.92)
+    # stairs down out of the room
     for i in range(5):
         y = s[1] + STUB_H + i * 8
         wdt = 40 - i * 2
