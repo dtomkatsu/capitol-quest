@@ -4496,7 +4496,11 @@ const SessionPanel = {
       const dlg = data.dialogues[cal.event] || {};
       const startBeat = () => {
         overlay.classList.add("hidden");
-        if (scene && scene.weekBeat) {
+        // The camera ritual belongs to the MAP. With the Capitol as
+        // the main view (2026-08-26) the world scene sleeps under the
+        // room, its tween clock with it — weekBeat there would just
+        // stall on the 4s fallback. Skip straight to the week.
+        if (scene && scene.weekBeat && !scene.sys.isSleeping()) {
           beating = true;
           renderTurnBtn();
           scene.weekBeat(dlg.at || null, openWeek);
@@ -5734,6 +5738,16 @@ class RoomScene extends Phaser.Scene {
     this.ss = meta.scale || 1;
     this.add.image(0, 0, this.cfg.key + "_img")
         .setOrigin(0, 0).setScale(this.ss);
+    // A room with a `view` rect zooms CONTINUOUSLY (see fit()), which
+    // means non-integer resampling — so its texture switches to LINEAR
+    // filtering. The bake is a LANCZOS-supersampled painting, not crisp
+    // pixel art, so a filtered scale is the right treatment; per-texture
+    // setFilter works on the Canvas renderer (it just takes a frame or
+    // two to apply — see CLAUDE.md). Snap-fitted rooms keep NEAREST.
+    if (this.cfg.view) {
+      this.textures.get(this.cfg.key + "_img")
+          .setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
 
     this.labels = [];
     this.markers = [];
@@ -5743,6 +5757,9 @@ class RoomScene extends Phaser.Scene {
       exit: { size: 13, color: "#eaf2ff", stroke: "#101d5c" },
     };
     for (const h of meta.hotspots) {
+      // noExit: this room is the game's home — it has no way out and
+      // draws no exit affordance (the Capitol, since 2026-08-26).
+      if (h.kind === "exit" && this.cfg.noExit) continue;
       if (h.kind === "door") {
         const mk = this.add.image(h.px, h.py - 30, "marker");
         this.tweens.add({ targets: mk, y: mk.y - 7, duration: 550,
@@ -5785,7 +5802,7 @@ class RoomScene extends Phaser.Scene {
 
     this.fit();
     this.scale.on("resize", () => this.fit());
-    this.input.keyboard &&
+    if (!this.cfg.noExit && this.input.keyboard)
       this.input.keyboard.on("keydown-ESC", () => this.leave());
     this.events.on("wake", () => this.enterRoom());
     this.enterRoom();
@@ -5810,6 +5827,25 @@ class RoomScene extends Phaser.Scene {
     const w = this.scale.width || window.innerWidth || 800;
     const h = this.scale.height || window.innerHeight || 600;
     const cam = this.cameras.main;
+    /* cfg.view = [x0, y0, x1, y1] in SCENE px: frame THIS rect instead
+       of the whole canvas — the bake carries wide ink margins, and the
+       main view should spend its pixels on the building (2026-08-26,
+       user's call: "the view should be zoomed in more"). The zoom is
+       CONTINUOUS here, not snapped: the texture is LINEAR-filtered for
+       exactly this room (see create()), so a fractional resample is a
+       clean filtered scale, not the uneven nearest-neighbour picking
+       the snap rule exists to prevent. Capped at 0.9 — past that the
+       840px texture is being blown up ~1.8x and reads as mush. */
+    if (this.cfg.view) {
+      const [vx0, vy0, vx1, vy1] = this.cfg.view;
+      const z = Math.min(0.9, w / (vx1 - vx0), h / (vy1 - vy0));
+      cam.setZoom(z);
+      cam.centerOn((vx0 + vx1) / 2, (vy0 + vy1) / 2);
+      const inv = Math.min(1 / z, 1.7);
+      for (const t of this.labels) t.setScale(inv);
+      for (const m of this.markers) m.setScale(Math.min(1 / z, 1.6));
+      return;
+    }
     // SNAP the zoom so one baked pixel covers a WHOLE number of device
     // pixels. The renderer is pixelArt/nearest-neighbour, so a fitted
     // zoom like 0.58 at dpr 2 = 1.161 device px per source px, which
@@ -5837,6 +5873,7 @@ class RoomScene extends Phaser.Scene {
   }
 
   leave() {
+    if (this.cfg.noExit) return;      // the home room has no way out
     Dialog.hide();
     if (this.cfg.exitTo === "world")
       document.body.classList.remove("in-capitol");
@@ -5847,15 +5884,25 @@ class RoomScene extends Phaser.Scene {
 const ROOM_CAPITOL = {
   key: "capitol", v: CAP_V,
   json: "map/capitol.json", img: "assets/map/capitol_scene.png",
+  // The Capitol is the game's HOME view (2026-08-26): no exit hotspot,
+  // no Esc-out — the map sleeps underneath, reachable again only by
+  // code (drop noExit and restore exitTo's door if it ever comes back).
   exitTo: "world",
+  noExit: true,
+  // Content bbox of the bake, measured against the ink (scene px, then
+  // a ~24px breathing margin): with the elongated well (rdiamond) the
+  // building lives at [392,312..1416,952] of the 1680x1240 canvas.
+  // Framing this rect instead of the canvas is what "zoomed in more"
+  // means — remeasure after any re-bake that moves the composition
+  // (CY, storey heights, WING_EXT).
+  view: [368, 288, 1440, 976],
   enter: { finance: "office" },
   greet: ["Hawaiʻi State Capitol",
     "E komo mai — a gallery in the open rotunda. The chambers " +
     "root the courtyard below — Senate toward ʻEwa, House toward " +
     "Diamond Head — and hallways branch deeper into the building, " +
     "to committee rooms and the Level 5 elevators. No dome " +
-    "overhead: the sky is Hawaiʻi's capitol dome. The stairs " +
-    "makai lead back to Oʻahu."],
+    "overhead: the sky is Hawaiʻi's capitol dome."],
 };
 const ROOM_OFFICE = {
   key: "office", v: OFF_V,

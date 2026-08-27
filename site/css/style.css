@@ -4285,10 +4285,16 @@ html, body {
 }
 
 /* ================================================================
-   INSIDE THE CAPITOL (CapitolScene, main.js)
-   The interior is a single painted room with its own doors — the
-   overworld chrome (toolbar, End Turn, fund chip, island menu) makes
-   no sense inside it and End Turn especially must not run the week
-   beat over a sleeping WorldScene. #dialog is a SIBLING of #hud, so
-   the JRPG dialogue box stays. */
-body.in-capitol #hud { display: none; }
+   INSIDE THE CAPITOL (RoomScene, main.js)
+   The Capitol IS the main view now (2026-08-26, user's call: "move
+   all the ui stuff from the map to the view of the capitol"), so the
+   game HUD — toolbar, End Turn, fund chip, standing, timeline —
+   stays up inside it. Only the chrome that drives the MAP is hidden:
+   the island fly-to menu, the pan/zoom hint and the tax-stream layer
+   chips all address a camera and layers that are asleep. End Turn is
+   safe in here because advanceWeek skips the week-beat camera ritual
+   whenever WorldScene is sleeping (checked in JS, not here). */
+body.in-capitol #island-chip,
+body.in-capitol #island-menu,
+body.in-capitol #hint,
+body.in-capitol #chips { display: none; }
