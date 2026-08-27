@@ -56,6 +56,14 @@ taxes & the budget. Static site in `site/`, no build step for the frontend.
   safety even though we render with Canvas): render_map asserts this.
 - Phaser is vendored (`site/vendor/phaser.min.js`, v3.90.0, MIT). Do not
   swap to CDN.
+- rot.js (`site/vendor/rot.min.js`, v2.2.1, BSD-3-Clause) and a Phaser 3
+  isometric plugin (`site/vendor/phaser3-plugin-isometric.js`, v0.0.7,
+  MIT) are also vendored — see "Vendored: rot.js + Phaser iso plugin"
+  at the end of this file before using either. `window.PhaserIso`'s
+  actual export surface is `{default: IsoPlugin, IsoPhysics}` (verified
+  in the pane) — `IsoSprite`/`Point3`/`Cube` are NOT exposed as
+  separate globals, only reachable through `IsoPlugin`'s
+  `scene.add.isoSprite(...)` factory once it's registered.
 - Canvas renderer on purpose (`type: Phaser.CANVAS` in main.js) — the world
   is one baked image; WebGL adds quirks (embedded webviews) for no gain.
 - Cache-busting `?v=` params in `site/index.html` — the global pre-commit
@@ -2856,3 +2864,50 @@ stairs hotspot or Esc. Rules:
   Verified end-to-end in the pane: world → capitol (greet, HUD off) →
   finance-door tap → office (greet, capitol sleeps) → exit (no
   re-greet) → exit → world (HUD back).
+
+## Vendored: rot.js + Phaser iso plugin (2026-08-26)
+
+Two libraries vendored ahead of features that aren't built yet — neither
+changes anything a player can currently see.
+
+- **`site/vendor/rot.min.js`** (rot-js 2.2.1, BSD-3-Clause) — wired for
+  ONE thing: `window.ROT.RNG` replaces `Math.random()` at the three
+  gameplay-roll sites (`rollCheck`'s 2d6, and the two hazard `draw`s in
+  `resolveBills` for the chair and floor gates). ROT.RNG seeds itself
+  from the clock exactly like Math.random, so real play is unaffected;
+  `?seed=<n>` in the URL (index.html, same dev-flag pattern as
+  `?raf=mc`) freezes it for a reproducible run of the gauntlet. The
+  rest of the library (Map/FOV/Path/Lighting/Scheduler — dungeon-gen
+  and roguelike tooling that doesn't fit a real-GIS baked world) rides
+  along unused; don't reach for it without a concrete reason, since
+  nothing here has budgeted for it.
+- **`site/vendor/phaser3-plugin-isometric.js`** (sebashwa/phaser3-plugin-
+  isometric 0.0.7, MIT) — vendored, NOT wired into any scene. It exists
+  for the still-open player-sprite roadmap item: once something moves
+  relative to the static baked art, its `IsoSprite` depth-sorting
+  (x+y+1.25z) is what keeps a moving token correctly layered against
+  buildings. Today nothing in the game moves relative to anything else
+  (the ground is one baked PNG the camera pans across — see the "North-
+  up iso" rule above), so there is no caller yet and none should be
+  added speculatively.
+  - **Upstream only ships a CommonJS build** (`module.exports = …`),
+    which throws `module is not defined` loaded as a plain `<script>`.
+    The vendored file wraps upstream's untouched dist body in a small
+    IIFE that supplies a local `module`/`exports` (it makes zero
+    `require()` calls, so nothing else is needed) and republishes the
+    result as `window.PhaserIso`. Verified in the pane (2026-08-26):
+    the export surface is only `{default: IsoPlugin, IsoPhysics}` — the
+    README's `IsoSprite`/`Point3`/`Cube` are used internally but not
+    re-exported at this top level; `scene.add.isoSprite(...)` (wired up
+    inside `IsoPlugin`'s constructor once it's registered) is how you
+    actually get an IsoSprite. Re-vendoring means replacing only the
+    marked span between the two `BEGIN/END upstream` comments — the
+    wrapper itself is ours and should survive an upstream bump.
+  - The plugin's module-level code reads `Phaser.GameObjects.Sprite`
+    etc. at SCRIPT-LOAD time (webpack's eager module evaluation), so it
+    must load after `phaser.min.js`, never before.
+  - The original repo the user linked
+    (lewster32/phaser-plugin-isometric) is Phaser 2-only and archived
+    since 2018 — incompatible with this project's vendored Phaser 3.90.
+    This fork is the maintained Phaser 3 successor; don't revert to the
+    Phaser 2 one.

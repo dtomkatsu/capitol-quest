@@ -233,9 +233,26 @@
     }
   </script>
   <script src="vendor/phaser.min.js"></script>
+  <!-- Seedable RNG for gameplay rolls (window.ROT.RNG) — see the seed
+       block below and CLAUDE.md. Not yet used for anything else
+       (rot.js's map/FOV/pathfinding modules ride along unused). -->
+  <script src="vendor/rot.min.js"></script>
+  <!-- Phaser 3 isometric plugin (window.PhaserIso) — vendored ahead of
+       the player-sprite feature; no scene registers it yet. -->
+  <script src="vendor/phaser3-plugin-isometric.js"></script>
+  <script>
+    // ?seed=<n> freezes the gameplay RNG (2d6 checks + bill-gauntlet
+    // hazard draws) for a reproducible run — same dev-flag pattern as
+    // ?raf=mc above. Real play is unaffected: ROT.RNG seeds itself from
+    // the clock, same as Math.random, when this is absent.
+    (function () {
+      const m = location.search.match(/[?&]seed=(\d+)/);
+      if (m) ROT.RNG.setSeed(Number(m[1]));
+    })();
+  </script>
   <!-- UI sound: synthesised at runtime, no audio files. Loaded
        BEFORE main.js, which calls window.SFX from its handlers. -->
   <script src="js/sfx.js?v=20260819125954"></script>
-  <script src="js/main.js?v=20260826125617"></script>
+  <script src="js/main.js?v=20260827090420"></script>
 </body>
 </html>

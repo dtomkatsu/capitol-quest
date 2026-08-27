@@ -1701,8 +1701,8 @@ const SessionPanel = {
 
     const rollCheck = (chk) => {
       const m = checkMath(chk);
-      const d1 = 1 + Math.floor(Math.random() * 6);
-      const d2 = 1 + Math.floor(Math.random() * 6);
+      const d1 = 1 + Math.floor(ROT.RNG.getUniform() * 6);
+      const d2 = 1 + Math.floor(ROT.RNG.getUniform() * 6);
       const sum = d1 + d2;
       const ok = sum === 12 ? true : sum === 2 ? false :
         sum + m.bonus >= chk.dc;
@@ -3853,7 +3853,7 @@ const SessionPanel = {
           // keep the DRAW, not just the verdict: a miss that landed just
           // past the line is the week's most interesting news and the
           // only way the player ever feels a near-thing
-          const draw = Math.random();
+          const draw = ROT.RNG.getUniform();
           moved = draw < hz;
           // meters ride along so the post-mortem can name the numbers AS
           // THEY STOOD — they are derived now, and recomputing them
@@ -3919,7 +3919,7 @@ const SessionPanel = {
         } else {                                    // floor
           p = floorOdds(b, sid);
           const hz = weekHazard(p, window);
-          const draw = Math.random();
+          const draw = ROT.RNG.getUniform();
           moved = draw < hz;
           if (!moved) floorMiss += 1;
           if (!moved && draw < hz * (G.nearFactor || 1.6)) {
