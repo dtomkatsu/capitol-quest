@@ -7,18 +7,40 @@ and reconstructing them once already cost a brute-force search over
 `--center` plus an analytic fit of the `--soften` ellipse against a diff
 map (2026-08-18). Sources are the `*-src.jpg` files beside this note.
 
-Run from the repo root. Output is 640x320 (`W, H` in the tool).
+Run from the repo root. Output is **1920x960** (`W, H` x `DISPLAY`
+in the tool). It was 640x320 when this note was written, 960x480 from
+2026-08-18, and 1280x640 briefly on 2026-08-28 — the same day it went
+to 1920, because the old "matches the column" sizing was measured in
+CSS px and an `<img>` is rasterised into DEVICE px (~1972 of them on a
+dpr-2 display). See the tool's header.
+
+**EVERY `--paint` RADIUS BELOW WAS RESCALED BY 1.5 IN THAT CHANGE, AND
+THAT IS THE ONE TIME IT WILL EVER HAPPEN.** `PAINT_W` is the fixed
+width the brush runs at, so a radius is only meaningful against it —
+and PAINT_W had to go 1280 -> 1920 in step with DISPLAY, because
+brushing at 1280 and shipping 1920 is just an upscaled painting. Since
+radius is measured against PAINT_W, holding the brush at the same
+DISPLAY size means scaling every recipe by 1920/1280: `--paint 4` -> 6,
+`--soften-radius 7` -> 11. Strengths are unitless and did not move.
+
+Measured, not assumed. Against the shipped 1280 bake, with the dither
+blurred away (it is per-pixel noise added after the brush, so it
+contaminates any raw gradient measure), the mean |I(x+lag) - I(x)| of
+the rescaled bake tracks the old one to within 1% at every lag from 2
+to 32 px, while a 1920 bake left at `--paint 4` runs 7-8% higher at
+short lags — a visibly finer, busier brush. Re-run that comparison if
+PAINT_W ever moves again; eyeballing will not catch it.
 
 ```bash
 python3 tools/make_event_art.py --photo data/raw/events/w1-opening-src.jpg \
-  --id w1-opening --center 0.42 --paint 4
+  --id w1-opening --center 0.42 --paint 6
 
 python3 tools/make_event_art.py --photo data/raw/events/w2-finance-src.jpg \
-  --id w2-finance --center 0.58 --paint 4 --colors 96
+  --id w2-finance --center 0.58 --paint 6 --colors 96
 
 python3 tools/make_event_art.py --photo data/raw/events/w2-finance-office-src.jpg \
-  --id w2-finance-office --center 0.50 --paint 4 --colors 96 \
-  --soften 0.4656,0.4198,0.5344,0.5687 --soften-radius 7 --soften-strength 0.72
+  --id w2-finance-office --center 0.50 --paint 6 --colors 96 \
+  --soften 0.4656,0.4198,0.5344,0.5687 --soften-radius 11 --soften-strength 0.72
 ```
 
 ## Repaired sources

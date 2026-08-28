@@ -85,6 +85,96 @@ Phantom pointer/wheel events happen in the pane (they cancel the intro
 tween and can zoom randomly) — position the camera explicitly before
 screenshots; not a game bug.
 
+## The canvas renders at DEVICE resolution (2026-08-28)
+
+From "how can the sprite art be made to look higher-quality?" — and the
+biggest answer was not about the art at all. Phaser 3 dropped
+`resolution`, so a canvas sized from `window.innerWidth` gets a backing
+store in CSS px and the browser blows it up by devicePixelRatio; with
+`image-rendering: pixelated` on `#game canvas` that is a hard 2x2 block
+duplication. **Measured before the change on a dpr-2 display: backing
+store 1280x720 inside a 2560x1440 physical area** — every baked room,
+marker and label at half the pixels the screen can draw.
+
+The fix is the standard Phaser HiDPI recipe: `Scale.NONE`, game size in
+DEVICE px, `zoom: 1 / DPR` so Phaser sets the canvas CSS box back to the
+CSS size. Verified after: backing 2560x1440, CSS box 1280x720, camera
+zoom exactly 2x its old value — **framing pixel-identical, drawn from
+four times the samples**. `scale.displayScale` comes out at DPR, which
+is what keeps pointer input landing on the right hotspot with no
+conversion of our own (checked by tapping the hallway legislator).
+
+**THE RULE THIS BUYS, AND EVERYTHING IN main.js NOW OBEYS IT: camera
+zoom is DEVICE px per world px, so it reads DPR x higher than the
+numbers every threshold in that file was calibrated against.** Anywhere
+a zoom is COMPARED to a hand-tuned constant, or divides one to hold a
+size steady on screen, go through **`zCss()`**. That is why not one of
+the calibrated numbers had to be re-tuned — `maxZoom` 1.35, the label
+visibility bands, `2.2 / zoom` line widths, the mote scale, the flow
+hit radius, the `log2(zoom) * 3` ribbon bucket and the rooms' 1.6
+ceiling are all still the CSS-space numbers they always were, just
+multiplied by DPR or read through zCss at the point of use.
+
+Things that are NOT simply "multiply by DPR", each of which was a real
+bug in draft:
+
+- **Text is the half that actually buys sharpness.** Phaser rasterises
+  a Text object's glyphs at `fontSize`, so a label left at 13px on a
+  device-px canvas is rasterised at 13 and then magnified. Fonts,
+  stroke and tracking are authored in CSS px and set at `DPR x` that;
+  `applyLabelScale` / `fit` divide the DPR back out of the world-space
+  scale, so physical size is unchanged and only resolution moves.
+- **The MARKER is the opposite** and must NOT get the `/ DPR`. It is a
+  fixed-resolution sprite (16x20), not rasterised type, so its scale is
+  the CSS-space one unchanged or it comes out half size. (Making the
+  marker itself sharper means re-baking it bigger in make_sprites.py —
+  not done.)
+- **A Phaser pointer written into a DOM style needs `/ DPR`.** Exactly
+  one place does that: the flow tooltip in `updateHover`, which
+  compares `ptr.x` against `window.innerWidth`. Without it the tip
+  tracks at double the cursor's distance from the top-left and flips at
+  the wrong edge — off-screen on the right half of the map.
+  `getDistance() > 8` drag slop is the same class of thing.
+- **DPR IS A `let`, NOT A CONST**, and freezing it would be a
+  regression: the code this replaced read `window.devicePixelRatio`
+  fresh inside `fit()` every time. It changes on a move to another
+  display and, far more commonly, on **browser zoom**, which is
+  implemented as exactly this. `watchDpr()` re-arms a media query
+  pinned to the current value; `relabelForDpr` re-derives type from the
+  stashed `_cssSize` (never a multiply by the ratio, which would
+  accumulate rounding across zoom steps); and **WorldScene has to carry
+  its camera zoom by the ratio** because it is wherever the player put
+  it — a room recomputes zoom from the viewport in `fit()` and needs
+  none of that.
+- **`syncSize()` must ALSO detect a DPR move, and this is load-bearing,
+  not belt-and-braces.** A page can run before it has a box — a
+  background tab, an embedded webview, **the Browser pane** — and in
+  that state this browser reports `devicePixelRatio` as **0**, not as
+  its eventual value. The media query then gets armed against a density
+  that was never real and never fires, and the game sits at the
+  fallback DPR of 1 for the whole session. Gaining a layout is a
+  resize, so checking there covers it. Same hidden-boot hazard as
+  `viewSize()` and `centerTimeline()`.
+- **`Scale.NONE` does not follow the window, so a ResizeObserver on
+  `#game` is required.** RESIZE re-measured the parent every step,
+  which quietly covered the 0x0-at-`load` case; a `window.resize`
+  listener alone does not, and the canvas stays 0x0 forever. Caught in
+  the pane, which does precisely this.
+
+Pane-testing trap, hit again here and worth restating: the script tag
+is `js/main.js?v=<token>`, so `fetch('js/main.js', {cache:'reload'})`
+refetches a DIFFERENT url and the versioned one is still served from
+cache. Refetch the exact `src` off `document.scripts`, then reload —
+several probes' worth of confusing results came from measuring stale
+code.
+
+Not changed, and still the ceiling on the room art: the hallway's
+`view` rect is 818x519 scene px filling 2560x1440 device px, a **2.77x
+magnification**. Anti-aliasing cannot invent detail at that ratio, so
+the remaining lever is authored resolution — and every painter is
+written in scene px with hardcoded literals, which is the same wall the
+`SS 2 -> 1` note below runs into.
+
 ## Tax-flow layer (feature 1) — STATEWIDE
 
 `tools/build_tax_flows.py` parses ALL county sections of DOTAX Table
@@ -450,7 +540,7 @@ Rules that must survive edits:
   external actor (name it) or the player's own campaign (leave
   `speaker` unset)?
 - **Event banner art** comes from `tools/make_event_art.py` →
-  `site/assets/events/<id>.png` (960x480), shown when a dialogue (or a
+  `site/assets/events/<id>.png` (1920x960), shown when a dialogue (or a
   single node) carries an `art` key. **Every shipped banner's exact
   build command lives in `data/raw/events/BANNERS.md` — add a line when
   you ship one.** The args are not recoverable from the PNG, and
@@ -537,15 +627,46 @@ Rules that must survive edits:
        Sets how much of a PHOTOGRAPH survives the letterbox: a 4:3
        source keeps 46% of its height at 2.9:1 and 67% at 2:1. This is
        the "how much of the picture exists at all" dial.
-    2. **Resolution — `DISPLAY`, now 3 (960 wide, was 2 / 640).** The
-       column is ~986px at the session panel's 1040px width, so 640
-       was being upscaled 1.54x by the browser and reading soft. That
-       640 was inherited from a ~615-652px column the widened panel had
-       made obsolete. MEASURE `.sd-art`'s rendered width if the panel
-       ever changes again.
-       Corollary: `PAINT_W` is now a fixed working width for the brush,
-       deliberately NOT `2 x output`, so `--paint 4` in a recorded
-       recipe keeps meaning the same brush after a DISPLAY change.
+    2. **Resolution — `DISPLAY`, now 6 (1920 wide; was 4 / 1280 and
+       3 / 960 on 2026-08-28, 2 / 640 before that).** The column is ~986px at the session panel's
+       1040px width, so 640 was being upscaled 1.54x by the browser and
+       reading soft. **MEASURE `.sd-art`'s rendered width in DEVICE
+       PIXELS, not CSS pixels** — that is the correction of 2026-08-28,
+       and 960 was chosen under the mistake: it matched the column to
+       ~3% in CSS px, but an `<img>` rasterises into device px, so on a
+       dpr-2 display the "matched" file was upscaled 2.05x and read
+       exactly as soft as the 640 it replaced. (Same unit error as the
+       game canvas, fixed the same day — see the DPR section below.) It
+       also undercut the DITHER, which only reads as grain at 1:1.
+       **DISPLAY ALONE IS A LIE ABOVE THE PIPELINE'S OWN RESOLUTION.**
+       The procedural route draws at `W * S` and the photo route
+       brushes at `PAINT_W`; ship past either and you are handing the
+       browser more pixels without more picture. So 1920 was reached by
+       moving all three together — DISPLAY 6, S 12, PAINT_W 1920.
+       - **`S` IS AN ANTI-ALIASING BUDGET AND MUST STAY ABOVE
+         DISPLAY.** `S / DISPLAY` IS the downsample ratio, so at
+         `S == DISPLAY` the resize is a no-op and the procedural route
+         ships raw aliased polygons. That is exactly what happened,
+         unnoticed, in the intermediate DISPLAY 4 state where it met
+         S = 4; no shipped banner regressed only because all three take
+         the --photo route, whose AA comes from downsampling a 2816px
+         source. Keep `S >= 2 * DISPLAY` (now 12 vs 6).
+       - **RAISING `PAINT_W` RESCALES EVERY RECORDED RADIUS, and that
+         is the whole cost of this change.** A radius is only meaningful
+         against the width the brush runs at, so holding the brush at
+         the same DISPLAY size means scaling every recipe by
+         1920/1280 = 1.5: `--paint 4` -> 6, `--soften-radius 7` -> 11.
+         Strengths are unitless and did not move. **Measured, not
+         assumed**: with the dither blurred away (it is per-pixel noise
+         added AFTER the brush, so it contaminates any raw gradient
+         measure), the rescaled bake's structure function tracks the
+         old one to within 1% at every lag from 2 to 32 px, while a
+         1920 bake left at `--paint 4` runs 7-8% higher at short lags —
+         a visibly finer, busier brush. Re-run that comparison if
+         PAINT_W moves again; eyeballing will not catch it.
+       Net on a 1280px window the browser upscale went **1.74x -> 1.30x
+       -> 1.04x**; `PAINT_W` stays deliberately NOT tied to DISPLAY, so
+       an output-size change on its own still needs no recipe edits.
     3. **On-screen height — `.sd-art { max-height }` in style.css, now
        `min(43vh - 119px, 271px)`.** The odd expression is the point:
        the banner competes with the TRANSCRIPT, not the window, and
@@ -607,13 +728,16 @@ Rules that must survive edits:
   - Frame edges are graded down (`side_g`) so the near ends of the
     side walls, which perspective makes enormous, don't outweigh the
     centre.
-  - **Designed at 320x110, SHIPPED at 640x220.** Resolving natively to
-    640 (rather than rendering 320 and upscaling) is what lets a figure
-    exist at all — see the crowd note above. The column is ~615–652px
-    wide depending on the overlay scrollbar, so the file is only ever
-    resampled by about a percent; `.sd-art` therefore deliberately does
-    NOT set `image-rendering: pixelated`, which would turn that small
-    downscale into dropped rows. Don't "fix" either half alone.
+  - **Designed at 320x160, SHIPPED at 1280x640.** Resolving natively
+    (rather than rendering 320 and upscaling) is what lets a figure
+    exist at all — see the crowd note above. `.sd-art` deliberately
+    does NOT set `image-rendering: pixelated`: the file is resampled
+    to fit the column, and pixelated turns a resample into dropped
+    rows where the default filter just softens them. Don't "fix"
+    either half alone. (The old form of this bullet said 640x220 from
+    a 320x110 design and called the resample "about a percent" — all
+    three numbers were stale by 2026-08-28; the ratio went 2:1 on
+    08-18 and DISPLAY has moved twice since.)
   - **`.sd-art` clamps to `max-height: 32vh` with `object-fit: cover`.**
     Clamping against the viewport (rather than shipping a shorter file)
     lets a tall window show the whole composition and a short one crop
@@ -2743,11 +2867,94 @@ five passes because of these, not because of how it was drawn:**
     - **`render_office.py` still supersamples** (office_finance.json
       is `scale: 2`) and should, because that room is still snap-fit.
       SS is per-bake, and the rule is the FRAMING, not the file.
+  - *2026-08-28* — **`SS` IS GONE, SPLIT INTO `OVER` AND `SHIP`, AND
+    THAT ENDS THE SEE-SAW THE THREE ENTRIES ABOVE DESCRIBE.** Every
+    one of them is the same trade made in a different direction,
+    because ONE constant meant two things: "oversample for AA" and
+    "ship at 1/SS". So SS 2 bought antialiasing and threw away half
+    the resolution; SS 1 bought the resolution back and threw away the
+    antialiasing. They are independent now, in BOTH room renderers:
+      - `SHIP` = file px per SCENE px (both rooms ship 2). The PNG is
+        W*SHIP x H*SHIP, `meta.scale` is 1/SHIP, and the runtime
+        scales the sprite back — so SCENE space is untouched.
+      - `OVER` = supersample on top (both 2), LANCZOS-resized away at
+        the end, so the AA is baked once by a real filter.
+    Capitol 1680x1240 -> a 3360x2480 file; hallway 1500x1000 ->
+    3000x2000. Measured on screen, in device px, as the RMS deviation
+    of a 2:1 iso diagonal from the straight line it is meant to be —
+    which is what "jagged" actually is: **hallway 0.444 px -> 0.054
+    (8x straighter), capitol 0.292 -> 0.100**. A crude acutance
+    average barely moves (+2.6%) and is the wrong measure: the gain is
+    in edge PLACEMENT, not edge contrast.
+  - **The painters were not rewritten, and could not have been.** They
+    are written in scene px with hardcoded literals summed into iso()
+    output (`up(p, ht - 5)`, `fx + int(x0 * s)`), so there is no seam
+    where a scale could be applied by hand. `SDraw` scales at the DRAW
+    CALL — the one place every coordinate, literal and computed alike,
+    has already been added together — and `iso()`/`lerp()`/`up()` snap
+    to 1/K of a scene px (K = SHIP*OVER) so the diagonals step on the
+    grid the room is actually drawn on. Snapping to whole scene px and
+    letting SDraw multiply would put every diagonal back on a
+    staircase K times COARSER than the output, which is the opposite
+    of the point. `even_run` is deliberately untouched: it steps in
+    whole SCENE px from a now-finer endpoint, so the authored picket
+    and flute rhythm is bit-for-bit what it was.
+  - **THE GATE IS `K = 1`, AND IT IS NOT OPTIONAL.** Forced to
+    SHIP 1 / OVER 1, both renderers reproduce their pre-change bake
+    **byte for byte — 0 px differ**. That is what makes "this only
+    changes resolution" a fact rather than a hope, and it is the check
+    to re-run before shipping any edit to SDraw or snap(). Three
+    things it caught, each of which silently corrupts the room without
+    it: PIL boxes are INCLUSIVE, so `(x1+1)*K-1` is what keeps an
+    n-scene-px box n*K px instead of collapsing every hairline to 1/K
+    of its width; `width=` is a distance in scene px and must scale;
+    `point` has to become a K x K block. Polygons take the plain
+    corner mapping — vertices are positions and adjacent quads share
+    an edge coordinate, so growing them would make every seam in the
+    room overlap by K px.
+  - **Consequences to keep in step**, all of them found by the checks
+    rather than by reading:
+    - **The `view` ceiling is 1.6 CSS px per FILE px, so `fit()`
+      divides it by `ss`.** It was only ever written in scene px
+      because every room used to ship one file px per scene px. A
+      room baked at SHIP 2 has earned exactly twice the magnification
+      and now says so from its own bake instead of a second hardcoded
+      number that could drift. This is what retires the documented
+      "a 1440p monitor HITS the ceiling at 51% filled".
+    - **The swing sprite was missing `setScale(this.ss)`** and was
+      only ever right by luck — every room with a swing happened to
+      ship at scale 1. Its three exported numbers are in different
+      spaces on purpose: `fw`/`fh` are FILE px (Phaser's spritesheet
+      loader slices the file), `px`/`py` are SCENE px. The bbox is
+      snapped to a whole K grid first, or the downsample puts half a
+      source pixel on the seam between frames.
+    - **`int()` at the JSON boundary now TRUNCATES a fractional
+      coordinate** where whole-pixel iso had already rounded — a
+      systematic -1 on every door px. `int(round(...))`.
+    - **`mottle_ink`'s 44px grain is in SCENE px** and scales with the
+      canvas; left at 44 it becomes a K-times-finer speckle the
+      downsample averages away to nothing.
+    - **The swing sheet is premultiplied before its downsample.** PIL
+      resizes RGBA channels independently, so the leaf's edge gets its
+      colour averaged with the transparent ground beside it and comes
+      out as a dark hairline around a door that is supposed to be
+      invisible at frame 0.
+    - The frame-0 pop check still passes and reads BETTER than before
+      in the only form that compares like with like — share of SOLID
+      px differing, 18.1% -> 15.3%, mean 5.29 -> 4.46. The raw count
+      rose (367 -> 1180) purely because the frame has 4x the pixels;
+      always run it against the old assets as a control rather than
+      against the number written down here.
   - **Never reintroduce the dpr form.** Besides the decimation it hid
     a real bug: at dpr 1, `Math.max(step, floor(fitZ/1)*1)` can only
     ever return 1, so dpr-1 users got the room at 1:1 and CROPPED
     while dpr-2 users got it fitted — the two device classes were
     seeing different scenes. The texture form retires that.
+    *2026-08-28*: the dpr term is now gone from the snap entirely
+    (`step = this.ss > 1 ? 1 / this.ss : 1`), because the canvas went
+    device-resolution — canvas px ARE device px, so an ss-1 room snaps
+    to whole device pixels with no ratio in the expression. The ss > 1
+    case is untouched; the quantum was always the TEXTURE.
   - Per-texture `setFilter(LINEAR)` DOES work on the Canvas renderer,
     but it needs more than one frame to take: a probe that samples
     300ms after setting it reads unchanged and looks like a no-op (it

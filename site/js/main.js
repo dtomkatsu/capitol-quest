@@ -12,6 +12,122 @@
    bakes a different blue than `--style painterly`. */
 const DEEP_BLUE = "#185ba0";
 
+/* ---------------------------------------------------------------- DPR
+   THE GAME'S PIXELS ARE DEVICE PIXELS (2026-08-28). Phaser 3 dropped
+   `resolution`, so a canvas sized from window.innerWidth gets a
+   backing store in CSS px and the browser blows it up by
+   devicePixelRatio — on a Retina display that is a hard 2x2 block
+   duplication (style.css sets image-rendering:pixelated), and every
+   baked room, marker and label was being shown at HALF the pixels the
+   screen can draw. Measured before the change on a dpr-2 display:
+   backing store 1280x720 inside a 2560x1440 physical area.
+
+   The fix is the standard Phaser HiDPI recipe — Scale.NONE, game size
+   in DEVICE px, `zoom: 1/DPR` so Phaser sets the canvas CSS box back
+   to the CSS size. The ScaleManager's own displayScale then comes out
+   at DPR, which is what keeps pointer input landing on the right
+   hotspot with no conversion of our own.
+
+   THE CONSEQUENCE, AND THE ONE RULE THIS FILE NOW LIVES BY: camera
+   zoom is DEVICE px per world px, so it reads DPR x higher than the
+   numbers every threshold in here was calibrated against. Anywhere a
+   zoom is COMPARED to a hand-tuned constant, or divides one to hold a
+   size steady on screen, go through zCss() instead of cam.zoom. Pixel
+   constants that are meant to be a physical size (font sizes, stroke
+   widths, drag slop) get multiplied by DPR at the point of use.
+
+   Clamped to 3: a dpr-4 phone would quadruple the fill cost of the
+   whole map for detail no one can see, and the room bakes do not have
+   the resolution to pay it back.
+
+   IT IS A `let`, AND IT HAS TO BE. devicePixelRatio is not a constant
+   for the life of a page: it changes when the window moves to a
+   monitor of a different density, and it changes on browser zoom
+   (which is the common case — zoom is implemented as a dpr change).
+   The code this replaced read `window.devicePixelRatio` fresh inside
+   fit() every time, so freezing it here would be a REGRESSION, not a
+   simplification: the canvas would keep the old backing-store density
+   and the labels their old rasterisation until a reload. watchDpr()
+   below is what keeps it honest. */
+let DPR = dprNow();
+
+function dprNow() {
+  return Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+}
+
+/* Camera zoom expressed in CSS px per world px — i.e. what `cam.zoom`
+   meant before the canvas went device-resolution. Every calibrated
+   zoom threshold in this file is a CSS-space number, so they all read
+   through here and none of them had to be re-tuned. */
+const zCss = (z) => z / DPR;
+
+/* The CSS-px box the canvas has to fill. Measured off #game rather
+   than the window because Scale.NONE will not do it for us, and
+   because the window is the thing that lies: booted in a hidden tab or
+   an unlaid-out webview, innerWidth reports 0 and a 0x0 backing store
+   renders nothing at all. Same defensive shape as viewSize() below —
+   the parent first, then the window, then a floor. */
+function viewportPx() {
+  const el = document.getElementById("game");
+  const r = el ? el.getBoundingClientRect() : null;
+  return [Math.round(r && r.width) || window.innerWidth || 800,
+          Math.round(r && r.height) || window.innerHeight || 600];
+}
+
+/* Re-rasterise a label after DPR moves. The CSS-px size is stashed on
+   the object at creation (`_cssSize` / `_cssStroke`), so this is a
+   fresh derivation from the authored number and NEVER a multiply by
+   the ratio — repeated zoom steps would otherwise accumulate rounding
+   into visibly wrong type. The scale that divides DPR back out is
+   re-applied by the scene's own applyLabelScale()/fit(). */
+function relabelForDpr(t) {
+  if (!t || !t._cssSize) return;
+  t.setFontSize(t._cssSize * DPR);
+  t.setStroke(t.style.stroke, t._cssStroke * DPR);
+}
+
+/* devicePixelRatio changes under a page: a window dragged to a display
+   of another density, and — far more commonly — browser zoom, which is
+   implemented as exactly this. Adopt the new value and report the
+   ratio, or 0 if nothing moved. */
+function refreshDpr() {
+  const next = dprNow();
+  if (next === DPR) return 0;
+  const was = DPR;
+  DPR = next;
+  return next / was;
+}
+
+/* There is no `devicepixelratiochange` event. The standard trick is a
+   media query pinned to the CURRENT value, which stops matching the
+   moment it moves and therefore has to be re-armed after every change.
+
+   IT IS NOT THE ONLY TRIGGER, AND MUST NOT BE. A page can be running
+   before it has a box — a background tab, an embedded webview, the
+   Claude Code Browser pane — and in that state this browser reports
+   devicePixelRatio as **0**, not as its eventual value. So the query
+   gets armed against a density that was never real, never matches
+   anything, and never fires; the game would sit at the fallback DPR of
+   1 for the rest of the session. syncSize() therefore checks for a DPR
+   move too, which covers it, because gaining a layout is a resize. The
+   media query stays for the genuine no-resize case: zooming a window
+   that is already the size of the screen. Arm from dprNow() rather
+   than the raw reading so a 0 can never be baked into the query. */
+function watchDpr(onChange) {
+  if (!window.matchMedia) return;
+  const arm = () => {
+    const mq = window.matchMedia(`(resolution: ${dprNow()}dppx)`);
+    const fire = () => {
+      const ratio = refreshDpr();
+      if (ratio) onChange(ratio);
+      arm();                       // the old query can never match again
+    };
+    if (mq.addEventListener) mq.addEventListener("change", fire, { once: true });
+    else mq.addListener(fire);     // older WebKit
+  };
+  arm();
+}
+
 /* ONE cache token for everything render_map/build_world bake together:
    the tile PNGs, overview.png, world.json and every <slug>.json. They
    are produced by the same run and are only ever valid as a SET — a
@@ -27,7 +143,7 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 40;
+const CAP_V = 41;   // 41 = the OVER/SHIP re-bake (2026-08-28)
 /* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
    call: "make that the default view (replacing the map) for now. keep
    the map in case we want to use it later"). Set to null to put the
@@ -51,8 +167,20 @@ const START_ROOM = "capitol";
    office_finance.png + map/office_finance.json). */
 const OFF_V = 2;
 /* Same rule for the opening-week hallway bake (tools/render_hallway.py:
-   hallway.png + map/hallway.json). */
-const HALL_V = 2;
+   hallway.png + map/hallway.json). 3 = the OVER/SHIP re-bake
+   (2026-08-28): the PNG is 3000x2000 for an unchanged 1500x1000 scene,
+   so meta.scale is 0.5 and every hotspot px in the JSON is byte-
+   identical to v2. */
+const HALL_V = 3;
+/* Cache token for the event BANNERS (tools/make_event_art.py ->
+   assets/events/*.png). They had none at all until 2026-08-28, which
+   was survivable only while their pixel dimensions never changed: the
+   DISPLAY 3 -> 4 re-bake (960 -> 1280, see the tool's header) would
+   otherwise have reached nobody with a warm cache. Same hand-bumped
+   rule as MAP_V / CAP_V — the pre-commit hook only rewrites `?v=`
+   inside HTML, so anything loaded from JS is bumped here. Raise it
+   whenever a banner is re-baked. */
+const BANNER_V = 2;
 /* WEEK 1 OPENS IN THE HALLWAY, NOT THE CAPITOL (2026-08-27, user's
    call: the opening scene is a House-wing hallway from a reference
    photo, "you're talking to the legislator off to the side"; later
@@ -2322,7 +2450,7 @@ const SessionPanel = {
         if (art && art !== shownArt) {
           shownArt = art;
           append('<img class="sd-art" alt="" src="assets/events/' +
-            art + '.png">');
+            art + ".png?v=" + BANNER_V + '">');
           artEl = logEl.lastElementChild;   // the beat wrapping the img
           /* A NOT-YET-DECODED <img> measures 0 tall, and settle() runs
              on the next frame — so on a cold load every scroll sum
@@ -4960,7 +5088,7 @@ class WorldScene extends Phaser.Scene {
   parkOnCapitol(world) {
     const cam = this.cameras.main;
     const [cx, cy] = world.capitol;
-    const z = Math.min(1.7, this.maxZoom);
+    const z = Math.min(1.7 * DPR, this.maxZoom);
     cam.setZoom(z);
     cam.centerOn(cx, cy - 40);
     this.applyLabelScale();
@@ -4983,13 +5111,14 @@ class WorldScene extends Phaser.Scene {
     for (const e of this.world.islands) {
       const st = this.isl[e.slug];
       const nearR = this.islandRect(e, pad);
-      const wanted = cam.zoom > 0.06 &&
+      const cz = zCss(cam.zoom);
+      const wanted = cz > 0.06 &&
         Phaser.Geom.Rectangle.Contains(nearR, view.centerX, view.centerY) ||
-        (cam.zoom > 0.06 && Phaser.Geom.Rectangle.Overlaps(
+        (cz > 0.06 && Phaser.Geom.Rectangle.Overlaps(
           this.islandRect(e), view));
       if (wanted && !st) this.ensureIsland(e.slug);
       else if (!wanted && st && st.state === "on" &&
-               (cam.zoom <= 0.05 ||
+               (cz <= 0.05 ||
                 !Phaser.Geom.Rectangle.Overlaps(
                   this.islandRect(e, pad * 4), view))) {
         this.unloadIsland(e.slug);
@@ -5366,7 +5495,8 @@ class WorldScene extends Phaser.Scene {
       F.hi.pulse.setVisible(false);
       for (const gl of F.hi.glints) gl.im.setVisible(false);
       if (!F.hi.on) return;
-      const lw = Phaser.Math.Clamp(2.2 / this.cameras.main.zoom, 2.2, 30);
+      const lw = Phaser.Math.Clamp(2.2 / zCss(this.cameras.main.zoom),
+                                   2.2, 30);
       for (const st of F.streams) {
         if (!st.enabled || !st.top) continue;
         const colr = st.tex === "mote_teal" ? 0x4fd8c8 : 0xf2c14e;
@@ -5425,7 +5555,8 @@ class WorldScene extends Phaser.Scene {
     const A_HI = hiOn ? 0.68 : 0.55;
     // screen-constant motes down to z≈0.07, then they fade to faint
     // gold dust crossing the channels at chain zoom
-    const moteScale = Phaser.Math.Clamp(1 / this.cameras.main.zoom, 0.9, 14);
+    const moteScale =
+      Phaser.Math.Clamp(1 / zCss(this.cameras.main.zoom), 0.9, 14);
     for (const st of F.streams) {
       if (!st.enabled) continue;
       for (const p of st.paths) {
@@ -5487,7 +5618,7 @@ class WorldScene extends Phaser.Scene {
     if (!F.ovls.some((o) => !o.classList.contains("hidden"))) {
       cam.getWorldPoint(ptr.x, ptr.y, F.tmp);
       const wx = F.tmp.x, wy = F.tmp.y;
-      const thr = 14 / cam.zoom;
+      const thr = 14 / zCss(cam.zoom);
       const cur = F.hov;
       if (cur && cur.st.enabled &&
           this.nearCurve(cur.p.curve, wx, wy, thr * 1.6)) {
@@ -5514,7 +5645,7 @@ class WorldScene extends Phaser.Scene {
     }
     // restroke every frame: the line width is world px, so it has to
     // track the zoom anyway, and 25 segments is nothing
-    const lw = Phaser.Math.Clamp(2.6 / cam.zoom, 2.6, 34);
+    const lw = Phaser.Math.Clamp(2.6 / zCss(cam.zoom), 2.6, 34);
     const colr = hov.st.tex === "mote_teal" ? 0x4fd8c8 : 0xf2c14e;
     const g = F.hovG;
     g.clear();
@@ -5534,12 +5665,18 @@ class WorldScene extends Phaser.Scene {
       F.tip.className =
         "show " + (hov.st.tex === "mote_teal" ? "teal" : "gold");
     }
-    // follow the cursor; flip at the window edges
+    // Follow the cursor; flip at the window edges. THE DIVIDE BY DPR
+    // IS NOT OPTIONAL: this is the one place a Phaser pointer (game
+    // space, which is device px now) is written into a DOM style,
+    // where the units are CSS px. Without it the tip tracks at double
+    // the cursor's distance from the top-left and flips at the wrong
+    // edge — off-screen entirely on the right half of the map.
     const W = 270, H = 76, pad = 16;
-    const x = ptr.x + W + pad > window.innerWidth
-      ? ptr.x - W - pad : ptr.x + pad;
-    const y = ptr.y + H + pad > window.innerHeight
-      ? ptr.y - H - pad : ptr.y + pad;
+    const px = ptr.x / DPR, py = ptr.y / DPR;
+    const x = px + W + pad > window.innerWidth
+      ? px - W - pad : px + pad;
+    const y = py + H + pad > window.innerHeight
+      ? py - H - pad : py + pad;
     F.tip.style.left = x + "px";
     F.tip.style.top = y + "px";
   }
@@ -5571,7 +5708,7 @@ class WorldScene extends Phaser.Scene {
     if (!F.hi.on) return;
     const anyOn = F.streams.some((s) => s.enabled);
     if (!anyOn) return;
-    const b = Math.round(Math.log2(this.cameras.main.zoom) * 3);
+    const b = Math.round(Math.log2(zCss(this.cameras.main.zoom)) * 3);
     if (b !== F.hi.zBucket) {
       F.hi.zBucket = b;
       F.redrawHi();
@@ -5604,7 +5741,8 @@ class WorldScene extends Phaser.Scene {
     });
 
     cap.on("pointerup", (pointer) => {
-      if (pointer.getDistance() > 8) return;   // was a drag, not a tap
+      // 8 CSS px of slop — getDistance() is in game px (device)
+      if (pointer.getDistance() > 8 * DPR) return;   // a drag, not a tap
       Dialog.hide();
       this.scene.switch("capitol");
     });
@@ -5622,25 +5760,60 @@ class WorldScene extends Phaser.Scene {
       island: { size: 17, color: "#eaf2ff", stroke: "#101d5c", weight: "800" },
     };
     const st = styles[kind] || styles.town;
+    /* TYPE IS AUTHORED IN CSS px AND RASTERISED AT DPR x THAT. This
+       is the half of the DPR change that actually buys sharper text
+       rather than just more samples of the same bitmap: Phaser draws
+       a Text object's glyphs into a texture at `fontSize`, so a label
+       left at 13px on a device-px canvas would be rasterised at 13
+       and then magnified. applyLabelScale divides the DPR back out,
+       so the label's PHYSICAL size is unchanged and only its
+       resolution moves. Stroke and tracking are physical sizes too. */
     const txt = this.add.text(x, y + dy, name, {
       fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
-      fontSize: st.size + "px",
+      fontSize: st.size * DPR + "px",
       fontStyle: st.weight,
       color: st.color,
       stroke: st.stroke,
-      strokeThickness: 4,
-      letterSpacing: kind === "range" ? 3 : kind === "island" ? 4 : 1,
+      strokeThickness: 4 * DPR,
+      letterSpacing: (kind === "range" ? 3 : kind === "island" ? 4 : 1) * DPR,
     }).setOrigin(0.5, kind === "island" ? 0.5 : 0).setDepth(10000);
     txt._kind = kind;
+    txt._cssSize = st.size;        // authored CSS px — see relabelForDpr
+    txt._cssStroke = 4;
     this.labels.push(txt);
     return txt;
   }
 
+  /* DPR moved (zoom, or a move to another display): re-rasterise the
+     type at the new density. The scale that divides DPR back out is
+     re-applied by applyLabelScale immediately below. */
+  redrawForDpr(ratio) {
+    for (const t of this.labels) relabelForDpr(t);
+    this.recomputeMinZoom();
+    this.maxZoom = 1.35 * DPR;
+    /* THE CAMERA HAS TO FOLLOW, and this is the one scene where it
+       cannot be recomputed. Zoom is device px per world px, so a
+       canvas that doubled its density while the zoom stood still shows
+       twice as much world at half the physical size — the view would
+       lurch outward on every zoom step. A room recomputes its zoom
+       from the viewport in fit() and needs none of this; the world's
+       camera is wherever the player put it, so the only correct move
+       is to carry it by the same ratio. Re-clamped because the
+       ceiling moved underneath it. */
+    const cam = this.cameras.main;
+    cam.setZoom(Phaser.Math.Clamp(cam.zoom * (ratio || 1),
+                                  this.minZoom, this.maxZoom));
+    this.applyLabelScale();
+  }
+
   applyLabelScale() {
-    const z = this.cameras.main.zoom;
+    // CSS px per world px — every threshold below is calibrated in
+    // that space and none of them had to be re-tuned. The `/ DPR` on
+    // the scale is what pays back makeLabel's DPR x font size.
+    const z = zCss(this.cameras.main.zoom);
     const inv = 1 / z;
     for (const t of this.labels) {
-      t.setScale(Math.min(inv, t._kind === "island" ? 60 : 2.6));
+      t.setScale(Math.min(inv, t._kind === "island" ? 60 : 2.6) / DPR);
       const vis =
         t._kind === "island" ? z <= 0.45 :
         t._kind === "range" ? z >= 0.3 && z <= 1.1 :
@@ -5655,8 +5828,9 @@ class WorldScene extends Phaser.Scene {
   /* ---- camera: whole-chain intro dive to the Capitol, then free ---- */
   viewSize() {
     // the canvas can report 0x0 when booted in a hidden tab/webview
-    return [this.scale.width || window.innerWidth || 800,
-            this.scale.height || window.innerHeight || 450];
+    // game space is DEVICE px, so the fallbacks have to be too
+    return [this.scale.width || window.innerWidth * DPR || 800 * DPR,
+            this.scale.height || window.innerHeight * DPR || 450 * DPR];
   }
 
   recomputeMinZoom() {
@@ -5675,14 +5849,14 @@ class WorldScene extends Phaser.Scene {
        stops being a painting and starts being a texture — and the CRPG
        look is built to be READ from a distance, not inspected. 1.35
        still shows a neighbourhood; it just never shows brushstrokes. */
-    this.maxZoom = 1.35;
+    this.maxZoom = 1.35 * DPR;      // 1.35 CSS px per world px
 
     cam.centerOn(world.w / 2, world.h / 2);
     cam.setZoom(this.minZoom * 1.02);
     // the opening push-in has to land INSIDE the ceiling, so it reads
     // it rather than carrying its own number — a hardcoded 1.7 sailed
     // straight past maxZoom when the ceiling dropped to 1.35
-    const introZ = Math.min(1.7, this.maxZoom);
+    const introZ = Math.min(1.7 * DPR, this.maxZoom);
     this.introTween = this.tweens.add({
       targets: cam,
       zoom: introZ,
@@ -5839,9 +6013,16 @@ class RoomScene extends Phaser.Scene {
           repeat: 0,
         });
       }
-      // a SPRITE, not an image — only sprites play animations
+      /* A SPRITE, not an image — only sprites play animations. And it
+         takes `ss` for the same reason the room image does: `sw.px/py`
+         are SCENE px but the SHEET is file px, so a bake that ships
+         more than one file px per scene px would otherwise draw its
+         door at 1/ss the size of the door underneath it. It was
+         missing here and only ever right by luck — every room with a
+         swing happened to ship at scale 1 until the capitol went to
+         SHIP 2. */
       this.swings[id] = this.add.sprite(sw.px, sw.py, tex, 0)
-        .setOrigin(0, 0).setDepth(1);
+        .setOrigin(0, 0).setScale(this.ss).setDepth(1);
       this.swings[id].animKey = key;
     }
 
@@ -5863,16 +6044,19 @@ class RoomScene extends Phaser.Scene {
         this.markers.push(mk);
       }
       const st = styles[h.kind] || styles.poi;
+      // DPR x rasterisation, divided back out in fit() — see makeLabel
       const lab = this.add.text(h.px, h.py + 8,
         h.kind === "exit" ? "⟵ " + h.name : h.name, {
           fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
-          fontSize: st.size + "px",
+          fontSize: st.size * DPR + "px",
           fontStyle: "800",
           color: st.color,
           stroke: st.stroke,
-          strokeThickness: 4,
-          letterSpacing: 1,
+          strokeThickness: 4 * DPR,
+          letterSpacing: DPR,
         }).setOrigin(0.5, 0).setDepth(10000);
+      lab._cssSize = st.size;      // authored CSS px — see relabelForDpr
+      lab._cssStroke = 4;
       this.labels.push(lab);
       // NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS (user's call
       // 2026-08-24: "don't have those big labels over all the doors").
@@ -5903,7 +6087,7 @@ class RoomScene extends Phaser.Scene {
         zone.on("pointerout", () => lab.setVisible(false));
       }
       zone.on("pointerup", (pointer) => {
-        if (pointer.getDistance() > 8) return;
+        if (pointer.getDistance() > 8 * DPR) return;   // 8 CSS px
         if (h.kind === "exit") { this.leave(); return; }
         const go = this.cfg.enter && this.cfg.enter[h.id];
         if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
@@ -5986,11 +6170,18 @@ class RoomScene extends Phaser.Scene {
     Dialog.show(this.cfg.greet[0], this.cfg.greet[1]);
   }
 
+  /* DPR moved — re-rasterise the type; fit() re-applies every scale */
+  redrawForDpr() {
+    for (const t of this.labels) relabelForDpr(t);
+    this.fit();      // recomputes zoom from the viewport — no carry needed
+  }
+
   /* the room is a painting read whole — fit it to the window */
   fit() {
     // the canvas can report 0x0 when booted in a hidden tab/webview
-    const w = this.scale.width || window.innerWidth || 800;
-    const h = this.scale.height || window.innerHeight || 600;
+    // game space is DEVICE px now — see the DPR block up top
+    const w = this.scale.width || window.innerWidth * DPR || 800 * DPR;
+    const h = this.scale.height || window.innerHeight * DPR || 600 * DPR;
     const cam = this.cameras.main;
     /* cfg.view = [x0, y0, x1, y1] in SCENE px: frame THIS rect instead
        of the whole canvas — the bake carries wide ink margins, and the
@@ -6014,12 +6205,29 @@ class RoomScene extends Phaser.Scene {
        start to soften, so this is a real limit, not a placeholder. */
     if (this.cfg.view) {
       const [vx0, vy0, vx1, vy1] = this.cfg.view;
-      const z = Math.min(1.6, w / (vx1 - vx0), h / (vy1 - vy0));
+      /* THE CEILING IS 1.6 CSS px PER **FILE** px, AND THAT IS WHY IT
+         IS DIVIDED BY ss. 1.6 is measured — past it a bake visibly
+         softens (the hallway's lei, shirt edge and tile joints were
+         checked at 1.21 / 1.60 / 2.40) — but what softens is the
+         TEXTURE, so the budget belongs to file pixels, and it was only
+         ever written in scene px because every room used to ship one
+         file px per scene px. `ss` is scene px per file px, so a room
+         baked at SHIP 2 (ss 0.5) has earned exactly twice the
+         magnification, and says so here instead of in a second
+         hardcoded number that could drift from its bake.
+         The DPR factor is separate and is about the canvas, not the
+         art: with the canvas at device resolution the same physical
+         magnification is DPR times the CSS-space one. */
+      const cap = 1.6 * DPR / this.ss;
+      const z = Math.min(cap, w / (vx1 - vx0), h / (vy1 - vy0));
       cam.setZoom(z);
       cam.centerOn((vx0 + vx1) / 2, (vy0 + vy1) / 2);
-      const inv = Math.min(1 / z, 1.7);
-      for (const t of this.labels) t.setScale(inv);
-      for (const m of this.markers) m.setScale(Math.min(1 / z, 1.6));
+      const zc = zCss(z);
+      // labels divide the DPR back out (their font is DPR x); the
+      // marker is a fixed-resolution SPRITE, so its scale is the
+      // CSS-space one unchanged or it would come out half size
+      for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
+      for (const m of this.markers) m.setScale(Math.min(1 / zc, 1.6));
       return;
     }
     // SNAP the zoom so one baked pixel covers a WHOLE number of device
@@ -6037,15 +6245,18 @@ class RoomScene extends Phaser.Scene {
     // `Math.max(step, floor(fitZ/1)*1)` could only ever return 1, so
     // dpr-1 users got the room at 1:1 and CROPPED while dpr-2 users
     // got it fitted — the two device classes saw different scenes.
-    const dpr = window.devicePixelRatio || 1;
+    // The dpr term is GONE from the quantum, and the canvas going
+    // device-resolution is what retired it: canvas px ARE device px
+    // now, so an ss-1 room simply snaps to whole device pixels. The
+    // ss > 1 case is unchanged — the quantum was always the TEXTURE.
     const fitZ = Math.min(w / this.meta.w, h / this.meta.h);
-    const step = this.ss > 1 ? 1 / this.ss : 1 / dpr;
+    const step = this.ss > 1 ? 1 / this.ss : 1;
     const z = Math.max(step, Math.floor(fitZ / step) * step);
     cam.setZoom(z);
     cam.centerOn(this.meta.w / 2, this.meta.h / 2);
-    const inv = Math.min(1 / z, 1.7);
-    for (const t of this.labels) t.setScale(inv);
-    for (const m of this.markers) m.setScale(Math.min(1 / z, 1.6));
+    const zc = zCss(z);
+    for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
+    for (const m of this.markers) m.setScale(Math.min(1 / zc, 1.6));
   }
 
   leave() {
@@ -6151,13 +6362,76 @@ window.addEventListener("load", () => {
     backgroundColor: DEEP_BLUE,
     pixelArt: true,
     roundPixels: true,
+    /* Scale.NONE + device-px game size + zoom 1/DPR. NOT Scale.RESIZE:
+       RESIZE recomputes the game size from the parent on every step
+       and ignores `zoom` while doing it, so it silently undoes the
+       whole thing — the resize wiring below is what replaces it. See
+       the DPR block at the top of this file. */
     scale: {
-      mode: Phaser.Scale.RESIZE,
-      width: window.innerWidth,
-      height: window.innerHeight,
+      mode: Phaser.Scale.NONE,
+      zoom: 1 / DPR,
+      width: viewportPx()[0] * DPR,
+      height: viewportPx()[1] * DPR,
     },
     scene: [BootScene, WorldScene,
             new RoomScene(ROOM_CAPITOL), new RoomScene(ROOM_OFFICE),
             new RoomScene(ROOM_HALLWAY)],
+  });
+
+  /* Scale.NONE does not follow the window, so this is what RESIZE used
+     to do for us — and it still ends in scale.resize(), which fires
+     the ScaleManager's "resize" event the scenes already listen on.
+     Guarded against the 0x0 report so a hidden tab cannot blank the
+     canvas, and against no-op churn so a resize storm does not re-fit
+     the camera on every frame.
+
+     A RESIZE OBSERVER IS LOAD-BEARING HERE, NOT A REFINEMENT. RESIZE
+     mode re-measured the parent on every step, which quietly covered
+     the case where #game has no layout yet at `load` — it reports 0x0,
+     the guard above (correctly) refuses to build a 0x0 backing store,
+     and if the only other trigger is a window `resize` that never
+     comes, the canvas stays 0x0 forever and the game renders nothing.
+     That is not hypothetical: it is exactly what the Browser pane
+     does, and it is the same hidden-boot hazard `viewSize()` and
+     `centerTimeline()` are already written around. The observer fires
+     when the element actually gets its box, which is the event we
+     want; the window listeners stay as a cheap belt-and-braces. */
+  const syncSize = () => {
+    const g = window.__game;
+    if (!g || !g.scale) return;
+    // gaining a layout is a resize, and it is also where a page that
+    // booted without a box finally learns its real DPR — see watchDpr
+    const ratio = refreshDpr();
+    if (ratio) { g.scale.zoom = 1 / DPR; redrawScenes(ratio); }
+    const [w, h] = viewportPx();
+    if (w < 2 || h < 2) return;
+    if (g.scale.width === w * DPR && g.scale.height === h * DPR) return;
+    g.scale.resize(w * DPR, h * DPR);
+  };
+
+  const redrawScenes = (ratio) => {
+    const g = window.__game;
+    if (!g) return;
+    for (const sc of g.scene.getScenes(true)) {
+      if (sc.redrawForDpr) sc.redrawForDpr(ratio);
+    }
+  };
+  const host = document.getElementById("game");
+  if (host && window.ResizeObserver) new ResizeObserver(syncSize).observe(host);
+  window.addEventListener("resize", syncSize);
+  window.addEventListener("orientationchange", syncSize);
+  syncSize();     // the load event can beat the first layout
+
+  /* Zoom or a move to another display. The canvas has to change
+     density (syncSize sees a different DPR, so its no-op guard lets
+     the resize through) and every scene that rasterised type at the
+     old density has to redo it. Only ACTIVE scenes: a sleeping one
+     re-fits when it wakes, and RoomScene.fit runs on scene wake
+     anyway. */
+  watchDpr((ratio) => {
+    const g = window.__game;
+    if (g && g.scale) g.scale.zoom = 1 / DPR;
+    redrawScenes(ratio);
+    syncSize();
   });
 });

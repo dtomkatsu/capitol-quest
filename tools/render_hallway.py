@@ -36,8 +36,45 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "hallway.png"
 OUT_JSON = ROOT / "site" / "map" / "hallway.json"
 
-W, H = 1500, 1000
-SS = 1                      # main view: full-res author space (capitol rule)
+W, H = 1500, 1000           # SCENE space — hotspot px and `view` live here
+
+# ---------------------------------------------------------------- OVER/SHIP
+# TWO NUMBERS, BECAUSE THEY ARE TWO DECISIONS (2026-08-28). `SS` used to
+# be one constant meaning both "how much to oversample for antialiasing"
+# and "ship at 1/SS", which is why it could only ever trade one against
+# the other — SS 2 bought AA and threw away half the resolution, SS 1
+# bought resolution and threw away the AA. The room is magnified ~2.8x
+# on a dpr-2 display (see the DPR section in CLAUDE.md), which is the
+# regime where BOTH matter, so they are separate now:
+#
+#   SHIP  file px per SCENE px. The shipped PNG is W*SHIP x H*SHIP and
+#         the runtime scales it back down by meta.scale = 1/SHIP, so
+#         SCENE coordinates — every hotspot px, every zone, the `view`
+#         rect — are completely untouched by it.
+#   OVER  supersample on top of that. The room is drawn at SHIP*OVER
+#         and LANCZOS-resized down by OVER, so every diagonal is
+#         antialiased ONCE by a real filter instead of being
+#         point-sampled at display time.
+#
+# WHY THIS IS NOT JUST "DRAW THE OLD PICTURE BIGGER": the win is
+# entirely in what was being quantised to the scene grid. `iso()` now
+# rounds to 1/K of a scene pixel (K = SHIP*OVER), so a 2:1 iso diagonal
+# — which is very nearly every edge in this room — steps 4x as finely
+# and then gets filtered, where before it stepped in whole scene px and
+# got magnified. Axis-aligned literals inside the painters land on
+# exact K multiples and stay perfectly crisp; curves (the lei, the
+# head, the contact shadows, the light pools) resolve at the finer
+# grid for free.
+#
+# The painters were NOT rewritten for this, and could not have been:
+# they are written in scene px with hardcoded literals mixed into
+# iso() output (`up(p, ht - 5)`, `fx + int(x0 * s)`), so there is no
+# seam at which a scale could be applied by hand. `SDraw` below scales
+# at the DRAW CALL instead, which is the one place every coordinate,
+# literal and computed alike, has already been summed.
+SHIP = 2
+OVER = 2
+K = SHIP * OVER             # scene px -> draw px
 CX, CY = 760, 560
 SX, SY = 40, 20             # iso px per unit (2:1)
 WH = 120                    # full wall height
@@ -86,17 +123,33 @@ LEI = hx("#567a4c")
 LEI_L = hx("#7fa06a")
 
 
+def snap(v):
+    """Round to 1/K of a scene pixel — the draw grid.
+
+    THE POINT OF THE WHOLE EXERCISE IS IN THIS FUNCTION. It used to be
+    round(v), and the standing rule (CLAUDE.md) is that geometry is
+    pixel-snapped at the source so repeating runs share one grid —
+    float coords made picket spacing drift by a pixel and read as
+    irregular. That rule is kept, not broken: geometry is still snapped
+    to a grid, it is simply the grid the room is actually DRAWN on
+    rather than a K-times coarser one. Snapping to whole scene px and
+    then multiplying by K would put every diagonal back on a staircase
+    K times coarser than the output, which is the opposite of the
+    intent."""
+    return round(v * K) / K
+
+
 def iso(u, v, dy=0.0):
-    return (round(CX + SX * (u - v)), round(CY + SY * (u + v) - dy))
+    return (snap(CX + SX * (u - v)), snap(CY + SY * (u + v) - dy))
 
 
 def lerp(p, q, t):
-    return (round(p[0] + (q[0] - p[0]) * t),
-            round(p[1] + (q[1] - p[1]) * t))
+    return (snap(p[0] + (q[0] - p[0]) * t),
+            snap(p[1] + (q[1] - p[1]) * t))
 
 
 def up(p, dy):
-    return (p[0], round(p[1] - dy))
+    return (p[0], snap(p[1] - dy))
 
 
 def shade(c, f):
@@ -105,6 +158,79 @@ def shade(c, f):
 
 def mix(a, b, t):
     return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+class SDraw:
+    """ImageDraw, with every coordinate in SCENE px and the canvas K
+    times bigger. The painters below hand it scene coordinates and know
+    nothing about K.
+
+    Three things have to be got right, and each of them was a visible
+    bug before it was:
+
+    - **BOXES ARE INCLUSIVE, so they need the +1 before scaling.** PIL
+      fills `rectangle([x0, y0, x1, y1])` over x0..x1 INCLUSIVE, i.e. a
+      1-scene-px hairline is written x0 == x1. Scaling the corners
+      alone maps that to a 1-DRAW-px hairline — K times thinner
+      relative to the image — and every kerb line, plaque edge and
+      shadow gap in the room quietly evaporates on the downsample. The
+      far corner is mapped as `(x1 + 1) * K - 1`, which takes an
+      n-scene-px box to exactly n*K draw px.
+    - **`width` IS A DISTANCE and scales with everything else.** A
+      `width=1` rule is one SCENE pixel, not one draw pixel.
+    - **`point` IS A K x K BLOCK**, for the same reason as boxes: a
+      single draw pixel is 1/K of the mark that was authored, and at
+      OVER 2 it comes out of the resize at quarter strength.
+
+    Polygons take the corner mapping and NOT the +1: their vertices are
+    positions rather than a span, adjacent quads share an edge
+    coordinate, and growing each one would make every seam in the room
+    overlap by K px instead of 1. The cost is that a filled polygon
+    lands up to K-1 draw px short on its far side — a quarter of a
+    scene pixel at these settings, measured below against the shipped
+    bake and well inside the resample's own footprint."""
+
+    _BOX = ("rectangle", "ellipse", "arc", "chord", "pieslice")
+    _SEQ = ("polygon", "line")
+
+    def __init__(self, im):
+        self._d = ImageDraw.Draw(im)
+
+    @staticmethod
+    def _pts(xy):
+        """[(x, y), ...] or a flat [x, y, x, y, ...] — PIL takes both"""
+        if xy and isinstance(xy[0], (list, tuple)):
+            return [(p[0] * K, p[1] * K) for p in xy]
+        return [v * K for v in xy]
+
+    def __getattr__(self, name):
+        fn = getattr(self._d, name)
+        if name in self._BOX:
+            def box(xy, *a, **kw):
+                x0, y0, x1, y1 = xy
+                return fn([x0 * K, y0 * K, (x1 + 1) * K - 1,
+                           (y1 + 1) * K - 1], *a, **self._kw(kw))
+            return box
+        if name in self._SEQ:
+            def seq(xy, *a, **kw):
+                return fn(self._pts(xy), *a, **self._kw(kw))
+            return seq
+        if name == "point":
+            def point(xy, fill=None):
+                pts = xy if (xy and isinstance(xy[0], (list, tuple))) else \
+                    [(xy[i], xy[i + 1]) for i in range(0, len(xy), 2)]
+                for x, y in pts:
+                    self._d.rectangle([x * K, y * K,
+                                       x * K + K - 1, y * K + K - 1],
+                                      fill=fill)
+            return point
+        return fn
+
+    @staticmethod
+    def _kw(kw):
+        if kw.get("width"):
+            kw = dict(kw, width=max(1, int(round(kw["width"] * K))))
+        return kw
 
 
 def quad(d, pts, c):
@@ -344,13 +470,14 @@ def render(layers=False):
     holes open up. Compositing them back in order must reproduce the
     flat bake — render() asserts that so the split cannot silently
     drift from the shipped room."""
-    img = Image.new("RGBA", (W, H), INK + (255,))
-    back = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    mid = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    front = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    DW, DH = W * K, H * K              # draw space; SCENE space is W, H
+    img = Image.new("RGBA", (DW, DH), INK + (255,))
+    back = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
+    mid = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
+    front = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
     # flat mode paints every band onto the one canvas, exactly as before
     tb, tm, tf = (back, mid, front) if layers else (img, img, img)
-    d = ImageDraw.Draw(tb)
+    d = SDraw(tb)
 
     # ---- floor: corridor + lobby recess, one shared tile grid
     tiles(d, U0, U1, -VH, VH)
@@ -391,8 +518,8 @@ def render(layers=False):
     # ---- reflections + light pools: ONE overlay on the glossy floor.
     # The gloss is the photo's signature — doors, plants and the
     # legislator all smear toward the camera at low alpha.
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    dl = ImageDraw.Draw(lay)
+    lay = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
+    dl = SDraw(lay)
 
     def refl(a, b, direction, ln, col, alpha):
         ox, oy = (SX * ln, SY * ln) if direction == "u" else (-SX * ln,
@@ -421,8 +548,8 @@ def render(layers=False):
     # overlay, exactly as before: ImageDraw fills REPLACE pixels rather
     # than blending, so routing them through a second composite is not
     # the same picture and moved the shipped bake by a few units.
-    sh_lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if layers else None
-    ds = ImageDraw.Draw(sh_lay) if layers else dl
+    sh_lay = Image.new("RGBA", (DW, DH), (0, 0, 0, 0)) if layers else None
+    ds = SDraw(sh_lay) if layers else dl
     for pu, pv in ((-7.0, -3.0), (-3.0, -4.0)):
         x, y = iso(pu, pv)
         ds.ellipse([x - 26, y - 9, x + 26, y + 9],
@@ -438,10 +565,10 @@ def render(layers=False):
     tb.alpha_composite(lay)
     if layers:
         tm.alpha_composite(sh_lay)
-    d = ImageDraw.Draw(tb)
+    d = SDraw(tb)
 
     # ---- things standing on the floor (back-to-front) -> MID
-    d = ImageDraw.Draw(tm)
+    d = SDraw(tm)
     plant(d, -7.0, -3.0)
     ffx, ffy = figure(d, -5.4, -3.1)
     # deep in the alcove, NOT at its mouth: a pot standing near the
@@ -451,12 +578,12 @@ def render(layers=False):
     # white casing posts at the lobby mouth (photo's cased opening) —
     # they also seat the wall seams where the recess interrupts the run
     # -> BACK: a post that caps a wall end must not drift off it
-    d = ImageDraw.Draw(tb)
+    d = SDraw(tb)
     pilaster(d, iso(LU0, -VH), -1)
     pilaster(d, iso(LU1, -VH), +1)
 
     # ---- near walls, sliced (far-to-near) -> FRONT
-    d = ImageDraw.Draw(tf)
+    d = SDraw(tf)
     cut_wall(d, iso(U0, VH), iso(U1, VH), (-18, -10))        # SW run
     cut_wall(d, iso(U1, -VH), iso(U1, VH), (18, -10))        # near end
 
@@ -468,67 +595,85 @@ def render(layers=False):
         flat = img.copy()
         for L in (back, mid, front):
             flat.alpha_composite(L)
+        # Both sides of this compare have to be at SHIP size: `flat` is
+        # still in DRAW space, and the bake on disk is not.
+        flat = flat.convert("RGB").resize((W * SHIP, H * SHIP),
+                                          Image.LANCZOS)
         ref = np.asarray(Image.open(OUT_PNG).convert("RGB"), np.int16)
-        cur = np.asarray(flat.convert("RGB"), np.int16)
+        cur = np.asarray(flat, np.int16)
         dd = np.abs(ref - cur).max(axis=-1)
         print(f"recomposite vs shipped bake: {int((dd > 8).sum())} px "
               f"differ (max {int(dd.max())}, mean {dd.mean():.2f})")
         names = ("back", "mid", "front")
         for nm, L in zip(names, (back, mid, front)):
             out = ROOT / "site" / "assets" / "map" / f"hallway_{nm}.png"
-            L.save(out)
-            print("  wrote", out.name, L.size)
+            L.resize((W * SHIP, H * SHIP), Image.LANCZOS).save(out)
+            print("  wrote", out.name, f"{W * SHIP}x{H * SHIP}")
         return
 
     img = img.convert("RGB")
-    if SS > 1:
-        img = img.resize((W // SS, H // SS), Image.LANCZOS)
+    # DOWN BY `OVER`, NOT TO SCENE SIZE — that difference is the whole
+    # OVER/SHIP split. The AA is baked here, once, by a real filter;
+    # the resolution SHIP bought is kept.
+    img = img.resize((W * SHIP, H * SHIP), Image.LANCZOS)
     img.save(OUT_PNG)
     bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
 
     # content bbox against the ink — the JS `view` rect is measured
     # from this (plus breathing margin); re-print on every re-bake
-    arr = np.array(img)
-    mask = np.any(arr != np.array(INK), axis=-1)
+    # A TOLERANCE, NOT AN EXACT COMPARE, now that the bake is resampled:
+    # LANCZOS rings slightly into the ink around every content edge, so
+    # `!= INK` would call a few hundred px of ripple "content" and creep
+    # the bbox outward on every re-bake. 6/255 is under the ring and far
+    # under any drawn value. Divided back into SCENE px, because the
+    # `view` rect this feeds is scene-space.
+    arr = np.asarray(img, np.int16)
+    mask = np.abs(arr - np.array(INK, np.int16)).max(axis=-1) > 6
     ys, xs = np.where(mask)
-    bbox = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
+    bbox = (int(xs.min()) // SHIP, int(ys.min()) // SHIP,
+            int(xs.max()) // SHIP, int(ys.max()) // SHIP)
 
     def zone(cx, cy, w, h):
-        return [int(cx), int(cy), int(w), int(h)]
+        return [int(round(cx)), int(round(cy)), int(w), int(h)]
 
     caucus_c = iso(U0, -0.3)
     office_c = iso(-9.2, -VH)
     dirx_c = iso(1.1, -VH)
+    # iso() carries 1/K precision now; the JSON is SCENE space and
+    # integer, so round at this boundary and nowhere else.
+    def sp(v):
+        return int(round(v))
+
     hotspots = [
         dict(id="legislator", name="Your Introducer", kind="door",
-             px=ffx, py=ffy - 60,
+             px=sp(ffx), py=sp(ffy - 60),
              zone=zone(ffx, ffy - 44, 66, 100),
              text="Rep. X — the member who agreed to carry your "
                   "bills, waiting off to the side between the morning "
                   "caucus and the first floor session. Opening Day is "
                   "the one morning everyone is reachable."),
         dict(id="caucus", name="Caucus Room", kind="poi",
-             px=caucus_c[0], py=caucus_c[1] - 40,
+             px=sp(caucus_c[0]), py=sp(caucus_c[1] - 40),
              zone=zone(caucus_c[0], caucus_c[1] - 50, 92, 108),
              text="Koa doors and a taped agenda: the majority caucus "
                   "met behind them before the session even opened. "
                   "The floor ratifies; rooms like this decide."),
         dict(id="office", name="Member's Office", kind="poi",
-             px=office_c[0], py=office_c[1] - 40,
+             px=sp(office_c[0]), py=sp(office_c[1] - 40),
              zone=zone(office_c[0], office_c[1] - 50, 88, 106),
              text="Your introducer's office — nameplate polished, a "
                   "lei on the door pull. Every member gets one door "
                   "on these hallways; what they carry through it is "
                   "what gets a number and a hearing."),
         dict(id="directory", name="Directory", kind="poi",
-             px=dirx_c[0], py=dirx_c[1] - 36,
+             px=sp(dirx_c[0]), py=sp(dirx_c[1] - 36),
              zone=zone(dirx_c[0], dirx_c[1] - 50, 80, 58),
              text="The building directory behind glass. Committee "
                   "rooms below, member offices along these wings — "
                   "the Capitol is small enough to walk and big "
                   "enough to get lost in."),
         dict(id="exit", name="To the rotunda", kind="exit",
-             px=iso(6.2, 0)[0], py=iso(6.2, 0)[1] + 6,
+             px=sp(iso(6.2, 0)[0]), py=sp(iso(6.2, 0)[1] + 6),
              text=""),
     ]
     # zones must be disjoint — same assert the capitol bake earns
@@ -559,8 +704,12 @@ def render(layers=False):
     meta = {
         "name": "House Wing — Opening Day",
         "image": "hallway.png",
-        "w": W, "h": H, "scale": SS, "bg": bg,
-        "spawn": [iso(6, 0)[0], iso(6, 0)[1]],
+        # w/h stay SCENE size and `scale` is scene px per FILE px, so
+        # everything downstream — hotspot px, zones, the view rect —
+        # is unchanged by SHIP. The runtime multiplies the sprite by
+        # this to put the file back into scene space.
+        "w": W, "h": H, "scale": 1 / SHIP, "bg": bg,
+        "spawn": [sp(iso(6, 0)[0]), sp(iso(6, 0)[1])],
         "hotspots": hotspots,
     }
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))

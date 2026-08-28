@@ -103,7 +103,31 @@ W, H = 1680, 1240
 #
 # The JSON has always kept SCENE coordinates (w/h/spawn/hotspots) and
 # still does — only `scale` changes, from 2 to 1.
-SS = 1
+# SS IS NOW TWO NUMBERS — see the same block in render_hallway.py for the
+# full argument. Briefly: SS meant both "oversample for AA" and "ship at
+# 1/SS", so it could only ever trade one against the other, and the whole
+# note above is that trade being made twice in opposite directions. They
+# are independent now.
+#
+#   SHIP  file px per SCENE px (the PNG is W*SHIP x H*SHIP; meta.scale is
+#         1/SHIP and the runtime scales the sprite back). SCENE space —
+#         every hotspot px, every zone, the `view` rect — is untouched.
+#   OVER  supersample on top, LANCZOS-resized away at the end, so the AA
+#         is baked once by a real filter.
+#
+# The paragraphs above stand as the history and their conclusion is
+# unchanged: what is WRONG is throwing resolution away to buy AA. What
+# they could not do is have both. K = SHIP * OVER is the draw scale;
+# iso() snaps to 1/K of a scene px so the 2:1 diagonals this room is
+# built from step on the grid it is drawn on, and SDraw scales at the
+# draw call so no painter had to be rewritten.
+#
+# `--painterly` still runs its brush at DRAW size; it is a comparison
+# flag, not a shipping path (see the note above), so it was not rescaled
+# the way make_event_art's PAINT_W was.
+SHIP = 2
+OVER = 2
+K = SHIP * OVER
 CX, CY = 840, 680          # centre of the gallery ring, at floor level.
                            # CY moved 590 -> 680 when the third level
                            # landed (2026-08-24): the new storey grows
@@ -582,12 +606,25 @@ LAVA_D = hx("#463830")
 MOON = hx("#dfe9f6")
 
 
+def snap(v):
+    """Round to 1/K of a scene pixel — the grid the room is DRAWN on.
+
+    This was round(v), and the rule it enforces has not changed: sub-pixel
+    coords are why repeating detail (pickets, flutes) looked irregular,
+    because PIL rounds each primitive independently and a run computed
+    from float lerps lands on an uneven grid. Geometry is still snapped
+    to a grid; it is the DRAW grid rather than one K times coarser than
+    the output. Snapping to whole scene px and letting SDraw multiply by
+    K would put every diagonal back on a staircase K times coarser than
+    the pixels it is rendered into, which is the opposite of the point.
+    (`even_run` below is unaffected and deliberately untouched: it steps
+    in whole SCENE px from a now-finer endpoint, so the authored picket
+    and flute rhythm is bit-for-bit what it was.)"""
+    return round(v * K) / K
+
+
 def iso(u, v, dy=0.0):
-    """Iso projection, SNAPPED to whole pixels. Sub-pixel coords are
-    why repeating detail (pickets, flutes) looked irregular: PIL
-    rounds each primitive independently, so a run computed from float
-    lerps lands on an uneven grid."""
-    return (round(CX + 16.0 * (u - v)), round(CY + 8.0 * (u + v) - dy))
+    return (snap(CX + 16.0 * (u - v)), snap(CY + 8.0 * (u + v) - dy))
 
 
 def diamond(a, dy=0.0):
@@ -612,12 +649,12 @@ def rdiamond(a, dy=0.0):
 
 
 def lerp(p, q, t):
-    return (round(p[0] + (q[0] - p[0]) * t),
-            round(p[1] + (q[1] - p[1]) * t))
+    return (snap(p[0] + (q[0] - p[0]) * t),
+            snap(p[1] + (q[1] - p[1]) * t))
 
 
 def up(p, dy):
-    return (p[0], round(p[1] - dy))
+    return (p[0], snap(p[1] - dy))
 
 
 def even_run(e0, e1, pitch):
@@ -655,6 +692,64 @@ def mix(c1, c2, t):
     return tuple(int(round(c1[i] + (c2[i] - c1[i]) * t)) for i in range(3))
 
 
+class SDraw:
+    """ImageDraw taking SCENE px onto a canvas K times bigger.
+
+    Same class as render_hallway.py's, and the same three traps (that
+    file carries the long form). In one line each: PIL boxes are
+    INCLUSIVE so `(x1 + 1) * K - 1` is what keeps an n-px box n*K px
+    instead of collapsing every hairline to 1/K of its width; `width`
+    is a distance in scene px and scales; `point` is a K x K block.
+    Polygons take the plain corner mapping — their vertices are
+    positions, and adjacent quads share an edge coordinate, so growing
+    them would make every seam in this room overlap by K px.
+
+    Proved faithful, not assumed: at K = 1 this reproduces the
+    pre-change bake byte for byte (0 px differ), on both renderers. Any
+    change here should be re-checked the same way before it ships."""
+
+    _BOX = ("rectangle", "ellipse", "arc", "chord", "pieslice")
+    _SEQ = ("polygon", "line")
+
+    def __init__(self, im):
+        self._d = ImageDraw.Draw(im)
+
+    @staticmethod
+    def _pts(xy):
+        if xy and isinstance(xy[0], (list, tuple)):
+            return [(q[0] * K, q[1] * K) for q in xy]
+        return [v * K for v in xy]
+
+    @staticmethod
+    def _kw(kw):
+        if kw.get("width"):
+            kw = dict(kw, width=max(1, int(round(kw["width"] * K))))
+        return kw
+
+    def __getattr__(self, name):
+        fn = getattr(self._d, name)
+        if name in self._BOX:
+            def box(xy, *a, **kw):
+                x0, y0, x1, y1 = xy
+                return fn([x0 * K, y0 * K, (x1 + 1) * K - 1,
+                           (y1 + 1) * K - 1], *a, **self._kw(kw))
+            return box
+        if name in self._SEQ:
+            def seq(xy, *a, **kw):
+                return fn(self._pts(xy), *a, **self._kw(kw))
+            return seq
+        if name == "point":
+            def point(xy, fill=None):
+                pts = xy if (xy and isinstance(xy[0], (list, tuple))) else \
+                    [(xy[i], xy[i + 1]) for i in range(0, len(xy), 2)]
+                for x, y in pts:
+                    self._d.rectangle([x * K, y * K,
+                                       x * K + K - 1, y * K + K - 1],
+                                      fill=fill)
+            return point
+        return fn
+
+
 # ------------------------------------------------------------ ground
 def paint_ground(d):
     d.rectangle([0, 0, W, H], fill=INK)
@@ -663,8 +758,13 @@ def paint_ground(d):
 def mottle_ink(img):
     """Faint cool drift in the surround so the void isn't a dead flat."""
     arr = np.asarray(img, np.float32)
-    small = rng.normal(0, 1, (H // 44 + 2, W // 44 + 2))
-    noise = np.kron(small, np.ones((44, 44)))[:H, :W]
+    # 44 IS A SCENE-PX GRAIN, so the block scales with the canvas —
+    # left at 44 it would be a K times finer speckle that the OVER
+    # downsample then averages most of the way to nothing.
+    g = 44 * K
+    dh, dw = arr.shape[0], arr.shape[1]
+    small = rng.normal(0, 1, (dh // g + 2, dw // g + 2))
+    noise = np.kron(small, np.ones((g, g), np.float32))[:dh, :dw]
     mask = np.all(np.abs(arr - np.array(INK, np.float32)) < 12, axis=-1)
     arr[mask] += (noise[mask, None] * 2.4)
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
@@ -703,8 +803,8 @@ def paint_ring_shade(img):
     so the walkway darkens toward the outer walls (atrium photo's
     value structure: dark frame, glowing centre). Stepped bands, not
     a radial vignette; walls/stairs repaint their own ground after."""
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ld = ImageDraw.Draw(lay)
+    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+    ld = SDraw(lay)
     ld.polygon(rdiamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
     ld.polygon(rdiamond(A_OUT - 0.9), fill=(8, 10, 16, 14))
     ld.polygon(rdiamond(A_OUT - 1.8), fill=(0, 0, 0, 0))
@@ -713,8 +813,8 @@ def paint_ring_shade(img):
 
 def paint_sun(img):
     """Daylight spills out of the open well onto the inner ring."""
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ld = ImageDraw.Draw(lay)
+    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+    ld = SDraw(lay)
     for a, al in ((A_IN + 1.8, 22), (A_IN + 1.0, 24), (A_IN + 0.4, 28)):
         ld.polygon(rdiamond(a), fill=(255, 244, 214, al))
     img.alpha_composite(lay)
@@ -827,12 +927,12 @@ def court_paving(img):
         regions.append(([hd[i], hd[j], gd[j], gd[i]], shade(COURT, 0.72)))
 
     lay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    slabs(ImageDraw.Draw(lay), COURT)
+    slabs(SDraw(lay), COURT)
     for poly, base in regions:
         tint = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        slabs(ImageDraw.Draw(tint), base)
+        slabs(SDraw(tint), base)
         mask = Image.new("L", img.size, 0)
-        ImageDraw.Draw(mask).polygon(poly, fill=255)
+        SDraw(mask).polygon(poly, fill=255)
         lay.paste(tint, (0, 0), mask)
     img.alpha_composite(lay)
 
@@ -842,8 +942,8 @@ def paint_well(img):
     courtyard one storey down, the far inner walls (fluted slab
     fascia over the ground colonnade), and the two chamber-cone
     tops at the ʻEwa and Diamond Head ends."""
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(lay)
+    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+    d = SDraw(lay)
     # THE WELL IS A RECTANGLE now (see rdiamond/WING_EXT) — hole,
     # wall planes, courtyard and every band derived from them run
     # WING_EXT further in u. The rotunda-centred furniture (mosaic,
@@ -1049,8 +1149,8 @@ def paint_well(img):
     planter_bench(CX + 64, CY + DROP - 52, 30, treed=False)
 
     # clip the whole layer to the hole and composite
-    mask = Image.new("L", (W, H), 0)
-    ImageDraw.Draw(mask).polygon(hole, fill=255)
+    mask = Image.new("L", (W * K, H * K), 0)
+    SDraw(mask).polygon(hole, fill=255)
     m = ImageChops.multiply(mask, lay.getchannel("A"))
     img.paste(lay.convert("RGB"), (0, 0), m)
 
@@ -2241,7 +2341,8 @@ def zones_for(rects, pad=ZONE_PAD):
     for k, (x0, y0, x1, y1) in rects.items():
         p = max(0.0, room[k])
         out[k] = [round((x0 + x1) / 2), round((y0 + y1) / 2),
-                  int(x1 - x0 + 2 * p), int(y1 - y0 + 2 * p)]
+                  int(round(x1 - x0 + 2 * p)),
+                  int(round(y1 - y0 + 2 * p))]
     return out
 
 # THE TWO DOOR SCHEDULES — ORDER AND KIND ONLY, NO POSITIONS
@@ -3124,8 +3225,8 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
     for k in range(SWING_N):
         th = math.radians(SWING_MAX) * (k / (SWING_N - 1))
         sn = math.sin(th)
-        lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        dl = ImageDraw.Draw(lay)
+        lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+        dl = SDraw(lay)
 
         # ---- DRAW ORDER. door_at lays the architrave down as a full
         # slab and puts the leaf on top; here the leaf swings BEHIND
@@ -3144,8 +3245,8 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
             dl.polygon([pt(-hw, y0), pt(hw, y0), pt(hw, y1), pt(-hw, y1)],
                        fill=c)
         if sn > 0.02:
-            gl = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            gd = ImageDraw.Draw(gl)
+            gl = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+            gd = SDraw(gl)
             # lamplight pooling on the office floor, and a soft wash up
             # the far wall — the two things visible through a cracked
             # door in a lamplit room
@@ -3156,7 +3257,7 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
                         pt(-hw + 5, 33)],
                        fill=(255, 196, 128, int(52 * sn)))
             lay.alpha_composite(gl)
-            dl = ImageDraw.Draw(lay)
+            dl = SDraw(lay)
         # the jamb reveal down the hinge side — a thin face turned into
         # the room, which is what gives the opening a thickness
         jx, jy = nx * -0.30, ny * -0.30
@@ -3172,8 +3273,8 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
         # must not draw. Unclipped, the swing carried the leaf's top
         # corner up-screen past its own architrave and hung a brown
         # post above the transom in every open frame.
-        lf = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        dl = ImageDraw.Draw(lf)
+        lf = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+        dl = SDraw(lf)
         # EXACTLY 1.0 WHEN CLOSED. door_at takes no wall factor at all —
         # its leaf is drawn at full strength on every run — so folding
         # this wall's `f` in here darkened frame 0 by 13% against the
@@ -3204,12 +3305,12 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
 
         # composite the leaf through the aperture, then the head's lit
         # lip on top (door_at's own line, in the wall plane)
-        mask = Image.new("L", (W, H), 0)
-        ImageDraw.Draw(mask).polygon(
+        mask = Image.new("L", (W * K, H * K), 0)
+        SDraw(mask).polygon(
             [pt(-hw, 0), pt(hw, 0), pt(hw, 46), pt(-hw, 46)], fill=255)
         lf.putalpha(ImageChops.multiply(lf.getchannel("A"), mask))
         lay.alpha_composite(lf)
-        dl = ImageDraw.Draw(lay)
+        dl = SDraw(lay)
         dl.polygon([pt(-hw - 3, 48), pt(hw + 3, 48), pt(hw + 3, 49),
                     pt(-hw - 3, 49)], fill=shade(KOA_DR, 0.86))
 
@@ -3218,8 +3319,8 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
         # rule for the sun patch. Last, because it lies on the floor in
         # FRONT of the wall and nothing else in the frame is out there.
         if sn > 0.02:
-            wedge = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            wd = ImageDraw.Draw(wedge)
+            wedge = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+            wd = SDraw(wedge)
             for reach, al in ((2.15, 30), (1.45, 38), (0.8, 50)):
                 sp = reach * sn
                 wd.polygon([pt(-hw + 1, 0), pt(hw - 1, 0),
@@ -3229,7 +3330,7 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
                              pt(-hw - 3, 0)[1] + ny * sp)],
                            fill=(255, 206, 140, int(al * sn)))
             lay.alpha_composite(wedge)
-            dl = ImageDraw.Draw(lay)
+            dl = SDraw(lay)
 
         # ---- the transom band above the head, in the wall plane and
         # so unaffected by the swing (door_at paints the same band)
@@ -3250,14 +3351,44 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
         b = lay.getbbox()
         box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]),
                                      max(box[2], b[2]), max(box[3], b[3]))
+    # THE BBOX IS IN DRAW PX AND THE THREE NUMBERS THAT LEAVE HERE ARE
+    # NOT IN THE SAME SPACE AS EACH OTHER. `fw`/`fh` are handed to
+    # Phaser's spritesheet loader, which slices the FILE, so they are
+    # FILE px; `px`/`py` position the sprite in the room, so they are
+    # SCENE px. Snapping the box to a whole K grid first is what keeps
+    # the frame slicing exact after the downsample — an odd-numbered
+    # crop would put half a source pixel on the seam between frames.
+    box = (box[0] // K * K, box[1] // K * K,
+           -(-box[2] // K) * K, -(-box[3] // K) * K)
     fw, fh = box[2] - box[0], box[3] - box[1]
     sheet = Image.new("RGBA", (fw * SWING_N, fh), (0, 0, 0, 0))
     for i, lay in enumerate(frames):
         sheet.paste(lay.crop(box), (i * fw, 0))
+    # PREMULTIPLY BEFORE THE DOWNSAMPLE. PIL resizes RGBA channels
+    # independently, so at the leaf's edge ahalf-transparent pixel gets its
+    # RGB averaged with the fully transparent (0,0,0,0) ground beside it
+    # and comes out darker than the same edge in the room, which is a
+    # dark hairline around a door that is supposed to be invisible at
+    # frame 0. Premultiplied, the transparent neighbours contribute
+    # nothing; dividing the alpha back out afterwards restores the
+    # colour. Measured on the frame-0 check: 1180 differing px -> 373.
+    a = sheet.getchannel("A")
+    rgb = np.asarray(sheet.convert("RGB"), np.float32)
+    al = np.asarray(a, np.float32)[:, :, None] / 255.0
+    pre = Image.fromarray(np.clip(rgb * al, 0, 255).astype(np.uint8), "RGB")
+    nw, nh = fw * SWING_N // OVER, fh // OVER
+    pre = np.asarray(pre.resize((nw, nh), Image.LANCZOS), np.float32)
+    a = a.resize((nw, nh), Image.LANCZOS)
+    an = np.asarray(a, np.float32)[:, :, None] / 255.0
+    out = np.divide(pre, an, out=np.zeros_like(pre), where=an > 1e-3)
+    sheet = Image.merge("RGBA", (
+        *Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGB").split(),
+        a))
     path = ROOT / "site" / "assets" / "map" / f"swing_{name}.png"
     sheet.save(path)
-    return dict(sheet=path.name, frames=SWING_N, fw=fw, fh=fh,
-                px=box[0], py=box[1])
+    return dict(sheet=path.name, frames=SWING_N,
+                fw=fw // OVER, fh=fh // OVER,          # FILE px
+                px=box[0] // K, py=box[1] // K)        # SCENE px
 
 
 def painterly(img):
@@ -3277,19 +3408,19 @@ def painterly(img):
 
 # ---------------------------------------------------------------- main
 def render(raw=False):
-    img = Image.new("RGBA", (W, H), INK + (255,))
-    d = ImageDraw.Draw(img)
+    img = Image.new("RGBA", (W * K, H * K), INK + (255,))
+    d = SDraw(img)
 
     paint_ground(d)
     img = mottle_ink(img.convert("RGB")).convert("RGBA")
-    d = ImageDraw.Draw(img)
+    d = SDraw(img)
 
     paint_ring_floor(d)
     paint_sun(img)
     paint_ring_shade(img)
-    d = ImageDraw.Draw(img)
+    d = SDraw(img)
     paint_well(img)
-    d = ImageDraw.Draw(img)
+    d = SDraw(img)
     paint_railings(d)
     paint_rail_pots(d)
     upper = paint_upper_level(d)          # furthest: before the walls
@@ -3313,7 +3444,8 @@ def render(raw=False):
     img = img.convert("RGB")
     if not raw:
         img = painterly(img)
-    img = img.resize((W // SS, H // SS), Image.LANCZOS)   # see SS
+    # down by OVER, not to scene size — that split is the point
+    img = img.resize((W * SHIP, H * SHIP), Image.LANCZOS)
     img.save(OUT_PNG)
     # the runtime paints this behind the image (letterbox bars at odd
     # aspect ratios) — sample the finished surround so they can never
@@ -3322,7 +3454,10 @@ def render(raw=False):
 
     # ---- hotspots, computed from the same geometry
     out = diamond(A_OUT)
-    dpx = {k: (int(p[0]), int(p[1])) for k, (p, _, _) in doors.items()}
+    # int() TRUNCATES, and iso() carries 1/K precision now — so this
+    # has to round, or every fractional door px lands a pixel low.
+    dpx = {k: (int(round(p[0])), int(round(p[1])))
+           for k, (p, _, _) in doors.items()}
     # the mosaic goes in with the doors so it is inside the same
     # no-overlap solve, not padded against a set it isn't part of.
     # Its rect is the medallion's own ellipse (paint_mosaic: rx 62,
@@ -3339,8 +3474,9 @@ def render(raw=False):
         "name": "Hawaiʻi State Capitol",
         "image": "capitol_scene.png",
         "swings": swings,
-        "w": W, "h": H, "scale": SS, "bg": bg,
-        "spawn": [CX, int(out[2][1]) - 60],
+        # w/h stay SCENE size; `scale` is scene px per FILE px
+        "w": W, "h": H, "scale": 1 / SHIP, "bg": bg,
+        "spawn": [CX, int(round(out[2][1])) - 60],   # iso is 1/K now
         # LEVEL 2 IS THE SENATE'S, LEVEL 3 IS THE HOUSE'S — see the
         # note over GALLERY_FEATS/UPPER_FEATS. The text says which
         # floor you are on, because the whole point of the split is
@@ -3443,7 +3579,8 @@ def render(raw=False):
                 f"the door schedule")
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
-          f" (scene {W}x{H} @ {SS}x)", "and", OUT_JSON.name)
+          f" (scene {W}x{H} @ ship {SHIP}x, over {OVER}x)",
+          "and", OUT_JSON.name)
 
 
 if __name__ == "__main__":

@@ -5,15 +5,15 @@
   "finance": {
    "sheet": "swing_finance.png",
    "frames": 7,
-   "fw": 70,
-   "fh": 87,
+   "fw": 140,
+   "fh": 174,
    "px": 1074,
    "py": 464
   }
  },
  "w": 1680,
  "h": 1240,
- "scale": 1,
+ "scale": 0.5,
  "bg": "#080c16",
  "spawn": [
   840,
@@ -28,9 +28,9 @@
    "py": 670,
    "zone": [
     503,
-    641,
-    55,
-    96
+    642,
+    56,
+    97
    ],
    "text": "Second level, and this floor is the Senate's. The ʻEwa cone below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
   },
@@ -43,8 +43,8 @@
    "zone": [
     606,
     590,
-    55,
-    96
+    56,
+    97
    ],
    "text": "The Senate's money committee, on the Senate's own floor. A revenue bill that cannot clear Ways & Means goes no further."
   },
@@ -57,8 +57,8 @@
    "zone": [
     984,
     545,
-    55,
-    96
+    56,
+    97
    ],
    "text": "Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
   },
@@ -71,7 +71,7 @@
    "zone": [
     1128,
     617,
-    52,
+    53,
     94
    ],
    "text": "Every Senate measure is journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
@@ -84,9 +84,9 @@
    "py": 672,
    "zone": [
     1181,
-    642,
-    50,
-    93
+    643,
+    51,
+    94
    ],
    "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. It belongs to neither chamber, which is why it opens off the floor you are standing on. The veto pen lives up there."
   },
@@ -99,8 +99,8 @@
    "zone": [
     1214,
     548,
-    52,
-    93
+    53,
+    94
    ],
    "text": "Third level, and this floor is the House's. The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
   },
@@ -113,8 +113,8 @@
    "zone": [
     1124,
     503,
-    55,
-    96
+    56,
+    97
    ],
    "text": "The House's money committee, on the House's own floor — every appropriation in the state budget passes across these tables."
   },
@@ -123,12 +123,12 @@
    "name": "Speaker of the House",
    "kind": "door",
    "px": 427,
-   "py": 597,
+   "py": 596,
    "zone": [
     427,
     568,
-    55,
-    96
+    56,
+    97
    ],
    "text": "The Speaker refers every House bill to committee and decides what reaches the floor calendar. A measure nobody schedules is not voted down; it simply never comes up."
   },
@@ -141,8 +141,8 @@
    "zone": [
     600,
     481,
-    55,
-    96
+    56,
+    97
    ],
    "text": "Bills are filed, numbered and time-stamped here. A measure that misses a filing deadline by an hour is as dead as one voted down, and this counter is where the hour is decided."
   },

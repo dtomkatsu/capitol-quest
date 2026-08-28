@@ -32,7 +32,27 @@ panel), which leaves the banner ~986px after the panel padding, the
 scene padding and the bleed. It was 640 until 2026-08-18, a figure
 inherited from a ~615-652px column that the widened panel had made
 obsolete years of edits ago — so every banner was being upscaled 1.54x
-by the browser and reading soft. 960 lands within ~3% of the column.
+by the browser and reading soft.
+
+960 THEN LANDED WITHIN ~3% OF THE COLUMN IN **CSS PIXELS**, WHICH IS
+THE WRONG UNIT, and that is what this note got wrong until 2026-08-28.
+An `<img>` is rasterised into DEVICE pixels: on a dpr-2 display the
+~986px column is 1972 device px, so the "matched" file was being
+upscaled 2.05x by the browser and reading exactly as soft as the 640
+it replaced. (Same class of error as the game canvas, fixed the same
+day — see the DPR block at the top of site/js/main.js.) It also
+undercut the DITHER, which only reads as grain at 1:1 and smears into
+mush under a 2x resample.
+
+DISPLAY 4 (1280) is where the pipeline's OWN resolution runs out, and
+that is why it stops there rather than at the column: the procedural
+route draws at `W * S` = 1280 and the photo route brushes at `PAINT_W`
+= 1280, so 4 ships the native working resolution and the final resize
+is a no-op. Going further would upscale a 1280px image and hand the
+browser more pixels without more picture. Matching a dpr-2 column
+outright means raising S and PAINT_W together — and PAINT_W is what
+anchors the brush, so every `--paint` radius in BANNERS.md would have
+to be rescaled with it. That is an art decision, not a resolution one.
 Corollary either way: the CSS must NOT set image-rendering:pixelated,
 because that turns a small resample into dropped rows instead of
 filtered ones. If the panel width ever changes again, this number is
@@ -83,12 +103,26 @@ W, H = 320, 160          # DESIGN space — all scene coords are in this
 # ratio — a taller file under the old clamp is just a cropped file).
 # Widening past 2:1 starts pushing the transcript off the panel on a
 # laptop, which is the constraint that stops this going to 16:9.
-S = 4                    # supersample factor while drawing
-DISPLAY = 3              # design -> output; shipped file is 960x480
-PAINT_W = 1280           # fixed working width for paintify()'s brush —
-                         # see paintify: this is deliberately NOT tied to
-                         # DISPLAY, so a `--paint 4` recipe keeps meaning
-                         # the same brush after an output-size change
+# S IS AN ANTI-ALIASING BUDGET AND MUST STAY ABOVE DISPLAY. It is the
+# supersample factor for the procedural route: the scene is drawn at
+# W * S and LANCZOS-resized to W * DISPLAY, so `S / DISPLAY` IS the
+# downsample ratio, and at S == DISPLAY that resize is a no-op and the
+# route ships raw aliased polygons. That is exactly what happened,
+# unnoticed, when DISPLAY went 3 -> 4 on 2026-08-28 and briefly met
+# S = 4 — no shipped banner regressed only because all three take the
+# --photo route, which gets its AA from downsampling a 2816px source
+# instead. Keep S >= 2 * DISPLAY.
+S = 12                   # supersample factor while drawing (2x at ship)
+DISPLAY = 6              # design -> output; shipped file is 1920x960
+PAINT_W = 1920           # fixed working width for paintify()'s brush —
+                         # see paintify: deliberately NOT tied to DISPLAY,
+                         # so a recorded `--paint` radius keeps meaning the
+                         # same brush after an output-size change. It was
+                         # 1280 until 2026-08-28; raising it is the ONE
+                         # thing that makes a bigger DISPLAY carry real
+                         # detail rather than an upscaled painting, and it
+                         # rescales every recorded radius by 1.5 with it
+                         # (see BANNERS.md)
 COLORS = 32              # adaptive palette size after downsample
 
 

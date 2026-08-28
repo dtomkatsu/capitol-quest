@@ -3,7 +3,7 @@
  "image": "hallway.png",
  "w": 1500,
  "h": 1000,
- "scale": 1,
+ "scale": 0.5,
  "bg": "#0a0e18",
  "spawn": [
   1000,
