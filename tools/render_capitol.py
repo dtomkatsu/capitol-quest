@@ -401,17 +401,21 @@ COL_APEX_U = GND_OUT
 #     quarter of its width into the concrete.
 # The strip is FLAT up its height (the photographs are flat to 3-8%);
 # the 5% head droop is the whole vertical variation there should be.
+"""Facet palette de-yellowed 2026-08-27 with court_column's (the
+breezeway photo, "same with the columns"): same values, r-b warmth
+halved, so the flush strip stays the same concrete as the free shaft
+it continues."""
 COL_FACETS = (
-    (-1.00, -0.84, "#726d62", "#6c685d"),   # lit-side reveal
-    (-0.84, -0.66, "#9b9484", "#938d7d"),   # ramp in
-    (-0.66,  0.10, "#b0a896", "#a7a08e"),   # the lit facet
-    ( 0.10,  0.24, "#a9a290", "#a19a89"),   # its inner droop
-    ( 0.24,  0.40, "#898375", "#827c6f"),   # the arris: ONE hard step
-    ( 0.40,  0.84, "#6a655a", "#656056"),   # the shadow facet
-    ( 0.84,  1.00, "#3a3732", "#373430"),   # keyline, darker than wall
+    (-1.00, -0.84, "#706d64", "#6b685f"),   # lit-side reveal
+    (-0.84, -0.66, "#999488", "#918d81"),   # ramp in
+    (-0.66,  0.10, "#aeaa9c", "#a5a194"),   # the lit facet
+    ( 0.10,  0.24, "#a7a396", "#9f9b8f"),   # its inner droop
+    ( 0.24,  0.40, "#87847a", "#807d74"),   # the arris: ONE hard step
+    ( 0.40,  0.84, "#68655d", "#636159"),   # the shadow facet
+    ( 0.84,  1.00, "#3a3834", "#373532"),   # keyline, darker than wall
 )
-COL_EDGE_L = ("#726d62", 1)     # matches the reveal — never brighter
-COL_EDGE_R = ("#3a3732", 2)     # the recessed joint
+COL_EDGE_L = ("#706d64", 1)     # matches the reveal — never brighter
+COL_EDGE_R = ("#3a3834", 2)     # the recessed joint
 # Optional CAPITAL: (height in px, half-width multiplier at the very
 # top, soffit-shadow colour or None). The real columns trumpet out
 # where they meet the slab; whether that survives at 4 display px of
@@ -887,7 +891,6 @@ def paint_well(img):
         def q(y0, y1, col):
             d.polygon([up(e0, -y0), up(e1, -y0), up(e1, -y1),
                        up(e0, -y1)], fill=col)
-        fluted_band(d, h0, h1, 0, 18, f)              # our slab's fins
         # the loggia's own shade, thrown from the slab down the
         # set-back wall: the recess has to be DARKER than the court
         # floor or the columns have nothing to stand against
@@ -913,6 +916,25 @@ def paint_well(img):
         # screen, gone with it)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
+        # OUR OWN SLAB'S EDGE, AND IT GOES LAST (2026-08-27, user:
+        # "the second floor is missing the white band extending
+        # beneath the railing. it just ends immediately"). It was
+        # drawn FIRST in this loop and had been invisible ever since
+        # the wall was set back (2026-08-25): the recess quad starts
+        # 6px above the SET-BACK line, which on the far runs is
+        # up-screen of the well line, so q(-6, DROP) spans 106px
+        # straight down over the 18px band — measured at x=1000, the
+        # band at y 616-634 sat under a fill covering 575-681. The
+        # fascia belongs to the near slab, a whole bay in front of
+        # that wall, so it is painted after everything the wall
+        # carries. It still goes BEFORE the loggia columns and the
+        # smokestack below: those stand at the well line and cross
+        # in front of the band, exactly as in the breezeway photo.
+        # FASCIA_D, not the old 18 — it is the same slab the makai
+        # edge shows (paint_front_edge: "exactly the band the well
+        # edges wear"), and the two disagreeing was only survivable
+        # while this one drew into the dark.
+        fluted_band(d, h0, h1, 0, FASCIA_D, f)
         # the flat pale piers that used to be pasted on this wall are
         # GONE — they were a ground-storey-only device standing on the
         # wall plane. THIS storey's columns are the real ones and they
@@ -1389,15 +1411,29 @@ def court_column(d, b, dy_lo, dy_hi, f=1.0):
     # mid front, shaded flank — the court's light comes over the
     # makai shoulder, so +x is the turned-away side, the same
     # convention the piers and the cone already use.
-    d.polygon(left + right[::-1], fill=shade(hx("#c9c1ab"), f))
-    d.polygon(left + lit[::-1], fill=shade(hx("#ddd6c0"), f))
-    d.polygon(inner + right[::-1], fill=shade(hx("#948c7b"), f))
+    #
+    # NEUTRAL GRAY, not khaki (2026-08-27, from the breezeway photo:
+    # "same with the columns"). The photo's shafts meter at r-b ≈ 17
+    # (144,139,127 mid face) — smooth cool concrete; the shipped
+    # palette carried r-b ≈ 30 and read as sandstone. Values kept,
+    # warmth halved.
+    d.polygon(left + right[::-1], fill=shade(hx("#c5c1b6"), f))
+    d.polygon(left + lit[::-1], fill=shade(hx("#d9d6cb"), f))
+    d.polygon(inner + right[::-1], fill=shade(hx("#918d82"), f))
+    # faint vertical weathering streaks on the lit face — the photo's
+    # shafts are smooth but not flat; two 1px runs that follow the
+    # taper (a straight line would exit the shaft as it flares)
+    for uS in (-0.34, -0.16):
+        d.line([(round(b[0] + uS * col_hw(lo + (hi - lo) * i / steps)),
+                 round(b[1] - (lo + (hi - lo) * i / steps)))
+                for i in range(steps + 1)],
+               fill=shade(hx("#bcb8ac"), f), width=1)
     # BOTH edges get a real keyline. The ʻEwa run's backdrop is the
     # open breezeway — bright plaza bands — so a pale shaft against it
     # has no silhouette at all without one; same lesson the cone's
     # 2px keyline records against the glazing.
-    d.line(left, fill=shade(hx("#e2dbc6"), f), width=1)      # lit arris
-    d.line(right, fill=shade(hx("#6d6657"), f), width=2)     # dark edge
+    d.line(left, fill=shade(hx("#e2ddd1"), f), width=1)      # lit arris
+    d.line(right, fill=shade(hx("#6a665c"), f), width=2)     # dark edge
     # ONE pour joint per storey — the photo's shafts are cast in
     # lifts and the horizontal break is what keeps a tall shaft from
     # reading as an extruded sliver. Nothing finer: at display scale
@@ -1406,7 +1442,7 @@ def court_column(d, b, dy_lo, dy_hi, f=1.0):
         if lo < dy < hi:
             hw, y = col_hw(dy), round(b[1] - dy)
             d.line([(round(b[0] - hw) + 1, y), (round(b[0] + hw) - 1, y)],
-                   fill=shade(hx("#b3ab95"), f), width=1)
+                   fill=shade(hx("#b0ac9f"), f), width=1)
 
 
 def court_panel(d, u_a, u_b, dep, f=1.0):
@@ -1475,7 +1511,7 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
     THE TOP IS SHEARED BY THE GALLERY SLAB, NOT CAPPED (2026-08-25,
     user: "it should look like it's under the 2nd floor"): every
     drawn point is clamped to the fascia band's BOTTOM line
-    (y = apex + 18 + |x - CX| / 2), so the courses die under the
+    (y = apex + FASCIA_D + |x - CX| / 2), so the courses die under the
     slab and the stack reads as continuing above it, off-stage. The
     mouth rim is gone with it — a mouth you can see means the stack
     ended in the well, which is exactly the old floating read this
@@ -1500,10 +1536,14 @@ def smokestack(d, u0, v0, h, r_bot, r_top, cut=0.0, f=1.0):
     grout = hx("#5b5b50")
     y0 = -(DROP - 2)                            # courtyard floor
     # the gallery slab's fascia BOTTOM, as a screen line: the band
-    # hangs 18px under the hole edge, and both mauka edges fall away
-    # from the apex at the iso 1:2 — one expression covers the cone
-    # whichever side of the corner a point lands on
-    y_sh = CY - 16 * A_IN + 18
+    # hangs FASCIA_D under the hole edge, and both mauka edges fall
+    # away from the apex at the iso 1:2 — one expression covers the
+    # cone whichever side of the corner a point lands on. READ FROM
+    # THE CONSTANT: this was a literal 18 matching the well fascia's
+    # own literal, and when that band went to FASCIA_D (2026-08-27)
+    # the shear line stayed put and the cone drew over the bottom
+    # 6px of the white band it is supposed to die under.
+    y_sh = CY - 16 * A_IN + FASCIA_D
 
     def sh(p):
         return (p[0], max(p[1], round(y_sh + abs(p[0] - CX) / 2)))
@@ -1583,16 +1623,22 @@ def paint_mosaic(d, lay, cx, cy):
 
 
 # ---------------------------------------------------------- railings
-def fluted_band(d, e0, e1, y_top, depth, f=1.0):
+def fluted_band(d, e0, e1, y_top, depth, f=1.0, flutes=True):
     """The precast fin fascia: CHUNKY alternating white panels with
     real shadow gaps — the photo's most distinctive element. 5px fin,
-    2px gap, bright top lip."""
+    2px gap, bright top lip. `flutes=False` drops the grooves for a
+    PLAIN slab edge — the makai CUT bands use it (2026-08-27, user:
+    "remove the lines on the cutaway bottom of the second floor"):
+    the dollhouse cut is sawn slab, not a dressed facade, and at
+    FASCIA_D deep the striping read as one more balustrade."""
     p0, p1 = (e0[0], e0[1] + y_top), (e1[0], e1[1] + y_top)
     d.polygon([p0, p1, (p1[0], p1[1] + depth), (p0[0], p0[1] + depth)],
               fill=shade(hx(FLUTE_FIELD), white_f(f)))
-    for b in even_run(p0, p1, FLUTE_PITCH):
-        d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
-               fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
+    if flutes:
+        for b in even_run(p0, p1, FLUTE_PITCH):
+            d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
+                   fill=shade(hx(FLUTE_GROOVE), white_f(f)),
+                   width=FLUTE_W)
     d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
     d.line([(p0[0], p0[1] + depth), (p1[0], p1[1] + depth)],
            fill=shade(hx("#8a8474"), f), width=1)
@@ -2475,30 +2521,60 @@ def bay_columns(d, r, e0, e1, f, feats, reflect=False):
 
 
 def upper_parapet(d, a0, a1, f, phase0=None):
-    """The third level's SOLID white fluted parapet with the koa cap
-    on top — extracted so the wing can continue it without a second
-    copy of the assembly drifting. `phase0` anchors the flute rhythm:
-    pass the ORIGINAL run's start so a wing segment keeps the 6px
-    beat across the junction (flutes are drawn only inside a0..a1).
+    """The third level's rail: THE SECOND FLOOR'S RAILING, VERBATIM
+    (2026-08-27, user, closing a five-state saga: "why doesnt it
+    just look like the second floor railings?"). Same assembly as
+    paint_railings' far edges — white kerb plate, open dark-bronze
+    pickets you see the terrace through, slim stanchions, the wide
+    koa handrail. Nothing invented: solid parapet, white-groove
+    parapet, and two cuts of a photo-derived white balustrade were
+    all tried and all read wrong up here; the room already had a
+    railing the user liked, one storey down. If this rail ever needs
+    to change again, change paint_railings WITH it.
 
-    THE WHITE MEMBERS TAKE `white_f(f)`, THE KOA CAP TAKES THE FULL
-    `f` — see white_f. The cap is the one part of this assembly with
-    the headroom to carry the run's light direction, which is also
-    why it is what says "railing" at this distance."""
+    The ONE deviation is the picket colour: the well rail's far-edge
+    #4a4238 (lum 66) vanishes on this storey's darker walkway
+    (lum ~60, vs the gallery's ~85) — Δ6 where the well rail carries
+    Δ20-25. The bay columns' deep bronze (#241c15, lum ~29) restores
+    the same gap against THIS floor: same relationship, same read,
+    different constant. `phase0` anchors the picket rhythm: pass the
+    ORIGINAL run's start so a wing segment keeps the 6px beat across
+    the junction (pickets are drawn only inside a0..a1)."""
     fw = white_f(f)
-    d.polygon([a0, a1, up(a1, RAIL_H), up(a0, RAIL_H)],
-              fill=shade(hx(FLUTE_FIELD), fw))
     x_lo, x_hi = sorted((a0[0], a1[0]))
-    for b in even_run(phase0 or a0, a1, FLUTE_PITCH):
+    # white kerb plate at the floor (paint_railings: "a light base
+    # curb sits under the picket run")
+    d.polygon([a0, a1, up(a1, 4), up(a0, 4)],
+              fill=shade(hx("#ddd6c1"), fw * 0.98))
+    d.line([up(a0, 4), up(a1, 4)], fill=shade(hx("#8a8474"), fw),
+           width=1)
+    # pickets: thin dark metal, the terrace showing between them
+    pk = shade(hx("#241c15"), f)
+    for b in even_run(phase0 or a0, a1, PICKET_PITCH):
         if not x_lo <= b[0] <= x_hi:
             continue
-        d.line([up(b, 2), up(b, RAIL_H - 2)],
-               fill=shade(hx(FLUTE_GROOVE), fw), width=2)
-    # seam at the slab line, so the parapet stands ON the floor
-    # instead of merging with the fascia band below
-    d.line([a0, a1], fill=shade(hx("#8a8474"), fw), width=1)
-    d.line([up(a0, RAIL_H), up(a1, RAIL_H)],
-           fill=shade(hx("#f7f3e6"), fw), width=1)
+        d.line([up(b, 5), up(b, RAIL_H)], fill=pk, width=PICKET_W)
+    # slim stanchions — dark bronze like the pickets, pitched by
+    # SPAN (the well rail's i/8 would bunch eight into the short
+    # wing segment)
+    n = max(1, round(abs(a1[0] - a0[0]) / 55.0))
+    for i in range(1, n):
+        b = lerp(a0, a1, i / n)
+        d.rectangle([b[0] - 1, b[1] - RAIL_H, b[0] + 1, b[1] - 4],
+                    fill=shade(hx("#57503f"), f))
+    # end posts — the rail terminates INTO something at the sliced
+    # ends and the apex instead of stopping mid-air (the well rail's
+    # corner posts, bronze with the koa top)
+    for c in (a0, a1):
+        d.rectangle([c[0] - 2, c[1] - RAIL_H - 6, c[0] + 2, c[1]],
+                    fill=shade(hx("#57503f"), f))
+        d.rectangle([c[0] + 1, c[1] - RAIL_H - 6, c[0] + 2, c[1]],
+                    fill=shade(hx("#443e30"), f))
+        d.rectangle([c[0] - 2, c[1] - RAIL_H - 6, c[0] + 2,
+                     c[1] - RAIL_H - 2], fill=KOA)
+        d.line([(c[0] - 2, c[1] - RAIL_H - 6),
+                (c[0] + 2, c[1] - RAIL_H - 6)], fill=KOA_LT, width=1)
+    # the koa handrail — the same wide polished cap as the well rail
     d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
            fill=shade(hx("#54391f"), f), width=2)
     d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
@@ -2623,18 +2699,12 @@ def paint_upper_level(d):
         for bt in benches:
             bench_at(d, e0, e1, bt, f)
 
-        # ---- the rail at its inner edge (nearest, so last): a SOLID
-        # white fluted PARAPET with the koa cap on top — NO pickets
-        # (2026-08-24, user: "the pickets for the railings are
-        # showing over the white, which is incorrect"). Open pickets
-        # cannot work up here: the terrace strip behind the rail
-        # thins to nothing toward the ʻEwa/Diamond Head ends (an iso
-        # diamond offset outward moves edges up-screen only near the
-        # apex), so the dark bars stood against the pale wall base
-        # and the white slab band and read as pickets painted OVER
-        # the white. The executive-floor photo's upper balconies are
-        # white fluted parapets anyway — the koa cap riding the TOP
-        # of the white band is what says "railing" at this distance.
+        # ---- the rail at its inner edge (nearest, so last): the
+        # SAME railing as the well one storey down — kerb, open dark
+        # pickets, koa cap (2026-08-27, user: "why doesnt it just
+        # look like the second floor railings?"). The five-state
+        # history lives in upper_parapet's docstring — read it
+        # before changing this again.
         upper_parapet(d, a0, a1, f)
 
     # ---- THE DIAMOND HEAD WING (see WING_EXT): this storey runs on
@@ -2845,15 +2915,18 @@ def paint_front_edge(d):
     # apex). spawn and the (unused) exit hotspot both derive from
     # diamond(A_OUT)[2] in render(), so nothing else moves.
     s = iso(A_OUT, A_OUT)
-    # SE edge — the wing's far side, one unbroken band
-    fluted_band(d, out[1], out[2], 0, FASCIA_D, 0.92)
+    # SE edge — the wing's far side, one unbroken band. PLAIN, no
+    # flutes: this is the sawn dollhouse cut (see fluted_band)
+    fluted_band(d, out[1], out[2], 0, FASCIA_D, 0.92, flutes=False)
     # SW edge — broken at the stairs
     e0, e1 = out[2], out[3]
     span = float(e0[0] - e1[0])   # horizontal extent, px
     t_s = (e0[0] - s[0]) / span
     half = 34.0 / span
-    fluted_band(d, e0, lerp(e0, e1, t_s - half), 0, FASCIA_D, 0.92)
-    fluted_band(d, lerp(e0, e1, t_s + half), e1, 0, FASCIA_D, 0.92)
+    fluted_band(d, e0, lerp(e0, e1, t_s - half), 0, FASCIA_D, 0.92,
+                flutes=False)
+    fluted_band(d, lerp(e0, e1, t_s + half), e1, 0, FASCIA_D, 0.92,
+                flutes=False)
     # stairs down out of the room
     for i in range(5):
         y = s[1] + STUB_H + i * 8
