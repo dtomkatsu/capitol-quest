@@ -2031,6 +2031,47 @@ user's call).
     over the upper rail, so it read as a gold pinstripe in a white
     belt (measured on the staged bake). The terrace floor is what
     meets the slab line now.
+  - **A NEAR-WHITE MEMBER TAKES `white_f(f)`, NEVER THE RAW FACE
+    FACTOR** (2026-08-27, user: "the white trim for third floor
+    railing looks off. you cant even see the spokes, it's all
+    white"). `shade()` clamps at 255 and the fluted band's field
+    (`FLUTE_FIELD` #ece6d4, lum 230) has almost no headroom, so the
+    third level's ʻEwa run at **f = 1.10** landed the field on 253
+    and the highlight line (#f7f3e6) on 268 — both clamped to the
+    same flat white. Measured on the shipped bake: **fourteen
+    identical rows straight through the band**, top highlight and
+    base seam gone, against the Diamond Head run's field 222 /
+    groove 145. The two halves of ONE railing were rendering as two
+    different objects, and the ʻEwa half genuinely was a blank white
+    ribbon — the flutes were drawn, they just had nothing to sit
+    against. Now 230 / 150 vs 222 / 145. Rules:
+    - **Cap the factor; do NOT darken the base white.** The band's
+      230 is measured against the court floor (the executive-floor
+      photo puts the white band at 1.79x the open paving, which is
+      what sets `COURT` at 130), so it has to survive.
+    - **On a material at the top of the range, light direction has
+      to be carried by something that is not VALUE** — here the koa
+      cap, which is dark, has headroom, and still takes the full
+      `f`. Pushing a near-white field past the ceiling does not make
+      it brighter, it makes it flatter.
+    - `white_f` is a no-op wherever `f <= 1`, which is every other
+      fluted band in the room (gallery runs 1.0 / 0.88, the makai
+      fascia, both wings). Verified by diffing the bake: **0.57% of
+      the canvas changed, all of it on the ʻEwa side** (x < 840,
+      y 313-607) — the level-3 slab band and its parapet, nothing
+      else. Hotspot JSON byte-identical.
+    - **The clip was pre-existing, but `SS 2 -> 1` is what exposed
+      it.** At SS 2 the LANCZOS downsample mushed BOTH halves, so
+      they looked equally soft; at full resolution the Diamond Head
+      half came up crisp and the clipped half did not, which is what
+      made the mismatch obvious.
+    - Judged at 1:1, not magnified — with the ceiling at 1.6 the room
+      now renders at zoom ~1.05, so scene px are display px and
+      **1:1 IS game scale**. The old "judge on the downscaled bake"
+      rule still applies to anything that ships at SS 2.
+    - The groove (`FLUTE_GROOVE`) was NOT deepened and no pickets
+      came back: fixing the clip alone made the verticals read. Both
+      are now module-level constants if it ever needs a sweep.
   - **The third-floor rail is a SOLID white fluted PARAPET with the
     koa cap on TOP — no pickets** (2026-08-24, user: "the pickets for
     the railings are showing over the white, which is incorrect").

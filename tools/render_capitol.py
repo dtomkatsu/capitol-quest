@@ -185,6 +185,37 @@ PICKET_W = 2               # judged on the DOWNSCALED bake: at SS 2 a
                            # 1px picket is half a display pixel and
                            # LANCZOS renders the run as grey haze.
 FLUTE_PITCH = 6            # the white fluted bands, same rule
+FLUTE_FIELD = "#ece6d4"    # the band's lit face
+FLUTE_GROOVE = "#9d9683"   # the groove between two flutes — see white_f
+
+
+def white_f(f):
+    """A face factor for a NEAR-WHITE member, capped at 1.0.
+
+    `shade()` clamps at 255, and the fluted band's field (#ece6d4,
+    lum 230) has almost no headroom left. The third level's ʻEwa run
+    carries f = 1.10, which lands the field on 253 and the highlight
+    line (#f7f3e6) on 268 — so both clamp to the SAME flat white and
+    the assembly loses its top highlight, its base seam and most of
+    its flute contrast in one go. Measured on the shipped bake before
+    this: fourteen identical rows straight through the band at
+    x = 700, against the Diamond Head run's field 222 / groove 145.
+    Two halves of one railing rendering as two different objects is
+    what the user was seeing (2026-08-27: "the white trim for third
+    floor railing looks off. you cant even see the spokes, it's all
+    white") — the ʻEwa half really was a blank white ribbon.
+
+    On a material already at the top of the range, LIGHT DIRECTION
+    HAS TO BE CARRIED BY SOMETHING THAT IS NOT VALUE — here the koa
+    cap (dark, plenty of headroom, and still shaded by the full `f`)
+    and the grooves. Pushing the field past the ceiling does not
+    make it brighter, it makes it flatter.
+
+    Darkening the base white instead is the wrong fix: the band's
+    230 is measured against the court floor (the executive-floor
+    photo puts the white band at 1.79x the open paving, which is
+    what sets COURT at 130), so it has to survive."""
+    return min(f, 1.0)
 DRUM_RT, DRUM_RB = 72, 102  # chamber drum: top / flared base radius
 FASCIA_D = 24              # fluted slab-edge band depth — the photo's
                            # dominant element, deeper than the pickets
@@ -1538,10 +1569,10 @@ def fluted_band(d, e0, e1, y_top, depth, f=1.0):
     2px gap, bright top lip."""
     p0, p1 = (e0[0], e0[1] + y_top), (e1[0], e1[1] + y_top)
     d.polygon([p0, p1, (p1[0], p1[1] + depth), (p0[0], p0[1] + depth)],
-              fill=shade(hx("#ece6d4"), f))
+              fill=shade(hx(FLUTE_FIELD), white_f(f)))
     for b in even_run(p0, p1, FLUTE_PITCH):
         d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
-               fill=shade(hx("#9d9683"), f), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
     d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
     d.line([(p0[0], p0[1] + depth), (p1[0], p1[1] + depth)],
            fill=shade(hx("#8a8474"), f), width=1)
@@ -2428,20 +2459,26 @@ def upper_parapet(d, a0, a1, f, phase0=None):
     on top — extracted so the wing can continue it without a second
     copy of the assembly drifting. `phase0` anchors the flute rhythm:
     pass the ORIGINAL run's start so a wing segment keeps the 6px
-    beat across the junction (flutes are drawn only inside a0..a1)."""
+    beat across the junction (flutes are drawn only inside a0..a1).
+
+    THE WHITE MEMBERS TAKE `white_f(f)`, THE KOA CAP TAKES THE FULL
+    `f` — see white_f. The cap is the one part of this assembly with
+    the headroom to carry the run's light direction, which is also
+    why it is what says "railing" at this distance."""
+    fw = white_f(f)
     d.polygon([a0, a1, up(a1, RAIL_H), up(a0, RAIL_H)],
-              fill=shade(hx("#ece6d4"), f))
+              fill=shade(hx(FLUTE_FIELD), fw))
     x_lo, x_hi = sorted((a0[0], a1[0]))
     for b in even_run(phase0 or a0, a1, FLUTE_PITCH):
         if not x_lo <= b[0] <= x_hi:
             continue
         d.line([up(b, 2), up(b, RAIL_H - 2)],
-               fill=shade(hx("#9d9683"), f), width=2)
+               fill=shade(hx(FLUTE_GROOVE), fw), width=2)
     # seam at the slab line, so the parapet stands ON the floor
     # instead of merging with the fascia band below
-    d.line([a0, a1], fill=shade(hx("#8a8474"), f), width=1)
+    d.line([a0, a1], fill=shade(hx("#8a8474"), fw), width=1)
     d.line([up(a0, RAIL_H), up(a1, RAIL_H)],
-           fill=shade(hx("#f7f3e6"), f), width=1)
+           fill=shade(hx("#f7f3e6"), fw), width=1)
     d.line([up(a0, RAIL_H + 1), up(a1, RAIL_H + 1)],
            fill=shade(hx("#54391f"), f), width=2)
     d.line([up(a0, RAIL_H + 3), up(a1, RAIL_H + 3)],
@@ -2551,10 +2588,10 @@ def paint_upper_level(d):
                 # position AND the box the runtime will make
                 # clickable, from the geometry that drew it
                 doors[did] = (pos, feat_rect(e0, e1, t, kind))
-        q(58, 72, shade(hx("#ece6d4"), f))
+        q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
-                   fill=shade(hx("#9d9683"), f), width=2)
+                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
 
         # ---- the walkway, standing in front of the wall
         d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
@@ -2595,12 +2632,12 @@ def paint_upper_level(d):
                fill=shade(CONC, fdh * 0.90), width=1)
     door_at(d, w0, w1, 0.35, "office", hw=11)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
-              fill=shade(hx("#ece6d4"), fdh))
+              fill=shade(hx(FLUTE_FIELD), white_f(fdh)))
     for b in even_run(out[0], w1, FLUTE_PITCH):
         if b[0] < w0[0]:
             continue
         d.line([up(b, 59), up(b, 71)],
-               fill=shade(hx("#9d9683"), fdh), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(fdh)), width=2)
     d.polygon([aw0, aw1, w1, w0], fill=shade(FLOOR, fdh * 0.94))
     d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
     bench_at(d, w0, w1, 0.72, fdh)
@@ -2697,10 +2734,10 @@ def paint_walls(d):
         # (measured on the staged bake: the picket band went #efeadb
         # after paint_walls ran). The terrace floor drawn by
         # paint_upper_level is what meets the slab line now.
-        q(58, 72, shade(hx("#ece6d4"), f))
+        q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
-                   fill=shade(hx("#9d9683"), f), width=2)
+                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
         # NO benches: drawn floating mid-walkway they read as brown
         # bars sitting on the railing (user-caught, removed 2026-08-22)
 
@@ -2733,12 +2770,12 @@ def paint_walls(d):
     door_at(d, w0, w1, 0.35, "office", hw=11)
     bench_at(d, w0, w1, 0.72, fw)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
-              fill=shade(hx("#ece6d4"), fw))
+              fill=shade(hx(FLUTE_FIELD), white_f(fw)))
     for b in even_run(out_g[0], w1, FLUTE_PITCH):
         if b[0] < w0[0]:
             continue
         d.line([up(b, 59), up(b, 71)],
-               fill=shade(hx("#9d9683"), fw), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(fw)), width=2)
     return doors
 
 
