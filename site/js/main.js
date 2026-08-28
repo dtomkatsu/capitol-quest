@@ -50,6 +50,30 @@ const START_ROOM = "capitol";
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
 const OFF_V = 2;
+/* Same rule for the opening-week hallway bake (tools/render_hallway.py:
+   hallway.png + map/hallway.json). */
+const HALL_V = 1;
+/* WEEK 1 OPENS IN THE HALLWAY, NOT THE CAPITOL (2026-08-27, user's
+   call: the opening scene is a House-wing hallway from a reference
+   photo, "you're talking to the legislator off to the side"; later
+   weeks revert to the regular Capitol view). This resolver decides the
+   LANDING room only: a fresh or week-1 save boots into "hallway",
+   anything past week 1 boots into START_ROOM, and the first End Turn
+   swaps a live hallway for the Capitol (see advanceWeek). It reads the
+   save raw from localStorage because it runs inside WorldScene.create,
+   where SessionPanel's own state is private — a malformed save just
+   lands on the hallway, which is where a fresh campaign starts anyway.
+   START_ROOM stays the one overworld switch: null still puts the map
+   back, hallway and all. */
+const bootRoom = () => {
+  if (!START_ROOM) return null;
+  try {
+    const s = JSON.parse(localStorage.getItem("cq-session") || "null");
+    return s && s.week > 1 ? START_ROOM : "hallway";
+  } catch (e) {
+    return "hallway";
+  }
+};
 
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
@@ -4472,6 +4496,19 @@ const SessionPanel = {
       }
       save();
       renderHead();
+      /* The opening-week hallway retires with week 1: the first
+         advance swaps the live room over to the Capitol, the home view
+         for every later week (see ROOM_HALLWAY / bootRoom). switch()
+         sleeps the hallway rather than destroying it, same as every
+         other room transition; a reload past week 1 never starts it at
+         all. The Capitol's greet fires on its create/wake and is
+         immediately covered by the week overlay opening — acceptable,
+         since the overlay IS the week arriving. */
+      {
+        const hall = window.__game && window.__game.scene.getScene("hallway");
+        if (hall && S.week > 1 && hall.sys.isActive())
+          hall.scene.switch("capitol");
+      }
       const cal = calFor(S.week);
       // every branch here is a WEEK ARRIVING — the panel comes back up
       // out of the camera ritual, so all three take the ceremonial
@@ -4584,6 +4621,14 @@ const SessionPanel = {
       e.stopPropagation();
       toggleSession();
     });
+    /* The opening-week hallway's legislator hotspot is one more door
+       into the same flow the Session button opens (ROOM_HALLWAY's
+       `action` map) — exposed on the panel because toggleSession is
+       closure-private. Open-only: a tap on the room can never reach
+       this while the overlay covers the canvas, so it must not toggle. */
+    this.openWeek = () => {
+      if (overlay.classList.contains("hidden")) toggleSession();
+    };
     // the Instincts tab: the character sheet as its own view. During
     // creation renderSheet routes back through the renderHub funnel,
     // so the select screens stay the only door into a fresh campaign.
@@ -4665,6 +4710,13 @@ const SessionPanel = {
         save();
         PolicyPanel.setExternal(0);
         renderHead();
+        // a new campaign starts back in the opening-week hallway —
+        // the mirror of the advanceWeek swap, same reason restart
+        // mirrors boot's funnel branch below
+        {
+          const cap = window.__game && window.__game.scene.getScene("capitol");
+          if (cap && cap.sys.isActive()) cap.scene.switch("hallway");
+        }
         /* A restart is a NEW CAMPAIGN and has to land on the creation
            funnel, exactly the way boot does — it used to call runEvent()
            directly, which walked straight past SELECT INSTINCTS and the
@@ -4898,7 +4950,7 @@ class WorldScene extends Phaser.Scene {
     if (START_ROOM) {
       this.stopIntro();
       this.parkOnCapitol(world);
-      this.scene.switch(START_ROOM);
+      this.scene.switch(bootRoom());   // week 1 lands in the hallway
     }
   }
 
@@ -5811,6 +5863,13 @@ class RoomScene extends Phaser.Scene {
         if (h.kind === "exit") { this.leave(); return; }
         const go = this.cfg.enter && this.cfg.enter[h.id];
         if (go) { this.enterChild(go); return; }
+        // cfg.action: {hotspotId: fn} — a hotspot that DOES something
+        // instead of showing its text (the hallway legislator opens
+        // the session panel). Same shape as `enter`, which stays the
+        // door-to-a-room map; the hotspot's text is the fallback for
+        // a config without the handler.
+        const act = this.cfg.action && this.cfg.action[h.id];
+        if (act) { Dialog.hide(); act(); return; }
         Dialog.show(h.name, h.text);
       });
     }
@@ -5933,6 +5992,33 @@ const ROOM_CAPITOL = {
     "to committee rooms and the Level 5 elevators. No dome " +
     "overhead: the sky is Hawaiʻi's capitol dome."],
 };
+/* THE OPENING-WEEK HALLWAY (2026-08-27, user's call, from a reference
+   photo of a Capitol corridor): week 1 boots here instead of the
+   Capitol — a House-wing hallway where the player's introducer waits
+   off to the side — and the first End Turn swaps it for the Capitol
+   for the rest of the session (both halves live in bootRoom() and
+   advanceWeek). Same home-room treatment as the Capitol: full HUD,
+   no exit, `view` rect with continuous zoom. The view rect is the
+   bake's content bbox + margin, which render_hallway.py PRINTS on
+   every run — remeasure after any re-bake that moves the composition. */
+const ROOM_HALLWAY = {
+  key: "hallway", v: HALL_V,
+  json: "map/hallway.json", img: "assets/map/hallway.png",
+  exitTo: "capitol",
+  noExit: true,
+  view: [220, 167, 1160, 764],
+  enter: null,
+  // the legislator IS the week: tapping them opens the session flow
+  // (creation funnel first, then Opening Day — renderHub's early bail
+  // owns that order, not this hook)
+  action: { legislator: () => SessionPanel.openWeek &&
+                              SessionPanel.openWeek() },
+  greet: ["Opening Day",
+    "A hallway deep in the House wing — polished floors, koa doors, " +
+    "lei on the door pulls. Off to the side, between the morning " +
+    "caucus and the first floor session, your introducer is waiting " +
+    "for you."],
+};
 const ROOM_OFFICE = {
   key: "office", v: OFF_V,
   json: "map/office_finance.json", img: "assets/map/office_finance.png",
@@ -5963,6 +6049,7 @@ window.addEventListener("load", () => {
       height: window.innerHeight,
     },
     scene: [BootScene, WorldScene,
-            new RoomScene(ROOM_CAPITOL), new RoomScene(ROOM_OFFICE)],
+            new RoomScene(ROOM_CAPITOL), new RoomScene(ROOM_OFFICE),
+            new RoomScene(ROOM_HALLWAY)],
   });
 });

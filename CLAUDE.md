@@ -3134,6 +3134,76 @@ stairs hotspot or Esc. Rules:
   Verified end-to-end in the pane: world → capitol (greet, HUD off) →
   finance-door tap → office (greet, capitol sleeps) → exit (no
   re-greet) → exit → world (HUD back).
+- **The opening-week hallway (2026-08-27): `tools/render_hallway.py`**
+  → `site/assets/map/hallway.png` + `site/map/hallway.json`, token
+  `HALL_V` (user's call, from a reference photo of a Capitol corridor:
+  "for the opening week … the scene portrayed in the game [is] a
+  hallway … you're talking to the legislator off to the side.
+  subsequent weeks revert back to the regular capitol scene").
+  Third `RoomScene` room (`ROOM_HALLWAY`), and WEEK 1's home view:
+  a House-wing corridor — white walls over a glossy red-brown tile
+  floor with baked reflections, koa doors (the far one with the
+  photo's taped notice), a glazed building directory, and the photo's
+  widening rendered as a full-height RECESS in the far wall (a first
+  pass built the lobby jutting toward the camera and it read as a
+  floating fin — the recess is the same language as the capitol's
+  hallway portals, so the whole widened area is visible). THE
+  LEGISLATOR — the player's introducer, aloha shirt, lei, folder,
+  faceless at sprite scale per the house rule — stands off to the
+  side in that alcove. Rules:
+  - **IT IS A SINGLE HALLWAY, AND `VH` SAYS SO** (2026-08-27, user:
+    "make hallway narrower … it's just a single hallway"). The first
+    bake ran `VH` 2.1 — a 4.2-unit floor against ~18 of run, which is
+    a gallery, not a corridor — with a 7-unit recess that read as a
+    second room opening off it. Now `VH` 1.45 (walls about a
+    door-and-a-half apart, per the photo) and the recess narrowed
+    with it to stay an alcove one person stands in. Narrowing has
+    two knock-ons that any further change has to respect:
+    - **The end-wall door has to come in with the walls** (±0.7, was
+      ±0.8): its architrave flares 10% past the leaf either side, so
+      a door sized for the old width leaves no wall beside it.
+    - **The introducer's office door moved OUT of the alcove onto the
+      corridor wall.** At the narrower width a door behind the
+      legislator put two tap zones on top of each other and the
+      disjoint-zone assert caught it — which is the assert doing its
+      job, not an obstacle to route around. The alcove is where the
+      person stands; the door they work behind is a few paces up the
+      hall, and the composition is better for it.
+    - **A pot at the alcove MOUTH gets sliced by the casing post** and
+      reads as a clipping error. Both plants stand deep in the alcove,
+      flanking the legislator.
+  - **`bootRoom()` in main.js decides the landing, not START_ROOM
+    directly**: fresh or week-1 save → "hallway", past week 1 →
+    START_ROOM. It reads localStorage raw (SessionPanel's S is
+    closure-private at that point in WorldScene.create). START_ROOM
+    is still the one overworld switch — null still restores the map.
+  - **The first End Turn retires the room**: advanceWeek switches a
+    live hallway to the capitol right after save()/renderHead(), and
+    "Restart session" mirrors it back (the same both-doors-match rule
+    as the restart/boot funnel). switch() SLEEPS the hallway; the
+    swap is queued by Phaser, so a synchronous probe right after the
+    call still reads the old active scene — wait a frame in the pane.
+  - **Tapping the legislator IS the week**: `RoomScene` grew a
+    cfg.`action` map ({hotspotId: fn}, same shape as `enter`) and the
+    hotspot calls `SessionPanel.openWeek()` (exposed in init because
+    toggleSession is closure-private; open-only on purpose — a tap on
+    the canvas can never mean "close"). The creation funnel still
+    comes first: openWeek routes through the same branch as the
+    Session button, and renderHub's early bail owns that order.
+  - Home-room treatment like the capitol: `noExit: true`, full HUD,
+    `view` rect + continuous zoom + LINEAR (SS = 1, full-res author
+    space). The bake PRINTS its content bbox + suggested view rect on
+    every run — re-copy into ROOM_HALLWAY.view after a re-bake that
+    moves the composition. It also emits per-hotspot `zone` boxes
+    from the drawn geometry and asserts they're disjoint (capitol
+    rule). An exit hotspot is in the JSON but skipped by noExit —
+    drop noExit and it walks out to the capitol.
+  - Verified in the pane: fresh boot → hallway (greet, HUD, marker
+    over the legislator, funnel opens on tap); week-3 save → capitol,
+    hallway never starts; End Turn at week 1 → week-2 overlay over
+    the capitol, hallway asleep; restart → hallway + funnel. Mobile
+    375px framing checked. After the narrowing, all four zones
+    re-verified to resolve to exactly one label each.
 
 ## Vendored: rot.js + Phaser iso plugin (2026-08-26)
 

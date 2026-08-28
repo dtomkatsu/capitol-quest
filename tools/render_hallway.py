@@ -1,0 +1,498 @@
+#!/usr/bin/env python3
+"""Bake the OPENING-WEEK HALLWAY — a corridor deep in the House wing,
+from the user's reference photo (2026-08-23): warm white walls, a
+glossy red-brown floor that reflects everything standing on it, tall
+koa doors (the far one with a notice taped to it), a glazed building
+directory, and the stretch where the hallway widens into a lobby —
+rendered as a full-height RECESS in the far wall, the same language
+as the capitol bake's hallway portals, so the whole widened area is
+visible instead of standing between the camera and the room. THE
+LEGISLATOR — the player's House introducer, aloha shirt and
+Opening-Day lei — stands off to the side in that lobby, beside their
+own office door. Week 1 only: ROOM_HALLWAY in main.js boots here and
+the first End Turn retires the room for the Capitol.
+
+Same 2.5-D cutaway language as render_office.py / render_capitol.py
+(2:1 iso, near walls sliced at knee height), but like the Capitol it
+is the MAIN view: SS = 1, authored at full resolution, displayed
+through a `view` rect with continuous zoom + LINEAR filtering — so
+every deliberate line here is >= 2px.
+
+Outputs (hand-versioned in JS via HALL_V — bump together):
+  site/assets/map/hallway.png
+  site/map/hallway.json     (spawn + hotspots + zones, px in scene space)
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT_PNG = ROOT / "site" / "assets" / "map" / "hallway.png"
+OUT_JSON = ROOT / "site" / "map" / "hallway.json"
+
+W, H = 1500, 1000
+SS = 1                      # main view: full-res author space (capitol rule)
+CX, CY = 760, 560
+SX, SY = 40, 20             # iso px per unit (2:1)
+WH = 120                    # full wall height
+CUT = 24                    # near-wall slice height (house cutaway rule)
+DOOR_H = 88
+CUT_CORE = (154, 146, 124)  # same cut-core material as the other rooms
+
+# plan: corridor runs in u; the alcove is a RECESS in the far (NE)
+# wall between LU0 and LU1, reaching back to LV.
+# IT IS A SINGLE HALLWAY, AND THE WIDTH SAYS SO (2026-08-27, user:
+# "make hallway narrower … it's just a single hallway"). At VH 2.1 the
+# floor was 4.2 units against ~18 of run — a gallery, not a corridor,
+# and the recess at 7 units wide read as a second room opening off it.
+# 1.45 puts the walls a door-and-a-half apart, which is what the
+# reference photo shows; the recess narrows with it so it stays an
+# alcove the legislator stands in, not a lobby.
+U0, U1 = -11.0, 7.5
+VH = 1.45                   # corridor half-width
+LU0, LU1 = -7.6, -2.2
+LV = -4.8                   # alcove back wall
+
+rng = np.random.default_rng(23)
+
+
+def hx(s):
+    s = s.lstrip("#")
+    return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
+
+
+INK = hx("#0a0e18")
+WALL = hx("#e6dfcf")        # warm off-white (photo walls)
+BASE = hx("#5e4c38")        # dark base trim
+FLOOR = hx("#6b3e24")       # glossy red-brown (photo floor)
+FLOOR_D = hx("#4e2c19")
+KOA = hx("#5c4326")
+KOA_D = hx("#48331d")
+KOA_L = hx("#75552f")
+FRAME = hx("#3b2a19")
+PAPER = hx("#e8e2d0")
+BLUE = hx("#4a6478")        # the aloha-blue accent (house palette)
+STEEL = hx("#a8a296")
+GLASS = hx("#2e3a42")
+KEY = hx("#f2c14e")
+SKIN = hx("#b9895a")
+LEI = hx("#567a4c")
+LEI_L = hx("#7fa06a")
+
+
+def iso(u, v, dy=0.0):
+    return (round(CX + SX * (u - v)), round(CY + SY * (u + v) - dy))
+
+
+def lerp(p, q, t):
+    return (round(p[0] + (q[0] - p[0]) * t),
+            round(p[1] + (q[1] - p[1]) * t))
+
+
+def up(p, dy):
+    return (p[0], round(p[1] - dy))
+
+
+def shade(c, f):
+    return tuple(int(max(0, min(255, x * f))) for x in c)
+
+
+def mix(a, b, t):
+    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+def quad(d, pts, c):
+    d.polygon(pts, fill=c)
+
+
+# ------------------------------------------------------------ floor
+def tiles(d, u0, u1, v0, v1, step=1.4):
+    """big square floor tiles on a GLOBAL grid, so the corridor and
+    the lobby share joints across their seam"""
+    for i in range(math.floor(u0 / step), math.ceil(u1 / step)):
+        for j in range(math.floor(v0 / step), math.ceil(v1 / step)):
+            au, bu = max(u0, i * step), min(u1, (i + 1) * step)
+            av, bv = max(v0, j * step), min(v1, (j + 1) * step)
+            if au >= bu or av >= bv:
+                continue
+            f = rng.uniform(0.94, 1.06)
+            d.polygon([iso(au, av), iso(bu, av), iso(bu, bv), iso(au, bv)],
+                      fill=shade(FLOOR, f))
+    # joints — hairlines, not a lattice
+    for i in range(math.floor(u0 / step) + 1, math.ceil(u1 / step)):
+        gu = i * step
+        if u0 < gu < u1:
+            d.line([iso(gu, v0), iso(gu, v1)], fill=shade(FLOOR, 0.84),
+                   width=1)
+    for j in range(math.floor(v0 / step) + 1, math.ceil(v1 / step)):
+        gv = j * step
+        if v0 < gv < v1:
+            d.line([iso(u0, gv), iso(u1, gv)], fill=shade(FLOOR, 0.84),
+                   width=1)
+
+
+# ------------------------------------------------------------ walls
+def white_wall(d, e0, e1, ht, f=1.0):
+    quad(d, [e0, e1, up(e1, ht), up(e0, ht)], shade(WALL, f))
+    ln = math.hypot(e1[0] - e0[0], e1[1] - e0[1])
+    n_p = max(2, int(ln // 110))
+    for i in range(n_p):
+        t0, t1 = i / n_p, (i + 1) / n_p
+        a, b = lerp(e0, e1, t0), lerp(e0, e1, t1)
+        fpan = f * (0.985 + 0.028 * ((i * 5) % 3) / 2)
+        quad(d, [a, b, up(b, ht), up(a, ht)], shade(WALL, fpan))
+    d.line([up(e0, ht), up(e1, ht)], fill=shade(WALL, f * 0.78), width=2)
+    # dark base trim (photo) — the wall's contact with the shiny floor
+    quad(d, [e0, e1, up(e1, 10), up(e0, 10)], shade(BASE, f))
+    d.line([up(e0, 10), up(e1, 10)], fill=shade(BASE, f * 1.3), width=1)
+    d.line([e0, e1], fill=shade(FLOOR_D, 0.6), width=2)
+
+
+def cut_wall(d, e0, e1, off, f=0.95):
+    """near walls, RPG-sliced: white stub + the cut core on top"""
+    t0, t1 = up(e0, CUT), up(e1, CUT)
+    quad(d, [e0, e1, t1, t0], shade(WALL, f * 0.9))
+    d.line([e0, e1], fill=shade(BASE, f), width=3)
+    b0 = (t0[0] + off[0], t0[1] + off[1])
+    b1 = (t1[0] + off[0], t1[1] + off[1])
+    d.polygon([t0, t1, b1, b0], fill=CUT_CORE)
+    d.line([t0, t1], fill=hx("#fff7e6"), width=2)
+    d.line([b0, b1], fill=shade(CUT_CORE, 0.72), width=1)
+
+
+def pilaster(d, p, side, w=9, ht=WH):
+    """white casing capping a wall end at the lobby mouth (the photo's
+    cased opening). side=-1 hugs the end of the wall to its LEFT,
+    side=+1 the wall to its RIGHT — never free-standing over the
+    recess floor, which read as a floating plank."""
+    x, y = p
+    x0, x1 = (x - w, x + 2) if side < 0 else (x - 2, x + w)
+    d.rectangle([x0, y - ht - 4, x1, y + 1], fill=shade(WALL, 1.03))
+    d.rectangle([x1 - 3, y - ht - 4, x1, y + 1], fill=shade(WALL, 0.84))
+    d.line([(x0, y + 1), (x1, y + 1)], fill=shade(FLOOR_D, 0.6), width=2)
+
+
+# --------------------------------------------------------- features
+def koa_door(d, a, b, ht=DOOR_H, notice=False, lei_on_pull=False):
+    """koa leaf standing in a dark architrave on a wall base span a->b"""
+    fr0, fr1 = lerp(a, b, -0.10), lerp(a, b, 1.10)
+    quad(d, [fr0, fr1, up(fr1, ht + 6), up(fr0, ht + 6)], FRAME)
+    quad(d, [a, b, up(b, ht), up(a, ht)], KOA)
+    for t, f in ((0.2, 0.9), (0.35, 0.95), (0.5, 0.78),
+                 (0.65, 0.95), (0.8, 0.9)):
+        p = lerp(a, b, t)
+        d.line([up(p, 5), up(p, ht - 5)], fill=shade(KOA, f), width=1)
+    d.line([up(lerp(a, b, 0.08), int(ht * 0.42)),
+            up(lerp(a, b, 0.92), int(ht * 0.42))],
+           fill=shade(KOA, 0.8), width=1)
+    # top reveal dark, lit lower rail — sky-key shading, house rule
+    d.line([up(a, ht - 3), up(b, ht - 3)], fill=KOA_D, width=2)
+    quad(d, [lerp(a, b, 0.05), lerp(a, b, 0.95),
+             up(lerp(a, b, 0.95), 8), up(lerp(a, b, 0.05), 8)],
+         shade(KOA, 0.7))
+    pull = lerp(a, b, 0.8)
+    d.line([up(pull, int(ht * 0.4)), up(pull, int(ht * 0.52))],
+           fill=hx("#c9b88f"), width=2)
+    if lei_on_pull:  # Opening Day — lei hung on the doorknob
+        px_, py_ = up(pull, int(ht * 0.4))
+        d.ellipse([px_ - 4, py_ - 1, px_ + 4, py_ + 11], outline=LEI,
+                  width=2)
+        d.point([(px_ - 3, py_ + 3), (px_ + 3, py_ + 6)], fill=LEI_L)
+    if notice:       # white sheet taped to the upper leaf (photo)
+        c = lerp(a, b, 0.5)
+        nx, ny = up(c, int(ht * 0.72))
+        d.polygon([(nx - 8, ny), (nx + 8, ny - 2),
+                   (nx + 9, ny + 20), (nx - 7, ny + 22)], fill=PAPER)
+        d.line([(nx - 5, ny + 6), (nx + 5, ny + 5)],
+               fill=shade(PAPER, 0.7), width=1)
+        d.line([(nx - 5, ny + 11), (nx + 5, ny + 10)],
+               fill=shade(PAPER, 0.7), width=1)
+
+
+def plaque(d, p, w=18, h=12):
+    """member nameplate beside a door — dark koa, one gold line"""
+    x, y = p
+    d.rectangle([x - w // 2, y - h, x + w // 2, y], fill=FRAME)
+    d.line([(x - w // 2 + 3, y - h + 3), (x + w // 2 - 3, y - h + 3)],
+           fill=KEY, width=1)
+    d.line([(x - w // 2 + 3, y - h + 6), (x + w // 2 - 4, y - h + 6)],
+           fill=PAPER, width=1)
+    d.line([(x - w // 2 + 3, y - h + 9), (x + w // 2 - 6, y - h + 9)],
+           fill=shade(PAPER, 0.8), width=1)
+
+
+def directory(d, a, b, y0=30, y1=66):
+    """glazed building directory recessed in the wall (photo, left
+    wall): steel frame, dark glass, pale listing lines"""
+    f0, f1 = lerp(a, b, -0.06), lerp(a, b, 1.06)
+    quad(d, [up(f0, y0 - 3), up(f1, y0 - 3), up(f1, y1 + 3),
+             up(f0, y1 + 3)], shade(STEEL, 0.75))
+    quad(d, [up(a, y0), up(b, y0), up(b, y1), up(a, y1)], GLASS)
+    ln = 5
+    for i in range(ln):
+        yy = y0 + 7 + i * (y1 - y0 - 12) / ln
+        p0 = lerp(a, b, 0.14)
+        p1 = lerp(a, b, 0.86 - (0.18 if i % 2 else 0.0))
+        d.line([up(p0, yy), up(p1, yy)],
+               fill=mix(GLASS, PAPER, 0.55 if i == 0 else 0.35), width=1)
+    d.line([up(lerp(a, b, 0.7), y0 + 4), up(lerp(a, b, 0.9), y1 - 6)],
+           fill=mix(GLASS, PAPER, 0.25), width=2)
+
+
+def art_frame(d, p, w=15, h=20):
+    """small framed print on the blank stretch of wall"""
+    x, y = p
+    d.rectangle([x - w // 2 - 2, y - h - 2, x + w // 2 + 2, y], fill=FRAME)
+    d.rectangle([x - w // 2, y - h, x + w // 2, y - 2],
+                fill=mix(BLUE, PAPER, 0.45))
+    d.line([(x - w // 2 + 2, y - 8), (x + w // 2 - 2, y - 12)],
+           fill=mix(BLUE, PAPER, 0.2), width=2)
+
+
+def plant(d, u, v, s=1.7):
+    """potted palm, office plant scaled up for the closer camera"""
+    x, y = iso(u, v)
+    d.polygon([(x - int(8 * s), y - int(10 * s)),
+               (x + int(8 * s), y - int(10 * s)),
+               (x + int(6 * s), y), (x - int(6 * s), y)],
+              fill=hx("#8c5535"))
+    d.rectangle([x - int(9 * s), y - int(13 * s), x + int(9 * s),
+                 y - int(10 * s)], fill=hx("#c08050"))
+    d.line([(x - int(6 * s), y), (x + int(6 * s), y)],
+           fill=shade(FLOOR_D, 0.8), width=2)
+    for fx, fy, c in ((-8, -30, "#3f5f3a"), (-4, -36, "#567a4c"),
+                      (0, -39, "#6f9660"), (4, -36, "#567a4c"),
+                      (8, -29, "#3f5f3a"), (-11, -22, "#567a4c"),
+                      (11, -23, "#6f9660"), (-2, -33, "#3f5f3a")):
+        top = (x + int(fx * s), y - int(13 * s) + int(fy * s))
+        bow = (x + int(fx * s) // 2, y - int(13 * s) + int(fy * s) // 2 - 4)
+        d.line([(x, y - int(13 * s)), bow], fill=hx(c), width=2)
+        d.line([bow, top], fill=hx(c), width=2)
+
+
+def figure(d, u, v, s=1.15):
+    """the introducer — aloha shirt, slacks, Opening-Day lei. Faceless
+    at this scale, per the house rule; the lei and the folder are what
+    say 'member on Opening Day'. Returns the feet px."""
+    fx, fy = iso(u, v)
+
+    def r(x0, y0, x1, y1, c):
+        d.rectangle([fx + int(x0 * s), fy + int(y0 * s),
+                     fx + int(x1 * s), fy + int(y1 * s)], fill=c)
+
+    # slacks + shoes
+    r(-8, -34, -3, -3, hx("#2e2c30"))
+    r(3, -34, 8, -3, hx("#2e2c30"))
+    r(-10, -4, -2, 0, hx("#1c1a18"))
+    r(2, -4, 10, 0, hx("#1c1a18"))
+    # shirt
+    d.polygon([(fx + int(-11 * s), fy + int(-34 * s)),
+               (fx + int(11 * s), fy + int(-34 * s)),
+               (fx + int(10 * s), fy + int(-60 * s)),
+               (fx + int(-10 * s), fy + int(-60 * s))], fill=BLUE)
+    for dx, dy in ((-6, -40), (2, -44), (7, -38), (-3, -52),
+                   (5, -55), (-8, -49)):
+        px_, py_ = fx + int(dx * s), fy + int(dy * s)
+        d.point([(px_, py_), (px_ + 1, py_)], fill=mix(BLUE, PAPER, 0.4))
+    # sleeves + forearms; right arm carries a folder
+    r(-15, -59, -10, -46, shade(BLUE, 0.9))
+    r(10, -59, 15, -46, shade(BLUE, 0.9))
+    r(-14, -46, -10, -35, SKIN)
+    r(10, -46, 14, -38, SKIN)
+    d.polygon([(fx + int(8 * s), fy + int(-42 * s)),
+               (fx + int(22 * s), fy + int(-39 * s)),
+               (fx + int(22 * s), fy + int(-33 * s)),
+               (fx + int(8 * s), fy + int(-36 * s))], fill=PAPER)
+    # lei — draped, muted green with lighter blossoms
+    d.arc([fx + int(-10 * s), fy + int(-62 * s),
+           fx + int(10 * s), fy + int(-38 * s)], 15, 165,
+          fill=mix(LEI, LEI_L, 0.35), width=5)
+    for t in (35, 90, 145):
+        ax = fx + int(10 * s * math.cos(math.radians(t)))
+        ay = fy + int(-50 * s) + int(12 * s * math.sin(math.radians(t)))
+        d.point([(ax, ay), (ax + 1, ay)], fill=LEI_L)
+    # neck + head, hair only — no face at this scale
+    r(-3, -64, 3, -58, SKIN)
+    d.ellipse([fx + int(-6 * s), fy + int(-78 * s),
+               fx + int(6 * s), fy + int(-62 * s)], fill=SKIN)
+    d.chord([fx + int(-6 * s), fy + int(-79 * s),
+             fx + int(6 * s), fy + int(-66 * s)], 180, 360,
+            fill=hx("#2a221c"))
+    return fx, fy
+
+
+# ------------------------------------------------------------- main
+def render():
+    img = Image.new("RGBA", (W, H), INK + (255,))
+    d = ImageDraw.Draw(img)
+
+    # ---- floor: corridor + lobby recess, one shared tile grid
+    tiles(d, U0, U1, -VH, VH)
+    tiles(d, LU0, LU1, LV, -VH)
+
+    # ---- far walls, painted back-to-front: the lobby's back wall is
+    # the deepest surface in the room, then its lit side reveal, then
+    # the corridor walls the recess interrupts
+    white_wall(d, iso(LU0, LV), iso(LU1, LV), WH, 0.84)      # lobby back
+    white_wall(d, iso(LU0, -VH), iso(LU0, LV), WH, 0.98)     # lobby reveal
+    white_wall(d, iso(U0, -VH), iso(LU0, -VH), WH, 0.9)      # NE, far seg
+    white_wall(d, iso(LU1, -VH), iso(U1, -VH), WH, 0.9)      # NE, near seg
+    white_wall(d, iso(U0, VH), iso(U0, -VH), WH, 1.0)        # corridor end
+
+    # ---- features on the walls
+    # far end: the caucus-room door, notice taped to it (photo)
+    koa_door(d, iso(U0, 0.7), iso(U0, -0.7), notice=True)
+    # NE far segment: the introducer's office door + nameplate + lei.
+    # It sits on the CORRIDOR wall, not in the alcove: at the narrowed
+    # width the alcove holds one person, and a door behind them put two
+    # tap zones on top of each other (the disjoint-zone assert caught
+    # it). The alcove is where the legislator stands; the door they
+    # work behind is a few paces up the hall.
+    koa_door(d, iso(-9.9, -VH), iso(-8.5, -VH), lei_on_pull=True)
+    plaque(d, up(iso(-8.2, -VH), 46))
+    # small framed print on the alcove's back wall
+    art_frame(d, up(iso(-4.9, LV), 46))
+    # NE near segment: glazed building directory + an unnamed door
+    directory(d, iso(0.4, -VH), iso(1.8, -VH))
+    koa_door(d, iso(4.0, -VH), iso(5.4, -VH))
+
+    # ---- reflections + light pools: ONE overlay on the glossy floor.
+    # The gloss is the photo's signature — doors, plants and the
+    # legislator all smear toward the camera at low alpha.
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dl = ImageDraw.Draw(lay)
+
+    def refl(a, b, direction, ln, col, alpha):
+        ox, oy = (SX * ln, SY * ln) if direction == "u" else (-SX * ln,
+                                                              SY * ln)
+        dl.polygon([a, b, (b[0] + ox, b[1] + oy), (a[0] + ox, a[1] + oy)],
+                   fill=col + (alpha,))
+
+    refl(iso(U0, 0.8), iso(U0, -0.8), "u", 2.0, KOA_D, 40)
+    refl(iso(U0, 0.8), iso(U0, -0.8), "u", 3.2, KOA_D, 16)
+    refl(iso(-9.9, -VH), iso(-8.5, -VH), "v", 1.6, KOA_D, 32)
+    refl(iso(4.0, -VH), iso(5.4, -VH), "v", 1.5, KOA_D, 28)
+    refl(iso(0.4, -VH), iso(1.8, -VH), "v", 1.1, GLASS, 24)
+    # overhead-light streaks running down the corridor (photo ceiling)
+    for pu, pv, rw, al in ((-8.6, 0.2, 64, 18), (-4.6, 0.2, 70, 20),
+                           (-0.4, 0.2, 64, 18), (3.6, 0.2, 62, 16),
+                           (-4.4, -3.6, 56, 14)):
+        x, y = iso(pu, pv)
+        for rr, aa in ((rw, al // 2), (rw * 0.6, al)):
+            dl.ellipse([x - rr, y - rr * 0.22, x + rr, y + rr * 0.22],
+                       fill=(255, 236, 200, aa))
+    # plant + figure ground contact
+    for pu, pv in ((-7.0, -3.0), (-3.0, -4.0)):
+        x, y = iso(pu, pv)
+        dl.ellipse([x - 26, y - 9, x + 26, y + 9],
+                   fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
+        dl.ellipse([x - 14, y + 4, x + 14, y + 28],
+                   fill=hx("#2c3d28") + (26,))
+    fxp, fyp = iso(-5.4, -3.1)
+    dl.ellipse([fxp - 19, fyp - 8, fxp + 19, fyp + 8],
+               fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
+    dl.polygon([(fxp - 10, fyp + 4), (fxp + 10, fyp + 4),
+                (fxp + 7, fyp + 28), (fxp - 7, fyp + 28)],
+               fill=BLUE + (26,))
+    img.alpha_composite(lay)
+    d = ImageDraw.Draw(img)
+
+    # ---- things standing on the floor (back-to-front)
+    plant(d, -7.0, -3.0)
+    ffx, ffy = figure(d, -5.4, -3.1)
+    # deep in the alcove, NOT at its mouth: a pot standing near the
+    # casing post gets sliced by it and reads as a clipping error
+    plant(d, -3.0, -4.0)
+
+    # white casing posts at the lobby mouth (photo's cased opening) —
+    # they also seat the wall seams where the recess interrupts the run
+    pilaster(d, iso(LU0, -VH), -1)
+    pilaster(d, iso(LU1, -VH), +1)
+
+    # ---- near walls, sliced (far-to-near)
+    cut_wall(d, iso(U0, VH), iso(U1, VH), (-18, -10))        # SW run
+    cut_wall(d, iso(U1, -VH), iso(U1, VH), (18, -10))        # near end
+
+    img = img.convert("RGB")
+    if SS > 1:
+        img = img.resize((W // SS, H // SS), Image.LANCZOS)
+    img.save(OUT_PNG)
+    bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
+
+    # content bbox against the ink — the JS `view` rect is measured
+    # from this (plus breathing margin); re-print on every re-bake
+    arr = np.array(img)
+    mask = np.any(arr != np.array(INK), axis=-1)
+    ys, xs = np.where(mask)
+    bbox = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
+
+    def zone(cx, cy, w, h):
+        return [int(cx), int(cy), int(w), int(h)]
+
+    caucus_c = iso(U0, 0)
+    office_c = iso(-9.2, -VH)
+    dirx_c = iso(1.1, -VH)
+    hotspots = [
+        dict(id="legislator", name="Your Introducer", kind="door",
+             px=ffx, py=ffy - 60,
+             zone=zone(ffx, ffy - 44, 66, 100),
+             text="Rep. X — the member who agreed to carry your "
+                  "bills, waiting off to the side between the morning "
+                  "caucus and the first floor session. Opening Day is "
+                  "the one morning everyone is reachable."),
+        dict(id="caucus", name="Caucus Room", kind="poi",
+             px=caucus_c[0], py=caucus_c[1] - 40,
+             zone=zone(caucus_c[0], caucus_c[1] - 50, 92, 108),
+             text="Koa doors and a taped agenda: the majority caucus "
+                  "met behind them before the session even opened. "
+                  "The floor ratifies; rooms like this decide."),
+        dict(id="office", name="Member's Office", kind="poi",
+             px=office_c[0], py=office_c[1] - 40,
+             zone=zone(office_c[0], office_c[1] - 50, 88, 106),
+             text="Your introducer's office — nameplate polished, a "
+                  "lei on the door pull. Every member gets one door "
+                  "on these hallways; what they carry through it is "
+                  "what gets a number and a hearing."),
+        dict(id="directory", name="Directory", kind="poi",
+             px=dirx_c[0], py=dirx_c[1] - 36,
+             zone=zone(dirx_c[0], dirx_c[1] - 50, 80, 58),
+             text="The building directory behind glass. Committee "
+                  "rooms below, member offices along these wings — "
+                  "the Capitol is small enough to walk and big "
+                  "enough to get lost in."),
+        dict(id="exit", name="To the rotunda", kind="exit",
+             px=iso(6.2, 0)[0], py=iso(6.2, 0)[1] + 6,
+             text=""),
+    ]
+    # zones must be disjoint — same assert the capitol bake earns
+    zs = [h["zone"] for h in hotspots if "zone" in h]
+    for i in range(len(zs)):
+        for j in range(i + 1, len(zs)):
+            a_, b_ = zs[i], zs[j]
+            if (abs(a_[0] - b_[0]) * 2 < a_[2] + b_[2] and
+                    abs(a_[1] - b_[1]) * 2 < a_[3] + b_[3]):
+                raise AssertionError(f"zones overlap: {a_} vs {b_}")
+
+    meta = {
+        "name": "House Wing — Opening Day",
+        "image": "hallway.png",
+        "w": W, "h": H, "scale": SS, "bg": bg,
+        "spawn": [iso(6, 0)[0], iso(6, 0)[1]],
+        "hotspots": hotspots,
+    }
+    OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
+    print("wrote", OUT_PNG.name, f"{img.width}x{img.height}",
+          "and", OUT_JSON.name)
+    print("content bbox:", bbox,
+          "-> suggested view:",
+          [bbox[0] - 24, bbox[1] - 24, bbox[2] + 24, bbox[3] + 24])
+
+
+if __name__ == "__main__":
+    render()
