@@ -1,0 +1,111 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Diorama parallax — hallway spike</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0e18;color:#cfd8f5;
+    font:12px/1.5 "Avenir Next",Verdana,sans-serif;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:10px;top:10px;background:rgba(10,14,24,.86);
+    border:1px solid #2b3a6b;border-radius:8px;padding:10px 12px;z-index:9}
+  label{display:block;margin:4px 0}
+  input[type=range]{width:180px;vertical-align:middle}
+  b{color:#f2c14e}
+</style>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div><b>diorama parallax</b> — move the pointer over the room</div>
+  <label>amplitude <input id="amp" type="range" min="0" max="40" value="14">
+    <span id="ampv">14</span> scene px</label>
+  <label>framing <input id="tight" type="range" min="100" max="280" value="100">
+    <span id="tightv">1.00</span>&times;</label>
+  <label><input id="ceil" type="checkbox" checked> respect 1.6&times; zoom ceiling</label>
+  <label><input id="flat" type="checkbox"> show FLAT bake (A/B)</label>
+  <label><input id="tint" type="checkbox"> tint layers</label>
+  <div id="fps" style="opacity:.7"></div>
+</div>
+<script>
+const VIEW = [220, 167, 1160, 764];          // ROOM_HALLWAY.view
+const VW = VIEW[2]-VIEW[0], VH = VIEW[3]-VIEW[1];
+// depth factor per band: back barely moves, the dollhouse cut moves most
+const BANDS = [
+  {file:"assets/map/hallway_back.png",  k:0.00, tint:"#3aa0ff"},
+  {file:"assets/map/hallway_mid.png",   k:0.55, tint:"#46d17a"},
+  {file:"assets/map/hallway_front.png", k:1.00, tint:"#ff6a4a"},
+];
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+const amp = document.getElementById("amp"), ampv = document.getElementById("ampv");
+const tight = document.getElementById("tight"), tightv = document.getElementById("tightv");
+const ceil = document.getElementById("ceil");
+const flat = document.getElementById("flat"), tint = document.getElementById("tint");
+const fpsEl = document.getElementById("fps");
+let px = 0, py = 0, imgs = [], flatImg = null, dpr = 1;
+
+function size(){
+  dpr = window.devicePixelRatio || 1;
+  c.width = innerWidth*dpr; c.height = innerHeight*dpr;
+  c.style.width = innerWidth+"px"; c.style.height = innerHeight+"px";
+}
+function load(src){ return new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=src; }); }
+
+let last = performance.now(), frames = 0, fps = 0;
+function draw(){
+  // CSS px, matching RoomScene.fit() which reads Phaser's scale.width;
+  // dpr is applied as a transform so the backing store stays sharp
+  // WITHOUT inflating the zoom the way an earlier pass did.
+  const cw = c.clientWidth, ch = c.clientHeight;
+  const T = +tight.value/100;
+  const vw = VW/T, vh = VH/T;
+  const z = Math.min(ceil.checked ? 1.6 : 99, cw/vw, ch/vh);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle = "#0a0e18"; ctx.fillRect(0,0,cw,ch);
+  ctx.imageSmoothingEnabled = true;
+  const dx = cw/2 - (VIEW[0]+VW/2)*z, dy = ch/2 - (VIEW[1]+VH/2)*z;
+  window.__z = z;
+  const A = +amp.value;
+  if (flat.checked && flatImg){
+    ctx.drawImage(flatImg, dx, dy, 1500*z, 1000*z);
+  } else {
+    imgs.forEach((im,i) => {
+      const b = BANDS[i];
+      const ox = px*b.k*A*z, oy = py*b.k*A*z;
+      ctx.drawImage(im, dx+ox, dy+oy, 1500*z, 1000*z);
+      if (tint.checked){
+        ctx.save(); ctx.globalCompositeOperation="source-atop";
+        ctx.globalAlpha=.28; ctx.fillStyle=b.tint;
+        ctx.fillRect(dx+ox, dy+oy, 1500*z, 1000*z); ctx.restore();
+      }
+    });
+  }
+  frames++;
+  const now = performance.now();
+  if (now-last > 500){ fps = Math.round(frames*1000/(now-last)); frames=0; last=now;
+    fpsEl.textContent = fps+" fps · zoom "+z.toFixed(2); }
+  fpsEl.textContent = "zoom "+z.toFixed(2)+(z>=1.599&&ceil.checked?" (at ceiling)":"");
+}
+// pointer drives the "camera"; -1..1 across the window
+addEventListener("pointermove", e => {
+  px = (e.clientX/innerWidth)*2-1; py = (e.clientY/innerHeight)*2-1;
+});
+addEventListener("resize", () => { size(); draw(); });
+amp.addEventListener("input", ()=>{ ampv.textContent=amp.value; draw(); });
+tight.addEventListener("input", ()=>{ tightv.textContent=(+tight.value/100).toFixed(2); draw(); });
+ceil.addEventListener("change", draw);
+flat.addEventListener("change", draw); tint.addEventListener("change", draw);
+// drive from the console for screenshots: window.setParallax(x, y)
+window.setParallax = (x,y) => { px=x; py=y; draw(); };
+window.__state = () => ({px,py,amp:+amp.value,flat:flat.checked,fps,
+  tight:+tight.value/100, zoom:window.__z, ceiling:ceil.checked});
+// screen-px travel of a band between the two pointer extremes
+window.__travel = (k) => 2*k*(+amp.value)*window.__z;
+window.setFraming = (t, useCeil) => { tight.value = Math.round(t*100);
+  tightv.textContent = t.toFixed(2);
+  if (useCeil !== undefined) ceil.checked = useCeil; draw(); };
+(async () => {
+  size();
+  imgs = await Promise.all(BANDS.map(b => load(b.file)));
+  flatImg = await load("assets/map/hallway.png");
+  window.__ready = true;
+  const loop = () => { draw(); requestAnimationFrame(loop); };
+  loop();
+})();
+</script>

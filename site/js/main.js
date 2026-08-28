@@ -52,7 +52,7 @@ const START_ROOM = "capitol";
 const OFF_V = 2;
 /* Same rule for the opening-week hallway bake (tools/render_hallway.py:
    hallway.png + map/hallway.json). */
-const HALL_V = 1;
+const HALL_V = 2;
 /* WEEK 1 OPENS IN THE HALLWAY, NOT THE CAPITOL (2026-08-27, user's
    call: the opening scene is a House-wing hallway from a reference
    photo, "you're talking to the legislator off to the side"; later
@@ -6102,7 +6102,19 @@ const ROOM_HALLWAY = {
   json: "map/hallway.json", img: "assets/map/hallway.png",
   exitTo: "capitol",
   noExit: true,
-  view: [220, 167, 1160, 764],
+  // TIGHTENED 2026-08-28 (user's call, "zoomed in more by default").
+  // Not the content bbox any more — this is the bbox shrunk 1.15x
+  // about its centre, which lifts the fitted zoom from 1.21 to ~1.39
+  // on a 1280x720 window and stops the corridor floating in a field
+  // of ink. Cropping the run's ends is intended: a corridor cut by
+  // the frame reads as continuing, the same argument the Capitol's
+  // wing makes. 1.15 IS THE LIMIT, and hotspots are what bound it —
+  // tighter clips the caucus door (and by 1.35 the office door) out
+  // of frame, and the zoom ceiling is 1.6 anyway, so past ~1.35 a
+  // tighter rect buys crop without buying magnification.
+  // render_hallway.py asserts every zone still fits this rect; change
+  // one and change the other.
+  view: [281, 206, 1099, 725],
   enter: null,
   // the legislator IS the week: tapping them opens the session flow
   // (creation funnel first, then Opening Day — renderHub's early bail

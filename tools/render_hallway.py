@@ -328,9 +328,29 @@ def figure(d, u, v, s=1.15):
 
 
 # ------------------------------------------------------------- main
-def render():
+def render(layers=False):
+    """Bake the room. With `layers=True` the SAME painters draw onto
+    three depth targets instead of one canvas — the diorama-parallax
+    spike (2026-08-27). The split is by depth band, not by painter
+    convenience:
+      BACK  the floor, the far walls and everything ON them, plus the
+            gloss/reflection overlay that belongs to the floor
+      MID   what STANDS on the floor — plants, the legislator — and
+            the casing posts at the alcove mouth
+      FRONT the sliced near walls, the dollhouse cut itself
+    Every layer is drawn COMPLETE on its own transparent canvas, which
+    is the whole reason this can work: offsetting a near layer uncovers
+    a far layer that was painted as if nothing ever occluded it, so no
+    holes open up. Compositing them back in order must reproduce the
+    flat bake — render() asserts that so the split cannot silently
+    drift from the shipped room."""
     img = Image.new("RGBA", (W, H), INK + (255,))
-    d = ImageDraw.Draw(img)
+    back = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    mid = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    front = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # flat mode paints every band onto the one canvas, exactly as before
+    tb, tm, tf = (back, mid, front) if layers else (img, img, img)
+    d = ImageDraw.Draw(tb)
 
     # ---- floor: corridor + lobby recess, one shared tile grid
     tiles(d, U0, U1, -VH, VH)
@@ -346,8 +366,14 @@ def render():
     white_wall(d, iso(U0, VH), iso(U0, -VH), WH, 1.0)        # corridor end
 
     # ---- features on the walls
-    # far end: the caucus-room door, notice taped to it (photo)
-    koa_door(d, iso(U0, 0.7), iso(U0, -0.7), notice=True)
+    # far end: the caucus-room door, notice taped to it (photo).
+    # OFF-CENTRE BY 0.3 ON PURPOSE (2026-08-28): the room's `view` rect
+    # tightened to fill the frame, and dead-centre on the end wall put
+    # this door's tap zone 7px outside it — visible but unclickable.
+    # The wall gives ±0.75 of play before the leaf meets its own
+    # corner, so a third of that buys the margin and still reads as
+    # the door terminating the corridor.
+    koa_door(d, iso(U0, 0.4), iso(U0, -1.0), notice=True)
     # NE far segment: the introducer's office door + nameplate + lei.
     # It sits on the CORRIDOR wall, not in the alcove: at the narrowed
     # width the alcove holds one person, and a door behind them put two
@@ -374,8 +400,8 @@ def render():
         dl.polygon([a, b, (b[0] + ox, b[1] + oy), (a[0] + ox, a[1] + oy)],
                    fill=col + (alpha,))
 
-    refl(iso(U0, 0.8), iso(U0, -0.8), "u", 2.0, KOA_D, 40)
-    refl(iso(U0, 0.8), iso(U0, -0.8), "u", 3.2, KOA_D, 16)
+    refl(iso(U0, 0.5), iso(U0, -1.1), "u", 2.0, KOA_D, 40)
+    refl(iso(U0, 0.5), iso(U0, -1.1), "u", 3.2, KOA_D, 16)
     refl(iso(-9.9, -VH), iso(-8.5, -VH), "v", 1.6, KOA_D, 32)
     refl(iso(4.0, -VH), iso(5.4, -VH), "v", 1.5, KOA_D, 28)
     refl(iso(0.4, -VH), iso(1.8, -VH), "v", 1.1, GLASS, 24)
@@ -387,23 +413,35 @@ def render():
         for rr, aa in ((rw, al // 2), (rw * 0.6, al)):
             dl.ellipse([x - rr, y - rr * 0.22, x + rr, y + rr * 0.22],
                        fill=(255, 236, 200, aa))
-    # plant + figure ground contact
+    # ---- CONTACT SHADOWS BELONG TO THE OBJECT, NOT THE FLOOR.
+    # Parked on the floor (where they started) the legislator lifts
+    # clean off her own shadow the moment the bands separate —
+    # measured on the parallax spike, visible at 6px and unmistakable
+    # by 14. In FLAT mode they are still drawn straight into the gloss
+    # overlay, exactly as before: ImageDraw fills REPLACE pixels rather
+    # than blending, so routing them through a second composite is not
+    # the same picture and moved the shipped bake by a few units.
+    sh_lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if layers else None
+    ds = ImageDraw.Draw(sh_lay) if layers else dl
     for pu, pv in ((-7.0, -3.0), (-3.0, -4.0)):
         x, y = iso(pu, pv)
-        dl.ellipse([x - 26, y - 9, x + 26, y + 9],
+        ds.ellipse([x - 26, y - 9, x + 26, y + 9],
                    fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
-        dl.ellipse([x - 14, y + 4, x + 14, y + 28],
+        ds.ellipse([x - 14, y + 4, x + 14, y + 28],
                    fill=hx("#2c3d28") + (26,))
     fxp, fyp = iso(-5.4, -3.1)
-    dl.ellipse([fxp - 19, fyp - 8, fxp + 19, fyp + 8],
+    ds.ellipse([fxp - 19, fyp - 8, fxp + 19, fyp + 8],
                fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
-    dl.polygon([(fxp - 10, fyp + 4), (fxp + 10, fyp + 4),
+    ds.polygon([(fxp - 10, fyp + 4), (fxp + 10, fyp + 4),
                 (fxp + 7, fyp + 28), (fxp - 7, fyp + 28)],
                fill=BLUE + (26,))
-    img.alpha_composite(lay)
-    d = ImageDraw.Draw(img)
+    tb.alpha_composite(lay)
+    if layers:
+        tm.alpha_composite(sh_lay)
+    d = ImageDraw.Draw(tb)
 
-    # ---- things standing on the floor (back-to-front)
+    # ---- things standing on the floor (back-to-front) -> MID
+    d = ImageDraw.Draw(tm)
     plant(d, -7.0, -3.0)
     ffx, ffy = figure(d, -5.4, -3.1)
     # deep in the alcove, NOT at its mouth: a pot standing near the
@@ -412,12 +450,35 @@ def render():
 
     # white casing posts at the lobby mouth (photo's cased opening) —
     # they also seat the wall seams where the recess interrupts the run
+    # -> BACK: a post that caps a wall end must not drift off it
+    d = ImageDraw.Draw(tb)
     pilaster(d, iso(LU0, -VH), -1)
     pilaster(d, iso(LU1, -VH), +1)
 
-    # ---- near walls, sliced (far-to-near)
+    # ---- near walls, sliced (far-to-near) -> FRONT
+    d = ImageDraw.Draw(tf)
     cut_wall(d, iso(U0, VH), iso(U1, VH), (-18, -10))        # SW run
     cut_wall(d, iso(U1, -VH), iso(U1, VH), (18, -10))        # near end
+
+    if layers:
+        # RECOMPOSITING THE BANDS MUST REPRODUCE THE FLAT BAKE. That is
+        # the only thing standing between a depth split and a room that
+        # quietly stops matching the one that shipped, so it is checked
+        # against the PNG on disk rather than trusted.
+        flat = img.copy()
+        for L in (back, mid, front):
+            flat.alpha_composite(L)
+        ref = np.asarray(Image.open(OUT_PNG).convert("RGB"), np.int16)
+        cur = np.asarray(flat.convert("RGB"), np.int16)
+        dd = np.abs(ref - cur).max(axis=-1)
+        print(f"recomposite vs shipped bake: {int((dd > 8).sum())} px "
+              f"differ (max {int(dd.max())}, mean {dd.mean():.2f})")
+        names = ("back", "mid", "front")
+        for nm, L in zip(names, (back, mid, front)):
+            out = ROOT / "site" / "assets" / "map" / f"hallway_{nm}.png"
+            L.save(out)
+            print("  wrote", out.name, L.size)
+        return
 
     img = img.convert("RGB")
     if SS > 1:
@@ -435,7 +496,7 @@ def render():
     def zone(cx, cy, w, h):
         return [int(cx), int(cy), int(w), int(h)]
 
-    caucus_c = iso(U0, 0)
+    caucus_c = iso(U0, -0.3)
     office_c = iso(-9.2, -VH)
     dirx_c = iso(1.1, -VH)
     hotspots = [
@@ -479,6 +540,22 @@ def render():
                     abs(a_[1] - b_[1]) * 2 < a_[3] + b_[3]):
                 raise AssertionError(f"zones overlap: {a_} vs {b_}")
 
+    # EVERY HOTSPOT MUST FIT THE ROOM'S `view` RECT. The rect lives in
+    # main.js (ROOM_HALLWAY.view) but the consequence is baked here: a
+    # zone outside it is a door the player can see and cannot press.
+    # Keep the two in step — this asserts the pairing rather than
+    # trusting it, the same way the zone-overlap check does.
+    VIEW = (281, 206, 1099, 725)
+    for h in hotspots:
+        z = h.get("zone")
+        if not z:
+            continue
+        if not (z[0] - z[2] / 2 >= VIEW[0] and z[1] - z[3] / 2 >= VIEW[1]
+                and z[0] + z[2] / 2 <= VIEW[2]
+                and z[1] + z[3] / 2 <= VIEW[3]):
+            raise AssertionError(
+                f"hotspot {h['id']} zone {z} falls outside view {VIEW}")
+
     meta = {
         "name": "House Wing — Opening Day",
         "image": "hallway.png",
@@ -495,4 +572,9 @@ def render():
 
 
 if __name__ == "__main__":
-    render()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--layers", action="store_true",
+                    help="emit the three depth bands for the "
+                         "diorama-parallax spike instead of the flat bake")
+    render(layers=ap.parse_args().layers)

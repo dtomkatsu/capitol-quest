@@ -3270,6 +3270,61 @@ stairs hotspot or Esc. Rules:
     the capitol, hallway asleep; restart → hallway + funnel. Mobile
     375px framing checked. After the narrowing, all four zones
     re-verified to resolve to exactly one label each.
+  - **THE VIEW IS TIGHTENED, AND HOTSPOTS ARE WHAT BOUND IT**
+    (2026-08-28, user: "zoomed in more by default"). `view` is no
+    longer the content bbox — it is that bbox shrunk **1.15x about its
+    centre**, `[281, 206, 1099, 725]`, which lifts the fitted zoom from
+    1.21 to ~1.39 at 1280x720 and stops the corridor floating in a
+    field of ink. Cropping the run's ends is intended: a corridor cut
+    by the frame reads as continuing, the Capitol wing's argument.
+    Three numbers decide how far this can go, and they were measured,
+    not guessed:
+    - **1.15 is the limit, because of TAP TARGETS.** At 1.15 the
+      caucus door's zone fell 7px outside the rect — visible and
+      unclickable; at 1.35 the office door goes too. The caucus door
+      is therefore drawn 0.3 OFF-CENTRE on the end wall (it has ±0.75
+      of play before the leaf meets its own corner) to buy the margin
+      back. render_hallway.py now ASSERTS every zone fits the rect —
+      the rect lives in main.js, so keep the two in step.
+    - **The zoom ceiling is 1.6 and it binds at framing ~1.35**, so a
+      tighter rect past that buys crop without buying magnification.
+    - **Past 1.6 the 1500px bake softens** — verified by rendering the
+      same world region at 1.21 / 1.60 / 2.40; at 2.4 the lei, the
+      shirt edge and the tile joints all go mushy. Zooming further
+      means authoring the room bigger, not raising the number.
+  - **Diorama-parallax spike (2026-08-28) — `--layers` on the bake,
+    harness at `site/dev-parallax.html`.** `render(layers=True)` runs
+    the SAME painters onto three depth bands (back / mid / front) and
+    asserts the recomposite reproduces the flat bake; the flat output
+    is byte-identical, so the split is safe to trust. Regenerate the
+    bands with `python3 tools/render_hallway.py --layers` (they are
+    derived and not committed). What it measured, so nobody re-learns
+    it:
+    - **Holes are a NON-ISSUE** — a flat 0.4% of the silhouette at
+      every amplitude from 2 to 30px, which is edge antialiasing, not
+      gaps. Each band is painted complete, so uncovering one reveals a
+      layer drawn as if nothing ever occluded it.
+    - **The real failure is CONTACT.** Objects lifted off their own
+      contact shadows (those lived in the floor's gloss overlay) —
+      visible at 6px, unmistakable at 14 — and the casing posts
+      drifted off the wall ends they cap. Fixed by re-banding, not by
+      tuning: shadows travel with their object, posts are structure.
+      **In FLAT mode the shadows are still drawn straight into the
+      gloss overlay**, because ImageDraw fills REPLACE pixels rather
+      than blending and routing them through a second composite moved
+      the shipped bake by a few units.
+    - **Cost is ~3x the draw**: 18.5ms vs 6.4ms per frame at 2560x1440
+      dpr 2, i.e. ~54fps against ~155. Measure this with a 1px
+      `getImageData` after each draw — Canvas2D batches drawImage and
+      the naive timing reads a meaningless 0.02ms.
+    - **Verdict: not worth it here, and worse for the Capitol.** The
+      effect is subtle at safe amplitudes, and at large ones it reads
+      as objects sliding across the floor rather than a camera move,
+      because in a projected iso box everything shares contact edges.
+      The Capitol has railings, parapets and columns drawn in three
+      pieces across storeys — the contact problem would recur at
+      nearly every element. The tightened view above delivered most of
+      the perceived gain for none of the cost.
 
 ## Vendored: rot.js + Phaser iso plugin (2026-08-26)
 
