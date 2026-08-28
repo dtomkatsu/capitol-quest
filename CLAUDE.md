@@ -2069,9 +2069,47 @@ user's call).
       now renders at zoom ~1.05, so scene px are display px and
       **1:1 IS game scale**. The old "judge on the downscaled bake"
       rule still applies to anything that ships at SS 2.
-    - The groove (`FLUTE_GROOVE`) was NOT deepened and no pickets
-      came back: fixing the clip alone made the verticals read. Both
-      are now module-level constants if it ever needs a sweep.
+    - **The clip was only HALF of it, and the claim that fixing it
+      alone made the verticals read was WRONG** — corrected the same
+      day, see the groove rule below.
+  - **THE GROOVE IS A SHADOW GAP, NOT A TINT** (2026-08-27, user:
+    "inspect the railing/fence. it's all white. dont you see it").
+    `FLUTE_GROOVE` shipped at #9d9683 — lum 150 against the band's
+    230, a ratio of 0.65, which is a light-grey pinstripe on
+    near-white and reads as no spokes at all. It is #45423a (lum 66)
+    now, at `FLUTE_W` 2 on `FLUTE_PITCH` 6: a DARK gap with a 4px
+    white fin, so the band still reads as white trim. The well
+    railing that always DID read as a railing runs its pickets at lum
+    52-68 — that gap was the entire difference between the two, and
+    every railing in the room now speaks the same language.
+    - **JUDGE THIS ON THE GAME CANVAS, NEVER ON THE SOURCE PNG AT
+      1:1.** This is the rule the whole episode exists to write down.
+      The runtime resamples the bake at zoom ~1.047 through a LINEAR
+      filter, which blends a 2px groove into its white neighbours.
+      Read off the live canvas the shipped band came back as
+      `[174,150,198,230,230,230]` — the groove is in the data and
+      invisible on screen. A 1:1 crop of the bake shows it crisply
+      and is a LIE about what the player sees; reading one is exactly
+      what made the first pass call this fixed when it was not. Grab
+      pixels with `canvas.getContext('2d').getImageData(...)`, or
+      `drawImage` a sub-rect into a scratch canvas and look at that.
+    - The old "judge on the DOWNSCALED bake" rule (written for SS 2)
+      is the same rule; `SS 1` did not retire it, it only changed
+      WHERE the resample happens — from LANCZOS at bake time to
+      bilinear at draw time. Either way, never judge at 1:1.
+    - Swept before choosing (`FLUTE_GROOVE`/`FLUTE_W` are
+      module-level for exactly this, same pattern as `COL_FACETS`):
+      at w2, #8a8271 is still white, #6e6a5c is faint, #585446 reads,
+      #45423a is crisp. w3 gives a 50/50 bar that reads as a
+      balustrade too, but it turns half of every band dark and the
+      fascia stops reading as white trim — rejected on the
+      whole-building view, not on a strip.
+    - This constant drives EVERY fluted band (both parapets, both
+      slab bands, the makai fascia), which is correct: the user's
+      complaint was the room's white bands generally, not one rail.
+    - Still no pickets on the third-floor rail — the 2026-08-24 call
+      stands. The spokes read now because the groove is dark, not
+      because the parapet became an open balustrade.
   - **The third-floor rail is a SOLID white fluted PARAPET with the
     koa cap on TOP — no pickets** (2026-08-24, user: "the pickets for
     the railings are showing over the white, which is incorrect").

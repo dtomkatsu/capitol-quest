@@ -186,7 +186,27 @@ PICKET_W = 2               # judged on the DOWNSCALED bake: at SS 2 a
                            # LANCZOS renders the run as grey haze.
 FLUTE_PITCH = 6            # the white fluted bands, same rule
 FLUTE_FIELD = "#ece6d4"    # the band's lit face
-FLUTE_GROOVE = "#9d9683"   # the groove between two flutes — see white_f
+# THE GROOVE IS A SHADOW GAP, NOT A TINT (2026-08-27, user: "inspect
+# the railing/fence. it's all white. dont you see it"). It shipped at
+# #9d9683 — lum 150 against the band's 230, a ratio of 0.65 — which is
+# a light-grey pinstripe on near-white, i.e. no visible spokes at all.
+# The well railing that DOES read as a railing runs its pickets at lum
+# 52-68, and that gap is the whole difference: one reads as a fence,
+# the other as white trim. #45423a is lum 66, so every railing in the
+# room now speaks the same language.
+#
+# JUDGE THIS ON THE GAME CANVAS, NEVER ON THE SOURCE PNG AT 1:1. The
+# runtime resamples the bake at zoom ~1.047 through a LINEAR filter,
+# which blends a 2px groove with its white neighbours; measured off
+# the live canvas the shipped groove came back as [174,150,198,230,
+# 230,230] — present in the data, invisible on screen. A 1:1 crop of
+# the bake hides exactly that, and reading one is what made an earlier
+# pass call this fixed when it was not.
+FLUTE_GROOVE = "#45423a"   # the shadow gap between two flutes
+# Width 2 on FLUTE_PITCH 6 — a DARK GAP with a 4px white fin, not a
+# 50/50 bar. 3px was swept and reads as a balustrade too, but it turns
+# half of every band dark and the fascia stops reading as white trim.
+FLUTE_W = 2
 
 
 def white_f(f):
@@ -1572,7 +1592,7 @@ def fluted_band(d, e0, e1, y_top, depth, f=1.0):
               fill=shade(hx(FLUTE_FIELD), white_f(f)))
     for b in even_run(p0, p1, FLUTE_PITCH):
         d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
-               fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
     d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
     d.line([(p0[0], p0[1] + depth), (p1[0], p1[1] + depth)],
            fill=shade(hx("#8a8474"), f), width=1)
@@ -2591,7 +2611,7 @@ def paint_upper_level(d):
         q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
-                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
+                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
 
         # ---- the walkway, standing in front of the wall
         d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
@@ -2637,7 +2657,7 @@ def paint_upper_level(d):
         if b[0] < w0[0]:
             continue
         d.line([up(b, 59), up(b, 71)],
-               fill=shade(hx(FLUTE_GROOVE), white_f(fdh)), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(fdh)), width=FLUTE_W)
     d.polygon([aw0, aw1, w1, w0], fill=shade(FLOOR, fdh * 0.94))
     d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
     bench_at(d, w0, w1, 0.72, fdh)
@@ -2737,7 +2757,7 @@ def paint_walls(d):
         q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
-                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=2)
+                   fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
         # NO benches: drawn floating mid-walkway they read as brown
         # bars sitting on the railing (user-caught, removed 2026-08-22)
 
@@ -2775,7 +2795,7 @@ def paint_walls(d):
         if b[0] < w0[0]:
             continue
         d.line([up(b, 59), up(b, 71)],
-               fill=shade(hx(FLUTE_GROOVE), white_f(fw)), width=2)
+               fill=shade(hx(FLUTE_GROOVE), white_f(fw)), width=FLUTE_W)
     return doors
 
 
