@@ -1770,6 +1770,74 @@ def paint_rail_pots(d):
 
 
 # ------------------------------------------------------- mauka walls
+def grand_seed(p):
+    """The grand leaf's grain seed, off the door's own position. Shared
+    so the swing bake reproduces the figure of the leaf it replaces."""
+    return (abs(int(p[0])) * 41 + abs(int(p[1])) * 53 + 19) % 99991
+
+
+def leaf_grain(quad, w0, w1, y0, y1, seed, face=1.0):
+    """A flush koa slab: separable grain(w) × falloff(y), painted as
+    overlapping 1×2 cells so neither signal bands. Grain is seeded off
+    the leaf's own position, so adding a door elsewhere on the wall
+    never reshuffles its neighbours' figure.
+
+    Module-level, and taking `quad` rather than owning one, so the
+    SWING BAKE can paint the very same leaf through a different
+    mapping (swing_sheet). A door that opens has to be the door that
+    was closed — an approximation of this grain read as a different
+    slab the moment the sprite appeared over the baked one."""
+    g = np.random.default_rng(seed)
+    ph = g.uniform(0, 2 * math.pi, 3)
+    streaks = g.uniform(0.08, 0.92, int(g.integers(1, 3)))
+    span, ht = w1 - w0, y1 - y0
+    w = w0
+    while w < w1:
+        x = (w - w0) / span
+        fg = 1.0 + sum(
+            a * math.sin(2 * math.pi * fq * x + ph[i])
+            for i, (a, fq) in enumerate(((.055, 0.9), (.030, 2.3),
+                                         (.016, 5.1))))
+        for s in streaks:                       # darker figure line
+            if abs(x - s) < 0.035:
+                fg *= 0.88
+        y = y0
+        while y < y1:
+            fy = 0.72 + 0.40 * ((y - y0) / ht) ** 0.7
+            quad(w, min(w + 1.2, w1), y, min(y + 2.4, y1),
+                 shade(KOA_DR, fg * fy * face))
+            y += 2.0
+        w += 1.0
+
+
+def grand_leaf(d, pt, quad, hw, seed, col, face=1.0):
+    """The WIDE koa leaf: flush slab, one recessed panel, brass pull,
+    kickplate. Extracted from door_at so `swing_sheet` can draw the
+    identical leaf on a swung mapping — see leaf_grain's note.
+
+    `face` is the swing's lighting term and MUST default to 1.0: at
+    rest this has to reproduce the bake exactly."""
+    def sh(c, k):
+        return shade(c, k * face)
+    leaf_grain(quad, -hw, hw, 0, 46, seed, face)
+    d.line([pt(-hw, 1), pt(-hw, 45)], fill=sh(col, 0.50), width=1)
+    d.line([pt(hw - 1, 1), pt(hw - 1, 45)], fill=sh(col, 1.12), width=1)
+    # single recessed panel, centred
+    w0, w1 = -hw + 4, hw - 4
+    quad(w0, w1, 9, 40, sh(col, 0.74))
+    d.line([pt(w0, 40), pt(w1, 40)], fill=sh(col, 0.52), width=1)
+    d.line([pt(w0, 9), pt(w1, 9)], fill=sh(col, 1.16), width=1)
+    d.line([pt(w0, 9), pt(w0, 40)], fill=sh(col, 0.62), width=1)
+    d.line([pt(w1, 9), pt(w1, 40)], fill=sh(col, 1.08), width=1)
+    # brass pull, centred — grand rooms keep brass, offices get the
+    # dull lever
+    d.line([pt(0, 20), pt(0, 27)], fill=KEY, width=2)
+    d.line([pt(0, 19), pt(0, 20)], fill=hx("#8a6420"), width=2)
+    # kickplate
+    quad(-hw, hw, 0, 5, sh(col, 0.62))
+    d.line([pt(-hw, 5), pt(hw, 5)], fill=sh(col, 0.48), width=1)
+
+
 def door_at(d, e0, e1, t, kind, hw=17):
     """A doorway on a mauka wall's inner face.
     kind: koa (a WIDE single leaf, hw ~17 — chamber galleries,
@@ -1876,27 +1944,7 @@ def door_at(d, e0, e1, t, kind, hw=17):
         # panel and brass hardware are what still tell a grand
         # doorway apart from an ordinary office one; leaf count no
         # longer does that job.
-        koa_leaf(-hw, hw, 0, 46,
-                 (abs(int(p[0])) * 41 + abs(int(p[1])) * 53 + 19)
-                 % 99991)
-        d.line([pt(-hw, 1), pt(-hw, 45)], fill=shade(col, 0.50),
-               width=1)
-        d.line([pt(hw - 1, 1), pt(hw - 1, 45)], fill=shade(col, 1.12),
-               width=1)
-        # single recessed panel, centred
-        w0, w1 = -hw + 4, hw - 4
-        quad(w0, w1, 9, 40, shade(col, 0.74))
-        d.line([pt(w0, 40), pt(w1, 40)], fill=shade(col, 0.52), width=1)
-        d.line([pt(w0, 9), pt(w1, 9)], fill=shade(col, 1.16), width=1)
-        d.line([pt(w0, 9), pt(w0, 40)], fill=shade(col, 0.62), width=1)
-        d.line([pt(w1, 9), pt(w1, 40)], fill=shade(col, 1.08), width=1)
-        # brass pull, centred — grand rooms keep brass, offices get
-        # the dull lever
-        d.line([pt(0, 20), pt(0, 27)], fill=KEY, width=2)
-        d.line([pt(0, 19), pt(0, 20)], fill=hx("#8a6420"), width=2)
-        # kickplate
-        quad(-hw, hw, 0, 5, shade(col, 0.62))
-        d.line([pt(-hw, 5), pt(hw, 5)], fill=shade(col, 0.48), width=1)
+        grand_leaf(d, pt, quad, hw, grand_seed(p), col)
     if kind == "office":
         # the photo has NO transom over the office doors: a dark head
         # jamb, one warm reveal under it. The grand doors keep the lit
@@ -2683,7 +2731,11 @@ def paint_upper_level(d):
             if did:
                 # position AND the box the runtime will make
                 # clickable, from the geometry that drew it
-                doors[did] = (pos, feat_rect(e0, e1, t, kind))
+                # pos, the runtime's tap box, and the RUN GEOMETRY —
+                # the swing bake re-derives the leaf from the same
+                # (e0, e1, t, f) that drew it, one-source rule
+                doors[did] = (pos, feat_rect(e0, e1, t, kind),
+                              (e0, e1, t, kind, f))
         q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
@@ -2810,7 +2862,11 @@ def paint_walls(d):
             if did:
                 # position AND the box the runtime will make
                 # clickable, from the geometry that drew it
-                doors[did] = (pos, feat_rect(e0, e1, t, kind))
+                # pos, the runtime's tap box, and the RUN GEOMETRY —
+                # the swing bake re-derives the leaf from the same
+                # (e0, e1, t, f) that drew it, one-source rule
+                doors[did] = (pos, feat_rect(e0, e1, t, kind),
+                              (e0, e1, t, kind, f))
         for bt in benches:
             bench_at(d, e0, e1, bt, f)
         # the slab above, fluted. NO white top-face strip on it any
@@ -2977,6 +3033,233 @@ def paint_planters(d):
 
 
 # ------------------------------------------------------------- finish
+SWING_N = 7                # frames, frame 0 == the closed door
+SWING_MAX = 66.0           # degrees; see the clearance note below
+SWING_DIR = {"finance": -1}   # +1 hinges at the -hw stile, -1 at +hw
+
+
+def swing_sheet(name, e0, e1, t, kind, f, hw=17):
+    """Bake a door's SWING as a horizontal spritesheet.
+
+    THE PROJECTION IS WHY THIS IS A BAKE AND NOT A RUNTIME TRANSFORM.
+    A leaf swinging on its hinge sweeps an arc in PLAN; rotating the
+    sprite by the same angle on screen is a different motion entirely
+    and reads as a flat card spinning. Here the leaf is rebuilt in
+    plan for each angle and projected with the room's own axes, so
+    the foreshortening — the leaf getting NARROWER on screen as it
+    turns toward the camera, and its free edge dropping down-screen
+    as it comes forward — falls out for free. That is the whole 3-D
+    read; nothing else in the frame is doing the work.
+
+    Geometry, all of it borrowed from the painters that already run
+    on this wall:
+      - along-wall unit vector (ux, uy) and the OUTWARD normal
+        (16*sgn, 8) per PLAN unit, exactly as `bench_at` derives it
+        (run 0 falls to the right, normal (+2,+1); run 1 mirrors).
+      - one plan unit is `PLAN_L` = hypot(16, 8) screen px along
+        EITHER axis, so a leaf `2*hw` screen px wide is 2*hw/PLAN_L
+        plan units and the two components can be mixed by angle.
+      - verticals stay VERTICAL in this projection, so the leaf is
+        always a quad with two plumb edges; only its base line moves.
+
+    CLEARANCE IS REAL AND IT IS THE ANGLE'S BOUND. The leaf is
+    2*hw = 34 px = 1.90 plan units; the level-3 walkway is
+    LVL2_OUT - LVL2_IN = 2.5 units deep. Swung flat the leaf would
+    stand 1.9 units out and very nearly touch the parapet it is drawn
+    OVER at runtime — so the angle stops at 66 degrees (1.74 units)
+    and the leaf still lands clear of the rail. Raising SWING_MAX
+    without re-checking that arithmetic puts a door through a railing.
+
+    WHAT ACTUALLY SELLS IT IS THE OPENING, NOT THE LEAF. A door that
+    swings away from a wall the same colour as the door reads as a
+    panel sliding. So every frame also paints the void behind it —
+    the dark room, a warm floor inside catching lamplight, and the
+    jamb reveal down the hinge side — plus the wedge of that light
+    thrown out across the walkway, both scaled by sin(angle).
+
+    FRAME 0 IS THE CLOSED DOOR AND MUST MATCH THE BAKE UNDER IT.
+    The sheet is drawn OVER the finished room at runtime, so frame 0
+    redraws the same architrave and leaf `door_at` already painted
+    there — nothing below the wall's foot line (y = 0), because the
+    walkway and the parapet are painted AFTER the doors in the room
+    and would be wrongly covered. That is also why the light wedge is
+    absent at frame 0 and only grows as the door opens: it belongs on
+    top of the walkway, and there is no light until there is a gap.
+    """
+    p = lerp(e0, e1, t)
+    ex, ey = e1[0] - e0[0], e1[1] - e0[1]
+    ln = math.hypot(ex, ey)
+    ux, uy = ex / ln, ey / ln
+    sgn = 1 if ey / ex < 0 else -1          # bench_at's normal rule
+    nx, ny = 16.0 * sgn, 8.0                # outward, per PLAN unit
+    plan_l = math.hypot(16.0, 8.0)
+    side = SWING_DIR.get(name, 1)
+
+    def pt(w, y=0.0):
+        # ROUNDED, exactly as door_at rounds: frame 0 has to rasterise
+        # onto the same pixel grid as the leaf it covers, or it differs
+        # from the bake by a half-pixel everywhere and shimmers
+        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+
+    hinge = pt(hw * -side)                  # the stile it turns on
+    leaf = 2.0 * hw                         # leaf width, screen px
+
+    def leaf_pt(s, y, th):
+        """`s` px along the leaf from the hinge, at height `y`.
+
+        IT SWINGS INWARD, away from the camera, and that is a
+        readability call, not a guess about the real door. Swung
+        TOWARD the viewer the leaf is geometrically correct and
+        useless: from a 3/4 overhead view it stands between the camera
+        and the opening and hides the very thing the animation exists
+        to show. Away from the camera it clears the doorway, the lit
+        room reads, and the leaf still turns and foreshortens in plain
+        sight. (Both were baked; the outward one is unusable.)"""
+        r = s / plan_l                      # plan units from the hinge
+        cs, sn = math.cos(th), math.sin(th)
+        return (round(hinge[0] + ux * side * s * cs - nx * r * sn),
+                round(hinge[1] + uy * side * s * cs - ny * r * sn - y))
+
+    frames = []
+    for k in range(SWING_N):
+        th = math.radians(SWING_MAX) * (k / (SWING_N - 1))
+        sn = math.sin(th)
+        lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        dl = ImageDraw.Draw(lay)
+
+        # ---- DRAW ORDER. door_at lays the architrave down as a full
+        # slab and puts the leaf on top; here the leaf swings BEHIND
+        # the wall plane, so the frame is nearer the camera than the
+        # leaf and its jambs are painted again at the end to clip it.
+        dl.polygon([pt(-hw - 3, 0), pt(hw + 3, 0), pt(hw + 3, 49),
+                    pt(-hw - 3, 49)], fill=KOA_DR_D)
+
+        # ---- the void: the Finance suite behind the door. Koa panel
+        # and lamplight, because that is what render_office.py puts on
+        # the other side of this doorway — the glimpse has to agree
+        # with the room it opens into.
+        for y0, y1, c in ((0, 12, hx("#2b2018")),
+                          (12, 30, hx("#241a13")),
+                          (30, 46, hx("#181210"))):
+            dl.polygon([pt(-hw, y0), pt(hw, y0), pt(hw, y1), pt(-hw, y1)],
+                       fill=c)
+        if sn > 0.02:
+            gl = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            gd = ImageDraw.Draw(gl)
+            # lamplight pooling on the office floor, and a soft wash up
+            # the far wall — the two things visible through a cracked
+            # door in a lamplit room
+            gd.polygon([pt(-hw + 1, 0), pt(hw - 1, 0), pt(hw - 1, 11),
+                        pt(-hw + 1, 11)],
+                       fill=(255, 202, 132, int(165 * sn)))
+            gd.polygon([pt(-hw + 3, 11), pt(hw - 3, 11), pt(hw - 5, 33),
+                        pt(-hw + 5, 33)],
+                       fill=(255, 196, 128, int(52 * sn)))
+            lay.alpha_composite(gl)
+            dl = ImageDraw.Draw(lay)
+        # the jamb reveal down the hinge side — a thin face turned into
+        # the room, which is what gives the opening a thickness
+        jx, jy = nx * -0.30, ny * -0.30
+        h0, h1 = pt(hw * -side, 0), pt(hw * -side, 46)
+        dl.polygon([h0, h1, (h1[0] + jx, h1[1] + jy),
+                    (h0[0] + jx, h0[1] + jy)],
+                   fill=shade(KOA_DR_D, 0.66))
+
+        # ---- the leaf, on its OWN layer so it can be clipped to the
+        # doorway. THE APERTURE IS THE CLIP, and it is not cosmetic:
+        # the leaf swings behind the wall plane, so the parts of it
+        # that fall outside the opening are inside the building and
+        # must not draw. Unclipped, the swing carried the leaf's top
+        # corner up-screen past its own architrave and hung a brown
+        # post above the transom in every open frame.
+        lf = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        dl = ImageDraw.Draw(lf)
+        # EXACTLY 1.0 WHEN CLOSED. door_at takes no wall factor at all —
+        # its leaf is drawn at full strength on every run — so folding
+        # this wall's `f` in here darkened frame 0 by 13% against the
+        # bake, uniformly, which is most of what the first diff showed.
+        face = 1.0 + 0.46 * sn              # turns into the light
+        # IT IS door_at's OWN LEAF, drawn through a swung mapping —
+        # same grain seed, same recessed panel, same brass pull and
+        # kickplate. Approximating it (the first pass painted plain
+        # banded strips) left frame 0 visibly unlike the baked door it
+        # covers, and the swap popped the moment the sprite appeared.
+        def swung_pt(w, y=0.0):
+            return leaf_pt(side * w + hw, y, th)
+
+        def swung_quad(w0, w1, y0, y1, colq):
+            dl.polygon([swung_pt(w0, y0), swung_pt(w1, y0),
+                        swung_pt(w1, y1), swung_pt(w0, y1)], fill=colq)
+
+        grand_leaf(dl, swung_pt, swung_quad, hw, grand_seed(p),
+                   KOA_DR, face)
+        # the free edge's THICKNESS — the one thing a flat leaf cannot
+        # have, and the cue that reads as a solid turning in space.
+        # ONLY once it is actually open: closed, this edge IS the hinge
+        # stile door_at draws dark, and a lit line there is a diff
+        # against the bake for no gain.
+        if sn > 0.02:
+            dl.line([swung_pt(hw * side, 0), swung_pt(hw * side, 46)],
+                    fill=shade(KOA_DR_L, 0.85 + 0.5 * sn), width=2)
+
+        # composite the leaf through the aperture, then the head's lit
+        # lip on top (door_at's own line, in the wall plane)
+        mask = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(mask).polygon(
+            [pt(-hw, 0), pt(hw, 0), pt(hw, 46), pt(-hw, 46)], fill=255)
+        lf.putalpha(ImageChops.multiply(lf.getchannel("A"), mask))
+        lay.alpha_composite(lf)
+        dl = ImageDraw.Draw(lay)
+        dl.polygon([pt(-hw - 3, 48), pt(hw + 3, 48), pt(hw + 3, 49),
+                    pt(-hw - 3, 49)], fill=shade(KOA_DR, 0.86))
+
+        # ---- the light thrown OUT across the walkway. Alpha-composited
+        # so the tile it lands on keeps its own tone — court_paving's
+        # rule for the sun patch. Last, because it lies on the floor in
+        # FRONT of the wall and nothing else in the frame is out there.
+        if sn > 0.02:
+            wedge = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            wd = ImageDraw.Draw(wedge)
+            for reach, al in ((2.15, 30), (1.45, 38), (0.8, 50)):
+                sp = reach * sn
+                wd.polygon([pt(-hw + 1, 0), pt(hw - 1, 0),
+                            (pt(hw + 3, 0)[0] + nx * sp,
+                             pt(hw + 3, 0)[1] + ny * sp),
+                            (pt(-hw - 3, 0)[0] + nx * sp,
+                             pt(-hw - 3, 0)[1] + ny * sp)],
+                           fill=(255, 206, 140, int(al * sn)))
+            lay.alpha_composite(wedge)
+            dl = ImageDraw.Draw(lay)
+
+        # ---- the transom band above the head, in the wall plane and
+        # so unaffected by the swing (door_at paints the same band)
+        if kind == "office":
+            dl.polygon([pt(-hw - 3, 49), pt(hw + 3, 49), pt(hw + 3, 53),
+                        pt(-hw - 3, 53)], fill=shade(KOA_DR, 0.44))
+            dl.line([pt(-hw - 3, 49), pt(hw + 3, 49)],
+                    fill=mix(KEY, KOA_DR, 0.55), width=1)
+        else:
+            dl.polygon([pt(-hw - 3, 49), pt(hw + 3, 49), pt(hw + 3, 53),
+                        pt(-hw - 3, 53)], fill=mix(KEY, FASCIA, 0.4))
+            dl.line([pt(0, 49), pt(0, 53)], fill=hx("#b3a97f"), width=1)
+        frames.append(lay)
+
+    # ---- ONE bbox for every frame, from the alpha they actually wrote
+    box = None
+    for lay in frames:
+        b = lay.getbbox()
+        box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]),
+                                     max(box[2], b[2]), max(box[3], b[3]))
+    fw, fh = box[2] - box[0], box[3] - box[1]
+    sheet = Image.new("RGBA", (fw * SWING_N, fh), (0, 0, 0, 0))
+    for i, lay in enumerate(frames):
+        sheet.paste(lay.crop(box), (i * fw, 0))
+    path = ROOT / "site" / "assets" / "map" / f"swing_{name}.png"
+    sheet.save(path)
+    return dict(sheet=path.name, frames=SWING_N, fw=fw, fh=fh,
+                px=box[0], py=box[1])
+
+
 def painterly(img):
     """Oil-paint facets + the map grade. NO vignette (house rule)."""
     import cv2
@@ -3039,18 +3322,23 @@ def render(raw=False):
 
     # ---- hotspots, computed from the same geometry
     out = diamond(A_OUT)
-    dpx = {k: (int(p[0]), int(p[1])) for k, (p, _) in doors.items()}
+    dpx = {k: (int(p[0]), int(p[1])) for k, (p, _, _) in doors.items()}
     # the mosaic goes in with the doors so it is inside the same
     # no-overlap solve, not padded against a set it isn't part of.
     # Its rect is the medallion's own ellipse (paint_mosaic: rx 62,
     # ry 32 with its kerb), which sits a little above the hotspot's
     # label anchor.
-    rects = {k: r for k, (_, r) in doors.items()}
+    rects = {k: r for k, (_, r, _) in doors.items()}
     rects["mosaic"] = (CX - 62, CY + DROP - 44, CX + 62, CY + DROP + 20)
     dz = zones_for(rects)
+    # ---- door swings. Only doors that GO somewhere get one: the swing
+    # covers a scene transition that was a hard cut, which is where the
+    # animation earns its cost. A door that only shows text stays shut.
+    swings = {k: swing_sheet(k, *doors[k][2]) for k in ("finance",)}
     meta = {
         "name": "Hawaiʻi State Capitol",
         "image": "capitol_scene.png",
+        "swings": swings,
         "w": W, "h": H, "scale": SS, "bg": bg,
         "spawn": [CX, int(out[2][1]) - 60],
         # LEVEL 2 IS THE SENATE'S, LEVEL 3 IS THE HOUSE'S — see the

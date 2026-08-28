@@ -3018,6 +3018,72 @@ stairs hotspot or Esc. Rules:
     hangs at `py - 30`, which is MID-LEAF on a 53px door, so it reads
     as door hardware rather than a "this is live" flag. Moving it above
     the transom needs a check against the storey above.
+- **THE FINANCE DOOR SWINGS OPEN (2026-08-27, user's call: "light 3d
+  effects … making the doors appear 3d when they open").** The bake
+  emits a spritesheet per swinging door (`swing_sheet` in
+  render_capitol.py → `site/assets/map/swing_<id>.png`, described by
+  capitol.json's `swings` block); `RoomScene` plays it and enters the
+  office on the last frame. Rules, most of them paid for:
+  - **A BAKE, NOT A RUNTIME TRANSFORM, BECAUSE THE PROJECTION IS THE
+    WHOLE POINT.** The leaf is rebuilt in PLAN at each angle and
+    projected with the room's own axes, so it foreshortens correctly;
+    rotating the sprite by the same angle on screen is a different
+    motion and reads as a flat card spinning. Along-wall is (ux, uy),
+    the outward normal is `(16*sgn, 8)` per PLAN unit — `bench_at`'s
+    rule, reused — and one plan unit is `hypot(16, 8)` px along EITHER
+    axis, which is what lets the two components be mixed by angle.
+    Verticals stay vertical in this projection, so a leaf is always a
+    quad with two plumb edges.
+  - **IT SWINGS INWARD, AND THAT IS A READABILITY CALL.** Swung toward
+    the camera the leaf is geometrically right and useless — from a
+    3/4 overhead view it stands between the camera and the opening and
+    hides the thing the animation exists to show. Both were baked; the
+    outward one is unusable. Inward also decides the draw order: the
+    leaf is BEHIND the wall plane, so it is clipped to the doorway
+    aperture (a mask, not a guess — unclipped, the swing carried the
+    leaf's top corner up past its own architrave and hung a brown post
+    above the transom in every open frame).
+  - **THE ANGLE'S BOUND IS CLEARANCE, NOT TASTE.** `SWING_MAX` 66° —
+    the leaf is 2*hw = 34 px = 1.90 plan units and the level-3 walkway
+    is `LVL2_OUT - LVL2_IN` = 2.5 deep, so at 66° it stands 1.74 units
+    out and lands clear of the parapet it is drawn OVER at runtime.
+    Raising it without redoing that arithmetic puts a door through a
+    railing.
+  - **FRAME 0 IS THE CLOSED DOOR AND MUST MATCH THE BAKE UNDER IT** —
+    the sheet sits on top of the finished room, so any difference pops
+    the instant the sprite appears. That is why `door_at`'s leaf was
+    extracted to module level (`grand_leaf` + `leaf_grain` +
+    `grand_seed`) and the swing draws the SAME leaf through a swung
+    mapping: same grain seed, same recessed panel, same brass pull.
+    Three separate things had to be fixed before it matched, all found
+    by diffing frame 0 against the bake: an approximated leaf (banded
+    strips, no panel), unrounded points (`door_at` rounds — a half
+    pixel everywhere), and folding the wall's `f` into the leaf when
+    `door_at` takes no wall factor at all (a uniform 13% darkening).
+    It ships at 367 hairline px of 6090, mean delta 1.8. **Re-run that
+    diff after any change here** — it is the only check that catches a
+    pop, and eyeballing the sheet will not.
+  - Nothing below the wall's foot line (y = 0) is drawn EXCEPT the
+    light wedge: the walkway and the parapet are painted after the
+    doors in the room, and redrawing a threshold over them is wrong.
+    The wedge is the exception because it belongs on top of the
+    walkway, and it is absent at frame 0 — no gap, no light.
+  - Runtime: `cfg.swings` lists the hotspot ids, the sheets are queued
+    off the meta json's own `filecomplete` (Phaser will not queue a
+    spritesheet without frame sizes, and the meta is still loading in
+    preload). `openThen()` plays, then acts. **A swing already running
+    SWALLOWS the tap** — folding that in with the no-swing case ran
+    the action immediately, so an impatient second tap SKIPPED the
+    door and jumped into the room, which is backwards (caught live).
+    A wall-clock fallback lands the transition if
+    ANIMATION_COMPLETE never fires (rAF stops in a hidden tab — the
+    same reason `weekBeat` carries one), and `enterRoom` resets every
+    door to frame 0 so walking back out never finds one still open.
+    Reduced motion skips the swing: the door is a flourish, never the
+    only way in.
+  - **Only doors that GO somewhere get one.** The swing covers a scene
+    change that used to be a hard cut, which is where it earns its
+    cost; a door that only shows text stays shut.
 - **HOTSPOT NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS**
   (2026-08-24, user's call: "don't have those big labels over all the
   doors"). `RoomScene.create` still builds every label, but anything

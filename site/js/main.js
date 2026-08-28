@@ -27,7 +27,7 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 39;
+const CAP_V = 40;
 /* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
    call: "make that the default view (replacing the map) for now. keep
    the map in case we want to use it later"). Set to null to put the
@@ -5774,6 +5774,24 @@ class RoomScene extends Phaser.Scene {
                    this.cfg.json + "?v=" + this.cfg.v);
     this.load.image(this.cfg.key + "_img",
                     this.cfg.img + "?v=" + this.cfg.v);
+    /* DOOR SWINGS. The meta is still loading here, so the sheets can't
+       be read off it yet — cfg.swings lists which hotspot ids have one
+       and the bake is the authority on their size, which arrives with
+       the json. Phaser will not queue a spritesheet without frame
+       dimensions, so this second pass runs on the json's own load
+       event, before create(). */
+    if (this.cfg.swings) {
+      this.load.on("filecomplete-json-" + this.cfg.key + "_meta",
+        (k, type, meta) => {
+          for (const id of this.cfg.swings) {
+            const sw = (meta.swings || {})[id];
+            if (!sw) continue;
+            this.load.spritesheet(this.cfg.key + "_swing_" + id,
+              "assets/map/" + sw.sheet + "?v=" + this.cfg.v,
+              { frameWidth: sw.fw, frameHeight: sw.fh });
+          }
+        });
+    }
   }
 
   create() {
@@ -5799,6 +5817,32 @@ class RoomScene extends Phaser.Scene {
     if (this.cfg.view) {
       this.textures.get(this.cfg.key + "_img")
           .setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    /* ---- door swings, built from the bake's own `swings` block.
+       The sheet sits at frame 0 — the CLOSED door, drawn by the same
+       painter that drew the one underneath it (render_capitol.py's
+       grand_leaf), so the sprite is invisible until it plays. That is
+       why it can just sit there rather than being shown on demand:
+       there is no pop to hide. */
+    this.swings = {};
+    for (const [id, sw] of Object.entries(meta.swings || {})) {
+      const tex = this.cfg.key + "_swing_" + id;
+      if (!this.textures.exists(tex)) continue;
+      const key = tex + "_open";
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key,
+          frames: this.anims.generateFrameNumbers(tex,
+            { start: 0, end: sw.frames - 1 }),
+          frameRate: 16,
+          repeat: 0,
+        });
+      }
+      // a SPRITE, not an image — only sprites play animations
+      this.swings[id] = this.add.sprite(sw.px, sw.py, tex, 0)
+        .setOrigin(0, 0).setDepth(1);
+      this.swings[id].animKey = key;
     }
 
     this.labels = [];
@@ -5862,7 +5906,7 @@ class RoomScene extends Phaser.Scene {
         if (pointer.getDistance() > 8) return;
         if (h.kind === "exit") { this.leave(); return; }
         const go = this.cfg.enter && this.cfg.enter[h.id];
-        if (go) { this.enterChild(go); return; }
+        if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
         // cfg.action: {hotspotId: fn} — a hotspot that DOES something
         // instead of showing its text (the hallway legislator opens
         // the session panel). Same shape as `enter`, which stays the
@@ -5882,6 +5926,46 @@ class RoomScene extends Phaser.Scene {
     this.enterRoom();
   }
 
+  /* Swing a door open, THEN do the thing the door does. The swing
+     exists to cover a transition that used to be a hard cut, so the
+     two are one gesture: the leaf opens, light falls out onto the
+     walkway, and the room changes on the last frame.
+
+     Two guards, and both are load-bearing:
+     - `_opening` — the zone stays live through the animation and a
+       second tap would start it again and queue a second switch.
+     - a wall-clock fallback, the same reason `weekBeat` carries one:
+       Phaser's animation clock is driven by rAF, so a tab hidden
+       mid-swing never fires ANIMATION_COMPLETE and the player comes
+       back to a door stuck half-open with the office unreachable.
+       Whichever lands first wins; `done` makes it idempotent.
+     Reduced motion skips straight through — the door is a flourish,
+     never the only way in. */
+  openThen(id, fn) {
+    const sp = this.swings && this.swings[id];
+    const still = window.matchMedia &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // A swing already running SWALLOWS the tap. Folding this in with
+    // the no-swing case ran `fn()` immediately instead, so a second
+    // tap during the animation skipped the door and jumped into the
+    // room — the impatient player got the worse result, which is
+    // exactly backwards (caught live).
+    if (this._opening) return;
+    if (!sp || still) { fn(); return; }
+    this._opening = true;
+    let done = false;
+    const land = () => {
+      if (done) return;
+      done = true;
+      this._opening = false;
+      fn();
+    };
+    sp.once(Phaser.Animations.Events.ANIMATION_COMPLETE, land);
+    sp.play(sp.animKey);
+    this.time.delayedCall(1200, land);
+    if (window.SFX && SFX.choice) SFX.choice();
+  }
+
   enterChild(key) {
     Dialog.hide();
     this._skipGreetOnce = true;       // don't re-greet on the way back
@@ -5890,6 +5974,13 @@ class RoomScene extends Phaser.Scene {
 
   enterRoom() {
     document.body.classList.add("in-capitol");
+    // every door shuts behind you: walking back out of a child room
+    // must not find the door still standing open on its last frame
+    for (const id in (this.swings || {})) {
+      this.swings[id].stop();
+      this.swings[id].setFrame(0);
+    }
+    this._opening = false;
     this.fit();
     if (this._skipGreetOnce) { this._skipGreetOnce = false; return; }
     Dialog.show(this.cfg.greet[0], this.cfg.greet[1]);
@@ -5985,6 +6076,11 @@ const ROOM_CAPITOL = {
   // (CY, storey heights, WING_EXT).
   view: [368, 288, 1440, 976],
   enter: { finance: "office" },
+  // hotspot ids whose door SWINGS OPEN before it acts (the bake emits
+  // a spritesheet per id in capitol.json's `swings`). Only doors that
+  // GO somewhere get one — the swing covers a scene change that was a
+  // hard cut, which is where the animation earns its cost.
+  swings: ["finance"],
   greet: ["Hawaiʻi State Capitol",
     "E komo mai — a gallery in the open rotunda. The chambers " +
     "root the courtyard below — Senate toward ʻEwa, House toward " +

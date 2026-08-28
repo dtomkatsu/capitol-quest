@@ -1,6 +1,16 @@
 {
  "name": "Hawaiʻi State Capitol",
  "image": "capitol_scene.png",
+ "swings": {
+  "finance": {
+   "sheet": "swing_finance.png",
+   "frames": 7,
+   "fw": 70,
+   "fh": 87,
+   "px": 1074,
+   "py": 464
+  }
+ },
  "w": 1680,
  "h": 1240,
  "scale": 1,
