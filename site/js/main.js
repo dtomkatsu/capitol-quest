@@ -170,8 +170,9 @@ const OFF_V = 2;
    hallway.png + map/hallway.json). 3 = the OVER/SHIP re-bake
    (2026-08-28): the PNG is 3000x2000 for an unchanged 1500x1000 scene,
    so meta.scale is 0.5 and every hotspot px in the JSON is byte-
-   identical to v2. */
-const HALL_V = 3;
+   identical to v2. 4 = the legislator figure() redesign, same day —
+   art only, hotspot px unchanged again. */
+const HALL_V = 4;
 /* Cache token for the event BANNERS (tools/make_event_art.py ->
    assets/events/*.png). They had none at all until 2026-08-28, which
    was survivable only while their pixel dimensions never changed: the

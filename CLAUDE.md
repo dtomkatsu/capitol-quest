@@ -3499,6 +3499,62 @@ stairs hotspot or Esc. Rules:
       same world region at 1.21 / 1.60 / 2.40; at 2.4 the lei, the
       shirt edge and the tile joints all go mushy. Zooming further
       means authoring the room bigger, not raising the number.
+  - **The legislator's `figure()` was rebuilt for elegance (2026-08-28,
+    from "I would like for it to be more elegant looking")**, after the
+    OVER/SHIP resolution fix landed the same day — that fix is what
+    made this worth doing: curves and diagonals finally resolve
+    cleanly instead of the SS-1 staircase, so finer silhouette work
+    actually survives to the screen. What changed:
+    - **Every limb is a LOFTED taper through measured (cx, y, hw)
+      stations**, proximal to distal — the same straight-segment-
+      between-stations convention the building's own columns use
+      (COL_FLARE = 1.0, "never a curve fit"). Legs go hip -> knee ->
+      ankle instead of two flat rectangles; sleeves and forearms taper
+      instead of being uniform tubes; the torso is a four-station
+      hourglass (shoulder -> chest -> waist -> hem) that flares back
+      open at the hem the way a loose aloha shirt actually drops,
+      instead of a straight-sided box.
+    - **The whole figure is split lit/shadow down the midline**, the
+      same one-hard-key-light treatment the walls and doors already
+      carry: torso, neck and limbs each take a full-strength tone on
+      one side and a `shade(., ~0.84-0.88)` tone on the other. The
+      head is the one genuinely ROUND part, so it is split with a
+      pair of 180-degree `chord`s instead of the loft/half polygon
+      trick — the one shape a straight-sided taper cannot fake.
+      **The leg split shipped at 0.8 first and was too strong** — on
+      a large flat area two-tone shading reads as two different
+      pant colours rather than form, where the same split on the
+      torso (broken up by the collar, the pattern and the sleeves)
+      reads fine. Backed off to 0.88; the lesson is that split
+      strength has to answer to the SIZE of the flat area it's
+      shading, not just the light logic.
+    - **Shoes are a pointed, outward-turned toe**, not a flat block —
+      paired with a couple of units of outward turn at the right
+      ankle, the relaxed contrapposto that keeps the stance from
+      reading as a mannequin at attention.
+    - **The right arm bends in across the chest to carry the folder;
+      the left hangs at a slight relaxed angle** — the one asymmetry
+      doing that work, rather than a mirror-symmetric pose.
+    - **A folder gets ONE fold line, not two.** A first pass added
+      both a shadow fold line and a brightened top edge; against
+      PAPER (already near-white) the second line read as a second
+      fold rather than a highlight, so it was cut.
+    - **A couple of open collar buttons**: a shadowed V of folded
+      fabric with a smaller SKIN triangle nested inside it, still
+      faceless, still no detail above the collarbone — the same
+      "no faces in focus" boundary every drawn character in this game
+      keeps.
+    - The lei went from 3 bare dots on an arc to 6 alternating-tone
+      blossoms on a slightly fuller drape, and the shirt's pattern
+      specks are now tinted toward whichever shirt half (lit/shadow)
+      they land on, rather than a single fixed tint that would sit on
+      top of the shading as a flat overlay.
+    Verified same as the resolution work: `render_hallway.py --layers`
+    still recomposites to the flat bake with 0 px differing, and the
+    zone/view-fit asserts still pass unchanged — the figure grew a
+    little (hem raised to sell longer legs, head raised a couple of
+    units) but stayed well inside the 100px-tall hotspot zone. Bumped
+    HALL_V to 4; hotspot px are unaffected, this is art only.
   - **Diorama-parallax spike (2026-08-28) — `--layers` on the bake,
     harness at `site/dev-parallax.html`.** `render(layers=True)` runs
     the SAME painters onto three depth bands (back / mid / front) and

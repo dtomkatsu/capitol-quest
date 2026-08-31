@@ -405,51 +405,122 @@ def plant(d, u, v, s=1.7):
 def figure(d, u, v, s=1.15):
     """the introducer — aloha shirt, slacks, Opening-Day lei. Faceless
     at this scale, per the house rule; the lei and the folder are what
-    say 'member on Opening Day'. Returns the feet px."""
+    say 'member on Opening Day'. Rebuilt 2026-08-28 for elegance: every
+    limb is a LOFTED taper through measured stations (the same
+    straight-segment-between-stations convention the building's own
+    columns use, COL_FLARE = 1.0 — never a curve fit), and the whole
+    figure is split lit/shadow down the midline for the room's one
+    hard key light, the same treatment the walls and doors already
+    carry. Returns the feet px."""
     fx, fy = iso(u, v)
 
-    def r(x0, y0, x1, y1, c):
-        d.rectangle([fx + int(x0 * s), fy + int(y0 * s),
-                     fx + int(x1 * s), fy + int(y1 * s)], fill=c)
+    def P(x, y):
+        return (fx + x * s, fy + y * s)
 
-    # slacks + shoes
-    r(-8, -34, -3, -3, hx("#2e2c30"))
-    r(3, -34, 8, -3, hx("#2e2c30"))
-    r(-10, -4, -2, 0, hx("#1c1a18"))
-    r(2, -4, 10, 0, hx("#1c1a18"))
-    # shirt
-    d.polygon([(fx + int(-11 * s), fy + int(-34 * s)),
-               (fx + int(11 * s), fy + int(-34 * s)),
-               (fx + int(10 * s), fy + int(-60 * s)),
-               (fx + int(-10 * s), fy + int(-60 * s))], fill=BLUE)
-    for dx, dy in ((-6, -40), (2, -44), (7, -38), (-3, -52),
-                   (5, -55), (-8, -49)):
-        px_, py_ = fx + int(dx * s), fy + int(dy * s)
-        d.point([(px_, py_), (px_ + 1, py_)], fill=mix(BLUE, PAPER, 0.4))
-    # sleeves + forearms; right arm carries a folder
-    r(-15, -59, -10, -46, shade(BLUE, 0.9))
-    r(10, -59, 15, -46, shade(BLUE, 0.9))
-    r(-14, -46, -10, -35, SKIN)
-    r(10, -46, 14, -38, SKIN)
-    d.polygon([(fx + int(8 * s), fy + int(-42 * s)),
-               (fx + int(22 * s), fy + int(-39 * s)),
-               (fx + int(22 * s), fy + int(-33 * s)),
-               (fx + int(8 * s), fy + int(-36 * s))], fill=PAPER)
-    # lei — draped, muted green with lighter blossoms
-    d.arc([fx + int(-10 * s), fy + int(-62 * s),
-           fx + int(10 * s), fy + int(-38 * s)], 15, 165,
-          fill=mix(LEI, LEI_L, 0.35), width=5)
-    for t in (35, 90, 145):
-        ax = fx + int(10 * s * math.cos(math.radians(t)))
-        ay = fy + int(-50 * s) + int(12 * s * math.sin(math.radians(t)))
-        d.point([(ax, ay), (ax + 1, ay)], fill=LEI_L)
-    # neck + head, hair only — no face at this scale
-    r(-3, -64, 3, -58, SKIN)
-    d.ellipse([fx + int(-6 * s), fy + int(-78 * s),
-               fx + int(6 * s), fy + int(-62 * s)], fill=SKIN)
-    d.chord([fx + int(-6 * s), fy + int(-79 * s),
-             fx + int(6 * s), fy + int(-66 * s)], 180, 360,
-            fill=hx("#2a221c"))
+    def loft(stations, fill):
+        """A tapered silhouette through (cx, y, hw) stations, proximal
+        to distal (top to bottom). Used for anything that isn't round:
+        legs, sleeves, forearms."""
+        outer = [P(cx - hw, y) for cx, y, hw in stations]
+        inner = [P(cx + hw, y) for cx, y, hw in stations]
+        d.polygon(outer + inner[::-1], fill=fill)
+
+    def half(stations, side, fill):
+        """One symmetric half (side=-1 left / +1 right) of a centred,
+        tapered silhouette — split down the midline for the key-light
+        shading. `stations` are (y, hw) since cx is always 0."""
+        near = [P(0, y) for y, hw in stations]
+        far = [P(side * hw, y) for y, hw in reversed(stations)]
+        d.polygon(near + far, fill=fill)
+
+    SHIRT, SHIRT_SH = BLUE, shade(BLUE, 0.84)
+    SKIN_SH = shade(SKIN, 0.86)
+    SLACKS, SLACKS_SH = hx("#2e2c30"), shade(hx("#2e2c30"), 0.88)
+    SHOE, SHOE_SH = hx("#1c1a18"), shade(hx("#1c1a18"), 0.75)
+
+    # ---- legs: hip -> knee -> ankle, LEFT lit / RIGHT in shadow. The
+    # right ankle turns out a couple of units more than the left —
+    # the relaxed contrapposto that keeps the stance from reading as
+    # a mannequin standing at attention.
+    loft([(-5.0, -37, 4.3), (-5.0, -20, 3.6), (-5.3, -6, 2.6)], SLACKS)
+    loft([(5.0, -37, 4.3), (5.5, -20, 3.6), (6.3, -6, 2.7)], SLACKS_SH)
+
+    # ---- shoes: a pointed toe turned outward, sole wider than the
+    # ankle opening — not the flat rectangular block this used to be.
+    def shoe(cx, hw, out, fill, hi):
+        heel_o, heel_i = P(cx - hw, -6), P(cx + hw, -6)
+        sole_o, sole_i = P(cx - hw - 1.3, -1), P(cx + hw + 0.6, -1)
+        toe = P(cx + out * 3.4, 1.6)
+        d.polygon([heel_o, sole_o, toe, sole_i, heel_i], fill=fill)
+        d.line([P(cx - hw - 0.6, -4.5), P(cx + out * 1.6, -0.6)],
+               fill=hi, width=1)
+
+    shoe(-5.3, 2.6, -1, SHOE, mix(SHOE, WALL, 0.3))
+    shoe(6.3, 2.7, 1, SHOE_SH, mix(SHOE_SH, WALL, 0.2))
+
+    # ---- torso: shoulder -> chest -> waist -> hem, an hourglass that
+    # flares back open at the hem the way a loose aloha shirt drops —
+    # not the straight-sided box this used to be.
+    TORSO = [(-62, 8.6), (-52, 7.6), (-46, 6.4), (-37, 8.0)]
+    half(TORSO, -1, SHIRT)
+    half(TORSO, 1, SHIRT_SH)
+    # a couple of buttons open at the collar: a shadowed V of folded
+    # fabric with a sliver of skin nested inside it — not a face, but
+    # enough to read as a shirt actually being worn
+    d.polygon([P(-3.2, -62), P(3.2, -62), P(0, -54)], fill=shade(SHIRT_SH, 0.72))
+    d.polygon([P(-1.8, -61), P(1.8, -61), P(0, -57)], fill=SKIN)
+
+    # ---- pattern: sparse specks, tinted toward whichever shirt half
+    # they land on so the print reads through the two-tone shading
+    # instead of sitting on top of it as a flat overlay
+    for dx, dy in ((-6, -42), (2, -46), (7, -40), (-3, -54),
+                   (5, -57), (-8, -51), (4, -49), (-4, -37)):
+        base = SHIRT if dx < 0 else SHIRT_SH
+        px_, py_ = P(dx, dy)
+        d.point([(px_, py_), (px_ + 1, py_)], fill=mix(base, PAPER, 0.4))
+
+    # ---- sleeves, short and capped at the bicep, then bare forearms.
+    # The left arm hangs at a slight relaxed angle; the right bends in
+    # across the chest to carry the folder — the one asymmetry that
+    # keeps the pose from reading as a mannequin's.
+    loft([(-11.0, -62, 3.6), (-11.6, -53, 2.9)], SHIRT)
+    loft([(11.0, -62, 3.6), (11.6, -53, 2.9)], SHIRT_SH)
+    loft([(-11.6, -53, 2.6), (-13.4, -34, 2.0)], SKIN)
+    loft([(11.6, -53, 2.6), (6.4, -41, 2.1)], SKIN_SH)
+    d.ellipse([*P(-15.5, -36.1), *P(-11.3, -31.9)], fill=SKIN)
+    d.ellipse([*P(4.4, -43.0), *P(8.4, -39.0)], fill=SKIN_SH)
+
+    # ---- folder, tucked under the bent forearm — a fold line and a
+    # lit leading edge so it reads as paper rather than a flat card,
+    # plus the sliver of shadow it drops onto the shirt beneath it
+    d.polygon([P(3, -37), P(17, -35), P(16, -33), P(3, -34)],
+              fill=shade(SHIRT_SH, 0.78))
+    d.polygon([P(4, -38), P(4, -46), P(19, -43), P(18, -36)], fill=PAPER)
+    d.line([P(5, -39), P(17, -42)], fill=mix(PAPER, SHIRT_SH, 0.25), width=1)
+
+    # ---- lei — draped fuller across the collarbone, alternating
+    # blossom tones so it reads as flowers rather than a rope of dots
+    d.arc([*P(-9.5, -66), *P(9.5, -42)], 12, 168,
+          fill=mix(LEI, LEI_L, 0.3), width=4)
+    for i, t in enumerate((28, 55, 82, 98, 125, 152)):
+        ax, ay = P(9.2 * math.cos(math.radians(t)),
+                   -53 + 10.5 * math.sin(math.radians(t)))
+        col = LEI_L if i % 2 else mix(LEI, LEI_L, 0.55)
+        d.ellipse([ax - 1.1, ay - 1.1, ax + 1.1, ay + 1.1], fill=col)
+
+    # ---- neck, then the head — the neck keeps the same lofted-taper
+    # shading as the rest of the body; the head is genuinely round, so
+    # it is split with a pair of 180-degree chords instead, the one
+    # shape a straight-sided taper cannot fake.
+    half([(-68, 2.6), (-62, 2.9)], -1, SKIN)
+    half([(-68, 2.6), (-62, 2.9)], 1, SKIN_SH)
+    HEAD = [*P(-5.3, -84), *P(5.3, -68)]
+    d.chord(HEAD, 90, 270, fill=SKIN)
+    d.chord(HEAD, 270, 450, fill=SKIN_SH)
+    HAIR = hx("#2a221c")
+    d.chord([*P(-5.4, -85), *P(5.4, -71)], 180, 360, fill=HAIR)
+    d.line([P(-1.5, -84.5), P(-3.5, -78)], fill=mix(HAIR, SKIN, 0.2), width=1)
+
     return fx, fy
 
 
