@@ -1563,6 +1563,166 @@ Phase 2 (same day):
   dead-bill colours (found live: every term rendered grey-blue, then
   red). Three rules were fixed; keep the `>` if you touch them.
 
+## UI chrome: tokens, and the plate idiom retired (2026-08-28)
+
+From "the color scheme for the ui (gold and blue) doesn't look good
+anymore … more sleek and modern". **The hues were not the problem**, and
+that is the finding the whole change rests on: gold and blue both
+survive, re-roled. What dated the UI was four STRUCTURAL cues, and both
+hues being used as large FILLS rather than accents:
+
+  a 2-3px PURE WHITE border with a second `outline` ring behind it (11),
+  a flat two-stop royal blue `#2a3f9e -> #16246b` used as a SURFACE (6),
+  `text-shadow: 1px 1px 0 #000` (12),
+  `box-shadow: 0 Npx 0` — a hard offset with no blur (6).
+
+All four are now at zero. Swap the hues and keep the cues and it would
+still have looked like 2003; that is why this was scoped as retiring an
+idiom, not as a recolour.
+
+**The modern language already existed in this repo and was quarantined.**
+The cinema pass (`#session-overlay`) and the creation screens were
+already doing near-black grounds, gold as a low-alpha hairline, soft
+ambient shadows. The work was promoting that outward to the HUD, the
+toolbar and the money/policy overlays — not inventing a third style.
+
+### Tier 1 — the token layer, and how to change it safely
+
+`:root` at the top of style.css. Before it existed the sheet carried the
+accent gold as a literal **48 times** and the muted blue 24, across 4,300
+lines, so there was no way to tell a deliberate one-off from a copy of
+the house colour, and every restyle was a find-and-replace.
+
+- **Named by ROLE, not by hue**, because the hues are expected to move
+  and the roles are not. `--plate-*` still means "the game's own chrome
+  surface" even though that surface stopped being a plate.
+- **The semantic group is load-bearing meaning and must survive any
+  repaint**: `--support` is the organizer pole, `--influence` the wonk
+  pole (see the HUD-standing note), plus gain/cost/good/bad/danger.
+- **`#fff` and `#000` are deliberately NOT tokenised** — ~34 uses that
+  are plain black and white rather than palette. A token earns its place
+  by being shared; one used once is just a rename.
+- **THE GATE, and re-run it for any edit here: resolving every token
+  back to its literal must reproduce the previous file BYTE FOR BYTE.**
+  That is what makes "this changes no pixels" a fact rather than a hope,
+  and it is checkable offline in seconds — far stronger than a screenshot
+  diff, which this game's animated DOM cannot give you cleanly (the flow
+  motes and the deal-animation classes differ run to run; a computed-
+  style dump was tried first and drowned in that noise).
+
+### Tier 2 — what replaced the plate
+
+- **Floating chrome is glass**: `--plate-hi/-lo` are translucent now and
+  pair with a `backdrop-filter`. **Modal panels stay OPAQUE** — a blurred
+  backdrop under 600px of prose is expensive and reads as mush.
+- **Gold is an accent, with exactly two exceptions that are FILLED**:
+  End Turn (`#turn-chip`) and the session hub's End Week
+  (`.sh-week-end`) — the same primary verb in two places. Giving every
+  chip a plate is precisely what stopped the one that matters from
+  reading as a call to action.
+  - Consequence that bit once: `#turn-chip`'s two child labels were pale
+    blue and pale gold, written for a dark plate, and went invisible the
+    moment the chip became gold. Its pending-event dot had to deepen to
+    `#a8321f` for the same reason. **Anything nested inside a filled
+    accent needs its own contrast check** — the parent rule cannot do it.
+- **`.ovl-title` and `#dialog-name` became TYPE**, not gold plates
+  clipped onto a border. The panel already has an edge; a second framed
+  object riding on that edge was two frames for one thing.
+- **`.ovl-tabs` became a segmented control**, which is what mutually
+  exclusive views of one panel actually are.
+- **The session panel's own skin was included**, even though it belongs
+  to Tier 3 (reconciling the overlays). `#session-overlay` overrides
+  `.ovl-panel`, so leaving it would have shipped a royal-blue panel next
+  to neutral ones — worse than either end state. The lit-surface
+  treatment and the film grain are kept; only the hue moved.
+- **The masthead keeps its plate, and only it.** `.ovl-title.mast` is
+  meant to read as a stamped physical object — it carries the resting
+  `rotate(-.7deg)` and its own `wk-rise-mast` keyframe for that reason.
+  It shed the royal-blue ground and the 4px hard offset, which are the
+  cues; the idea survives.
+- **The `.prow.on .pgo` gold fill is deliberate and stays**: an enacted
+  policy is a state worth finding at a glance, and that is what a fill
+  is for.
+- **`--text-lift` exists because `#hud-standing` has no plate** (a
+  documented decision — a plate there would compete with End Turn), so
+  type over the map still needs a shadow to stay legible. It is a soft
+  one; the hard 1px outline it replaces was the loudest dated cue in the
+  sheet. Don't just delete a text-shadow over the map.
+- The HUD-standing note itself was rewritten: its whole rationale is
+  stated as a CONTRAST with the plate idiom, so retiring the plates
+  would have made it a lie.
+
+`site/dev-ui.html` is the before/after record — same dev-harness
+convention as `dev-parallax.html`, self-contained, imports nothing from
+style.css. Both columns are hardcoded, so it stays truthful as the sheet
+moves on.
+
+### Tier 4 — the type pass
+
+The last loud cue after tiers 1-2: `font-weight: 800` paired with
+letter-spacing in **~20 distinct, non-scaling PX values** (1px, 1.4px,
+1.6px, 2px, 2.2px, 3px, 4px ...) on uppercase micro-labels ranging from
+8px to 19px. `font-weight: 800` dropped from 51 uses to 13.
+
+**Three EM-based tiers replace the scatter, and EM (not px) is the
+whole fix**: `letter-spacing` in `em` is relative to the element's OWN
+font-size, so one number reads as coherent tracking across many sizes
+where a flat px value cannot — a gap sized for an 8px badge is
+invisible at 19px, and one sized for 19px is a picket fence at 8px.
+Smaller caps need proportionally MORE tracking to stay legible; bigger
+caps need much LESS or they look gappy — which is why there are three
+tiers, not one token:
+
+  `--w-label: 650` / `--track-micro: .16em`  — <=10.5px eyebrows, badges
+  `--w-label: 650` / `--track-label: .10em`  — 11-14px chrome labels/buttons
+  `--w-title: 700` / `--track-title: .04em`  — >=15px card/panel headline names
+
+**Explicitly NOT touched, and why — the same "not everything loud is a
+bug" judgment tier 2 made for the masthead:**
+- The dice-tray / roll theatre (`.tray-skill`, `.tray-dc`, `.tray-stamp`,
+  `.sd-roll .die`, `.sd-roll .sd-spec`) — a documented dramatic beat.
+  Flattening it would be a regression, not a fix.
+- `.sk-title` — the creation screen's own stencil-plate title
+  ("no webfont, so lean on ... letterspacing"), not chrome.
+- The masthead's stamped week numeral (`.mast-no b`) — same stamped-
+  object logic the tray shares.
+- Small numeral/glyph badges with no letter-spacing at all (`skpip`,
+  `skup`/`skdn`, `ag-num`, `agc-pick`) — a bold single digit in a tiny
+  circle is a legibility choice, not the shouting this pass targets.
+- Anything tier 2 already shipped (`.ovl-title`, `#dialog-name`,
+  `#turn-chip`, `.sh-week-end`) — re-touching would just create a
+  second disagreement with itself.
+
+**One doc/code mismatch surfaced and got fixed as part of this, not
+separately**: `.sd-done` ("Continue") is documented as *"a quiet
+full-width plate ... gold stays reserved for real spends"*, but it
+shipped at weight 800 / 2.2px tracking — the single loudest combination
+in the sheet. The label tier is also the fix for that.
+
+**Numeric readouts** (`.metc .mv`, `#fund-chip .fc-amt/.fc-bal`,
+`#hud-standing .hs-v/.hs-t`, `.agc-amt`, `.sh-row .shtag`,
+`.bill-row .bstat`, `.htl .htl-read`, `.prow .ptag`) got a lighter
+touch: 800 -> 700 only, no tracking involved (none carry
+letter-spacing) — just the same default weight making every number in
+the game maximum-bold.
+
+**Mechanical hazard worth recording, because it cost two failed runs**:
+several of these selectors have a `@media (max-width: 560px)` duplicate
+that resizes them for mobile (`.mast-t b`, `.mast-t small`,
+`#hud-standing .hs-l`) or a second base-level rule that only adds one
+property (`.sd-card .cc-name` (a `font-size` clamp), `#sess-metrics
+.metc .mv`, `#fund-chip .fc-amt`, `#hud-standing .hs-v`). A NAIVE
+`str.count()` on the selector text both **over-counts** (`.ag-lbl {` is
+also a substring of `.ag-step.now .ag-lbl {`, a longer, unrelated
+selector) and, separately, an end-of-rule search for the literal string
+`"\n}"` **fails silently** inside an indented `@media` block, where the
+real closing brace is `"\n  }"` — it keeps scanning into the NEXT
+rule's body instead of stopping, and edits the wrong text. The working
+tool anchors matches to `^[ \t]*` + the selector (real occurrences
+only) and finds the close brace with `\n[ \t]*\}` (indent-agnostic).
+Re-use that pattern, not `str.count`/`str.index`, for any future sweep
+across this file.
+
 ## UI sound (2026-08-19)
 
 `site/js/sfx.js` — `window.SFX`, loaded before main.js. Every sound is

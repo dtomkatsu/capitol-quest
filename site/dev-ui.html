@@ -1,0 +1,314 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Capitol Quest — UI restyle: before / after</title>
+<!--
+  DEV HARNESS, not shipped chrome. Same convention as dev-parallax.html:
+  a spike you open directly to judge a design decision before it touches
+  style.css. Left column is the RETIRED chrome, copied value-for-value
+  out of style.css as it stood on 2026-08-28; right column is what
+  shipped. Nothing here imports the real stylesheet — both columns are
+  self-contained — so this stays a permanent before/after record rather
+  than a live preview, and it cannot affect the game either way.
+-->
+<style>
+  html, body {
+    margin: 0;
+    background: #0a0e18;
+    color: #e8eaf0;
+    font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 70px; }
+  h1 { font-size: 17px; letter-spacing: .5px; font-weight: 700; margin: 0 0 4px; }
+  .sub { color: #7c869a; font-size: 13px; margin: 0 0 26px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .col > h2 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .14em;
+    color: #626b7d; font-weight: 700; margin: 0 0 12px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  /* the art the chrome floats over, so both sides are judged in context
+     rather than on a neutral card */
+  .stage {
+    background:
+      linear-gradient(150deg, #7a4527 0%, #5d3520 46%, #2a1d16 100%);
+    border-radius: 10px; padding: 16px; margin-bottom: 20px;
+    min-height: 96px; display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .note { font-size: 11.5px; color: #6f7889; line-height: 1.55; margin: 0 0 18px; }
+  .note b { color: #a3adbf; font-weight: 600; }
+
+  /* ============================= CURRENT ============================= */
+  .c-title {
+    display: inline-block; padding: 8px 14px;
+    background: linear-gradient(#2a3f9e, #16246b);
+    border: 2px solid #f8f8ff; outline: 2px solid #16246b;
+    border-radius: 6px; color: #fff; font-weight: 800; font-size: 14px;
+    letter-spacing: 2.5px; text-shadow: 1px 1px 0 #000;
+  }
+  .c-title .star { color: #f2c14e; }
+  .c-tb {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 7px 12px 5px;
+    background: linear-gradient(#2a3f9e, #16246b);
+    border: 2px solid #f8f8ff; outline: 2px solid #16246b;
+    border-radius: 8px; color: #dfe8ff; font: inherit; font-size: 10px;
+    font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; text-shadow: 1px 1px 0 #000;
+  }
+  .c-panel {
+    position: relative; padding: 18px 20px 16px; margin-top: 16px;
+    background: linear-gradient(#1c2f86 0%, #101d5c 100%);
+    border: 3px solid #f8f8ff; outline: 3px solid #101d5c;
+    border-radius: 10px; color: #fff; box-shadow: 0 8px 0 rgba(0,0,0,.35);
+  }
+  .c-panel .cap {
+    position: absolute; top: -14px; left: 18px; padding: 3px 14px;
+    background: #f2c14e; color: #3a2c05; font-weight: 800; font-size: 13px;
+    letter-spacing: 1px; border: 2px solid #fff; border-radius: 4px;
+    box-shadow: 0 2px 0 rgba(0,0,0,.4);
+  }
+  .c-tab {
+    padding: 7px 16px; background: #16246b; border: 2px solid #8fa0d8;
+    border-radius: 6px; color: #dfe8ff; font: inherit; font-size: 11px;
+    font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; text-shadow: 1px 1px 0 #000;
+  }
+  .c-tab.on { background: #f2c14e; color: #3a2c05; border-color: #fff; text-shadow: none; }
+  .c-cta {
+    padding: 9px 20px; background: linear-gradient(#f2c14e, #d9a72f);
+    border: 2px solid #fff; outline: 2px solid #3a2c05; border-radius: 8px;
+    color: #3a2c05; font: inherit; font-size: 13px; font-weight: 800;
+    letter-spacing: 1px; cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,.4);
+  }
+
+  /* ============================ PROPOSED ============================= */
+  /* THE TOKEN LAYER — the thing that does not exist today. Every value
+     below is referenced, never repeated, so a hue change is one edit
+     instead of the 48-instance find-and-replace the current sheet
+     would need. */
+  .new {
+    --ink-0: #0b0e14;              /* the ground under everything      */
+    --ink-1: rgba(18, 22, 31, .82);/* a raised surface, over the art   */
+    --ink-2: rgba(255, 255, 255, .06); /* hover / inset                */
+    --line:   rgba(255, 255, 255, .10);
+    --line-2: rgba(255, 255, 255, .20);
+    --text:   #e9ecf3;
+    --text-2: #9aa4b6;
+    --text-3: #626b7d;
+    --gold:   #f0c264;             /* accent ONLY — never a fill       */
+    --gold-d: #7a5c1e;
+    --shadow: 0 10px 30px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.05) inset;
+    --r: 10px;
+  }
+  .n-title {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 9px 15px; border-radius: var(--r);
+    background: var(--ink-1);
+    border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: var(--shadow);
+    color: var(--text); font-weight: 650; font-size: 13px;
+    letter-spacing: .12em;
+  }
+  .n-title .star { color: var(--gold); font-size: 11px; }
+  .n-title .sub { color: var(--text-3); letter-spacing: .06em; font-weight: 500; }
+  .n-tb {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 9px 14px 7px; border-radius: var(--r);
+    background: var(--ink-1); border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: var(--shadow);
+    color: var(--text-2); font: inherit; font-size: 9.5px; font-weight: 650;
+    letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+    transition: color .18s, border-color .18s, background .18s;
+  }
+  .n-tb:hover { color: var(--text); border-color: var(--line-2); background: rgba(28,34,46,.9); }
+  .n-tb.on { color: var(--gold); border-color: rgba(240,194,100,.45); }
+  .n-tb .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0; }
+  .n-tb.on .dot { opacity: 1; }
+  .n-panel {
+    position: relative; margin-top: 16px; padding: 20px 22px 18px;
+    border-radius: 14px; color: var(--text);
+    background:
+      radial-gradient(120% 70% at 12% -8%, rgba(96,124,200,.13) 0%, rgba(96,124,200,0) 58%),
+      linear-gradient(168deg, #161b26 0%, #0f131c 60%, #0b0e14 100%);
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 70px -24px rgba(0,0,0,.85),
+                inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  /* the caption is TYPE, not a plate stuck on the border */
+  .n-panel .cap {
+    display: block; font-size: 10px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 3px;
+  }
+  .n-panel .h { font-size: 19px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 12px; }
+  .n-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px;
+            background: rgba(0,0,0,.3); border: 1px solid var(--line); }
+  .n-tab {
+    padding: 7px 15px; border-radius: 6px; border: 0; background: transparent;
+    color: var(--text-2); font: inherit; font-size: 11px; font-weight: 650;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    transition: color .18s, background .18s;
+  }
+  .n-tab:hover { color: var(--text); }
+  .n-tab.on { background: var(--ink-2); color: var(--text); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+  .n-cta {
+    padding: 10px 20px; border-radius: 9px; cursor: pointer;
+    background: var(--gold); border: 0;
+    color: #241a05; font: inherit; font-size: 12.5px; font-weight: 700;
+    letter-spacing: .06em;
+    box-shadow: 0 6px 18px -6px rgba(240,194,100,.5);
+    transition: filter .18s, transform .12s;
+  }
+  .n-cta:hover { filter: brightness(1.08); }
+  .n-cta.ghost {
+    background: transparent; border: 1px solid var(--line-2);
+    color: var(--text); box-shadow: none;
+  }
+
+  /* ---- HUD standing, both idioms ---- */
+  .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.13); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--hc); }
+  .c-hs { width: 190px; }
+  .c-hs .row { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; align-items: baseline; }
+  .c-hs .l { font-size: 9.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase;
+             color: #dfeaff; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+  .c-hs .v { font-size: 11px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 #000; }
+  .n-hs { width: 190px; }
+  .n-hs .row { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; align-items: baseline; }
+  .n-hs .l { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+             color: rgba(255,255,255,.62); }
+  .n-hs .v { font-size: 12px; font-weight: 600; color: #fff;
+             font-variant-numeric: tabular-nums; }
+  .n-hs .bar { height: 3px; background: rgba(255,255,255,.14); }
+
+  .sw { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; }
+  .sw i { width: 46px; height: 30px; border-radius: 6px; display: block;
+          border: 1px solid rgba(255,255,255,.12); position: relative; }
+  .sw b { position: absolute; bottom: -16px; left: 0; font-size: 8.5px;
+          color: #626b7d; font-weight: 500; letter-spacing: .04em; }
+  .swwrap { margin-bottom: 26px; }
+</style>
+
+<div class="wrap">
+  <h1>UI restyle — before / after</h1>
+  <p class="sub">
+    Both columns render over the same koa-floor gradient, because chrome can
+    only be judged against the art it floats over. Left is the plate idiom
+    retired on 2026-08-28; right is what replaced it.
+  </p>
+
+  <div class="grid">
+    <!-- ============ CURRENT ============ -->
+    <div class="col">
+      <h2>Before — the plate idiom</h2>
+
+      <div class="stage">
+        <span class="c-title"><span class="star">★</span> CAPITOL QUEST</span>
+      </div>
+      <p class="note">
+        <b>Four dated cues, not the hue:</b> a 2px pure-white border with a
+        second outline ring behind it, a flat two-stop royal-blue fill,
+        <code>text-shadow: 1px 1px 0 #000</code>, and a hard
+        <code>0 8px 0</code> offset shadow.
+      </p>
+
+      <div class="stage">
+        <button class="c-tb">▦<span>Budget</span></button>
+        <button class="c-tb">▤<span>Session</span></button>
+        <button class="c-tb">◈<span>Instincts</span></button>
+      </div>
+
+      <div class="stage">
+        <div class="c-hs">
+          <div class="row"><span class="l">Support</span><span class="v">50</span></div>
+          <div class="bar" style="--hc:#e8795c"><i style="width:50%"></i></div>
+          <div class="row" style="margin-top:7px"><span class="l">Influence</span><span class="v">30</span></div>
+          <div class="bar" style="--hc:#63a6f0"><i style="width:30%"></i></div>
+        </div>
+      </div>
+
+      <div class="c-panel">
+        <span class="cap">State Budget · FY2027</span>
+        <div style="margin:8px 0 14px;font-size:19px;font-weight:800;letter-spacing:.5px">
+          $25B <span style="font-size:12px;font-weight:600;color:#b9c4ea">total</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="c-tab">↓ Money in</button>
+          <button class="c-tab on">↑ Money out</button>
+        </div>
+        <button class="c-cta">End Week ▸</button>
+      </div>
+    </div>
+
+    <!-- ============ PROPOSED ============ -->
+    <div class="col new">
+      <h2>After — shipped</h2>
+
+      <div class="stage">
+        <span class="n-title"><span class="star">◆</span> CAPITOL QUEST
+          <span class="sub">· Oʻahu</span></span>
+      </div>
+      <p class="note">
+        <b>Same two hues, re-roled.</b> Surfaces become near-black glass so the
+        baked art carries the colour; gold survives as a 1px accent and one
+        filled CTA. Hairline borders at 10% alpha, soft ambient shadow,
+        no text outline.
+      </p>
+
+      <div class="stage">
+        <button class="n-tb">▦<span>Budget</span><span class="dot"></span></button>
+        <button class="n-tb on">▤<span>Session</span><span class="dot"></span></button>
+        <button class="n-tb">◈<span>Instincts</span><span class="dot"></span></button>
+      </div>
+
+      <div class="stage">
+        <div class="n-hs">
+          <div class="row"><span class="l">Support</span><span class="v">50</span></div>
+          <div class="bar" style="--hc:#e8795c"><i style="width:50%"></i></div>
+          <div class="row" style="margin-top:9px"><span class="l">Influence</span><span class="v">30</span></div>
+          <div class="bar" style="--hc:#63a6f0"><i style="width:30%"></i></div>
+        </div>
+      </div>
+
+      <div class="n-panel">
+        <span class="cap">State Budget · FY2027</span>
+        <div class="h">$25B <span style="font-size:13px;font-weight:500;color:var(--text-2)">total</span></div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+          <div class="n-tabs">
+            <button class="n-tab">↓ Money in</button>
+            <button class="n-tab on">↑ Money out</button>
+          </div>
+        </div>
+        <button class="n-cta">End Week</button>
+        <button class="n-cta ghost" style="margin-left:8px">Set agenda</button>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#626b7d;
+             font-weight:700;margin:36px 0 14px;padding-bottom:8px;
+             border-bottom:1px solid rgba(255,255,255,.08)">
+    The token layer
+  </h2>
+  <div class="swwrap">
+    <div class="sw">
+      <i style="background:#0b0e14"><b>ink-0</b></i>
+      <i style="background:#12161f"><b>ink-1</b></i>
+      <i style="background:#1a1f2b"><b>ink-2</b></i>
+      <i style="background:#e9ecf3"><b>text</b></i>
+      <i style="background:#9aa4b6"><b>text-2</b></i>
+      <i style="background:#626b7d"><b>text-3</b></i>
+      <i style="background:#f0c264"><b>gold</b></i>
+      <i style="background:#e8795c"><b>support</b></i>
+      <i style="background:#63a6f0"><b>influence</b></i>
+      <i style="background:#59c98b"><b>gain</b></i>
+      <i style="background:#d96a5e"><b>cost</b></i>
+    </div>
+  </div>
+</div>
