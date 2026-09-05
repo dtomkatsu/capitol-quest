@@ -173,7 +173,7 @@ const OFF_V = 2;
    so meta.scale is 0.5 and every hotspot px in the JSON is byte-
    identical to v2. 4 = the legislator figure() redesign, same day —
    art only, hotspot px unchanged again. */
-const HALL_V = 4;
+const HALL_V = 5;   // 5 = alcove pot out from behind the near wall, cut-core ticks clipped (2026-09-05)
 /* Cache token for the event BANNERS (tools/make_event_art.py ->
    assets/events/*.png). They had none at all until 2026-08-28, which
    was survivable only while their pixel dimensions never changed: the

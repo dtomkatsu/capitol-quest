@@ -281,12 +281,22 @@ def white_wall(d, e0, e1, ht, f=1.0):
 
 
 def cut_wall(d, e0, e1, off, f=0.95):
-    """near walls, RPG-sliced: white stub + the cut core on top"""
+    """near walls, RPG-sliced: white stub + the cut core on top.
+
+    The core is the stub's run pushed by `off`, and `off` points along
+    the run's OUTSIDE at both ends — so at e0, which is the room's
+    outermost corner for both near walls (W for the SW run, E for the
+    near end), the core used to overshoot the silhouette by |off| and
+    hang in the ink as a bare tick. The e0 end is clipped to the
+    corner's x, which IS the room's edge there: nothing but ink lies
+    beyond it."""
     t0, t1 = up(e0, CUT), up(e1, CUT)
     quad(d, [e0, e1, t1, t0], shade(WALL, f * 0.9))
     d.line([e0, e1], fill=shade(BASE, f), width=3)
     b0 = (t0[0] + off[0], t0[1] + off[1])
     b1 = (t1[0] + off[0], t1[1] + off[1])
+    s0 = (t0[0] - b0[0]) / float(b1[0] - b0[0])
+    b0 = lerp(b0, b1, s0)
     d.polygon([t0, t1, b1, b0], fill=CUT_CORE)
     d.line([t0, t1], fill=hx("#fff7e6"), width=2)
     d.line([b0, b1], fill=shade(CUT_CORE, 0.72), width=1)
@@ -606,7 +616,10 @@ def render(layers=False):
     # overhead-light streaks running down the corridor (photo ceiling)
     for pu, pv, rw, al in ((-8.6, 0.2, 64, 18), (-4.6, 0.2, 70, 20),
                            (-0.4, 0.2, 64, 18), (3.6, 0.2, 62, 16),
-                           (-4.4, -3.6, 56, 14)):
+                           # the alcove's pool sits left of the casing
+                           # post: at -4.4 its right half fell on the
+                           # near NE wall's face, not the floor
+                           (-5.6, -3.6, 56, 14)):
         x, y = iso(pu, pv)
         for rr, aa in ((rw, al // 2), (rw * 0.6, al)):
             dl.ellipse([x - rr, y - rr * 0.22, x + rr, y + rr * 0.22],
@@ -621,7 +634,7 @@ def render(layers=False):
     # the same picture and moved the shipped bake by a few units.
     sh_lay = Image.new("RGBA", (DW, DH), (0, 0, 0, 0)) if layers else None
     ds = SDraw(sh_lay) if layers else dl
-    for pu, pv in ((-7.0, -3.0), (-3.0, -4.0)):
+    for pu, pv in ((-7.0, -3.0), (2.9, -1.0)):      # == the two plant()s
         x, y = iso(pu, pv)
         ds.ellipse([x - 26, y - 9, x + 26, y + 9],
                    fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
@@ -642,9 +655,15 @@ def render(layers=False):
     d = SDraw(tm)
     plant(d, -7.0, -3.0)
     ffx, ffy = figure(d, -5.4, -3.1)
-    # deep in the alcove, NOT at its mouth: a pot standing near the
-    # casing post gets sliced by it and reads as a clipping error
-    plant(d, -3.0, -4.0)
+    # the second pot stands in the CORRIDOR, between the directory and
+    # the unnamed door. It stood deep in the alcove at (-3.0, -4.0),
+    # chosen so the casing post would not slice it — but every screen
+    # px of alcove floor right of that post is BEHIND the near NE
+    # wall segment (u+v -7 against the wall's -3.65), and the pot was
+    # painted in the mid band over that wall's face, its floor shadow
+    # landing on the plaster as a pale disc. The alcove's whole visible
+    # floor is the legislator's; the plant goes where a plant can be.
+    plant(d, 2.9, -1.0)
 
     # white casing posts at the lobby mouth (photo's cased opening) —
     # they also seat the wall seams where the recess interrupts the run
