@@ -143,7 +143,8 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 41;   // 41 = the OVER/SHIP re-bake (2026-08-28)
+const CAP_V = 42;   // 42 = sliced ends on the slab, stair flush, breezeway pier feet (2026-09-04)
+                    // 41 = the OVER/SHIP re-bake (2026-08-28)
 /* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
    call: "make that the default view (replacing the map) for now. keep
    the map in case we want to use it later"). Set to null to put the

@@ -264,12 +264,11 @@ DRUM_RT, DRUM_RB = 72, 102  # chamber drum: top / flared base radius
 FASCIA_D = 24              # fluted slab-edge band depth — the photo's
                            # dominant element, deeper than the pickets
 POST_H = 19
-STUB_H = 10                # makai edge — now only the stair landing's
-                           # datum. The knee-high CUT stub walls that
-                           # used to stand on the near edges are GONE
-                           # (2026-08-24, user: "don't need the walls,
-                           # just showing the walkway is fine") — the
-                           # walkway ends at its own slab fascia.
+# STUB_H (10) is GONE: it was the knee-high CUT stub walls' height on
+# the near edges, removed 2026-08-24 (user: "don't need the walls, just
+# showing the walkway is fine") — the walkway ends at its own slab
+# fascia. It lingered as the stair's datum, which left the treads
+# starting 10px below an edge that no longer had a wall on it.
 CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # of the dressed flutes (#ece6d4) in VALUE —
                            # a near-white cut face vanished entirely at
@@ -1404,8 +1403,13 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     # the OUTER pier rows, standing in the shaded walk — offset from
     # the near row's 0.18/0.5/0.82 or the two rows read as one pier
     # with a shadow. Two ranks, the far one paler and shorter.
-    for pf, wd, lo, hi, c in ((0.33, 5, 0.10, 0.62, "#6a675c"),
-                              (0.67, 5, 0.10, 0.62, "#6a675c"),
+    # Both ranks stop AT the shade line (0.55): the taller rank ran
+    # to 0.62, seven px into the sunlit plaza band, and from the
+    # gallery the slab fascia hides everything above ~0.51 — so all
+    # that reached the bake was a detached grey stub of each pier's
+    # foot sitting on the bright plaza.
+    for pf, wd, lo, hi, c in ((0.33, 5, 0.10, 0.55, "#6a675c"),
+                              (0.67, 5, 0.10, 0.55, "#6a675c"),
                               (0.21, 3, 0.14, 0.50, "#767366"),
                               (0.50, 3, 0.14, 0.50, "#767366"),
                               (0.79, 3, 0.14, 0.50, "#767366")):
@@ -2768,21 +2772,30 @@ def paint_upper_level(d):
     g_in[1] = iso(A_OUT + WING_EXT, -A_OUT)
     g_out[1] = iso(LVL2_OUT + WING_EXT, -LVL2_OUT)
     top = LVL2_Y + 72
-    for i in (3, 1):
+
+    def sliced_end(i, lo, hi, plates):
+        """The core between heights `lo..hi` above the corner's floor
+        datum (negative = below it, into the slab)."""
         c0, c1 = g_in[i], g_out[i]
-        d.polygon([c0, c1, up(c1, top), up(c0, top)], fill=hx(CUT_CORE))
+        d.polygon([up(c0, lo), up(c1, lo), up(c1, hi), up(c0, hi)],
+                  fill=hx(CUT_CORE))
         for k, c in ((1, "#8e866f"), (2, "#a89f88")):    # aggregate
             t = k / 3.0
-            d.line([lerp(c0, c1, t), lerp(up(c0, top), up(c1, top), t)],
+            d.line([lerp(up(c0, lo), up(c1, lo), t),
+                    lerp(up(c0, hi), up(c1, hi), t)],
                    fill=hx(c), width=1)
         # the floor PLATE, so the section reads as storeys stacked and
         # not as one solid pier
-        for y in (LVL2_Y, LVL2_Y - 5):
+        for y in plates:
             d.line([up(c0, y), up(c1, y)], fill=hx("#b9b096"), width=1)
-        d.line([up(c0, LVL2_Y - 6), up(c1, LVL2_Y - 6)],
-               fill=hx("#6f6957"), width=1)
-        d.line([c0, up(c0, top)], fill=hx("#fffdf5"), width=2)  # arris
-        d.line([c1, up(c1, top)], fill=hx("#6f6957"), width=1)
+        if LVL2_Y - 6 in plates:
+            d.line([up(c0, LVL2_Y - 6), up(c1, LVL2_Y - 6)],
+                   fill=hx("#6f6957"), width=1)
+        d.line([up(c0, lo), up(c0, hi)], fill=hx("#fffdf5"), width=2)
+        d.line([up(c1, lo), up(c1, hi)], fill=hx("#6f6957"), width=1)
+
+    for i in (3, 1):
+        sliced_end(i, 0, top, (LVL2_Y, LVL2_Y - 5, LVL2_Y - 6))
     doors = {}
     for r, (i0, i1, f) in enumerate((
         # Both HALLWAY MOUTHS sit on the Diamond Head run (user,
@@ -2885,6 +2898,20 @@ def paint_upper_level(d):
     d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
     bench_at(d, w0, w1, 0.72, fdh)
     upper_parapet(d, aw0, aw1, fdh, phase0=inn[0])
+    # ---- the LOWER STOREY of the sliced ends goes again, LAST.
+    # Two things above spilled onto it: a door's floor reflection at
+    # the run's start hangs 16px below the wall foot along the run's
+    # slope, and at the corners the walkway's edge is the horizontal
+    # inner-to-outer segment, so the wedge poked out under the floor
+    # as a brown notch in the cut core. And the section stopped dead
+    # at the floor datum with bare ink beneath — the walkway's slab
+    # carries FASCIA_D of edge on the makai side, and the wall's mass
+    # has to stand on the same slab, or the block is a cantilever
+    # (the very read this cut exists to prevent). Core from the slab
+    # foot to the level-3 plate, nothing above it: the level-3 wall
+    # and floor legitimately own the upper half of the block.
+    for i in (3, 1):
+        sliced_end(i, -FASCIA_D, LVL2_Y, (LVL2_Y, 0))
     return doors
 
 
@@ -3084,24 +3111,32 @@ def paint_front_edge(d):
                 flutes=False)
     fluted_band(d, lerp(e0, e1, t_s + half), e1, 0, FASCIA_D, 0.92,
                 flutes=False)
-    # stairs down out of the room
+    # stairs down out of the room. The top tread sits ON the slab
+    # edge: the treads used to start STUB_H below it, which was the
+    # top of the knee-high stub wall they descended from — with the
+    # stubs gone (2026-08-24) that offset was a 10px slot of bare ink
+    # between the walkway and the first step.
+    top = s[1]
     for i in range(5):
-        y = s[1] + STUB_H + i * 8
+        y = top + i * 8
         wdt = 40 - i * 2
         d.polygon([(s[0] - wdt, y), (s[0] + wdt, y),
                    (s[0] + wdt - 4, y + 6), (s[0] - wdt + 4, y + 6)],
                   fill=shade(hx("#cbc3ae"), 0.95 - i * 0.13))
-    # cheek walls flanking the run, landing at the foot
+    # cheek walls flanking the run, ending AT the landing's top edge:
+    # they used to run 8px past it at x = ±30, where the landing has
+    # already narrowed to ±27, so each left a spike hanging under the
+    # foot of the stair
     for sgn in (-1, 1):
-        d.polygon([(s[0] + sgn * 40, s[1] + STUB_H),
-                   (s[0] + sgn * 30, s[1] + STUB_H + 44),
-                   (s[0] + sgn * 30, s[1] + STUB_H + 52),
-                   (s[0] + sgn * 44, s[1] + STUB_H + 4)],
+        d.polygon([(s[0] + sgn * 40, top),
+                   (s[0] + sgn * 30, top + 44),
+                   (s[0] + sgn * 34, top + 44),
+                   (s[0] + sgn * 44, top + 4)],
                   fill=shade(hx("#b5ad98"), 0.9))
-    d.polygon([(s[0] - 32, s[1] + STUB_H + 44),
-               (s[0] + 32, s[1] + STUB_H + 44),
-               (s[0] + 24, s[1] + STUB_H + 56),
-               (s[0] - 24, s[1] + STUB_H + 56)],
+    d.polygon([(s[0] - 32, top + 44),
+               (s[0] + 32, top + 44),
+               (s[0] + 24, top + 56),
+               (s[0] - 24, top + 56)],
               fill=shade(hx("#8f8a7a"), 0.85))
 
 
