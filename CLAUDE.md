@@ -1739,6 +1739,127 @@ only) and finds the close brace with `\n[ \t]*\}` (indent-agnostic).
 Re-use that pattern, not `str.count`/`str.index`, for any future sweep
 across this file.
 
+### Tier 5 — the polish pass (2026-09-22)
+
+From "scope polish for the game's user interface", then "do all of those
+fixes". Measured in the pane at 375, 800, 1024 and 1280 wide plus a full
+audit of the stylesheet. What must survive:
+
+**The broken things, first:**
+- **The greeting box (`#dialog`) never sits over the HUD's controls.**
+  640px wide at bottom 40, it covered End Turn at any window under
+  ~1024px, and the budget chip on a phone — and a tap anywhere on it
+  dismisses it, so the first tap on End Turn was spent closing the
+  greeting. Below 1060px it rides at `bottom: 162px` (180 on a phone),
+  measured against the bottom-left column. If that column grows,
+  re-measure; nothing derives it.
+- **Under 600px the toolbar is ICON-ONLY**: `.tb-t` is visually hidden
+  (never `display: none` — it is the button's accessible name), every
+  button is 44x40, and the week badge stays visible. It was a 471px row
+  on a 375px phone with nothing clipping it, so Map sat off the edge.
+  **Between 600 and 900px it takes its own row under the title chip** —
+  centred, it overlapped the chip from ~890px down. `#chips` moves with it.
+- **KEYBOARD: `A11y` in main.js.** Every control is pointerdown-only by
+  design and there are NO click listeners, so nothing answered Enter or
+  Space. A11y turns Enter/Space on any `button` or `[role="button"]` into
+  the (untrusted) pointerdown the handler already expects. Consequences:
+  - **A tap target that is not a `<button>` needs `role="button"` and
+    `tabindex="0"`**, or no keyboard can reach it. The agenda cards
+    (`.agc`) were plain divs and the ONLY way to pick a bill, so the
+    creation funnel could not be finished from a keyboard at all. Add
+    `aria-pressed` / `aria-expanded` when the control toggles.
+  - **Focus survives re-renders.** A control's identity is its id, else
+    the nearest ancestor's `data-*` key (the `KEYS` list — add to it if a
+    new re-rendered control is keyed by a new attribute). Gone for good,
+    focus goes to the screen's next decision (`NEXT`, in priority order).
+    It acts only once the pressed element is really GONE: a sliding
+    screen keeps its button alive until the swap, and a press that
+    opened an overlay must leave focus where the overlay put it. Only
+    after keyboard input — a pointer player's focus is never moved.
+  - Overlays take focus on open (`.ovl-panel` carries `tabindex="-1"`),
+    give it back to the opener on close, and wrap Tab. They are
+    `aria-modal` and labelled by their titles.
+  - ONE ring: `:where(button, [role="button"], [tabindex]):focus-visible`
+    in gold-light. Never `:focus { outline: none }` without a
+    replacement — it was on the only three controls that had any cue.
+  - RoomScene's walk keys go dead while an overlay is open.
+- `.view-toggle` had `font: 700 10.5px inherit` — INVALID (`inherit`
+  cannot sit inside the shorthand), so the whole declaration was dropped
+  and the List/Map toggles rendered in the browser's default font.
+
+**One overlay material.** The scrim, the lit OPAQUE panel with its gold
+inset hairline, the film grain and the gold scrollbar moved out of the
+session-only cinema pass onto `.ovl` / `.ovl-panel` / `.ovl-rows`.
+Budget and Policies had kept a flat navy scrim and a plain panel.
+- **The scrim is `.ovl::before`, and that is load-bearing.** The week
+  arrival's scrim fade animated `background-color` on a gradient
+  background, which does nothing — it had not played since the cinema
+  pass. Opacity on a pseudo-element does. (A pseudo-element is never an
+  event target, so `e.target === overlay` still means "tapped outside".)
+- **Grain is the panel's `::after`, the week sheen its `::before`.** They
+  shared `::after`, so every arrival's sheen REPLACED the grain, and the
+  reduced-motion rule that hides the sheen hid the grain all week. Both
+  take `border-radius: inherit` (hardcoded 7px/10px squared the 14px
+  corners).
+- The session panel's middle stop was `#12172180` — half transparent —
+  against tier 2's "modal panels stay OPAQUE". It is `#121721`.
+- The cinema pass had put back the masthead's hard `4px 4px 0` offset
+  (overriding the very rule that documents it gone) and hung a
+  `0 8px 0` under the session panel. Both removed, and the session
+  panel's opaque near-white border (`#e9e6da`) with them.
+- Tab icons are SYM drawings set from JS (`moneyin`, `moneyout`,
+  `target`, `revenue`); the markup's arrows and emoji are only the
+  pre-boot fallback. The policy rows use `sym(p.id)` like the creation
+  cards and the hub. **Not done: the flow-map NODES still carry emoji**
+  (💰🦅🧰 and twelve tax badges) — replacing them means drawing fifteen
+  new SYM glyphs, which is art, not polish.
+- The close button is a 36px target (44 on a phone); the tabs moved down
+  26px to clear it. The sound toggle keeps its 13px glyph with a 33px hit
+  area (`::after`, so the title chip does not move).
+
+**Colour tokens** (tier 1's gate applies to every one of these):
+- `--flow-*` is ONE source for the legend swatches, the list-view bars
+  and the flow-map motes — `flowColors()` in main.js reads them through
+  `cssVar()`. The legend was a darker set than the motes it named.
+- `--z-*`: hud 10, flow tip 15, greeting 20, overlays 30. The tip and
+  the greeting were both 20, decided by DOM order.
+- `--ico-*` + `#toolbar .ic-*`: the toolbar's pixel palette as classes.
+  A new icon uses the classes, never its own fills — the first Map icon
+  was drawn in greens and read as a button from another game. The Map
+  icon is now a tri-fold map with a pin, in that palette.
+- **RGB TRIPLETS** (`--gold-rgb: 242, 193, 78` …) so a translucent colour
+  is `rgba(var(--gold-rgb), .5)` instead of a literal copy of the token
+  beside it. 109 literals were rewritten, and the gate passed: every
+  token resolved back in both files, hexes lowercased, whitespace inside
+  `rgba()` dropped, `:root` set aside — identical. A triplet IS a second
+  copy of its hex (a hex token cannot take an alpha), so
+  **`python3 tools/check_tokens.py` fails the moment a triplet or a JS
+  flow fallback drifts from its token — run it after touching `:root`.**
+- Nine repeated colours with no token got one (`--sky`, `--gold-hi`,
+  `--cost-lt`/`--gain-lt`, `--trend-up`/`--trend-down`, `--near`,
+  `--teal-lt`, `--bar-ink`). **Not done, deliberately:** the warm
+  reader/creation greys (`#d6ddf5`, `#cdc9ba`, `#97917f`, `#c3cdf0`,
+  `#8fa0d8`, `#9aa4c8`, `#7c88b4`). Each repeats 2-4 times, but each is
+  NEAR a `--txt-*` step without equalling it; tokenising them honestly
+  is designing a second text ramp, not a rename.
+
+**Type:**
+- The HUD has a 10px floor (toolbar labels, standing, trend, the fund
+  chip's eyebrow, End Turn's label, the week badge, the progress
+  readout). The bottom-left column went 168 -> 184px (176 on a phone) so
+  "WEEK 5 · FIRST LATERAL" still fits one line.
+- Mixed-case text takes no tracking — tracking is for caps (the tiers):
+  the hint, the flow tip, the island chip and menu, the stream chips,
+  the view toggle, End Turn's action line.
+- Room labels are CHROME over a painted room: 700, a 3px halo in
+  `--plate-deep`, near-zero tracking. Map labels keep their 4px
+  terrain-tinted halo — that is cartography — at weight 700, and the
+  island names' halo is a sea ink instead of the retired UI navy.
+- Left alone on purpose, beside tier 4's list: the creation plates'
+  offset shadows (`.sk-begin`, `.ag-back`), the reader's name labels, and
+  `.stl-lbl`, whose 9px is what the 940px strip's no-collision
+  measurement was taken against.
+
 ## UI sound (2026-08-19)
 
 `site/js/sfx.js` — `window.SFX`, loaded before main.js. Every sound is
@@ -1806,8 +1927,8 @@ touching no call site.
   die: two transients 0ms apart phase into a single louder click and
   the dice stop sounding like two objects.
 - **Mute is `#sfx-chip` in the title plate, not the toolbar** — the
-  four toolbar buttons are DOORS into panels and a fifth that is a
-  preference would misread as a fifth panel. State persists in
+  five toolbar buttons are DOORS into panels and a sixth that is a
+  preference would misread as a sixth panel. State persists in
   localStorage `cq-sfx`; muted means the graph is never built, not that
   the gain is zero. Its glyph is DRAWN, not an emoji (same rule as
   `SYM`), and the muted state is a quieter icon rather than a slash — a
@@ -2243,14 +2364,15 @@ Terrain height is MEASURED now, same pattern as rainfall:
 ## Session overlay cinema pass (2026-08-21)
 
 The tail of `site/css/style.css` ("THE CINEMA PASS") upgrades the
-narrative screen's material: blurred-map scrim, lit panel + film grain,
-banner art mask-faded into the page, choice/Continue plates with a
-hover sheen, glowing metric cards, foil masthead, gold scrollbar.
-**Everything in it is scoped to `#session-overlay`** — money/policy
-overlays keep the plain house plates — and it re-states no layout and
-none of the documented decisions above (nameplate voices, transcript
-ageing, mast geometry). Sheens are disabled under
-prefers-reduced-motion.
+narrative screen's material: banner art mask-faded into the page,
+choice/Continue plates with a hover sheen, the portrait's foil frame,
+the foil masthead. It is scoped to `#session-overlay` and re-states no
+layout and none of the documented decisions above (nameplate voices,
+transcript ageing, mast geometry). Sheens are disabled under
+prefers-reduced-motion. **Its scrim, lit panel, film grain, metric-card
+light and gold scrollbar were promoted to EVERY overlay on 2026-09-22**
+(UI chrome, tier 5) — the money/policy overlays no longer keep the
+plain plates, which had left them looking like another game beside it.
 
 ## The Capitol grounds scene (2026-08-22)
 

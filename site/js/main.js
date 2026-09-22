@@ -235,6 +235,10 @@ const Dialog = {
       e.stopPropagation();
       this.hide();
     });
+    // the keyboard's way to dismiss it (a tap anywhere on it is the other)
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") this.hide();
+    });
   },
   show(name, text) {
     clearInterval(this.timer);
@@ -253,6 +257,174 @@ const Dialog = {
     this.el.classList.add("hidden");
   },
 };
+
+/* ------------------------------------------------------ keyboard + focus */
+/* KEYBOARD ACCESS (2026-09-22). Every control in the game is wired to
+   `pointerdown` — on purpose: it lands on touch with no click delay —
+   and there was not one `click` listener, so NOTHING answered Enter or
+   Space. Rather than a second listener at each of 53 call sites (and at
+   every one written later), this translates the key into the
+   pointerdown the handler already expects, on anything that is a
+   button or says it is one (role="button"). Rules that must survive:
+   - A synthetic event is `isTrusted: false`; that is how the last-input
+     tracking tells a key-driven press apart from a real tap.
+   - Space is preventDefault'ed, or it also scrolls the transcript.
+   - Renderers replace innerHTML, which throws the focused control away
+     mid-press. The SAME control is then found in the new DOM — by id,
+     or by the data-* key of the row it sits in — and focused, whether
+     the render was synchronous or arrives seconds later (the dice
+     tray). If it is gone for good, focus goes to the screen's next
+     decision (a choice, Continue, End Week). ONLY after keyboard input:
+     a mouse or touch player's focus is never moved.
+   - Opening an overlay moves focus into its panel, closing one returns
+     it to whatever opened it, and Tab wraps inside the open overlay.
+     They are aria-modal, which is a promise that focus stays put. */
+const A11y = (() => {
+  let kb = false;                                 // was the last input a key?
+  window.addEventListener("pointerdown", (e) => { if (e.isTrusted) kb = false; }, true);
+  window.addEventListener("keydown", () => { kb = true; }, true);
+
+  const usable = (el) => !!el && el.isConnected && !el.disabled &&
+    el.getClientRects().length > 0 &&
+    getComputedStyle(el).visibility !== "hidden";
+  const openOvl = () => {
+    const o = document.querySelectorAll(".ovl:not(.hidden)");
+    return o.length ? o[o.length - 1] : null;
+  };
+
+  // who a control is, in terms that survive a re-render
+  const KEYS = ["data-pol", "data-skill", "data-pm", "data-i", "data-week",
+    "data-talk", "data-step", "data-push", "data-goto", "data-ev",
+    "data-act", "data-slug"];
+  const identity = (el) => {
+    if (el.id) return { id: el.id };
+    for (let h = el; h && h !== document.body; h = h.parentElement) {
+      const attr = KEYS.find((k) => h.hasAttribute(k));
+      if (attr) return { attr, val: h.getAttribute(attr),
+                         cls: h === el ? null : el.classList[0] || null };
+    }
+    return null;
+  };
+  const CONTROL = 'button, [role="button"]';
+  const find = (k) => {
+    if (!k || (!k.id && !k.attr)) return null;
+    if (k.id) return document.getElementById(k.id);
+    const host = document.querySelector(
+      "[" + k.attr + '="' + CSS.escape(k.val) + '"]');
+    if (!host) return null;
+    const t = k.cls ? host.querySelector("." + CSS.escape(k.cls)) : host;
+    // back but DISABLED (a skill's + at its cap): stay on the same row,
+    // on whichever of its controls still works (its −)
+    return usable(t) ? t :
+      [...host.querySelectorAll(CONTROL)].find(usable) || null;
+  };
+
+  // the screen's next decision, in priority order, for when the pressed
+  // control is gone for good (Continue, a spent choice, a screen change)
+  const NEXT = [".sd-choices button", ".sd-done", "#sess-next",
+    "#sk-begin", "#sess-lock", ".agc", ".skup"];
+  /* `pend` is who was pressed, `pendEl` the element itself. Nothing is
+     done while pendEl is still on screen and usable — most presses
+     re-render nothing, and one that opens an overlay must leave focus
+     where the overlay put it. It acts once pendEl is GONE (replaced,
+     hidden, disabled), which may be a frame later or seconds later: a
+     screen that slides out keeps its button alive until the swap. */
+  let pend = null, pendEl = null, pendUntil = 0, parkT = 0;
+  const restore = () => {
+    if (!pend) return;
+    if (!kb || performance.now() > pendUntil) { pend = null; return; }
+    const a = document.activeElement;
+    // the player has already moved on
+    if (a && a !== document.body && a !== pendEl && a.isConnected &&
+        !a.classList.contains("ovl-panel")) { pend = null; return; }
+    if (usable(pendEl)) return;               // nothing was lost (yet)
+    const ov = openOvl();
+    let t = find(pend);
+    // never out of a modal: a match behind the open overlay is no match
+    if (ov && t && !ov.contains(t)) t = null;
+    for (let i = 0; !usable(t) && ov && i < NEXT.length; i++)
+      t = [...ov.querySelectorAll(NEXT[i])].find(usable);
+    if (usable(t)) { t.focus({ preventScroll: true }); pend = null; return; }
+    /* Nothing to land on YET (the dice are out, a screen is sliding in).
+       Park focus on the panel so Tab still starts inside the overlay —
+       and keep waiting: the panel does not count as "moved on", so the
+       next decision takes focus from it the moment it renders. */
+    clearTimeout(parkT);
+    parkT = setTimeout(() => {
+      const p = pend && openOvl();
+      if (p && document.activeElement === document.body)
+        p.querySelector(".ovl-panel").focus({ preventScroll: true });
+    }, 400);
+  };
+  new MutationObserver(restore)
+    .observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target && e.target.closest &&
+      e.target.closest('button, [role="button"]');
+    if (!t || t.disabled || t.getAttribute("aria-disabled") === "true") return;
+    e.preventDefault();
+    pend = identity(t) || {};                 // {} = no key: NEXT only
+    pendEl = t;
+    pendUntil = performance.now() + 6000;
+    t.dispatchEvent(new PointerEvent("pointerdown",
+      { bubbles: true, cancelable: true, composed: true }));
+    restore();
+  });
+
+  // focus into an overlay on open, back to its opener on close
+  const openers = new WeakMap();
+  for (const ov of document.querySelectorAll(".ovl")) {
+    let was = ov.classList.contains("hidden");
+    new MutationObserver(() => {
+      const now = ov.classList.contains("hidden");
+      if (now === was) return;
+      was = now;
+      const a = document.activeElement;
+      if (!now) {
+        if (a && a !== document.body && !ov.contains(a)) openers.set(ov, a);
+        const panel = ov.querySelector(".ovl-panel");
+        if (panel && !ov.contains(a)) panel.focus({ preventScroll: true });
+      } else if (!a || a === document.body || ov.contains(a)) {
+        const o = openers.get(ov);
+        if (usable(o) && !openOvl()) o.focus({ preventScroll: true });
+      }
+    }).observe(ov, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // Tab wraps inside the open overlay
+  const FOCUSABLE = 'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const ov = openOvl();
+    if (!ov) return;
+    const f = [...ov.querySelectorAll(FOCUSABLE)].filter(usable);
+    if (!f.length) return;
+    const a = document.activeElement;
+    const inside = ov.contains(a) && !a.classList.contains("ovl-panel");
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey ? (!inside || a === first) : (!ov.contains(a) || a === last)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    }
+  });
+  return { usable };
+})();
+
+/* A design token, read from the stylesheet so a colour has ONE source.
+   The flow map's motes and the legend swatch beside it used to be two
+   different sets of hexes, one in each file. */
+const cssVar = (name, fallback) =>
+  (getComputedStyle(document.documentElement).getPropertyValue(name) || "")
+    .trim() || fallback;
+const flowColors = () => ({
+  gf: cssVar("--flow-gf", "#e3b64b"),
+  fed: cssVar("--flow-fed", "#63a6f0"),
+  oth: cssVar("--flow-oth", "#3fbf92"),
+  get: cssVar("--flow-get", "#4fd8c8"),
+});
 
 /* ------------------------------------------------- radial flow (shared) */
 /* Capitol-at-the-hub flow diagram used by both tabs of the money overlay:
@@ -304,8 +476,12 @@ function buildRadialFlow(cfg) {
       class: "spoke", d: `M${sx},${sy} Q${mx},${my} ${nx},${ny}`,
     }));
 
+    // a node is a control: focus shows its detail the way hover does,
+    // and Enter/Space press it (A11y) — the drill node drills
     const node = mk("circle", {
       class: "node" + (n.onClick ? " drill" : ""), cx: nx, cy: ny, r,
+      tabindex: "0", role: "button",
+      "aria-label": n.label + (n.sub ? " — " + n.sub : ""),
     });
     // two label lines — name on top, dollar amount beneath
     const above = Math.sin(a) < -0.25;
@@ -337,6 +513,7 @@ function buildRadialFlow(cfg) {
       cfg.detail.innerHTML = n.detail;
     };
     node.addEventListener("mouseenter", show);
+    node.addEventListener("focus", show);
     node.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       show();
@@ -357,6 +534,7 @@ function buildRadialFlow(cfg) {
   });
 
   cfg.detail.innerHTML = cfg.defaultDetail;
+  cfg.detail.setAttribute("aria-live", "polite");
 
   // density ∝ dollars: on-screen motes = Σ(rate × duration)
   const totalAmt = streams.reduce((s, x) => s + x.amt, 0);
@@ -433,6 +611,10 @@ const MoneyPanel = {
       budget: { el: $("mv-budget"), tab: $("mt-budget"),
                 title: "State Budget · FY" + budget.fy },
     };
+    // the tab glyphs are SYM drawings, like every other icon in the
+    // panels (the markup's arrows are only the pre-boot fallback)
+    views.revenue.tab.innerHTML = sym("moneyin") + "Money in";
+    views.budget.tab.innerHTML = sym("moneyout") + "Money out";
     let cur = "revenue";
     // money-in is two screens deep: the funding mix first, then a drill
     // into the taxes that fill the general fund
@@ -527,20 +709,21 @@ const MoneyPanel = {
     const other = data.departments.reduce((s, d) => s + d.other, 0);
     const gf = data.total - fed - other;
     const pct = (v) => Math.round(100 * v / data.total) + "%";
+    const C = flowColors();
 
     const FUNDS = [
-      { name: "General funds", icon: "💰", color: "#e3b64b", amt: gf,
+      { name: "General funds", icon: "💰", color: C.gf, amt: gf,
         onClick: drill,
         who: "The state's own checkbook, filled almost entirely by the " +
           "taxes Hawaiʻi collects — GET, income tax and the rest. The " +
           "Legislature can spend it on anything. Tap the money bag to " +
           "see the taxes." },
-      { name: "Federal funds", icon: "🦅", color: "#63a6f0", amt: fed,
+      { name: "Federal funds", icon: "🦅", color: C.fed, amt: fed,
         who: "Money from Washington tied to specific programs — the " +
           "Medicaid match, SNAP, highway and airport aid, disaster " +
           "relief. It arrives with rules attached, which is why some " +
           "departments feel federal budget fights." },
-      { name: "All other funds", icon: "🧰", color: "#3fbf92", amt: other,
+      { name: "All other funds", icon: "🧰", color: C.oth, amt: other,
         who: "Money earmarked by law before it ever reaches the general " +
           "fund — special funds like the highway fund, university " +
           "tuition and harbor fees — plus bond borrowing for " +
@@ -630,6 +813,7 @@ const MoneyPanel = {
     wireListToggle("budget-view", "budget-rows", "budget-map");
 
     const pct = (v, d) => Math.round(100 * v / d.total) + "%";
+    const C = flowColors();
     buildRadialFlow({
       svg: $("budget-svg"),
       detail: $("budget-detail"),
@@ -645,9 +829,9 @@ const MoneyPanel = {
         sub: fmt(d.total),
         total: d.total,
         streams: [
-          { amt: d.gf, color: "#e3b64b" },
-          { amt: d.fed, color: "#63a6f0" },
-          { amt: d.other, color: "#3fbf92" },
+          { amt: d.gf, color: C.gf },
+          { amt: d.fed, color: C.fed },
+          { amt: d.other, color: C.oth },
         ],
         detail:
           "<b>" + d.name + "</b> — <b>" + fmt(d.total) + "</b> · " +
@@ -683,9 +867,10 @@ const MoneyPanel = {
       "All other taxes & fees": "Other",
     };
     // gold/teal match the island-map streams; green = not on the map
+    const C = flowColors();
     const color = (t) =>
-      t.stream === "income" ? "#e3b64b" :
-      t.stream === "get" ? "#4fd8c8" : "#3fbf92";
+      t.stream === "income" ? C.gf :
+      t.stream === "get" ? C.get : C.oth;
     // badges for the bigger sources (small nodes skip theirs)
     const ICON = {
       "General excise & use (GET)": "🛒",
@@ -855,7 +1040,7 @@ const PolicyPanel = {
       $("prio-hero").innerHTML =
         "<b>" + fmtK(spent) + "/yr</b> invested in what comes next" +
         "<small>Tap Enact to fund a priority. Spending lands on the " +
-        "budget scoreboard (bottom right) — cover it from the 💵 Raise " +
+        "budget scoreboard (bottom right) — cover it from the Raise " +
         "revenue tab.</small>";
       $("rpol-hero").innerHTML =
         "<b>+" + fmtK(raised) + "/yr</b> in new revenue" +
@@ -869,7 +1054,9 @@ const PolicyPanel = {
         row.className = "prow" + (enacted.has(p.id) ? " on" : "");
         row.title = "Source: " + p.src;
         row.innerHTML =
-          '<span class="pname"><b>' + p.icon + " " + p.name +
+          // the same SYM drawing the creation cards and the hub use for
+          // this policy; the JSON's emoji is only the fallback
+          '<span class="pname"><b>' + (sym(p.id) || p.icon) + " " + p.name +
           "</b><small>" + p.who + "</small></span>" +
           '<span class="ptag ' + kind + '">' +
           (kind === "cost" ? "−" : "+") + fmtK(p.amt) + "/yr</span>" +
@@ -914,6 +1101,9 @@ const PolicyPanel = {
       priorities: { el: $("pv-priorities"), tab: $("pt-priorities") },
       revenue: { el: $("pv-revenue"), tab: $("pt-revenue") },
     };
+    // SYM glyphs, not the markup's emoji (house rule: no stock emoji)
+    views.priorities.tab.innerHTML = sym("target") + "Priorities";
+    views.revenue.tab.innerHTML = sym("revenue") + "Raise revenue";
     const setView = (v) => {
       for (const k in views) {
         views[k].el.classList.toggle("hidden", k !== v);
@@ -1055,6 +1245,15 @@ const SYM = (() => {
       'M7.7 3.7 6.6 2.6M17.4 2.6l-1.1 1.1M7.7 12.3l-1.1 1.1' +
       'M17.4 13.4l-1.1-1.1"/>' +
       '<path d="M8.2 16.5h7.6l2.2 4.5H6z"/><path d="M7 21h10"/>',
+    // overlay tabs (2026-09-22) — they were emoji and arrows
+    moneyin: '<path d="M12 3.5v10"/><path d="M7.5 9 12 13.5 16.5 9"/>' +
+      '<path d="M4.5 14.5V18a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 ' +
+      '1.5-1.5v-3.5"/>',
+    moneyout: '<path d="M12 14V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/>' +
+      '<path d="M4.5 14.5V18a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 ' +
+      '1.5-1.5v-3.5"/>',
+    target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.4"/>' +
+      '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
   };
   // aliases: characters and actions that share a drawing
   S.kawaguchi = S.souza = S.chamber;
@@ -3044,8 +3243,11 @@ const SessionPanel = {
         "</div><div class=\"agc-grid\">";
       for (const p of mine) {
         const on = S.agenda.includes(p.id);
+        // role/tabindex: the card IS the control — the only way to pick
+        // a bill — so it has to be reachable and pressable by keyboard
         html += '<div class="agc ' + p.kind + (on ? " on" : "") +
-          '" data-pol="' + p.id + '">' +
+          '" data-pol="' + p.id + '" role="button" tabindex="0"' +
+          ' aria-pressed="' + (on ? "true" : "false") + '">' +
           '<div class="agc-art">' + (sym(p.id) || p.icon || "") + "</div>" +
           '<div class="agc-name">' + esc(p.name) + "</div>" +
           '<div class="agc-desc">' + esc(p.who || "") + "</div>" +
@@ -3448,6 +3650,7 @@ const SessionPanel = {
           const bd = t.parentElement.querySelector(".pm-body");
           const nowOpen = !bd.classList.toggle("hidden");
           t.textContent = nowOpen ? "Why it died ▾" : "Why it died ▸";
+          t.setAttribute("aria-expanded", nowOpen ? "true" : "false");
           // display:none → block restarts the row cascade for free;
           // the count-up needs asking
           if (nowOpen) countPm(bd);
@@ -4605,8 +4808,9 @@ const SessionPanel = {
           // the week of death — collapsed behind a toggle so the ledger
           // stays scannable (at sine die `reveal` opens it by default)
           if (b.death.odds) {
-            line += '<span class="pm-tgl" data-pm="' + b.id + '">' +
-              (reveal ? "" : "Why it died ▸") + "</span>" +
+            line += '<span class="pm-tgl" data-pm="' + b.id + '"' +
+              (reveal ? "" : ' role="button" tabindex="0" aria-expanded="false"') +
+              ">" + (reveal ? "" : "Why it died ▸") + "</span>" +
               '<span class="pm-body' + (reveal ? "" : " hidden") + '">' +
               postMortem(b) + "</span>";
           }
@@ -4887,10 +5091,7 @@ const SessionPanel = {
        panel's height goes to the dialogue instead. `data.identity` is
        no longer read anywhere in the UI. */
     $("sess-foot").innerHTML =
-      "<button id=\"sess-reset\" type=\"button\" " +
-      "style=\"background:none;border:none;color:#9fb0e8;" +
-      "text-decoration:underline;cursor:pointer;font:inherit;" +
-      "padding:0\">Restart session</button>";
+      '<button id="sess-reset" type="button">Restart session</button>';
     $("sess-reset").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       const b = e.target;
@@ -5032,6 +5233,9 @@ const IslandUI = {
     });
     window.addEventListener("pointerdown", () =>
       menu.classList.add("hidden"));
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") menu.classList.add("hidden");
+    });
   },
   update(current) {
     document.getElementById("island-chip").textContent =
@@ -5818,13 +6022,19 @@ class WorldScene extends Phaser.Scene {
 
   /* ---- labels (created per island load + island names at boot) ---- */
   makeLabel(kind, name, x, y, dy = 0) {
+    /* 700, not 800 (2026-09-22): the UI's type pass moved everything
+       off 800 and these were the last of it. The 4px halo STAYS — it
+       is cartography, not chrome: a name over busy painted terrain
+       needs it, and the halo is tinted to the ground it sits on. The
+       island names' violet navy (#101d5c, the retired UI blue) is a
+       deep sea ink now, the colour of the water they float over. */
     const styles = {
-      town: { size: 13, color: "#ffffff", stroke: "#1b2a4a", weight: "800" },
+      town: { size: 13, color: "#ffffff", stroke: "#1b2a4a", weight: "700" },
       nature: { size: 12, color: "#eaf6d8", stroke: "#25431f", weight: "700" },
-      range: { size: 15, color: "#f0ead2", stroke: "#3d3323", weight: "800" },
+      range: { size: 15, color: "#f0ead2", stroke: "#3d3323", weight: "700" },
       poi: { size: 11, color: "#ffe9a8", stroke: "#4a3a10", weight: "700" },
-      capitol: { size: 13, color: "#ffe9a8", stroke: "#4a3a10", weight: "800" },
-      island: { size: 17, color: "#eaf2ff", stroke: "#101d5c", weight: "800" },
+      capitol: { size: 13, color: "#ffe9a8", stroke: "#4a3a10", weight: "700" },
+      island: { size: 17, color: "#eaf2ff", stroke: "#0c2238", weight: "700" },
     };
     const st = styles[kind] || styles.town;
     /* TYPE IS AUTHORED IN CSS px AND RASTERISED AT DPR x THAT. This
@@ -6518,10 +6728,16 @@ class RoomScene extends Phaser.Scene {
 
     this.labels = [];
     this.markers = [];
-    const styles = {                       // same voice as makeLabel
-      door: { size: 13, color: "#ffe9a8", stroke: "#4a3a10" },
-      poi: { size: 11, color: "#fff6dc", stroke: "#4a3a10" },
-      exit: { size: 13, color: "#eaf2ff", stroke: "#101d5c" },
+    /* A room label is CHROME over a painted interior, not a map name
+       over terrain, so it takes the UI's voice rather than makeLabel's
+       (2026-09-22): weight 700, a 3px halo in the panels' own ink, and
+       almost no tracking on mixed-case names. It was 800 with a 4px
+       outline and 1px tracking — the outlined-sticker type the rest of
+       the chrome retired — and the exit wore the old UI navy. */
+    const styles = {
+      door: { size: 13, color: "#ffe9a8" },
+      poi: { size: 11, color: "#fff6dc" },
+      exit: { size: 13, color: "#eaf2ff" },
     };
     for (const h of meta.hotspots) {
       // noExit: this room is the game's home — it has no way out and
@@ -6539,14 +6755,14 @@ class RoomScene extends Phaser.Scene {
         h.kind === "exit" ? "⟵ " + h.name : h.name, {
           fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
           fontSize: st.size * DPR + "px",
-          fontStyle: "800",
+          fontStyle: "700",
           color: st.color,
-          stroke: st.stroke,
-          strokeThickness: 4 * DPR,
-          letterSpacing: DPR,
+          stroke: "#0b0e14",           // --plate-deep
+          strokeThickness: 3 * DPR,
+          letterSpacing: 0.4 * DPR,
         }).setOrigin(0.5, 0).setDepth(10000);
       lab._cssSize = st.size;      // authored CSS px — see relabelForDpr
-      lab._cssStroke = 4;
+      lab._cssStroke = 3;
       this.labels.push(lab);
       // NAMES ARE ON HOVER, NOT PAINTED OVER THE DOORS (user's call
       // 2026-08-24: "don't have those big labels over all the doors").
@@ -6644,8 +6860,14 @@ class RoomScene extends Phaser.Scene {
   update(time, delta) {
     if (!this.actor || !this.keys) return;
     const K = this.keys;
-    const up = K.up.isDown || K.w.isDown, dn = K.down.isDown || K.s.isDown;
-    const lf = K.left.isDown || K.a.isDown, rt = K.right.isDown || K.d.isDown;
+    // the keys belong to whatever is in FRONT: under an open overlay they
+    // are the panel's, and a keyboard player working through a panel
+    // must not walk the character around the room behind it
+    const live = !document.querySelector(".ovl:not(.hidden)");
+    const up = live && (K.up.isDown || K.w.isDown);
+    const dn = live && (K.down.isDown || K.s.isDown);
+    const lf = live && (K.left.isDown || K.a.isDown);
+    const rt = live && (K.right.isDown || K.d.isDown);
     let du = 0, dv = 0;
     if (up) { du -= 1; dv -= 1; }
     if (dn) { du += 1; dv += 1; }

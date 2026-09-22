@@ -58,6 +58,16 @@
   --r-chip: 10px;
   --r-panel: 14px;
 
+  /* — stacking: the four layers, named once (2026-09-22). They used to
+     be bare numbers in four rules, and two of them collided — the flow
+     receipt and the greeting box were both 20, so which one won was
+     decided by DOM order. The receipt now sits under the greeting,
+     both under every overlay. */
+  --z-hud:    10;
+  --z-tip:    15;
+  --z-dialog: 20;
+  --z-ovl:    30;
+
   /* — type: three tiers of caps tracking (tier 4, 2026-08-28)
      EM, not px, and that is the whole fix: an em value scales with the
      element's OWN font-size, so one number reads as coherent tracking
@@ -99,6 +109,49 @@
   --good:        #7ff0ae;   /* a check that landed */
   --bad:         #ff8d80;   /* a check that did not */
   --danger:      #d9503f;   /* a red check */
+
+  /* — the money story's kinds of money (2026-09-22). ONE source for the
+     legend swatches, the list-view bars AND the flow-map motes: main.js
+     reads these through cssVar() instead of carrying its own hexes. The
+     legend used to be a darker set (#b98a2e, #3987e5, #199e70, #2aa79b)
+     than the motes it sat next to and named. */
+  --flow-gf:     #e3b64b;   /* general funds / income tax — gold */
+  --flow-fed:    #63a6f0;   /* federal funds — blue */
+  --flow-oth:    #3fbf92;   /* everything else — green */
+  --flow-get:    #4fd8c8;   /* the GET — teal, as on the island map */
+
+  /* — the toolbar's pixel-icon palette (2026-09-22). Five icons share
+     it; a sixth drawn in its own colours (the first Map icon was green)
+     reads as a button from a different game. */
+  --ico-paper:   #f6f1dc;
+  --ico-ink:     #7b6a3a;
+  --ico-tan:     #b8a468;
+  --ico-red:     #c0392b;
+  --ico-bronze:  #b07d1e;
+  /* — repeated colours that had no token (tier 4, 2026-09-22) */
+  --sky:        #9fd4f0;   /* map-chrome sky: the island chip, the sound glyph, the budget eyebrow */
+  --gold-hi:    #f7cd6e;   /* top of the gold CTA gradient (End Turn, End Week) */
+  --cost-lt:    #f4a8a0;   /* a price tag that costs, as text */
+  --gain-lt:    #8fe6b7;   /* a price tag that raises, as text */
+  --trend-up:   #8df5b8;   /* a meter that moved up (card value, HUD trend) */
+  --trend-down: #ff9d91;   /* a meter that moved down */
+  --near:       #ffb43a;   /* a NEAR MISS — the chair pulled the file and put it back */
+  --teal-lt:    #b8f4ec;   /* the GET's teal, as text */
+  --bar-ink:    #0b1024;   /* the dark end of every meter fill */
+
+  /* — the same palette as rgb TRIPLETS, for rgba(var(--x-rgb), a).
+     A hex token cannot take an alpha, so every translucent gold,
+     paper or verdict colour was a literal copy of the token beside
+     it. Each triplet MUST equal its hex above —
+     tools/check_tokens.py fails the moment one drifts. */
+  --gold-rgb:    242, 193, 78;
+  --paper-rgb:   244, 241, 232;
+  --bad-rgb:     255, 141, 128;
+  --gold-lt-rgb: 255, 233, 168;
+  --good-rgb:    127, 240, 174;
+  --gold-mut-rgb:227, 182, 75;
+  --gold-brt-rgb:255, 209, 102;
+  --txt-4-rgb:   159, 176, 232;
 }
 html, body {
   margin: 0;
@@ -116,12 +169,26 @@ html, body {
 }
 #game canvas { image-rendering: pixelated; }
 
+/* KEYBOARD FOCUS (2026-09-22). Every control in the game used to be
+   wired to pointerdown alone, so none of them answered Enter or Space
+   (main.js A11y now does), and only three had a focus style — each of
+   which also switched the browser's own ring off. One ring for all of
+   them: gold-light, offset clear of the control, so it reads on the
+   dark glass AND around the gold End Turn fill. :where() keeps it at
+   zero specificity, so a component that needs its own cue can still
+   restyle it; the modal panels take focus as containers and draw none. */
+:where(button, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--gold-lt);
+  outline-offset: 2px;
+}
+.ovl-panel:focus { outline: none; }
+
 /* ---------- HUD ---------- */
 #hud {
   position: fixed;
   top: 0; left: 0; right: 0;
   pointer-events: none;
-  z-index: 10;
+  z-index: var(--z-hud);
 }
 
 #title-chip {
@@ -137,19 +204,20 @@ html, body {
   color: #fff;
   font-weight: 650;
   font-size: 13px;
-  letter-spacing: 1.6px;
+  letter-spacing: var(--track-label);
   text-shadow: var(--text-lift);
 }
 #title-chip .star { color: var(--gold); }
-#title-chip .sub { color: #9fd4f0; letter-spacing: 1px; font-weight: 600; }
 #island-chip {
   pointer-events: auto;
   background: none;
   border: none;
   padding: 0;
   font: inherit;
-  color: #9fd4f0;
-  letter-spacing: 1px;
+  color: var(--sky);
+  /* mixed case: tracking is for caps (see the type tiers), so the
+     island name opts out of the chip's .10em */
+  letter-spacing: normal;
   font-weight: 600;
   cursor: pointer;
   text-shadow: var(--text-lift);
@@ -162,12 +230,13 @@ html, body {
    name rather than beside it. The muted state is a dimmer glyph, not a
    slash — a slash at this size is mush. */
 #sfx-chip {
+  position: relative;
   pointer-events: auto;
   margin-left: 9px;
   padding: 0;
   background: none;
   border: none;
-  color: #9fd4f0;                 /* the glyph inherits it via fill */
+  color: var(--sky);                 /* the glyph inherits it via fill */
   line-height: 0;
   opacity: .62;
   cursor: pointer;
@@ -175,14 +244,21 @@ html, body {
   transition: opacity .15s ease;
 }
 #sfx-chip svg { width: 13px; height: 13px; display: block; }
+/* the glyph stays 13px; the TAP TARGET does not (2026-09-22) — a 13x13
+   box was the smallest control in the game. The pseudo-element grows
+   the hit area to 33px without moving a pixel of the title chip. */
+#sfx-chip::after { content: ""; position: absolute; inset: -10px; }
 #sfx-chip:hover, #sfx-chip:focus-visible { opacity: 1; }
-#sfx-chip:focus { outline: none; }
 #sfx-chip.off { opacity: .3; }
 
 #island-menu {
   position: fixed;
   top: 52px; left: 12px;
-  z-index: 40;
+  /* orders the menu inside #hud's stacking context — above the toolbar,
+     which it can drop over once the toolbar moves to its own row under
+     900px. It never could rise above the greeting box or an overlay
+     (the old 40 read as if it did) and it does not need to. */
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -203,7 +279,6 @@ html, body {
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: .5px;
   text-align: left;
   cursor: pointer;
   text-shadow: none;
@@ -216,12 +291,14 @@ html, body {
   bottom: 10px; left: 50%;
   transform: translateX(-50%);
   padding: 5px 12px;
-  background: rgba(10, 18, 50, 0.72);
-  border: 1px solid rgba(255,255,255,.5);
+  background: linear-gradient(var(--plate-hi), var(--plate-lo));
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  backdrop-filter: blur(14px) saturate(1.25);
+  border: 1px solid var(--plate-edge);
   border-radius: 999px;
+  box-shadow: var(--shadow-chip);
   color: var(--txt-2);
   font-size: 12px;
-  letter-spacing: .5px;
   white-space: nowrap;
 }
 
@@ -243,13 +320,12 @@ html, body {
   /* gold as a HAIRLINE, not a 2px ring: the chip is a filter toggle,
      not a call to action, and a full-strength gold border made every
      one of them shout as loudly as End Turn */
-  border: 1px solid rgba(242, 193, 78, .55);
+  border: 1px solid rgba(var(--gold-rgb), .55);
   border-radius: 999px;
   color: var(--gold-lt);
   font-family: inherit;
   font-weight: 650;
   font-size: 11.5px;
-  letter-spacing: .4px;
   cursor: pointer;
   box-shadow: var(--shadow-chip);
   text-shadow: var(--text-lift);
@@ -259,10 +335,10 @@ html, body {
   color: #9aa4c8;
 }
 #chips button.hidden { display: none; }
-#get-chip { border-color: #4fd8c8; color: #b8f4ec; }
+#get-chip { border-color: var(--flow-get); color: var(--teal-lt); }
 /* the stream-highlight toggle: white-gold, quieter than the two data
    chips — it changes presentation, not which data is on the map */
-#hi-chip { border-color: rgba(255, 233, 168, .75); color: #fff3cf; }
+#hi-chip { border-color: rgba(var(--gold-lt-rgb), .75); color: #fff3cf; }
 #hi-chip.off { border-color: rgba(255,255,255,.3); color: #8f99bd; }
 
 /* the flow receipt: hovering near a tax streak strokes its route and
@@ -271,23 +347,25 @@ html, body {
    covers it. Created by buildFlows, reused across scene restarts. */
 #flow-tip {
   position: fixed;
-  z-index: 20;
+  z-index: var(--z-tip);
   max-width: 270px;
   padding: 7px 11px 8px;
-  background: rgba(10, 18, 50, 0.9);
-  border: 1px solid rgba(242, 193, 78, .65);
+  background: linear-gradient(rgba(23, 28, 39, .92), rgba(11, 14, 20, .94));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--gold-rgb), .65);
   border-radius: 8px;
+  box-shadow: var(--shadow-chip);
   color: var(--txt-2);
   font-size: 12px;
   line-height: 1.45;
-  letter-spacing: .3px;
   pointer-events: none;
   display: none;
 }
 #flow-tip.show { display: block; }
 #flow-tip b { color: var(--gold-lt); font-size: 12.5px; }
 #flow-tip.teal { border-color: rgba(79, 216, 200, .6); }
-#flow-tip.teal b { color: #b8f4ec; }
+#flow-tip.teal b { color: var(--teal-lt); }
 #flow-tip .ft-zip { color: #9aa4c8; }
 #flow-tip .ft-line { margin-top: 2px; }
 #flow-tip .ft-note { margin-top: 1px; color: #9aa4c8; font-size: 11px; }
@@ -315,9 +393,9 @@ html, body {
   box-shadow: var(--shadow-chip);
   color: var(--txt-3);
   font-family: inherit;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 650;
-  letter-spacing: 1px;
+  letter-spacing: var(--track-micro);
   text-transform: uppercase;
   cursor: pointer;
   text-shadow: var(--text-lift);
@@ -328,19 +406,55 @@ html, body {
   color: #fff;
 }
 #toolbar button svg { width: 20px; height: 20px; }
+#toolbar .ic-paper  { fill: var(--ico-paper); }
+#toolbar .ic-ink    { fill: var(--ico-ink); }
+#toolbar .ic-tan    { fill: var(--ico-tan); }
+#toolbar .ic-red    { fill: var(--ico-red); }
+#toolbar .ic-bronze { fill: var(--ico-bronze); }
+#toolbar .ic-gold   { fill: var(--gold); }
+#toolbar .ic-goldlt { fill: var(--gold-lt); }
 
-/* ---------- money overlay ---------- */
+/* ---------- the modal overlays (money, policy, session) ----------
+   ONE material for all three (2026-09-22). The cinema pass at the end
+   of this file used to give the session overlay a vignetted, blurred
+   scrim, a lit panel with a gold inset hairline and film grain, and a
+   gold scrollbar, while Budget and Policies kept a flat navy scrim and
+   a plain panel — three overlays that read as two different games. The
+   shared parts live here now; the cinema pass keeps only what belongs
+   to the reader. */
 .ovl {
   position: fixed;
   inset: 0;
-  background: rgba(6, 10, 32, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 30;
+  z-index: var(--z-ovl);
 }
 .ovl.hidden { display: none; }
+/* The scrim is a pseudo-element so a week ARRIVING can fade it in by
+   opacity. It used to be the overlay's own background, and wk-scrim
+   animated background-color — which does nothing once the background
+   is a gradient, as it has been since the cinema pass: the documented
+   scrim fade-up had not played at all. backdrop-filter is progressive;
+   a browser without it keeps the flat vignette. Being a pseudo-element
+   it is never an event target, so `e.target === overlay` still means
+   "tapped outside the panel". */
+.ovl::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 8%,
+      rgba(6, 8, 14, .45) 0%, rgba(3, 4, 9, .8) 100%);
+  -webkit-backdrop-filter: blur(7px) saturate(1.12);
+  backdrop-filter: blur(7px) saturate(1.12);
+}
 
+/* panel material: a lit surface — a cool key light at the top-left, depth
+   toward the foot, a gold hairline just inside the edge (the foil), and
+   an ambient shadow that settles the panel into the scrim. OPAQUE, per
+   the tier-2 rule: the session panel's middle stop carried an alpha of
+   .5 (#12172180) and let the blurred room show through the prose. */
 .ovl-panel {
   position: relative;
   width: min(680px, calc(100vw - 28px));
@@ -350,13 +464,52 @@ html, body {
   box-sizing: border-box;
   padding: 16px 20px 14px;
   background:
-    radial-gradient(120% 70% at 12% -8%,
-      rgba(96, 124, 200, .10) 0%, rgba(96, 124, 200, 0) 58%),
-    linear-gradient(168deg, var(--plate-mid) 0%, var(--plate-deep) 100%);
+    radial-gradient(130% 68% at 18% -6%,
+      rgba(96, 124, 200, .22) 0%, rgba(96, 124, 200, 0) 55%),
+    radial-gradient(120% 90% at 85% 108%,
+      rgba(6, 8, 22, .9) 0%, rgba(6, 8, 22, 0) 52%),
+    linear-gradient(172deg, #1b2130 0%, #121721 44%, var(--plate-deep) 100%);
   border: 1px solid var(--plate-edge);
   border-radius: var(--r-panel);
   color: #fff;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--gold-rgb), .28),
+    inset 0 1px 22px rgba(120, 150, 255, .10),
+    0 26px 60px -18px rgba(0, 0, 0, .8);
+}
+/* film grain over the whole panel — one SVG turbulence tile at 5%.
+   pointer-events none; it sits above everything, which is the point: it
+   unifies UI, prose, banner art and portraits into one graded frame.
+   `inherit` for the radius, so it follows the panel's corners wherever
+   --r-panel goes (it was a hardcoded 7px against a 14px panel, and
+   squared the corners off). */
+.ovl-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-size: 140px 140px;
+}
+/* a thin gold scrollbar keeps even the chrome in-world — every overlay's
+   scrolling list, not just the session transcript (WebKit; the Firefox
+   shorthand keeps it tidy there too) */
+.ovl-rows {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--gold-rgb), .45) rgba(255, 255, 255, .06);
+}
+.ovl-rows::-webkit-scrollbar { width: 8px; }
+.ovl-rows::-webkit-scrollbar-thumb {
+  background: linear-gradient(rgba(var(--gold-rgb), .5),
+    rgba(217, 167, 47, .35));
+  border-radius: 99px;
+  border: 2px solid rgba(0, 0, 0, .4);
+}
+.ovl-rows::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .04);
+  border-radius: 99px;
 }
 
 /* panel bookends: the week's panel falls away as the camera ritual
@@ -386,11 +539,11 @@ html, body {
    Every rule is scoped to #session-overlay.wk-open, so it outranks the
    `.arriving` shorthand on the same panel and the money/policy overlays
    never pick it up. */
-#session-overlay.wk-open {
+#session-overlay.wk-open::before {
   animation: wk-scrim .42s ease both;
 }
 @keyframes wk-scrim {
-  from { background-color: rgba(6, 10, 32, 0); }
+  from { opacity: 0; }
 }
 #session-overlay.wk-open .ovl-panel {
   animation: wk-panel .5s cubic-bezier(.16, .84, .28, 1) both;
@@ -402,18 +555,22 @@ html, body {
 /* the sheen: ONE pass of low-opacity light across the panel. Absolutely
    positioned, so it is out of the panel's flex flow; matched radius so
    it doesn't square off the rounded corners; pointer-events none so it
-   can sit above the content it crosses without eating a tap. */
-#session-overlay.wk-open .ovl-panel::after {
+   can sit above the content it crosses without eating a tap.
+   It is the panel's ::BEFORE. It used to be ::after, the same box as the
+   film grain, so for every week's arrival the sheen's background replaced
+   the grain's — the grain blinked out for the length of the animation,
+   and under reduced motion (which hides the sheen) for the whole week. */
+#session-overlay.wk-open .ovl-panel::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 10px;
+  border-radius: inherit;
   pointer-events: none;
   background: linear-gradient(104deg,
-    rgba(255, 233, 168, 0) 38%,
-    rgba(255, 233, 168, .13) 50%,
-    rgba(255, 233, 168, 0) 62%);
+    rgba(var(--gold-lt-rgb), 0) 38%,
+    rgba(var(--gold-lt-rgb), .13) 50%,
+    rgba(var(--gold-lt-rgb), 0) 62%);
   animation: wk-sheen .72s cubic-bezier(.3, .5, .3, 1) .12s both;
 }
 @keyframes wk-sheen {
@@ -465,25 +622,44 @@ html, body {
   text-transform: uppercase;
 }
 
+/* 36px, 44px on a phone (2026-09-22) — it was the glyph plus 4px, about
+   24x27, on the one control every overlay shares. */
 .ovl-close {
   position: absolute;
-  top: 8px; right: 10px;
+  top: 6px; right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  padding: 0;
   background: none;
   border: none;
+  border-radius: 9px;
   color: var(--txt-4);
   font-size: 16px;
+  line-height: 1;
   cursor: pointer;
-  padding: 4px 6px;
+  transition: color .18s ease, background .18s ease;
 }
-.ovl-close:hover { color: #fff; }
+.ovl-close:hover { color: #fff; background: var(--fill-soft); }
+@media (max-width: 600px) {
+  .ovl-close { top: 2px; right: 2px; width: 44px; height: 44px; }
+}
 
+/* 26px down, not 12: the tabs run the panel's full width and their
+   right end sat under the close button once it became a real target */
 .ovl-tabs {
   display: flex;
   gap: 8px;
-  margin: 12px 0 0;
+  margin: 26px 0 0;
 }
+@media (max-width: 600px) { .ovl-tabs { margin-top: 32px; } }
 .ovl-tabs button {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 7px 8px;
   background: none;
   border: 0;
@@ -492,11 +668,13 @@ html, body {
   font-family: inherit;
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: .8px;
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   cursor: pointer;
   transition: color .18s ease, background .18s ease;
 }
+/* the tab glyphs are SYM drawings (main.js), not emoji or arrows */
+.ovl-tabs button .sym { width: 14px; height: 14px; }
 .ovl-tabs button:hover { color: #fff; }
 .ovl-tabs button.on {
   background: var(--fill-soft);
@@ -544,10 +722,10 @@ html, body {
   margin-right: 5px;
   vertical-align: -1px;
 }
-.sw-gf  { background: #b98a2e; }
-.sw-fed { background: #3987e5; }
-.sw-oth { background: #199e70; }
-.sw-get { background: #2aa79b; }
+.sw-gf  { background: var(--flow-gf); }
+.sw-fed { background: var(--flow-fed); }
+.sw-oth { background: var(--flow-oth); }
+.sw-get { background: var(--flow-get); }
 
 .ovl-rows {
   overflow-y: auto;
@@ -578,6 +756,13 @@ html, body {
   transition: fill .12s;
 }
 .flow-svg .node:hover, .flow-svg .node.sel { fill: var(--gold); }
+/* nodes take keyboard focus (main.js buildRadialFlow); an SVG shape
+   draws the outline as a box, so the ring is the node's own stroke */
+.flow-svg .node:focus-visible {
+  outline: none;
+  stroke: var(--gold-lt);
+  stroke-width: 2.5;
+}
 .flow-svg .code {
   fill: var(--txt-2);
   font: 700 12px "Avenir Next", Verdana, sans-serif;
@@ -612,7 +797,7 @@ html, body {
 }
 .flow-svg .hub {
   fill: var(--gold-lt);
-  font: 800 13px "Avenir Next", Verdana, sans-serif;
+  font: 700 13px "Avenir Next", Verdana, sans-serif;
   text-anchor: middle;
   paint-order: stroke;
   stroke: var(--plate-deep);
@@ -626,8 +811,12 @@ html, body {
   border: 1px solid var(--line-hi);
   border-radius: 999px;
   color: var(--txt-3);
-  font: 700 10.5px inherit;
-  letter-spacing: .5px;
+  /* longhands: `font: 700 10.5px inherit` is INVALID (inherit cannot sit
+     inside the shorthand), so the browser dropped the whole declaration
+     and these buttons rendered in its default font */
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
   cursor: pointer;
 }
 .view-toggle:hover { border-color: var(--gold); color: var(--gold-lt); }
@@ -704,6 +893,7 @@ html, body {
   color: var(--txt);
   font-size: 12.5px;
 }
+.prow .pname b .sym { color: var(--gold); width: 15px; height: 15px; }
 .prow .pname small {
   display: block;
   color: var(--txt-5);
@@ -717,8 +907,8 @@ html, body {
   font-size: 12.5px;
   white-space: nowrap;
 }
-.prow .ptag.cost { color: #f4a8a0; }
-.prow .ptag.gain { color: #8fe6b7; }
+.prow .ptag.cost { color: var(--cost-lt); }
+.prow .ptag.gain { color: var(--gain-lt); }
 .prow .pgo {
   flex: 0 0 auto;
   width: 74px;
@@ -730,15 +920,31 @@ html, body {
   font-family: inherit;
   font-size: 10px;
   font-weight: 650;
-  letter-spacing: .6px;
+  letter-spacing: var(--track-micro);
   text-transform: uppercase;
   cursor: pointer;
   transition: color .18s ease, border-color .18s ease, background .18s ease;
+  position: relative;
+  overflow: hidden;
 }
+/* the sheen language the reader's choice plates and Continue use */
+.prow .pgo::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent,
+    rgba(255, 240, 200, .14), transparent);
+  transform: skewX(-18deg);
+  transition: left .4s ease;
+  pointer-events: none;
+}
+.prow .pgo:hover::before { left: 120%; }
 .prow .pgo:hover {
-  border-color: rgba(242, 193, 78, .6);
+  border-color: rgba(var(--gold-rgb), .6);
   color: var(--gold-lt);
-  background: rgba(242, 193, 78, .10);
+  background: rgba(var(--gold-rgb), .10);
 }
 .prow.on .pgo {
   background: var(--gold);
@@ -760,9 +966,8 @@ html, body {
   flex: 0 0 auto;
 }
 
-/* The campaign panel gets its own ground — deeper and duskier than the
-   JRPG-blue money overlays, halfway to the dialogue reader's dark — and
-   its own WIDTH. 1040 is not decoration: the session strip is a fixed
+/* The campaign panel shares the other overlays' material now (see .ovl-
+   panel) and keeps only its own WIDTH. 1040 is not decoration: the session strip is a fixed
    940px (that width is what keeps eleven milestone labels from
    colliding), and at the shared 680px panel only ~634px of it was ever
    on screen, so everything past Second Lateral sat in scroll the player
@@ -771,12 +976,6 @@ html, body {
    normal window and the strip only scrolls on genuinely narrow ones. */
 #session-overlay .ovl-panel {
   width: min(1040px, calc(100vw - 28px));
-  background:
-    radial-gradient(120% 70% at 50% -10%,
-      rgba(242, 193, 78, .10), transparent 55%),
-    linear-gradient(165deg, #1b2452 0%, #111740 48%, #0b1030 100%);
-  border-color: #e9e6da;
-  outline-color: #0b1030;
 }
 
 .wk-badge {
@@ -786,7 +985,7 @@ html, body {
   background: var(--gold);
   color: var(--gold-dk);
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 10px;
   text-shadow: none;
 }
 
@@ -798,6 +997,17 @@ html, body {
 /* the session footer is just the reset link now — no prose to lead
    into, so it gets a tighter rule than the other overlays' captions */
 #sess-foot { margin-top: 6px; padding-top: 5px; }
+/* the link itself (it was an inline style in main.js) */
+#sess-reset {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--txt-4);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#sess-reset:hover { color: #fff; }
 
 /* ---------- the session masthead: ONE plate in the panel's top-left
    corner carrying the week numeral, the week's name and its dates.
@@ -823,7 +1033,7 @@ html, body {
      royal-blue ground and the hard 4px offset, which are the cues, not
      the idea. */
   background: linear-gradient(168deg, #232937 0%, #10141c 100%);
-  border: 1px solid rgba(242, 193, 78, .55);
+  border: 1px solid rgba(var(--gold-rgb), .55);
   border-radius: 9px;
   box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .75);
   color: var(--gold-lt);
@@ -882,7 +1092,7 @@ html, body {
   line-height: 1.08;
   letter-spacing: var(--track-title);
   text-transform: uppercase;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .55);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -963,7 +1173,6 @@ html, body {
 #session-overlay #sess-progress:hover,
 #session-overlay #sess-progress:focus-visible,
 #session-overlay.tl-open #sess-progress { opacity: 1; }
-#session-overlay #sess-progress:focus { outline: none; }
 /* the caret is the affordance that says the full calendar is under it —
    a bar alone reads as a readout, not as a door */
 #session-overlay #sess-progress::after {
@@ -1050,7 +1259,7 @@ html, body {
   height: 3px;
   border-radius: 2px;
   background: linear-gradient(90deg, #8a6a24, var(--gold-mut) 70%, var(--gold-brt));
-  box-shadow: 0 0 10px rgba(227,182,75,.4);
+  box-shadow: 0 0 10px rgba(var(--gold-mut-rgb),.4);
   transform: translateY(-50%);
   transition: width .35s ease;
 }
@@ -1078,30 +1287,29 @@ html, body {
   width: 9px; height: 9px;
   margin: 0 auto;
   border-radius: 50%;
-  background: #1a2148;
-  border: 2px solid #6f7fb8;
+  background: var(--plate-mid);
+  border: 2px solid var(--txt-6);
   transition: transform .14s ease, box-shadow .14s ease,
     background-color .14s ease, border-color .14s ease;
 }
 .sess-timeline .stl-m.past .stl-dot {
-  background: #8b9bd4;
-  border-color: #8b9bd4;
+  background: var(--txt-5);
+  border-color: var(--txt-5);
 }
 .sess-timeline .stl-m.now .stl-dot {
   width: 13px; height: 13px;
   background: var(--gold-brt);
   border-color: #fff3d0;
-  box-shadow: 0 0 0 5px rgba(255,209,102,.22),
-    0 0 12px rgba(255,209,102,.55);
+  box-shadow: 0 0 0 5px rgba(var(--gold-brt-rgb),.22),
+    0 0 12px rgba(var(--gold-brt-rgb),.55);
 }
 .sess-timeline .stl-m:hover .stl-dot,
 .sess-timeline .stl-m.hot .stl-dot,
 .sess-timeline .stl-m:focus-visible .stl-dot {
   transform: scale(1.45);
   border-color: var(--gold-lt);
-  box-shadow: 0 0 0 5px rgba(255,233,168,.18);
+  box-shadow: 0 0 0 5px rgba(var(--gold-lt-rgb),.18);
 }
-.sess-timeline .stl-m:focus { outline: none; }
 /* At rest ONLY the current stage is labelled — eleven labels at once is
    a wall of text nobody reads, and the readout line below already
    answers "where am I". The rest fade in together on hover (mouse) or
@@ -1191,14 +1399,20 @@ html, body {
   align-items: center;
   column-gap: 7px;
   padding: 6px 10px 7px;
-  /* the hue arrives as a tint from the top, not a stripe on the left */
+  /* the hue arrives as light from the top-left, not a stripe on the
+     left: an icon halo, and a breath of the metric's own colour along
+     the top edge. (This was the cinema pass's override, folded in —
+     the rule it overrode applied nowhere else and never showed.) */
   background:
-    linear-gradient(180deg, var(--mct, rgba(159, 176, 232, .13)),
-                    rgba(255, 255, 255, 0) 78%),
-    rgba(6, 10, 24, .42);
-  border: 1px solid rgba(255, 255, 255, .10);
+    radial-gradient(90% 120% at 12% 0%,
+      var(--mct, rgba(var(--txt-4-rgb), .16)) 0%, rgba(0, 0, 0, 0) 58%),
+    linear-gradient(180deg, rgba(18, 22, 32, .72), rgba(8, 10, 16, .55));
+  border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 11px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 10px 18px -14px var(--mct, rgba(var(--txt-4-rgb), .35)),
+    0 2px 6px rgba(0, 0, 0, .35);
   color: #eef3ff;
 }
 #sess-metrics .metc > .sym {
@@ -1206,7 +1420,7 @@ html, body {
   grid-row: 1;
   width: 14px; height: 14px;
   color: var(--mc, var(--txt-4));
-  opacity: .92;
+  filter: drop-shadow(0 0 4px var(--mc, var(--txt-4)));
 }
 /* THE LABEL WRAPS, it does not ellipsize. At the narrow end of the
    overlay a card is ~161px and "POLITICAL INFLUENCE" needs ~125px of
@@ -1252,7 +1466,7 @@ html, body {
   width: 0;
   border-radius: 99px;
   background: linear-gradient(90deg,
-    color-mix(in srgb, var(--mc, var(--txt-4)) 55%, #0b1024),
+    color-mix(in srgb, var(--mc, var(--txt-4)) 55%, var(--bar-ink)),
     var(--mc, var(--txt-4)));
   box-shadow: 0 0 8px -1px var(--mc, var(--txt-4));
   /* the cards are built once and updated in place (renderMetrics), so
@@ -1264,7 +1478,6 @@ html, body {
 @supports not (background: color-mix(in srgb, red, blue)) {
   #sess-metrics .metc .bar i { background: var(--mc, var(--txt-4)); }
 }
-#sess-metrics .metc .mv { font-variant-numeric: tabular-nums; }
 /* an effect landing in the dialogue flashes the meter it moved, so the
    fx line and the scoreboard read as one system */
 #sess-metrics .metc.bump-up   { animation: metc-up .75s ease; }
@@ -1289,27 +1502,16 @@ html, body {
    exactly the currency public support is; influence's blue is a step
    from the wonk pole's #6fa8dc for the same reason. Keep any future
    meter inside that logic rather than picking a free hue. */
-#sess-metrics .m-rev { --mc: var(--gold-mut); --mct: rgba(227, 182, 75, .15); }
+#sess-metrics .m-rev { --mc: var(--gold-mut); --mct: rgba(var(--gold-mut-rgb), .15); }
 #sess-metrics .m-sup { --mc: var(--support); --mct: rgba(232, 121, 92, .15); }
 #sess-metrics .m-inf { --mc: var(--influence); --mct: rgba(99, 166, 240, .15); }
-#sess-metrics .m-rev.gain .mv { color: #8df5b8; }
+#sess-metrics .m-rev.gain .mv { color: var(--trend-up); }
 #sess-metrics .m-rev.gain { --mc: var(--gain); --mct: rgba(89, 201, 139, .15); }
-#sess-metrics .m-rev.cost .mv { color: #ff9d91; }
+#sess-metrics .m-rev.cost .mv { color: var(--trend-down); }
 #sess-metrics .m-rev.cost { --mc: var(--cost); --mct: rgba(217, 106, 94, .17); }
 
-#sess-body {
-  margin-top: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(244, 241, 232, .25) transparent;
-}
-#sess-body::-webkit-scrollbar { width: 6px; }
-#sess-body::-webkit-scrollbar-thumb {
-  background: rgba(244, 241, 232, .22);
-  border-radius: 3px;
-}
-#sess-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(242, 193, 78, .45);
-}
+/* the scrollbar is the shared .ovl-rows one */
+#sess-body { margin-top: 8px; }
 
 /* ---------- dialogue view: the Disco Elysium reader ----------
    The rest of the game is a bright pixel-art JRPG panel; the dialogue
@@ -1325,8 +1527,8 @@ html, body {
   padding: 14px 18px 12px;
   background:
     linear-gradient(180deg, rgba(10, 11, 16, .92), rgba(6, 7, 11, .88));
-  border: 1px solid rgba(244, 241, 232, .07);
-  border-left: 2px solid rgba(242, 193, 78, .28);
+  border: 1px solid rgba(var(--paper-rgb), .07);
+  border-left: 2px solid rgba(var(--gold-rgb), .28);
   border-radius: 6px;
   font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
     "Times New Roman", serif;
@@ -1375,8 +1577,8 @@ html, body {
   .cr-in-r .agc-grid > *, .cr-in-l .agc-grid > *,
   /* the week arrival — openOverlay() skips it under this query, same
      belt-and-braces as above */
-  #session-overlay.wk-open, #session-overlay.wk-open .ovl-panel,
-  #session-overlay.wk-open .ovl-panel::after,
+  #session-overlay.wk-open::before, #session-overlay.wk-open .ovl-panel,
+  #session-overlay.wk-open .ovl-panel::before,
   #session-overlay.wk-open .ovl-title,
   #session-overlay.wk-open #sess-progress,
   #session-overlay.wk-open #sess-timeline,
@@ -1385,8 +1587,10 @@ html, body {
   #session-overlay.wk-open .ovl-foot {
     animation: none !important;
   }
-  /* …and the sheen must not park itself across the panel */
-  #session-overlay.wk-open .ovl-panel::after { display: none; }
+  /* …and the sheen must not park itself across the panel (::before —
+     when it shared ::after with the film grain, this line hid the grain
+     too, for every reduced-motion player's whole week) */
+  #session-overlay.wk-open .ovl-panel::before { display: none; }
   /* the living glyphs on the select screen — one selector catches every
      g-* loop, and their resting attribute states are the full drawing */
   .skc-art svg * { animation: none !important; }
@@ -1495,9 +1699,9 @@ html, body {
   margin: 0 0 14px;
   padding: 11px 14px 12px;
   background:
-    linear-gradient(103deg, rgba(242, 193, 78, .12), transparent 62%),
+    linear-gradient(103deg, rgba(var(--gold-rgb), .12), transparent 62%),
     linear-gradient(#161d47, #0e1332);
-  border: 1px solid rgba(242, 193, 78, .38);
+  border: 1px solid rgba(var(--gold-rgb), .38);
   border-radius: 11px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
 }
@@ -1518,7 +1722,7 @@ html, body {
   border-radius: 9px;
   overflow: hidden;
   background: linear-gradient(158deg, #2b3670, #0d1234 72%);
-  border: 1px solid rgba(242, 193, 78, .45);
+  border: 1px solid rgba(var(--gold-rgb), .45);
   color: #8fa0d8;                       /* the silhouette's own ink */
 }
 .sd-card .cc-art svg { display: block; width: 100%; height: 100%; }
@@ -1549,7 +1753,7 @@ html, body {
   letter-spacing: var(--track-title);
   text-transform: uppercase;
   line-height: 1.1;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .5);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
 }
 .sd-card .cc-role {
   margin-top: 1px;
@@ -1567,8 +1771,8 @@ html, body {
 }
 .sd-card .cc-tags span {
   padding: 2px 8px 3px;
-  background: rgba(242, 193, 78, .13);
-  border: 1px solid rgba(242, 193, 78, .34);
+  background: rgba(var(--gold-rgb), .13);
+  border: 1px solid rgba(var(--gold-rgb), .34);
   border-radius: 999px;
   color: var(--gold-lt);
   font-size: 9px;
@@ -1669,12 +1873,12 @@ html, body {
   .sd-scene.has-card > .sd-card .cc-art {
     width: 100%;
     height: auto;                      /* the viewBox sets the 3:4 box */
-    border: 1px solid rgba(242, 193, 78, .4);
+    border: 1px solid rgba(var(--gold-rgb), .4);
     border-left: 0;
     border-radius: 0 10px 10px 0;
     background:
       radial-gradient(76% 44% at 50% 33%,
-        rgba(242, 193, 78, .17), transparent 68%),
+        rgba(var(--gold-rgb), .17), transparent 68%),
       linear-gradient(158deg, #2b3670, #0b1030 76%);
     box-shadow: 0 10px 26px rgba(0, 0, 0, .5);
   }
@@ -1742,7 +1946,7 @@ html, body {
 .sd-said.sd-you {
   margin-top: 2px;
   padding-top: 9px;
-  border-top: 1px solid rgba(244, 241, 232, .08);
+  border-top: 1px solid rgba(var(--paper-rgb), .08);
 }
 .sd-narr { color: #b6afa0; font-style: italic; }   /* unattributed prose */
 
@@ -1846,8 +2050,8 @@ html, body {
   /* the rule between story and options carries a faint gold fade —
      the strip reads as the machine's edge, not more prose */
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, rgba(242,193,78,.4),
-    rgba(244,241,232,.1) 40%, transparent) 1;
+  border-image: linear-gradient(90deg, rgba(var(--gold-rgb),.4),
+    rgba(var(--paper-rgb),.1) 40%, transparent) 1;
 }
 .sd-choices button {
   display: flex;
@@ -1901,8 +2105,8 @@ html, body {
    The red check reads as the expensive one before you click it. */
 .sd-choices button.c-white { border-left-color: rgba(210,226,255,.35); }
 .sd-choices button.c-red {
-  border-left-color: rgba(255,141,128,.55);
-  background: rgba(255,141,128,.05);
+  border-left-color: rgba(var(--bad-rgb),.55);
+  background: rgba(var(--bad-rgb),.05);
 }
 /* :not(.spent) — the spent label already says "one shot only" itself */
 .sd-choices button.c-red:not(.spent) .cmeta::after {
@@ -1915,10 +2119,10 @@ html, body {
   animation: red-dread 1.3s ease infinite;
 }
 @keyframes red-dread {
-  0%, 100% { border-left-color: rgba(255, 141, 128, .55);
-             background: rgba(255, 141, 128, .05); }
+  0%, 100% { border-left-color: rgba(var(--bad-rgb), .55);
+             background: rgba(var(--bad-rgb), .05); }
   50% { border-left-color: var(--bad);
-        background: rgba(255, 141, 128, .13); }
+        background: rgba(var(--bad-rgb), .13); }
 }
 /* …and the room goes quiet while its dice are out: the transcript
    drops back so the only lit thing is the roll you can't take back */
@@ -2036,7 +2240,7 @@ html, body {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(70% 130% at 22% 50%,
-    rgba(242, 193, 78, .38), transparent 70%);
+    rgba(var(--gold-rgb), .38), transparent 70%);
   animation: jack-burst 1s ease .25s both;
 }
 @keyframes jack-burst {
@@ -2080,7 +2284,7 @@ html, body {
   max-width: min(420px, calc(100vw - 56px));
   padding: 20px 26px 22px;
   text-align: center;
-  background: linear-gradient(165deg, #1d2331 0%, #0b0e14 100%);
+  background: linear-gradient(165deg, #1d2331 0%, var(--plate-deep) 100%);
   border: 1px solid rgba(255, 255, 255, .16);
   border-radius: var(--r-panel);
   box-shadow: 0 26px 60px -14px rgba(0, 0, 0, .8),
@@ -2262,8 +2466,8 @@ html, body {
   margin-top: 12px;
   animation: tray-stamp .4s cubic-bezier(.2, 1.5, .35, 1) both;
 }
-.sd-tray.ok .tray-stamp { color: var(--good); text-shadow: 0 0 22px rgba(127, 240, 174, .5); }
-.sd-tray.no .tray-stamp { color: var(--bad); text-shadow: 0 0 22px rgba(255, 141, 128, .45); }
+.sd-tray.ok .tray-stamp { color: var(--good); text-shadow: 0 0 22px rgba(var(--good-rgb), .5); }
+.sd-tray.no .tray-stamp { color: var(--bad); text-shadow: 0 0 22px rgba(var(--bad-rgb), .45); }
 .sd-tray.ok .tray-card { border-color: var(--good); }
 .sd-tray.no .tray-card { border-color: var(--bad); }
 @keyframes tray-stamp {
@@ -2286,7 +2490,7 @@ html, body {
   border-radius: inherit;
   pointer-events: none;
   background: radial-gradient(60% 90% at 50% 55%,
-    rgba(242, 193, 78, .5), transparent 70%);
+    rgba(var(--gold-rgb), .5), transparent 70%);
   animation: jack-burst 1.1s ease both;
 }
 .sd-tray.snake.no .tray-card { animation: snake-shake .5s ease both; }
@@ -2295,17 +2499,17 @@ html, body {
    failure drains the color out for a blink */
 .sd-scene.wash-ok { animation: wash-ok .85s ease; }
 @keyframes wash-ok {
-  0%   { box-shadow: inset 0 0 0 rgba(127, 240, 174, 0); }
-  30%  { box-shadow: inset 0 0 48px rgba(127, 240, 174, .17);
-         border-left-color: rgba(127, 240, 174, .75); }
-  100% { box-shadow: inset 0 0 0 rgba(127, 240, 174, 0); }
+  0%   { box-shadow: inset 0 0 0 rgba(var(--good-rgb), 0); }
+  30%  { box-shadow: inset 0 0 48px rgba(var(--good-rgb), .17);
+         border-left-color: rgba(var(--good-rgb), .75); }
+  100% { box-shadow: inset 0 0 0 rgba(var(--good-rgb), 0); }
 }
 .sd-scene.wash-no { animation: wash-no .75s ease; }
 @keyframes wash-no {
   0%, 100% { filter: none; }
   25% { filter: grayscale(.6) brightness(.9);
-        box-shadow: inset 0 0 44px rgba(255, 141, 128, .15);
-        border-left-color: rgba(255, 141, 128, .7); }
+        box-shadow: inset 0 0 44px rgba(var(--bad-rgb), .15);
+        border-left-color: rgba(var(--bad-rgb), .7); }
 }
 
 /* ---------- weekly movement report + the post-mortem ----------
@@ -2323,7 +2527,7 @@ html, body {
 }
 .mv-row.won  { border-left-color: var(--good); }
 .mv-row.near {
-  border-left-color: #ffb43a;
+  border-left-color: var(--near);
   /* the near-miss gets one amber heartbeat as it lands — the week's
      most emotional news, one pulse, then still */
   animation: sd-in .3s ease both, near-pulse 1.1s ease .35s 1;
@@ -2345,7 +2549,7 @@ html, body {
   inset: 0;
   pointer-events: none;
   background: linear-gradient(105deg, transparent 35%,
-    rgba(255, 233, 168, .30) 50%, transparent 65%);
+    rgba(var(--gold-lt-rgb), .30) 50%, transparent 65%);
   animation: enact-sweep 1.5s ease .3s 1;
 }
 @keyframes enact-sweep {
@@ -2365,7 +2569,7 @@ html, body {
   text-transform: uppercase;
 }
 .mv-row.won  .mv-what { color: var(--good); }
-.mv-row.near .mv-what { color: #ffb43a; }
+.mv-row.near .mv-what { color: var(--near); }
 .mv-row.dead .mv-what { color: var(--bad); }
 .mv-row > small {
   display: block;
@@ -2435,7 +2639,7 @@ html, body {
 .pm-lesson {
   margin-top: 7px;
   padding: 7px 9px;
-  background: rgba(242, 193, 78, .07);
+  background: rgba(var(--gold-rgb), .07);
   border-left: 2px solid var(--gold-mut);
   border-radius: 4px;
   color: #e8dfc4;
@@ -2493,7 +2697,7 @@ html, body {
   color: var(--gold-lt);
 }
 .bill-row .shname small .dl-soon,
-.sh-row .shname small .dl-soon { color: #ffb43a; }
+.sh-row .shname small .dl-soon { color: var(--near); }
 .bill-row.dead .shname > b { color: var(--txt-4); text-decoration: line-through; }
 .bill-row.dead .shname small > b { color: var(--bad); text-decoration: none; }
 .bill-row.dead .bstat { color: var(--bad); }
@@ -2590,7 +2794,7 @@ html, body {
   width: 55%;
   transform: rotate(18deg);
   background: linear-gradient(90deg, transparent,
-    rgba(255, 233, 168, .4), transparent);
+    rgba(var(--gold-lt-rgb), .4), transparent);
   animation: pip-glint 3s ease 1.2s infinite;
 }
 @keyframes pip-glint {
@@ -2620,7 +2824,7 @@ html, body {
    header + mini timeline + metrics row, and the footer caption — and
    the panel goes full-bleed on a near-opaque ground. renderSelect adds
    the class, renderHub and showDialogue remove it. */
-#session-overlay.creating { background: rgba(4, 7, 20, .97); }
+#session-overlay.creating { background: rgba(5, 7, 13, .97); }
 #session-overlay.creating .ovl-title,
 #session-overlay.creating .ovl-close,
 #session-overlay.creating #sess-head,
@@ -2666,7 +2870,7 @@ html, body {
   margin: 10px 0 2px 10px;
   padding: 4px 10px;
   background: var(--ink-panel);
-  border: 1px solid rgba(242, 193, 78, .8);
+  border: 1px solid rgba(var(--gold-rgb), .8);
   color: #d6ddf5;
   font-size: 10.5px;
   letter-spacing: 1.2px;
@@ -2681,7 +2885,7 @@ html, body {
   margin: 10px 0 2px 8px;
   padding: 4px 9px;
   background: none;
-  border: 1px solid rgba(244, 241, 232, .32);
+  border: 1px solid rgba(var(--paper-rgb), .32);
   color: var(--txt-5);
   font-family: inherit;
   font-size: 10px;
@@ -2721,7 +2925,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--ink-panel);
-  border: 1px solid rgba(244, 241, 232, .35);
+  border: 1px solid rgba(var(--paper-rgb), .35);
   box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
   cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease,
@@ -2889,7 +3093,7 @@ html, body {
   gap: 4px 7px;
   padding: 7px 9px;
   background: var(--ink-panel);
-  border-top: 1px solid rgba(244, 241, 232, .18);
+  border-top: 1px solid rgba(var(--paper-rgb), .18);
 }
 .skc-pole {
   flex: 1 1 auto;
@@ -2952,7 +3156,7 @@ html, body {
 /* − is the undo, not a second way to play: it stays outlined in the
    card's neutral ink so the eye still lands on + */
 .skc-foot .skdn {
-  border-color: rgba(244, 241, 232, .4);
+  border-color: rgba(var(--paper-rgb), .4);
   color: #cdc9ba;
 }
 .skc:hover:not(.capped) .skc-foot .skup {
@@ -2960,7 +3164,7 @@ html, body {
   border-style: solid;
 }
 .skc-foot .skdn:hover:not(:disabled) {
-  background: rgba(244, 241, 232, .14);
+  background: rgba(var(--paper-rgb), .14);
   border-style: solid;
   color: var(--paper);
 }
@@ -2992,7 +3196,7 @@ html, body {
 .sk-begin:hover:not(:disabled) { background: #d95f3a; }
 .sk-begin:disabled {
   background: var(--ink-panel);
-  border-color: rgba(244, 241, 232, .3);
+  border-color: rgba(var(--paper-rgb), .3);
   color: var(--txt-6);
   box-shadow: none;
   cursor: default;
@@ -3033,7 +3237,7 @@ html, body {
   width: 34px;
   height: 1px;
   margin-right: 3px;
-  background: rgba(244, 241, 232, .35);
+  background: rgba(var(--paper-rgb), .35);
 }
 .ag-num {
   width: 22px;
@@ -3042,7 +3246,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--ink-deep);
-  border: 1.5px solid rgba(244, 241, 232, .5);
+  border: 1.5px solid rgba(var(--paper-rgb), .5);
   color: var(--paper);
   font-size: 11px;
   font-weight: 800;
@@ -3092,7 +3296,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--ink-panel);
-  border: 1px solid rgba(244, 241, 232, .35);
+  border: 1px solid rgba(var(--paper-rgb), .35);
   box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
   cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease,
@@ -3172,7 +3376,7 @@ html, body {
   gap: 7px;
   padding: 7px 9px;
   background: var(--ink-panel);
-  border-top: 1px solid rgba(244, 241, 232, .18);
+  border-top: 1px solid rgba(var(--paper-rgb), .18);
 }
 .agc-kind {
   flex: 1 1 auto;
@@ -3218,7 +3422,7 @@ html, body {
   margin-top: 16px;
   padding: 9px 10px;
   background: #080b14;
-  border: 1px solid rgba(244, 241, 232, .22);
+  border: 1px solid rgba(var(--paper-rgb), .22);
 }
 .agt {
   display: inline-flex;
@@ -3258,7 +3462,7 @@ html, body {
   gap: 8px;
   padding: 11px 18px 10px 14px;
   background: var(--ink-panel);
-  border: 2px solid rgba(244, 241, 232, .45);
+  border: 2px solid rgba(var(--paper-rgb), .45);
   color: #d6ddf5;
   font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
     sans-serif;
@@ -3279,7 +3483,7 @@ html, body {
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg,
-    rgba(242, 193, 78, .26), rgba(242, 193, 78, 0) 78%);
+    rgba(var(--gold-rgb), .26), rgba(var(--gold-rgb), 0) 78%);
   transform: translateX(-100%);
   transition: transform .34s cubic-bezier(.16, .84, .28, 1);
 }
@@ -3542,7 +3746,7 @@ html, body {
 }
 @keyframes hone-glow {
   0%, 100% { text-shadow: none; }
-  40% { text-shadow: 0 0 9px rgba(227, 182, 75, .85); color: var(--gold-brt); }
+  40% { text-shadow: 0 0 9px rgba(var(--gold-mut-rgb), .85); color: var(--gold-brt); }
 }
 .sk-row .skup {
   flex: 0 0 auto;
@@ -3591,8 +3795,8 @@ html, body {
   width: 100%;
   margin-top: 10px;
   padding: 9px 0 8px;
-  background: rgba(244, 241, 232, .04);
-  border: 1px solid rgba(242, 193, 78, .35);
+  background: rgba(var(--paper-rgb), .04);
+  border: 1px solid rgba(var(--gold-rgb), .35);
   border-radius: 5px;
   color: #e6c35c;
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
@@ -3605,7 +3809,7 @@ html, body {
     color .13s ease;
 }
 .sd-done:hover {
-  background: rgba(242, 193, 78, .14);
+  background: rgba(var(--gold-rgb), .14);
   border-color: var(--gold);
   color: var(--gold-lt);
 }
@@ -3621,7 +3825,7 @@ html, body {
   gap: 3px 10px;
   margin: 10px 0 8px;
   padding-bottom: 7px;
-  border-bottom: 1px solid rgba(242, 193, 78, .35);
+  border-bottom: 1px solid rgba(var(--gold-rgb), .35);
 }
 .sd-speaker b {
   display: flex;
@@ -3663,7 +3867,7 @@ html, body {
   padding: 9px 12px 10px;
   background: linear-gradient(160deg, rgba(43, 54, 112, .55),
     rgba(13, 18, 52, .55));
-  border: 1px solid rgba(242, 193, 78, .28);
+  border: 1px solid rgba(var(--gold-rgb), .28);
   border-radius: 8px;
 }
 .sh-gap .gap-top {
@@ -3707,7 +3911,7 @@ html, body {
   font-size: 10.5px;
   font-style: italic;
 }
-.sh-gap.met { border-color: rgba(127, 240, 174, .38); }
+.sh-gap.met { border-color: rgba(var(--good-rgb), .38); }
 .sh-gap.met .gap-bar i {
   background: linear-gradient(90deg, #3f9c6b, var(--good));
 }
@@ -3729,7 +3933,7 @@ html, body {
   content: "";
   flex: 1 1 auto;
   height: 1px;
-  background: linear-gradient(90deg, rgba(242,193,78,.45), transparent);
+  background: linear-gradient(90deg, rgba(var(--gold-rgb),.45), transparent);
 }
 .sh-row {
   display: flex;
@@ -3755,8 +3959,8 @@ html, body {
 .sh-row .shgo {
   flex: 0 0 auto;
   padding: 5px 12px;
-  background: rgba(255,255,255,.06);
-  border: 2px solid rgba(255,255,255,.4);
+  background: var(--fill-soft);
+  border: 1px solid var(--line-hi);
   border-radius: 7px;
   color: var(--txt-2);
   font-family: inherit;
@@ -3770,7 +3974,7 @@ html, body {
 .sh-row .shgo:disabled {
   opacity: .45;
   cursor: default;
-  border-color: rgba(255,255,255,.25);
+  border-color: var(--plate-edge);
 }
 .sh-row.done .shname b { color: var(--txt-4); }
 .sh-row.done .shname b .sym { color: #7c88b4; }
@@ -3778,17 +3982,17 @@ html, body {
   margin-top: 14px;
   width: 100%;
   padding: 11px 0 10px;
-  background: linear-gradient(#f7cd6e, var(--gold));
+  background: linear-gradient(var(--gold-hi), var(--gold));
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: var(--r-chip);
   color: var(--gold-dk);
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .12em;
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 10px 26px -10px rgba(242, 193, 78, .55);
+  box-shadow: 0 10px 26px -10px rgba(var(--gold-rgb), .55);
   transition: filter .18s ease;
 }
 .sh-week-end:hover:not(:disabled) {
@@ -3813,8 +4017,8 @@ html, body {
   font-size: 11.5px;
   white-space: nowrap;
 }
-.sh-row .shtag.cost { color: #f4a8a0; }
-.sh-row .shtag.gain { color: #8fe6b7; }
+.sh-row .shtag.cost { color: var(--cost-lt); }
+.sh-row .shtag.gain { color: var(--gain-lt); }
 
 /* ---------- budget scoreboard (bottom right) ---------- */
 #fund-chip {
@@ -3838,11 +4042,11 @@ html, body {
 #fund-chip:hover { border-color: var(--line-hi); }
 #fund-chip .fc-label {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: var(--w-label);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: #9fd4f0;
+  color: var(--sky);
 }
 #fund-chip .fc-amt {
   display: block;
@@ -3877,10 +4081,10 @@ html, body {
 #turn-chip {
   pointer-events: auto;
   padding: 6px 14px 8px;
-  background: linear-gradient(#f7cd6e, var(--gold));
+  background: linear-gradient(var(--gold-hi), var(--gold));
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: var(--r-chip);
-  box-shadow: 0 8px 24px -8px rgba(242, 193, 78, .55),
+  box-shadow: 0 8px 24px -8px rgba(var(--gold-rgb), .55),
               var(--shadow-chip);
   color: var(--gold-dk);
   font-family: inherit;
@@ -3894,9 +4098,9 @@ html, body {
 #turn-chip:disabled:hover { filter: none; }
 #turn-chip .tc-label {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: .12em;
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   /* dark ink on gold now — see #turn-chip. The old pale blue was
      written for a dark plate and is invisible on the fill. */
@@ -3906,7 +4110,6 @@ html, body {
   display: block;
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: .2px;
   color: var(--gold-dk);
 }
 /* pending event / unused action — the nudge before you burn the week */
@@ -3934,10 +4137,12 @@ html, body {
    the screen's primary verb, and anything with chrome would compete
    with it. If a future edit gives this a border, the cluster has
    stopped being ambient and become a fourth button.
-   Sized to #hud-timeline's 168px so the bottom-left column reads as one
-   stack: standing -> time left -> the verb. */
+   Sized to #hud-timeline's 184px so the bottom-left column reads as one
+   stack: standing -> time left -> the verb. (168 until 2026-09-22; the
+   HUD type moved to a 10px floor and "WEEK 5 · FIRST LATERAL" needed the
+   room to stay on one line.) */
 #hud-standing {
-  width: 168px;
+  width: 184px;
   box-sizing: border-box;
   padding: 0 2px 1px;
   pointer-events: auto;          /* hover only — deliberately not a button */
@@ -3969,7 +4174,7 @@ html, body {
 #hud-standing .hs-sup { --hc: var(--support); }   /* the street */
 #hud-standing .hs-inf { --hc: var(--influence); }   /* inside the building */
 #hud-standing .hs-l {
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: var(--w-label);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
@@ -3994,7 +4199,7 @@ html, body {
   /* same fill as the overlay's .metc bar, so the HUD cluster and the
      card in the session panel keep reading as one object seen twice */
   background: linear-gradient(90deg,
-    color-mix(in srgb, var(--hc, var(--txt-4)) 55%, #0b1024),
+    color-mix(in srgb, var(--hc, var(--txt-4)) 55%, var(--bar-ink)),
     var(--hc, var(--txt-4)));
   box-shadow: 0 0 7px -1px var(--hc, var(--txt-4));
   /* built once and updated in place (renderHudStanding), so a changed
@@ -4008,7 +4213,7 @@ html, body {
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+  text-shadow: var(--text-lift);
 }
 /* the trend since the week opened. Empty when nothing moved — a quiet
    week should read as quiet, not as a row of zeroes — so this column
@@ -4016,13 +4221,13 @@ html, body {
 #hud-standing .hs-t {
   min-width: 20px;
   text-align: right;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .75);
+  text-shadow: var(--text-lift);
 }
-#hud-standing .hs-t.up   { color: #8df5b8; }
-#hud-standing .hs-t.down { color: #ff9d91; }
+#hud-standing .hs-t.up   { color: var(--trend-up); }
+#hud-standing .hs-t.down { color: var(--trend-down); }
 @supports not (background: color-mix(in srgb, red, blue)) {
   #hud-standing .hs-bar i { background: var(--hc, var(--txt-4)); }
 }
@@ -4033,7 +4238,7 @@ html, body {
    names; this chip is a glance, and a tap into the overlay. */
 #hud-timeline {
   position: relative;
-  width: 168px;
+  width: 184px;
   height: 22px;
   background: linear-gradient(var(--plate-hi), var(--plate-lo));
   -webkit-backdrop-filter: blur(14px) saturate(1.25);
@@ -4106,36 +4311,64 @@ html, body {
   margin-left: -1.5px;
   border-radius: 2px;
   background: #fff6d8;
-  box-shadow: 0 0 6px rgba(255, 233, 168, .9);
+  box-shadow: 0 0 6px rgba(var(--gold-lt-rgb), .9);
   transition: left .55s cubic-bezier(.25, .9, .3, 1);
 }
 .htl .htl-read {
   flex: 0 0 auto;
   color: var(--gold-lt);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: .8px;
+  letter-spacing: var(--track-label);
   font-variant-numeric: tabular-nums;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .6);
+  text-shadow: var(--text-lift);
 }
 
+/* The toolbar leaves the title chip's row below 900px (2026-09-22).
+   Centred, it ran into the chip from ~890px down — the chip ends at
+   x ~211 and the toolbar is ~445px wide — so on every tablet and small
+   laptop window the two plates overlapped. */
+@media (max-width: 900px) {
+  #toolbar { top: 58px; left: 12px; transform: none; }
+  #chips { top: 118px; }   /* below the toolbar row */
+}
 @media (max-width: 600px) {
   .brow { grid-template-columns: 108px 1fr 78px; font-size: 11px; }
   #hud-turn { bottom: 40px; }
   /* bars STAY on mobile (2026-08-18, user's call) — this only tightens
-     the type and spacing so two rows plus the timeline and End Turn
-     still clear the bottom of a 375px phone */
-  #hud-standing { width: 150px; }
+     the spacing so two rows plus the timeline and End Turn still clear
+     the bottom of a 375px phone. The type holds the 10px floor. */
+  #hud-standing, #hud-timeline { width: 176px; }
   #hud-standing .hs-row { margin-bottom: 3px; }
-  #hud-standing .hs-l { font-size: 8.5px; letter-spacing: var(--track-micro); }
+  #hud-standing .hs-l { font-size: 10px; letter-spacing: var(--track-micro); }
   #hud-standing .hs-v { font-size: 11px; }
   #turn-chip { padding: 5px 11px 6px; }
   #turn-chip .tc-act { font-size: 13px; }
-  #chips { top: 102px; }   /* below the 3-button toolbar row */
+  #chips { top: 106px; }   /* below the icon-only toolbar row */
   #chips button { font-size: 10.5px; padding: 4px 9px; }
-  #toolbar { top: 58px; left: 12px; transform: none; }
-  #toolbar button { padding: 5px 9px 4px; flex-direction: row; gap: 6px; }
-  #toolbar button svg { width: 16px; height: 16px; }
+  /* ICON-ONLY under 600px (2026-09-22). Five labelled buttons made a
+     471px row on a 375px phone and nothing clipped or wrapped it, so Map
+     sat off the right edge where it could not be reached. The label
+     stays in the accessibility tree (visually hidden, not display:none),
+     the week badge stays on screen, and every button is a 44x40 target. */
+  #toolbar { gap: 6px; }
+  #toolbar button {
+    min-width: 44px;
+    min-height: 40px;
+    padding: 0 10px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 5px;
+  }
+  #toolbar button svg { width: 18px; height: 18px; }
+  #toolbar .tb-t {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  #toolbar .wk-badge { margin-left: 0; }
   .prow .pgo { width: 64px; }
   #fund-chip { bottom: 40px; }
   #fund-chip .fc-amt { font-size: 14px; }
@@ -4157,12 +4390,22 @@ html, body {
   border: 1px solid var(--plate-edge);
   border-radius: var(--r-panel);
   color: #fff;
-  z-index: 20;
+  z-index: var(--z-dialog);
   box-shadow: var(--shadow-panel);
   cursor: pointer;
   user-select: none;
 }
 #dialog.hidden { display: none; }
+/* THE GREETING NEVER SITS OVER THE HUD'S CONTROLS (2026-09-22). 640px
+   wide at bottom 40, it covered the bottom-left column — End Turn — at
+   any window under ~1024px, and on a phone the budget chip as well. A
+   tap anywhere on it dismisses it, so the first tap on End Turn was
+   spent closing the greeting instead. Below 1060px it rides above the
+   column (~148px to its top, measured) with a 14px gap; the phone value
+   is in the 600px block below, where the column also sits 30px higher. */
+@media (max-width: 1060px) {
+  #dialog { bottom: 162px; }
+}
 
 #dialog-name {
   display: inline-block;
@@ -4197,62 +4440,23 @@ html, body {
 @keyframes bob { from { transform: translateY(0); } to { transform: translateY(3px); } }
 
 @media (max-width: 600px) {
-  #title-chip { font-size: 11px; letter-spacing: 1.5px; }
+  #title-chip { font-size: 11px; letter-spacing: var(--track-label); }
   #hint { font-size: 10px; bottom: 6px; }
-  #dialog { bottom: 24px; }
+  #dialog { bottom: 180px; }
   #dialog-text { font-size: 13px; }
 }
 
 /* ================================================================== */
 /* THE CINEMA PASS (2026-08-21, user's call: "make the narrative screen
    look more visually stunning… in line with a modern rpg game").
-   Additive and SCOPED — everything here rides on #session-overlay (or
-   deeper) so the money/policy overlays keep the plain house plates.
-   The section deepens material and light; it deliberately re-states no
-   layout, no motion timings, and none of the decisions documented
-   above (nameplate voices, transcript ageing, mast geometry). */
-
-/* the room falls away: darker, vignetted scrim + painterly bokeh of
-   the map behind the panel. backdrop-filter is progressive — browsers
-   without it just keep the flat scrim. */
-#session-overlay {
-  background:
-    radial-gradient(120% 90% at 50% 8%,
-      rgba(8, 12, 38, .45) 0%, rgba(4, 6, 20, .78) 100%);
-  backdrop-filter: blur(7px) saturate(1.12);
-  -webkit-backdrop-filter: blur(7px) saturate(1.12);
-}
-
-/* panel material: the flat two-stop gradient becomes a lit surface —
-   a cool key light at the top-left corner, depth toward the foot, a
-   gold hairline INSIDE the white frame (foil edge), and an ambient
-   shadow that actually settles the plate into the scrim. */
-#session-overlay .ovl-panel {
-  background:
-    radial-gradient(130% 68% at 18% -6%,
-      rgba(96, 124, 200, .22) 0%, rgba(96, 124, 200, 0) 55%),
-    radial-gradient(120% 90% at 85% 108%,
-      rgba(6, 8, 22, .9) 0%, rgba(6, 8, 22, 0) 52%),
-    linear-gradient(172deg, #1b2130 0%, #12172180 44%, #0b0e14 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(242, 193, 78, .28),
-    inset 0 1px 22px rgba(120, 150, 255, .10),
-    0 26px 60px -18px rgba(0, 0, 0, .8),
-    0 8px 0 rgba(0, 0, 0, .35);
-}
-/* film grain over the whole plate — one SVG turbulence tile at 4%.
-   pointer-events none; sits above everything, which is the point (it
-   unifies UI, prose, banner art and portraits into one graded frame). */
-#session-overlay .ovl-panel::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 7px;
-  pointer-events: none;
-  opacity: .05;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
-  background-size: 140px 140px;
-}
+   Scoped to #session-overlay, and since 2026-09-22 it is ONLY the
+   reader: the scrim, the panel material, the film grain and the gold
+   scrollbar that started here were promoted to every overlay (see the
+   modal-overlays block near the top), because Budget and Policies were
+   left looking like another game beside it. What remains deepens the
+   reading surface; it re-states no layout, no motion timings, and none
+   of the decisions documented above (nameplate voices, transcript
+   ageing, mast geometry). */
 
 /* the reading surface: top light on the first lines, a breath of
    vignette at the foot, and the gold spine given a soft halo so the
@@ -4263,9 +4467,9 @@ html, body {
       rgba(244, 236, 214, .05) 0%, rgba(244, 236, 214, 0) 100%),
     linear-gradient(180deg, rgba(10, 11, 16, .93), rgba(5, 6, 10, .90)),
     rgba(5, 6, 10, .9);
-  border-left-color: rgba(242, 193, 78, .38);
+  border-left-color: rgba(var(--gold-rgb), .38);
   box-shadow:
-    inset 2px 0 12px -6px rgba(242, 193, 78, .35),
+    inset 2px 0 12px -6px rgba(var(--gold-rgb), .35),
     inset 0 -30px 40px -34px rgba(0, 0, 0, .85),
     0 1px 0 rgba(255, 255, 255, .04);
 }
@@ -4297,9 +4501,9 @@ html, body {
   position: relative;
   overflow: hidden;
   padding: 9px 12px;
-  background: linear-gradient(180deg, rgba(244, 241, 232, .035),
-    rgba(244, 241, 232, .015));
-  border: 1px solid rgba(244, 241, 232, .07);
+  background: linear-gradient(180deg, rgba(var(--paper-rgb), .035),
+    rgba(var(--paper-rgb), .015));
+  border: 1px solid rgba(var(--paper-rgb), .07);
   border-left: 2px solid transparent;
 }
 #session-overlay .sd-choices button .sd-num { color: #b99b4a; }
@@ -4327,38 +4531,20 @@ html, body {
   border-left-color: rgba(210, 226, 255, .35);
 }
 #session-overlay .sd-choices button.c-red {
-  border-left-color: rgba(255, 141, 128, .55);
-}
-
-/* metric cards: the tint becomes light — icon halo, gold-warm value,
-   and a hairline of the metric's own colour along the top edge */
-#session-overlay #sess-metrics .metc {
-  background:
-    radial-gradient(90% 120% at 12% 0%,
-      var(--mct, rgba(159, 176, 232, .16)) 0%, rgba(0, 0, 0, 0) 58%),
-    linear-gradient(180deg, rgba(13, 19, 44, .72), rgba(6, 10, 24, .55));
-  border-color: rgba(255, 255, 255, .12);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .08),
-    inset 0 10px 18px -14px var(--mct, rgba(159, 176, 232, .35)),
-    0 2px 6px rgba(0, 0, 0, .35);
-}
-#session-overlay #sess-metrics .metc > .sym {
-  filter: drop-shadow(0 0 4px var(--mc, var(--txt-4)));
-  opacity: 1;
+  border-left-color: rgba(var(--bad-rgb), .55);
 }
 
 /* the portrait: a foil-edged frame with ambient light behind the art,
    so the person arrives lit rather than pasted */
 #session-overlay .sd-card {
   box-shadow:
-    inset 0 0 0 1px rgba(242, 193, 78, .22),
+    inset 0 0 0 1px rgba(var(--gold-rgb), .22),
     0 10px 28px -12px rgba(0, 0, 0, .85),
-    0 0 22px -6px rgba(242, 193, 78, .18);
+    0 0 22px -6px rgba(var(--gold-rgb), .18);
 }
 #session-overlay .sd-card .cc-art {
   box-shadow:
-    inset 0 0 0 1px rgba(242, 193, 78, .3),
+    inset 0 0 0 1px rgba(var(--gold-rgb), .3),
     inset 0 -14px 22px -14px rgba(0, 0, 0, .8);
 }
 
@@ -4376,8 +4562,8 @@ html, body {
 #session-overlay .sd-done {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(242, 193, 78, .07),
-    rgba(242, 193, 78, .02));
+  background: linear-gradient(180deg, rgba(var(--gold-rgb), .07),
+    rgba(var(--gold-rgb), .02));
 }
 #session-overlay .sd-done::before {
   content: "";
@@ -4394,11 +4580,14 @@ html, body {
 #session-overlay .sd-done:hover::before { left: 110%; }
 
 /* the masthead numeral block: foil sheen across the gold, and the
-   plate's shadow warms so the tab reads embossed on the frame */
+   plate's shadow warms so the tab reads embossed on the frame. The
+   ambient shadow is the base rule's, restated because box-shadow does
+   not add up: this rule had put back the hard 4px 4px 0 offset the
+   2026-08-28 restyle documented the masthead as having shed. */
 #session-overlay .ovl-title.mast {
   box-shadow:
-    4px 4px 0 rgba(0, 0, 0, .5),
-    0 0 18px -4px rgba(242, 193, 78, .35);
+    0 12px 30px -10px rgba(0, 0, 0, .75),
+    0 0 18px -4px rgba(var(--gold-rgb), .35);
 }
 #session-overlay .ovl-title.mast .mast-no {
   background:
@@ -4407,29 +4596,12 @@ html, body {
     linear-gradient(var(--gold), var(--gold-deep));
 }
 
-/* a thin gold scrollbar keeps even the chrome in-world (WebKit; the
-   Firefox shorthand keeps it tidy there too) */
-#session-overlay #sess-body {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(242, 193, 78, .45) rgba(255, 255, 255, .06);
-}
-#session-overlay #sess-body::-webkit-scrollbar { width: 8px; }
-#session-overlay #sess-body::-webkit-scrollbar-thumb {
-  background: linear-gradient(rgba(242, 193, 78, .5),
-    rgba(217, 167, 47, .35));
-  border-radius: 99px;
-  border: 2px solid rgba(0, 0, 0, .4);
-}
-#session-overlay #sess-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, .04);
-  border-radius: 99px;
-}
-
 /* the sheen crossers respect reduced motion (they are transitions, but
    a crossing highlight is still motion) */
 @media (prefers-reduced-motion: reduce) {
   #session-overlay .sd-choices button::before,
-  #session-overlay .sd-done::before { display: none; }
+  #session-overlay .sd-done::before,
+  .prow .pgo::before { display: none; }
 }
 
 /* ================================================================
@@ -4440,8 +4612,9 @@ html, body {
    stays up inside it. Only the chrome that drives the MAP is hidden:
    the island fly-to menu, the pan/zoom hint and the tax-stream layer
    chips all address a camera and layers that are asleep. End Turn is
-   safe in here because advanceWeek skips the week-beat camera ritual
-   whenever WorldScene is sleeping (checked in JS, not here). */
+   safe in here because advanceWeek only runs the week-beat camera
+   ritual when the MAP is the home view (START_ROOM null, checked in JS,
+   not here) — anywhere else the week opens straight away. */
 body.in-capitol #island-chip,
 body.in-capitol #island-menu,
 body.in-capitol #hint,
