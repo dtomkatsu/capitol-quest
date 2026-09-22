@@ -3216,11 +3216,28 @@ stairs hotspot or Esc. Rules:
     `exitTo: "world"` remains in the config and `parkOnCapitol` still
     parks the camera on the Capitol at boot, so dropping `noExit` is
     the one edit that restores the whole route.
-  - **The week-1 boot pop is suppressed while it is set**
-    (`SessionPanel.init`): the point is to land on the ROOM, and an
-    overlay opening over it defeats that. The creation funnel is not
-    lost — it is `renderHub`'s early bail, so it fires the moment the
-    session is opened from the map.
+  - **The boot pop for a week's NARRATIVE is suppressed while it is
+    set** (`SessionPanel.init`): the point is to land on the ROOM, and
+    in the hallway the legislator tap is what opens the week. **The
+    CREATION FUNNEL is NOT suppressed** (2026-09-22, user's call:
+    "ensure that the game still starts with the stat selection
+    screens") — a fresh campaign opens on Select Instincts over the
+    room. An earlier version suppressed both, and a new player landed
+    in the walking view with no instincts and no bills.
+  - **The week-beat camera ritual runs only when START_ROOM is null**
+    (2026-09-22). With a room as home the map is an excursion via the
+    toolbar Map toggle, and there the beat was ~2s of dead air — the
+    camera is already parked on the Capitol, so it barely moved, and
+    it read as End Turn failing to open the next week. The week now
+    opens immediately over whichever view is showing. `beating` is
+    held from the first line of `advanceWeek` (released by openWeek,
+    or by the catch if the step throws), because the panel's 240ms
+    fall-away was an unguarded window where a double tap on End Week
+    advanced two weeks.
+  - **The Map toggle resolves a remembered `hallway` through
+    `bootRoom()`.** advanceWeek only retires the hallway while it is
+    the ACTIVE scene, so ending week 1 from the map used to send the
+    toggle back into Opening Day's corridor in week 2.
 - **THE CAPITOL CARRIES THE FULL GAME HUD NOW** (2026-08-26, user's
   call: "move all the ui stuff from the map to the view of the capitol
   … this is supposed to be the main actual view of the game. so then

@@ -161,10 +161,13 @@ const CAP_V = 45;   // 45 = hotspot approach points for tap-to-walk;
    - The intro dive is SKIPPED and the camera parked where the dive
      would have LANDED, so leaving the room by the stairs arrives on
      the Capitol rather than on a half-tweened archipelago.
-   - The week-1 overlay's boot pop is suppressed while this is set
-     (see SessionPanel.init) — the point is to land on the room, and
-     an overlay that opens over it defeats that. The map and the
-     session are both still reachable: take the stairs. */
+   - The boot pop for a week's NARRATIVE is suppressed while this is
+     set (see SessionPanel.init) — the point is to land on the room.
+     The CREATION FUNNEL is not suppressed: a fresh campaign still
+     opens on Select Instincts, over the room.
+   - The week-beat camera ritual only runs when this is null; with a
+     room as home the map is an excursion and End Turn opens the week
+     immediately (see advanceWeek). */
 const START_ROOM = "capitol";
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
@@ -4612,8 +4615,17 @@ const SessionPanel = {
        open. `beating` gates re-entry: the turn chip stays live on
        screen during the ritual and a double-tap would advance twice. */
     let beating = false;
+    /* `beating` is held from the very first line, not just during the
+       camera move: the panel's 240ms fall-away is also a window where a
+       second tap on #sess-next or the chip would advance TWICE. It is
+       released by openWeek; the catch releases it if the step throws
+       first, or End Turn would be dead for the rest of the session. */
     const advanceWeek = () => {
       if (S.week > data.sineDieWeek || beating) return;
+      beating = true;
+      try { stepWeek(); } catch (err) { beating = false; throw err; }
+    };
+    const stepWeek = () => {
       /* The week sound lives HERE and not on the button, for the same
          reason the pip's lives after its guard: sine die and a beat
          already in flight both return above this line, and a click at
@@ -4678,12 +4690,17 @@ const SessionPanel = {
       const dlg = data.dialogues[cal.event] || {};
       const startBeat = () => {
         overlay.classList.add("hidden");
-        // The camera ritual belongs to the MAP. With the Capitol as
-        // the main view (2026-08-26) the world scene sleeps under the
-        // room, its tween clock with it — weekBeat there would just
-        // stall on the 4s fallback. Skip straight to the week.
-        if (scene && scene.weekBeat && !scene.sys.isSleeping()) {
-          beating = true;
+        /* The camera ritual belongs to the map AS THE HOME VIEW, so it
+           only runs when START_ROOM is null. With a room as the home
+           view the map is an excursion (the toolbar's Map toggle), and
+           there the ritual was ~2s of dead air: the camera is already
+           parked on the Capitol, so it barely moves, the panel is gone
+           and nothing says the week is coming (2026-09-22, user: "if
+           map is open ... pressing end week won't bring up the
+           event/convo overlay"). The week opens straight away over
+           whichever view is showing, map or room. */
+        if (!START_ROOM && scene && scene.weekBeat &&
+            !scene.sys.isSleeping()) {
           renderTurnBtn();
           scene.weekBeat(dlg.at || null, openWeek);
         } else {
@@ -4894,12 +4911,16 @@ const SessionPanel = {
     syncScore();
     renderHead();
     const cal0 = calFor(S.week);
-    // START_ROOM lands the player in a room; an overlay popping over
-    // it on boot would defeat that. The funnel is not lost — it is
-    // renderHub's early bail, so it fires the moment the session is
-    // opened from the map.
-    if (!START_ROOM && (eventPending(cal0) ||
-        (cal0.agenda && !S.agendaLocked))) {
+    /* A fresh campaign OPENS ON THE CREATION FUNNEL, room or no room
+       (2026-09-22, user's call: "ensure that the game still starts with
+       the stat selection screens"). START_ROOM only suppresses the pop
+       for a week's NARRATIVE — landing on the room is the point, and
+       in the hallway the legislator tap is what opens the week. It must
+       not suppress creation: without this a new player landed in the
+       walking view with no instincts chosen and no bills, and nothing
+       told them the game had not started yet. */
+    const needCreate = cal0.agenda && !S.agendaLocked;
+    if (needCreate || (!START_ROOM && eventPending(cal0))) {
       openOverlay(true);            // the FIRST week arriving
       // skill investment / bill agenda comes first when it's pending —
       // the narrative event follows once that's locked in (see sess-lock)
@@ -6972,6 +6993,8 @@ window.addEventListener("load", () => {
     e.stopPropagation();
     document.querySelectorAll(".ovl:not(.hidden)")
       .forEach((o) => o.classList.add("hidden"));
+    // a room's greeting belongs to the room — don't carry it onto the map
+    Dialog.hide();
     const g = window.__game;
     if (document.body.classList.contains("in-capitol")) {
       const active = g.scene.getScenes(true)
@@ -6981,6 +7004,12 @@ window.addEventListener("load", () => {
       document.body.classList.remove("in-capitol");
       active.scene.switch("world");
     } else {
+      /* The hallway retires with week 1, but advanceWeek only swaps it
+         out while it is the ACTIVE scene — ending week 1 from the map
+         left it remembered here, and the toggle walked the player back
+         into Opening Day's corridor in week 2. bootRoom() is the one
+         rule for which room a week lives in. */
+      if (lastRoomKey === "hallway") lastRoomKey = bootRoom() || "capitol";
       g.scene.getScene("world").scene.switch(lastRoomKey);
     }
   });
