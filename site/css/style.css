@@ -1455,6 +1455,11 @@ html, body {
      eating a bigger share of the panel, which trades one unreadable
      thing for another. */
   max-height: min(43vh - 119px, 271px);
+  /* …and that clamp is now only the FALLBACK. main.js sizeArt()
+     publishes --art-max = 66% of the transcript's max height (2026-09-22,
+     user: the first-week picture was still "too short"): half the body,
+     capped at 271px, was a 3.5:1 strip of a 2:1 file on a laptop. */
+  max-height: var(--art-max, min(43vh - 119px, 271px));
   object-fit: cover;
   object-position: center 45%;
   /* beats own their art now: horizontal bleed to the scene edge always,

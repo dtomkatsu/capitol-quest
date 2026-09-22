@@ -667,7 +667,23 @@ Rules that must survive edits:
        Net on a 1280px window the browser upscale went **1.74x -> 1.30x
        -> 1.04x**; `PAINT_W` stays deliberately NOT tied to DISPLAY, so
        an output-size change on its own still needs no recipe edits.
-    3. **On-screen height — `.sd-art { max-height }` in style.css, now
+    3. **On-screen height — now `--art-max`, set by `sizeArt()` in
+       main.js to 66% of the transcript's MAX height** (2026-09-22,
+       user: "actually fix the problem with the event in the first week
+       picture being too short"). Measured before: a 957px column at a
+       1024x768 window showed the w1 banner at 211px of a 478px picture
+       (a 4.5:1 strip), with settle() having already scrolled 81px of
+       it away — ~130px of Opening Day on screen. After: 333px at 768,
+       310 at 720, 416 at 1080, and the whole 2:1 file on a phone.
+       The share is of the MAX (panel max-height minus the fixed chrome
+       stack), never of #sess-body's current height, which shrinks with
+       a short scene. **And settle() never scrolls a newly arrived
+       picture's top out of view** — the old KEEP 0.68 cap plus the
+       choice-strip `peek` that overrode it are gone; the choices are
+       one scroll below the prose, which is their place in the reading
+       order. The CSS `min(43vh - 119px, 271px)` below is only the
+       fallback before sizeArt has run. The rest of this bullet is the
+       history of that fallback:
        `min(43vh - 119px, 271px)`.** The odd expression is the point:
        the banner competes with the TRANSCRIPT, not the window, and
        #sess-body is `min(86vh, 780px) - ~238px` of header. A flat vh

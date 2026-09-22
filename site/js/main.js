@@ -2268,6 +2268,27 @@ const SessionPanel = {
        to the bottom. Choices live in a separate `.sd-play` strip under
        the log — they are UI, not transcript, and vanish once spent
        (the picked one re-enters the log as YOUR line). */
+    /* The banner's height budget is a SHARE OF THE TRANSCRIPT'S MAX
+       HEIGHT, published as --art-max on #sess-body. The transcript is
+       the panel's max-height minus a chrome stack that does not
+       depend on content (masthead, meters, footer — 148px measured),
+       so this is stable where #sess-body's own current height is not:
+       a short scene shrinks the body, and a cap tied to it would
+       shrink the picture with it. ART_SHARE .66 leaves the first
+       lines of prose under the picture on every window size — the
+       old CSS clamp was HALF the body and topped out at 271px, which
+       on a 957px column is a 3.5:1 letterbox of a 2:1 file. */
+    const ART_SHARE = 0.66;
+    const sizeArt = () => {
+      const panel = body.closest(".ovl-panel");
+      if (!panel || !body.clientHeight) return;   // hidden: no box yet
+      const max = parseFloat(getComputedStyle(panel).maxHeight);
+      if (!(max > 0)) return;
+      const chrome = panel.offsetHeight - body.offsetHeight;
+      body.style.setProperty("--art-max",
+        Math.round((max - chrome) * ART_SHARE) + "px");
+    };
+    window.addEventListener("resize", sizeArt);
     const showDialogue = (dlgId, onDone) => {
       const dlg = data.dialogues[dlgId];
       if (!dlg) { onDone(); return; }
@@ -2371,6 +2392,7 @@ const SessionPanel = {
          on every scene that opens with a picture, which trades one
          invisible thing for a worse one. */
       const settle = (artEl) => {
+        sizeArt();
         requestAnimationFrame(() => {
           const last = logEl.lastElementChild;
           if (!last) return;
@@ -2392,17 +2414,24 @@ const SessionPanel = {
             last.offsetHeight - body.clientHeight;
           let top = Math.min(lastTop - 14, Math.max(0, want));
           if (artEl) {
-            /* Hold the banner on screen — but never at the price of the
-               player not knowing they have choices. `peek` is the least
-               scroll that still shows the top of the choice strip; on a
-               normal window it is the smaller number and the art keeps
-               ~2/3 of itself, on a short one it wins and the art gives
-               ground. An unconditional art cap was tried first and left
-               a 720px-tall window showing a picture and no options. */
-            const KEEP = 0.68, PEEK = 44;
-            const peek = topOf(play) + PEEK - body.clientHeight;
-            top = Math.min(top, Math.max(
-              topOf(artEl) + artEl.offsetHeight * (1 - KEEP), peek));
+            /* A PICTURE ARRIVES WHOLE (2026-09-22, user: "actually fix
+               the problem with the event in the first week picture being
+               too short"). This used to cap the scroll at 68% of the
+               banner and then let a `peek` of the choice strip override
+               even that — so on a laptop the opening shot came up with
+               81px of its top already scrolled away, under a CSS clamp
+               that had it at 211px of a 478px picture: about 130px of
+               Opening Day on screen. Now the scroll never passes the
+               banner's own top. The prose starts under it (the banner
+               is sized to leave room for that — sizeArt), and the
+               choices are one scroll further, which is where they are
+               in the reading order anyway. Independent of the image's
+               height, so the cold-load re-settle can't disagree. */
+            // the IMG, not its beat: the opening banner bleeds up out of
+            // its wrapper by a negative margin, so the wrapper's top is
+            // 14px below the picture's
+            top = Math.min(top,
+              topOf(artEl.querySelector("img") || artEl) - 14);
           }
           body.scrollTop = Math.max(0, top);
         });
