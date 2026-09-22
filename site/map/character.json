@@ -1,0 +1,23 @@
+{
+ "image": "char_advocate.png",
+ "fw": 116,
+ "fh": 218,
+ "scale": 0.5,
+ "sx": 40.0,
+ "anchor": [
+  29.0,
+  97.0
+ ],
+ "dirs": [
+  "S",
+  "SE",
+  "E",
+  "NE",
+  "N",
+  "NW",
+  "W",
+  "SW"
+ ],
+ "walk": 6,
+ "height": 96.25
+}

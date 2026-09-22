@@ -143,7 +143,9 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 42;   // 42 = sliced ends on the slab, stair flush, breezeway pier feet (2026-09-04)
+const CAP_V = 45;   // 45 = hotspot approach points for tap-to-walk;
+                    // 44 = depth bands, mauka railing caps the
+                    // makai runs at the two corner joints (2026-09-17)
                     // 41 = the OVER/SHIP re-bake (2026-08-28)
 /* THE GAME LANDS IN THE CAPITOL, NOT ON THE MAP (2026-08-24, user's
    call: "make that the default view (replacing the map) for now. keep
@@ -173,7 +175,20 @@ const OFF_V = 2;
    so meta.scale is 0.5 and every hotspot px in the JSON is byte-
    identical to v2. 4 = the legislator figure() redesign, same day —
    art only, hotspot px unchanged again. */
-const HALL_V = 5;   // 5 = alcove pot out from behind the near wall, cut-core ticks clipped (2026-09-05)
+const HALL_V = 8;   // 8 = hotspot approach points for tap-to-walk;
+                    // 7 = depth bands, per-object for the pots, the
+                    // posts and the legislator (2026-09-17)
+/* THE PLAYER CHARACTER. One bake shared by every room
+   (tools/render_character.py) — its own token, because it changes
+   on a different clock from any single room. */
+const CHAR_V = 1;
+/* DEPTH BANDS. A room ships as layers at their own PLAN depth (u+v),
+   and the character is sorted between them by its own. These two park
+   the always-behind and always-in-front layers well outside any plan
+   depth the rooms reach (about -25..+31), while staying far below the
+   HUD labels at 10000. */
+const BAND_BACK = -1000;
+const BAND_FRONT = 1000;
 /* Cache token for the event BANNERS (tools/make_event_art.py ->
    assets/events/*.png). They had none at all until 2026-08-28, which
    was survivable only while their pixel dimensions never changed: the
@@ -5924,6 +5939,365 @@ class WorldScene extends Phaser.Scene {
   }
 }
 
+/* ---------------------------------------------------------- RoomPlan
+   THE ROOM'S PLAN SPACE, read from the bake (tools/roomplan.py emits
+   `basis` and `walk` into every room json).
+
+   A room is a painting, so nothing at runtime knows where the floor is
+   except what the painters wrote down. This is the reader for that:
+   plan <-> scene px, and "may a body of radius `pad` stand here".
+
+   THE BASIS IS PER ROOM AND MUST NOT BE HARDCODED HERE. The hallway
+   runs 40x20 px per plan unit against the Capitol's 16x8, so one
+   constant in this file would be wrong for one of them; it ships with
+   the bake that drew the floor. A character moves in PLAN coordinates
+   and is projected through px() — never positioned in scene px, the
+   same rule the island map keeps with lonlat_to_cell().
+
+   ok() MIRRORS roomplan.Walk.ok() AND MUST KEEP MIRRORING IT. Both
+   sides of a walk decision have to agree, or the bake's asserts stop
+   describing the game: the bake is what proves the floor is connected
+   and reachable, the runtime is what walks it. In particular the inset
+   is against the UNION of the allow regions and not against each one
+   — shrinking every rect separately opens a seam wherever two floors
+   abut, which is exactly how the hallway's alcove got severed from
+   its corridor while this was being written. */
+class RoomPlan {
+  constructor(meta) {
+    this.basis = meta.basis || null;
+    this.walk = meta.walk || null;
+    this.pad = this.walk ? this.walk.pad : 0;
+  }
+  get ready() { return !!(this.basis && this.walk); }
+  get spawn() { return this.walk ? this.walk.spawn : [0, 0]; }
+
+  /* plan -> scene px. dy is height above the floor in scene px, the
+     same convention the painters use. */
+  px(u, v, dy) {
+    const b = this.basis;
+    return { x: b.cx + b.sx * (u - v),
+             y: b.cy + b.sy * (u + v) - (dy || 0) };
+  }
+
+  /* scene px -> plan, AT FLOOR LEVEL. The half that makes tap-to-walk
+     possible: it answers which point of the floor a click landed on.
+     Valid only for dy 0 — a click on a wall resolves to the floor
+     behind it, the right reading for a walk target and the wrong one
+     for anything else. */
+  plan(x, y) {
+    const b = this.basis;
+    const du = (x - b.cx) / b.sx, dv = (y - b.cy) / b.sy;
+    return { u: (dv + du) / 2, v: (dv - du) / 2 };
+  }
+
+  _in(reg, u, v, grow) {
+    const g = grow || 0;
+    if (reg.t === "rect")
+      return u >= reg.u0 - g && u <= reg.u1 + g &&
+             v >= reg.v0 - g && v <= reg.v1 + g;
+    return Math.hypot(u - reg.u, v - reg.v) <= reg.r + g;
+  }
+
+  _onFloor(u, v) {
+    for (const a of this.walk.allow) if (this._in(a, u, v)) return true;
+    return false;
+  }
+
+  /* The nearest point to (u, v) the character can stand on. Mirrors
+     roomplan.approach(): a tap lands wherever it lands — on a wall, on
+     the well, half inside a planter — and "walk to roughly there" is
+     what the player means every time. */
+  nearest(u, v, limit) {
+    if (this.ok(u, v)) return { u, v };
+    const lim = limit || 2.5;
+    for (let r = 0.08; r <= lim; r += 0.08) {
+      const n = Math.max(8, Math.round(2 * Math.PI * r / 0.08));
+      let best = null;
+      for (let k = 0; k < n; k++) {
+        const th = 2 * Math.PI * k / n;
+        const pu = u + r * Math.cos(th), pv = v + r * Math.sin(th);
+        if (this.ok(pu, pv)) {
+          const d = Math.hypot(pu - u, pv - v);
+          if (!best || d < best.d) best = { u: pu, v: pv, d };
+        }
+      }
+      if (best) return { u: best.u, v: best.v };
+    }
+    return null;
+  }
+
+  /* Is the straight line between two plan points walkable end to end?
+     The test the smoothing pass below is built on. */
+  clear(a, b) {
+    const n = Math.ceil(Math.hypot(b.u - a.u, b.v - a.v) / 0.12);
+    for (let k = 1; k < n; k++) {
+      const t = k / n;
+      if (!this.ok(a.u + (b.u - a.u) * t, a.v + (b.v - a.v) * t))
+        return false;
+    }
+    return true;
+  }
+
+  /* A ROUTE from one plan point to another, as a short list of
+     waypoints.
+
+     A* runs on ROT.Path — rot.js has been vendored since 2026-08-26
+     with a note saying not to reach for it without a concrete reason,
+     and this is the reason. The grid is COARSE (0.25 plan units, ~25
+     cm) because it only has to find the way round a planter, not to
+     place the character: the STRING PULL afterwards is what decides
+     where they actually walk.
+
+     THE SMOOTHING IS NOT COSMETIC. An 8-way grid path is a staircase,
+     and a character following one visibly zigzags down a straight
+     corridor. Pulling each node as far along the list as an unbroken
+     line allows turns it back into the two or three real corners the
+     route actually has. */
+  route(fromU, fromV, toU, toV) {
+    if (!this.ready || !window.ROT || !ROT.Path) return null;
+    const A = this.walk.allow;
+    const bu = Math.min(...A.map((a) => a.u0));
+    const bv = Math.min(...A.map((a) => a.v0));
+    const ST = 0.25;
+    const wu = (x) => bu + x * ST, wv = (y) => bv + y * ST;
+    const gx = (u) => Math.round((u - bu) / ST);
+    const gy = (v) => Math.round((v - bv) / ST);
+    const pass = (x, y) => this.ok(wu(x), wv(y));
+
+    // the endpoints have to land on PASSABLE CELLS, and the coarse
+    // grid can miss a legal spot the character is actually standing
+    // on — so both ends snap outward to the nearest passable cell
+    const snap = (u, v) => {
+      let best = null;
+      const x0 = gx(u), y0 = gy(v);
+      for (let r = 0; r <= 4; r++) {
+        for (let dx = -r; dx <= r; dx++)
+          for (let dy = -r; dy <= r; dy++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            const x = x0 + dx, y = y0 + dy;
+            if (!pass(x, y)) continue;
+            const d = Math.hypot(wu(x) - u, wv(y) - v);
+            if (!best || d < best.d) best = { x, y, d };
+          }
+        if (best) return best;
+      }
+      return null;
+    };
+    const a = snap(fromU, fromV), b = snap(toU, toV);
+    if (!a || !b) return null;
+
+    const cells = [];
+    new ROT.Path.AStar(b.x, b.y, pass, { topology: 8 })
+      .compute(a.x, a.y, (x, y) => cells.push({ u: wu(x), v: wv(y) }));
+    if (cells.length < 2) return null;
+    cells[0] = { u: fromU, v: fromV };
+    cells[cells.length - 1] = { u: toU, v: toV };
+
+    const out = [];
+    let i = 0;
+    while (i < cells.length - 1) {
+      let j = cells.length - 1;
+      while (j > i + 1 && !this.clear(cells[i], cells[j])) j--;
+      out.push(cells[j]);
+      i = j;
+    }
+    return out.length ? out : null;
+  }
+
+  ok(u, v, pad) {
+    if (!this.ready) return false;
+    const p = pad === undefined ? this.pad : pad;
+    if (!this._onFloor(u, v)) return false;
+    if (p > 0) {
+      // the whole body must fit inside the UNION — see the note above
+      for (let k = 0; k < 360; k += 15) {
+        const th = k * Math.PI / 180;
+        if (!this._onFloor(u + p * Math.cos(th), v + p * Math.sin(th)))
+          return false;
+      }
+    }
+    for (const b of this.walk.block) if (this._in(b, u, v, p)) return false;
+    return true;
+  }
+}
+
+/* ------------------------------------------------------------- Actor
+   THE PLAYER CHARACTER on a room's plan floor.
+
+   It lives in PLAN coordinates and is projected through the room's own
+   basis every frame — never positioned in scene px, which is the rule
+   the whole walkmask exists to make possible. Its sheet is ONE bake at
+   CHAR_SX (the hallway's 40 px per plan unit) scaled by
+   `room.basis.sx / char.sx`, so the same character is 96 scene px tall
+   in the hallway and 38 in the Capitol without a second set of art.
+
+   KNOWN GAP, and it is the next real piece of work: depth is a flat
+   constant, so the character always draws OVER the room. Walking
+   behind the Capitol's railing or a column needs the room split into
+   depth bands — `render_hallway.py --layers` already does exactly that
+   and asserts the recomposite is byte-identical, so the machinery
+   exists and is unwired. */
+/* WALKING SPEED, in plan units/sec — and plan units are ~1 m, so this
+   is a brisk 2.4 m/s. Faster than a real walk on purpose: at a true
+   1.4 the hallway took 7.3 seconds end to end with the player just
+   watching, and a tap-to-walk game spends that wait on every move.
+   The STRIDE is how far one full cycle of the sheet covers, so the
+   animation's frame rate is DERIVED from the speed rather than
+   hand-tuned beside it — the two cannot drift into foot-slide. */
+const CHAR_SPEED = 2.4;
+const CHAR_STRIDE = 1.4;
+
+class Actor {
+  constructor(scene, meta) {
+    this.s = scene;
+    this.m = meta;
+    const P = scene.plan;
+    for (let i = 0; i < meta.dirs.length; i++) {
+      const key = "walk_" + meta.dirs[i];
+      if (scene.anims.exists(key)) continue;
+      const base = i * (meta.walk + 1);
+      scene.anims.create({
+        key,
+        frames: scene.anims.generateFrameNumbers("char_sheet",
+          { start: base + 1, end: base + meta.walk }),
+        frameRate: Math.max(6, Math.round(CHAR_SPEED / CHAR_STRIDE
+                                          * meta.walk)),
+        repeat: -1,
+      });
+    }
+    // meta.scale puts the FILE back into scene px; k is the room's own
+    // plan scale against the one the sheet was authored at
+    this.k = P.basis.sx / meta.sx;
+    const fwS = meta.fw * meta.scale, fhS = meta.fh * meta.scale;
+    this.sp = scene.add.sprite(0, 0, "char_sheet", 0)
+      .setOrigin(meta.anchor[0] / fwS, meta.anchor[1] / fhS)
+      .setScale(meta.scale * this.k);
+    this.u = P.spawn[0];
+    this.v = P.spawn[1];
+    this.dir = 0;
+    this.moving = false;
+    this.path = null;
+    this.pi = 0;
+    this.onArrive = null;
+    this.stuck = 0;
+    this.sync();
+  }
+
+  sync() {
+    const q = this.s.plan.px(this.u, this.v);
+    this.sp.setPosition(q.x, q.y);
+    /* DEPTH IS THE CHARACTER'S OWN PLAN DEPTH — the same u+v the room's
+       bands carry, so walking up the ring genuinely moves them through
+       the layers rather than switching them between two states. */
+    this.sp.setDepth(this.u + this.v);
+  }
+
+  /* Nearest of the eight baked facings to a plan heading. The sheet's
+     row i is authored at theta = 45 - 45i degrees, so this is that
+     relation read backwards — don't hand-map the names. */
+  dirFor(du, dv) {
+    const th = Math.atan2(dv, du) * 180 / Math.PI;
+    return ((Math.round((45 - th) / 45) % 8) + 8) % 8;
+  }
+
+  face(i) {
+    if (i === this.dir && this.sp.anims.isPlaying === this.moving) return;
+    this.dir = i;
+    const key = "walk_" + this.m.dirs[i];
+    if (this.moving) this.sp.anims.play(key, true);
+    else { this.sp.anims.stop(); this.sp.setFrame(i * (this.m.walk + 1)); }
+  }
+
+  /* Step along a plan heading, SLIDING along whatever blocks it: try
+     the full move, then each axis alone. Without the slide a character
+     walking into a wall at an angle stops dead instead of running
+     along it, which in a corridor means being stuck on nothing. */
+  step(du, dv, dt) {
+    const P = this.s.plan;
+    const m = Math.hypot(du, dv);
+    if (!m) { this.halt(); return; }
+    const d = CHAR_SPEED * dt;
+    const nu = du / m * d, nv = dv / m * d;
+    let moved = false;
+    if (P.ok(this.u + nu, this.v + nv)) { this.u += nu; this.v += nv; moved = true; }
+    else if (P.ok(this.u + nu, this.v)) { this.u += nu; moved = true; }
+    else if (P.ok(this.u, this.v + nv)) { this.v += nv; moved = true; }
+    this.moving = moved;
+    this.face(this.dirFor(du, dv));
+    if (moved) this.sync();
+  }
+
+  halt() {
+    if (!this.moving) return;
+    this.moving = false;
+    this.face(this.dir);
+  }
+
+  /* WALK THERE, THEN DO THE THING. `done` fires on arrival, which is
+     how a tapped door opens only once the player is standing at it.
+
+     IT FAILS OPEN. If no route can be found — the target is walled
+     off, rot.js is missing, the grid snapped somewhere odd — the
+     action runs immediately instead of being swallowed. A door that
+     silently does nothing is a worse bug than a door that skips its
+     walk, and the bake already asserts every approach is reachable,
+     so this path is a backstop rather than an expected case. */
+  goto(u, v, done) {
+    const P = this.s.plan;
+    const t = P.nearest(u, v);
+    if (!t) { if (done) done(); return false; }
+    const r = P.route(this.u, this.v, t.u, t.v);
+    if (!r) {
+      this.u = t.u; this.v = t.v; this.sync();
+      if (done) done();
+      return false;
+    }
+    this.path = r;
+    this.pi = 0;
+    this.onArrive = done || null;
+    this.stuck = 0;
+    return true;
+  }
+
+  cancel() {
+    this.path = null;
+    this.onArrive = null;
+  }
+
+  arrive() {
+    this.path = null;
+    this.halt();
+    const f = this.onArrive;
+    this.onArrive = null;
+    if (f) f();
+  }
+
+  follow(dt) {
+    if (!this.path) return false;
+    const t = this.path[this.pi];
+    const du = t.u - this.u, dv = t.v - this.v;
+    // ARRIVAL TOLERANCE, not exact equality: a fixed step will
+    // overshoot a waypoint forever otherwise, and the character
+    // shivers on the spot instead of turning the corner.
+    if (Math.hypot(du, dv) < 0.07) {
+      this.u = t.u; this.v = t.v; this.sync();
+      if (++this.pi >= this.path.length) this.arrive();
+      return true;
+    }
+    const before = this.u + this.v * 1e-3;
+    this.step(du, dv, dt);
+    // A STUCK GUARD, because a route is computed once and the floor it
+    // was computed against is the floor it walks — but a rounding
+    // corner or a snapped endpoint can still leave the character
+    // pressed against something. Give up after a few frames and run
+    // the action rather than grinding at a wall forever.
+    if (Math.abs(this.u + this.v * 1e-3 - before) < 1e-9) {
+      if (++this.stuck > 12) this.arrive();
+    } else this.stuck = 0;
+    return true;
+  }
+}
+
 /* ------------------------------------------------ interior rooms */
 /* ONE RoomScene class serves every baked interior (FEATURES §4/§5):
    the Capitol gallery ring and the House Finance office, each a
@@ -5948,14 +6322,44 @@ class RoomScene extends Phaser.Scene {
   preload() {
     this.load.json(this.cfg.key + "_meta",
                    this.cfg.json + "?v=" + this.cfg.v);
-    this.load.image(this.cfg.key + "_img",
-                    this.cfg.img + "?v=" + this.cfg.v);
+    /* DEPTH BANDS, or the flat bake — NEVER BOTH. Which one this room
+       has is in its json, which is still loading, so the decision is
+       made on that file's own load event. A room baked with bands does
+       not download the flat picture at all; it is kept on disk as the
+       bake's regression reference and as the fallback for a room whose
+       bake predates them (office_finance.json). */
+    this.load.on("filecomplete-json-" + this.cfg.key + "_meta",
+      (k, type, meta) => {
+        const bands = meta.bands || [];
+        if (!bands.length) {
+          this.load.image(this.cfg.key + "_img",
+                          this.cfg.img + "?v=" + this.cfg.v);
+          return;
+        }
+        bands.forEach((b, i) => {
+          this.load.image(this.cfg.key + "_band" + i,
+                          "assets/map/" + b.f + "?v=" + this.cfg.v);
+        });
+      });
     /* DOOR SWINGS. The meta is still loading here, so the sheets can't
        be read off it yet — cfg.swings lists which hotspot ids have one
        and the bake is the authority on their size, which arrives with
        the json. Phaser will not queue a spritesheet without frame
        dimensions, so this second pass runs on the json's own load
        event, before create(). */
+    /* THE SHARED CHARACTER SHEET. Its frame size lives in its own
+       json, and Phaser will not queue a spritesheet without one — the
+       same chicken-and-egg the door swings have, solved the same way.
+       Keyed globally, not per room: one bake serves every room, so the
+       second scene to preload finds it already cached. */
+    if (!this.cache.json.exists("char_meta")) {
+      this.load.json("char_meta", "map/character.json?v=" + CHAR_V);
+      this.load.on("filecomplete-json-char_meta", (k, type, m) => {
+        if (this.textures.exists("char_sheet")) return;
+        this.load.spritesheet("char_sheet", "assets/map/" + m.image
+          + "?v=" + CHAR_V, { frameWidth: m.fw, frameHeight: m.fh });
+      });
+    }
     if (this.cfg.swings) {
       this.load.on("filecomplete-json-" + this.cfg.key + "_meta",
         (k, type, meta) => {
@@ -5982,8 +6386,24 @@ class RoomScene extends Phaser.Scene {
     // and meta.h — stays in SCENE coordinates, so scaling the sprite
     // back up here is the ONLY place that has to know about it.
     this.ss = meta.scale || 1;
-    this.add.image(0, 0, this.cfg.key + "_img")
-        .setOrigin(0, 0).setScale(this.ss);
+    /* THE ROOM IS ITS BANDS. Each is cropped to its own content and
+       carries the scene-px corner it was cut from, so placing it is
+       just that corner — no per-band offset maths anywhere else. The
+       depth is the band's PLAN DEPTH (u+v), the same number the
+       character is sorted by, with the always-behind and always-in-
+       front bands parked far outside the room's range. */
+    this.bands = meta.bands || [];
+    const texKeys = this.bands.length
+      ? this.bands.map((b, i) => this.cfg.key + "_band" + i)
+      : [this.cfg.key + "_img"];
+    if (this.bands.length) {
+      this.bands.forEach((b, i) => {
+        this.add.image(b.x, b.y, texKeys[i])
+            .setOrigin(0, 0).setScale(this.ss).setDepth(b.d);
+      });
+    } else {
+      this.add.image(0, 0, texKeys[0]).setOrigin(0, 0).setScale(this.ss);
+    }
     // A room with a `view` rect zooms CONTINUOUSLY (see fit()), which
     // means non-integer resampling — so its texture switches to LINEAR
     // filtering. The bake is a LANCZOS-supersampled painting, not crisp
@@ -5991,9 +6411,23 @@ class RoomScene extends Phaser.Scene {
     // setFilter works on the Canvas renderer (it just takes a frame or
     // two to apply — see CLAUDE.md). Snap-fitted rooms keep NEAREST.
     if (this.cfg.view) {
-      this.textures.get(this.cfg.key + "_img")
-          .setFilter(Phaser.Textures.FilterMode.LINEAR);
+      for (const t of texKeys)
+        if (this.textures.exists(t))
+          this.textures.get(t).setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
+
+    /* THE ROOM'S PLAN FLOOR, read from the bake. Nothing walks on it
+       yet — this is the reader the player character will move through,
+       and `?walk=1` draws it so a re-bake can be checked in the game
+       rather than only in build/debug_walk_<room>.png. */
+    this.plan = new RoomPlan(meta);
+    if (location.search.includes("walk=1")) this.drawWalkOverlay();
+    if (this.plan.ready && this.textures.exists("char_sheet"))
+      this.actor = new Actor(this, this.cache.json.get("char_meta"));
+    this.keys = this.input.keyboard && this.input.keyboard.addKeys({
+      up: "UP", down: "DOWN", left: "LEFT", right: "RIGHT",
+      w: "W", a: "A", s: "S", d: "D",
+    });
 
     /* ---- door swings, built from the bake's own `swings` block.
        The sheet sits at frame 0 — the CLOSED door, drawn by the same
@@ -6024,7 +6458,11 @@ class RoomScene extends Phaser.Scene {
          swing happened to ship at scale 1 until the capitol went to
          SHIP 2. */
       this.swings[id] = this.add.sprite(sw.px, sw.py, tex, 0)
-        .setOrigin(0, 0).setScale(this.ss).setDepth(1);
+        /* a door leaf belongs with the wall it is cut into, which is
+           the BACK band — so it sits just above it and always under
+           the character, who walks in front of every wall in the
+           room. It was depth 1, which predates bands entirely. */
+        .setOrigin(0, 0).setScale(this.ss).setDepth(BAND_BACK + 1);
       this.swings[id].animKey = key;
     }
 
@@ -6090,17 +6528,53 @@ class RoomScene extends Phaser.Scene {
       }
       zone.on("pointerup", (pointer) => {
         if (pointer.getDistance() > 8 * DPR) return;   // 8 CSS px
-        if (h.kind === "exit") { this.leave(); return; }
-        const go = this.cfg.enter && this.cfg.enter[h.id];
-        if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
-        // cfg.action: {hotspotId: fn} — a hotspot that DOES something
-        // instead of showing its text (the hallway legislator opens
-        // the session panel). Same shape as `enter`, which stays the
-        // door-to-a-room map; the hotspot's text is the fallback for
-        // a config without the handler.
-        const act = this.cfg.action && this.cfg.action[h.id];
-        if (act) { Dialog.hide(); act(); return; }
-        Dialog.show(h.name, h.text);
+        const fire = () => {
+          if (h.kind === "exit") { this.leave(); return; }
+          const go = this.cfg.enter && this.cfg.enter[h.id];
+          if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
+          // cfg.action: {hotspotId: fn} — a hotspot that DOES something
+          // instead of showing its text (the hallway legislator opens
+          // the session panel). Same shape as `enter`, which stays the
+          // door-to-a-room map; the hotspot's text is the fallback for
+          // a config without the handler.
+          const act = this.cfg.action && this.cfg.action[h.id];
+          if (act) { Dialog.hide(); act(); return; }
+          Dialog.show(h.name, h.text);
+        };
+        /* WALK THERE FIRST, when the bake says there is a floor to
+           walk to. `h.at` is the approach point roomplan.approach()
+           spiralled out of the feature's own position, and the bake
+           asserts every one of them is reachable from spawn.
+
+           A hotspot with NO `at` acts on the tap, exactly as every
+           hotspot did before this existed — that is not a fallback,
+           it is the Capitol's level-3 doors, which you can see and
+           point at across the well from the storey below and cannot
+           walk to at all. */
+        if (this.actor && h.at) this.actor.goto(h.at[0], h.at[1], fire);
+        else fire();
+      });
+    }
+
+    /* TAP THE FLOOR TO WALK THERE. The pointer is in scene px and
+       RoomPlan.plan() reads it back as the floor point under it —
+       which is why that inverse exists. A tap on a wall resolves to
+       the floor BEHIND it and `nearest()` pulls it back onto
+       something standable, so "roughly over there" always means
+       something, which is what a player tapping a painted room
+       actually intends.
+
+       The hit test is explicit rather than a flag set by the zone
+       handlers: Phaser makes no promise about whether a game object's
+       own pointerup runs before or after the input plugin's, and a
+       tap must never both open a door and start a second walk. */
+    if (this.plan.ready) {
+      this.input.on("pointerup", (pointer) => {
+        if (!this.actor) return;
+        if (pointer.getDistance() > 8 * DPR) return;
+        if (this.input.hitTestPointer(pointer).length) return;
+        const q = this.plan.plan(pointer.worldX, pointer.worldY);
+        this.actor.goto(q.u, q.v, null);
       });
     }
 
@@ -6110,6 +6584,112 @@ class RoomScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-ESC", () => this.leave());
     this.events.on("wake", () => this.enterRoom());
     this.enterRoom();
+  }
+
+  /* Keyboard walking. SCREEN-RELATIVE, not plan-relative: up is away
+     from the camera, which in plan is -u-v. A player reads the arrow
+     against the picture, never against the axes the floor is stored
+     in, and mapping the keys straight onto u/v sends them diagonally
+     for no reason they can see. */
+  update(time, delta) {
+    if (!this.actor || !this.keys) return;
+    const K = this.keys;
+    const up = K.up.isDown || K.w.isDown, dn = K.down.isDown || K.s.isDown;
+    const lf = K.left.isDown || K.a.isDown, rt = K.right.isDown || K.d.isDown;
+    let du = 0, dv = 0;
+    if (up) { du -= 1; dv -= 1; }
+    if (dn) { du += 1; dv += 1; }
+    if (lf) { du -= 1; dv += 1; }
+    if (rt) { du += 1; dv -= 1; }
+    const dt = Math.min(delta, 50) / 1000;
+    if (du || dv) {
+      // TAKING THE KEYS CANCELS A WALK, and silently drops whatever it
+      // was going to do on arrival: the player has changed their mind,
+      // and a door opening a second later because of a tap they have
+      // already overridden is the game arguing with them.
+      this.actor.cancel();
+      this.actor.step(du, dv, dt);
+    } else if (!this.actor.follow(dt)) {
+      this.actor.halt();
+    }
+  }
+
+  /* ?walk=1 — the walkmask over the room, the browser-side twin of
+     roomplan.debug_png(). It SAMPLES ok() rather than drawing the
+     declared regions, so what you see is the floor the character will
+     really move through, insets and obstacle growth and all.
+
+     Baked into a canvas texture ONCE rather than left as a Graphics:
+     a Phaser Graphics re-issues every one of its ~30k draw calls each
+     frame on the Canvas renderer, which would cost more than the
+     whole rest of the scene. */
+  drawWalkOverlay() {
+    const P = this.plan;
+    if (!P.ready) {
+      console.warn("[walk] " + this.cfg.key + " has no basis/walk in "
+                   + "its json — re-bake it, and bump its version token");
+      return;
+    }
+    const key = this.cfg.key + "_walkdbg";
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const cv = this.textures.createCanvas(key, this.meta.w, this.meta.h);
+    const g = cv.getContext();
+    const A = P.walk.allow;
+    const u0 = Math.min(...A.map((a) => a.u0));
+    const u1 = Math.max(...A.map((a) => a.u1));
+    const v0 = Math.min(...A.map((a) => a.v0));
+    const v1 = Math.max(...A.map((a) => a.v1));
+
+    g.fillStyle = "rgba(80,230,140,0.45)";
+    let n = 0;
+    for (let u = u0; u <= u1; u += 0.15)
+      for (let v = v0; v <= v1; v += 0.15)
+        if (P.ok(u, v)) {
+          const q = P.px(u, v);
+          g.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+          n++;
+        }
+
+    // obstacles: drawn footprint, then again grown by the character
+    const ring = (pts, col) => {
+      g.strokeStyle = col;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      pts.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
+      g.closePath();
+      g.stroke();
+    };
+    for (const b of P.walk.block)
+      for (const [grow, col] of [[0, "rgba(255,90,70,.85)"],
+                                 [P.pad, "rgba(255,90,70,.35)"]]) {
+        if (b.t === "rect") {
+          ring([[b.u0 - grow, b.v0 - grow], [b.u1 + grow, b.v0 - grow],
+                [b.u1 + grow, b.v1 + grow], [b.u0 - grow, b.v1 + grow]]
+                 .map(([u, v]) => P.px(u, v)), col);
+        } else {
+          const r = b.r + grow, pts = [];
+          for (let k = 0; k < 360; k += 6) {
+            const th = k * Math.PI / 180;
+            pts.push(P.px(b.u + r * Math.cos(th), b.v + r * Math.sin(th)));
+          }
+          ring(pts, col);
+        }
+      }
+
+    const sp = P.px(P.spawn[0], P.spawn[1]);
+    g.strokeStyle = "rgba(255,220,90,1)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(sp.x - 9, sp.y); g.lineTo(sp.x + 9, sp.y);
+    g.moveTo(sp.x, sp.y - 9); g.lineTo(sp.x, sp.y + 9);
+    g.stroke();
+
+    cv.refresh();
+    this.add.image(0, 0, key).setOrigin(0, 0).setDepth(9000);
+    console.log("[walk] " + this.cfg.key + ": " + n + " walkable samples, "
+                + P.walk.block.length + " obstacles, spawn "
+                + JSON.stringify(P.spawn) + " -> px "
+                + Math.round(sp.x) + "," + Math.round(sp.y));
   }
 
   /* Swing a door open, THEN do the thing the door does. The swing

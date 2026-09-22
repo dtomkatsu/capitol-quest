@@ -9,6 +9,99 @@
   1000,
   680
  ],
+ "basis": {
+  "cx": 760,
+  "cy": 560,
+  "sx": 40.0,
+  "sy": 20.0
+ },
+ "walk": {
+  "allow": [
+   {
+    "t": "rect",
+    "u0": -11.0,
+    "u1": 7.5,
+    "v0": -1.45,
+    "v1": 1.45
+   },
+   {
+    "t": "rect",
+    "u0": -7.6,
+    "u1": -2.2,
+    "v0": -4.8,
+    "v1": -1.45
+   }
+  ],
+  "block": [
+   {
+    "t": "disc",
+    "u": -7.0,
+    "v": -3.0,
+    "r": 0.4596
+   },
+   {
+    "t": "disc",
+    "u": 2.9,
+    "v": -1.0,
+    "r": 0.4596
+   },
+   {
+    "t": "disc",
+    "u": -5.4,
+    "v": -3.1,
+    "r": 0.3359
+   }
+  ],
+  "spawn": [
+   5.5,
+   0.0
+  ],
+  "pad": 0.3
+ },
+ "bands": [
+  {
+   "f": "hallway_back.png",
+   "x": 261,
+   "y": 190,
+   "d": -1000.0
+  },
+  {
+   "f": "hallway_pot0.png",
+   "x": 574,
+   "y": 272,
+   "d": -10.0
+  },
+  {
+   "f": "hallway_post0.png",
+   "x": 505,
+   "y": 255,
+   "d": -9.05
+  },
+  {
+   "f": "hallway_figure.png",
+   "x": 649,
+   "y": 292,
+   "d": -8.5
+  },
+  {
+   "f": "hallway_post1.png",
+   "x": 728,
+   "y": 363,
+   "d": -3.65
+  },
+  {
+   "f": "hallway_pot1.png",
+   "x": 890,
+   "y": 510,
+   "d": 1.9
+  },
+  {
+   "f": "hallway_front.png",
+   "x": 261,
+   "y": 343,
+   "d": 1000.0
+  }
+ ],
  "hotspots": [
   {
    "id": "legislator",
@@ -21,6 +114,10 @@
     346,
     66,
     100
+   ],
+   "at": [
+    -4.843,
+    -2.764
    ],
    "text": "Rep. X — the member who agreed to carry your bills, waiting off to the side between the morning caucus and the first floor session. Opening Day is the one morning everyone is reachable."
   },
@@ -36,6 +133,10 @@
     92,
     108
    ],
+   "at": [
+    -10.7,
+    -0.3
+   ],
    "text": "Koa doors and a taped agenda: the majority caucus met behind them before the session even opened. The floor ratifies; rooms like this decide."
   },
   {
@@ -50,6 +151,10 @@
     88,
     106
    ],
+   "at": [
+    -9.213,
+    -1.1
+   ],
    "text": "Your introducer's office — nameplate polished, a lei on the door pull. Every member gets one door on these hallways; what they carry through it is what gets a number and a hearing."
   },
   {
@@ -63,6 +168,10 @@
     503,
     80,
     58
+   ],
+   "at": [
+    1.237,
+    -1.128
    ],
    "text": "The building directory behind glass. Committee rooms below, member offices along these wings — the Capitol is small enough to walk and big enough to get lost in."
   },

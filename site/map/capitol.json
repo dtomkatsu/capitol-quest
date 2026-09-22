@@ -19,6 +19,114 @@
   840,
   804
  ],
+ "basis": {
+  "cx": 840,
+  "cy": 680,
+  "sx": 16.0,
+  "sy": 8.0
+ },
+ "walk": {
+  "allow": [
+   {
+    "t": "rect",
+    "u0": -11.5,
+    "u1": 19.5,
+    "v0": -11.5,
+    "v1": 11.5
+   }
+  ],
+  "block": [
+   {
+    "t": "rect",
+    "u0": -9,
+    "u1": 17.0,
+    "v0": -9,
+    "v1": 9
+   },
+   {
+    "t": "disc",
+    "u": 10.25,
+    "v": -10.25,
+    "r": 0.7071
+   },
+   {
+    "t": "disc",
+    "u": -10.25,
+    "v": 10.25,
+    "r": 0.7071
+   },
+   {
+    "t": "disc",
+    "u": -11.4,
+    "v": -11.4,
+    "r": 0.4101
+   },
+   {
+    "t": "rect",
+    "u0": -11.5,
+    "u1": -11.125,
+    "v0": -3.5621,
+    "v1": -1.4379
+   },
+   {
+    "t": "rect",
+    "u0": 1.9691,
+    "u1": 4.0934,
+    "v0": -11.5,
+    "v1": -11.125
+   },
+   {
+    "t": "rect",
+    "u0": 16.1957,
+    "u1": 18.3199,
+    "v0": -11.5078,
+    "v1": -11.1328
+   },
+   {
+    "t": "disc",
+    "u": 17.25,
+    "v": -2.625,
+    "r": 0.3
+   },
+   {
+    "t": "disc",
+    "u": 17.2578,
+    "v": 4.2109,
+    "r": 0.3
+   },
+   {
+    "t": "disc",
+    "u": 8.4062,
+    "v": 9.25,
+    "r": 0.3
+   },
+   {
+    "t": "disc",
+    "u": -1.4688,
+    "v": 9.25,
+    "r": 0.3
+   }
+  ],
+  "spawn": [
+   11.5,
+   10.5
+  ],
+  "pad": 0.3
+ },
+ "bands": [
+  {
+   "f": "capitol_back.png",
+   "x": 0,
+   "y": 0,
+   "d": -1000.0
+  },
+  {
+   "f": "capitol_front.png",
+   "x": 462,
+   "y": 514,
+   "d": 1000.0
+  }
+ ],
  "hotspots": [
   {
    "id": "senate",
@@ -31,6 +139,10 @@
     642,
     56,
     97
+   ],
+   "at": [
+    -11.197,
+    9.605
    ],
    "text": "Second level, and this floor is the Senate's. The ʻEwa cone below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
   },
@@ -46,6 +158,10 @@
     56,
     97
    ],
+   "at": [
+    -11.2,
+    3.156
+   ],
    "text": "The Senate's money committee, on the Senate's own floor. A revenue bill that cannot clear Ways & Means goes no further."
   },
   {
@@ -59,6 +175,10 @@
     545,
     56,
     97
+   ],
+   "at": [
+    -2.66,
+    -11.189
    ],
    "text": "Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
   },
@@ -74,6 +194,10 @@
     53,
     94
    ],
+   "at": [
+    6.309,
+    -11.189
+   ],
    "text": "Every Senate measure is journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
   },
   {
@@ -87,6 +211,10 @@
     643,
     51,
     94
+   ],
+   "at": [
+    9.767,
+    -11.195
    ],
    "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. It belongs to neither chamber, which is why it opens off the floor you are standing on. The veto pen lives up there."
   },
@@ -157,6 +285,10 @@
     768,
     142,
     82
+   ],
+   "at": [
+    0.0,
+    9.6
    ],
    "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside."
   },

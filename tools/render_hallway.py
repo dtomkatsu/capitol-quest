@@ -32,6 +32,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+import roomplan
+import roombands
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "hallway.png"
 OUT_JSON = ROOT / "site" / "map" / "hallway.json"
@@ -95,6 +98,32 @@ U0, U1 = -11.0, 7.5
 VH = 1.45                   # corridor half-width
 LU0, LU1 = -7.6, -2.2
 LV = -4.8                   # alcove back wall
+
+# ---- THINGS STANDING ON THE FLOOR, hoisted out of render() because the
+# WALKMASK and the PAINTERS must not carry two copies of a position.
+# The `_R_PX` numbers are the half-width of each object's own CONTACT
+# SHADOW as drawn below — an object's footprint on the floor IS its
+# obstacle, so the collision radius follows the art instead of being
+# guessed a second time.
+PLANTS = ((-7.0, -3.0), (2.9, -1.0))
+PLANT_R_PX = 26
+FIGURE_AT = (-5.4, -3.1)
+FIGURE_R_PX = 19
+
+# ---- THE PLAN FLOOR (see tools/roomplan.py). Declared from the SAME
+# constants the painters draw with, so narrowing the corridor or moving
+# the alcove moves the walkmask with it; render() asserts the two have
+# not come apart. Spawn is the rotunda end of the run — the player
+# arrives from the direction the exit hotspot points.
+BASIS = roomplan.Basis(CX, CY, SX, SY)
+WALK = roomplan.Walk(
+    allow=[roomplan.rect(U0, U1, -VH, VH),        # the corridor run
+           roomplan.rect(LU0, LU1, LV, -VH)],     # the alcove recess
+    block=[roomplan.disc_from_px(BASIS, u, v, PLANT_R_PX)
+           for u, v in PLANTS]
+          + [roomplan.disc_from_px(BASIS, *FIGURE_AT, FIGURE_R_PX)],
+    spawn=(5.5, 0.0),
+)
 
 rng = np.random.default_rng(23)
 
@@ -535,7 +564,7 @@ def figure(d, u, v, s=1.15):
 
 
 # ------------------------------------------------------------- main
-def render(layers=False):
+def render(layers=True, walk_png=False):
     """Bake the room. With `layers=True` the SAME painters draw onto
     three depth targets instead of one canvas — the diorama-parallax
     spike (2026-08-27). The split is by depth band, not by painter
@@ -553,11 +582,24 @@ def render(layers=False):
     drift from the shipped room."""
     DW, DH = W * K, H * K              # draw space; SCENE space is W, H
     img = Image.new("RGBA", (DW, DH), INK + (255,))
-    back = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
-    mid = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
-    front = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
-    # flat mode paints every band onto the one canvas, exactly as before
-    tb, tm, tf = (back, mid, front) if layers else (img, img, img)
+    # ---- DEPTH BANDS (tools/roombands.py). Declaration order IS
+    # composite order, and must stay in DEPTH order for the things the
+    # character can walk both ways around: the two pots, the two casing
+    # posts at the alcove mouth, and the legislator. Everything else is
+    # the floor and the far walls (always behind) or the sliced near
+    # walls (always in front).
+    POT0, POT1 = [u + v for u, v in PLANTS]
+    FIG_D = FIGURE_AT[0] + FIGURE_AT[1]
+    POST0, POST1 = LU0 + -VH, LU1 + -VH
+    bands = roombands.Bands((DW, DH), img, layers)
+    bands.add("back", roombands.BACK)
+    bands.add("pot0", POT0)
+    bands.add("post0", POST0)
+    bands.add("figure", FIG_D)
+    bands.add("post1", POST1)
+    bands.add("pot1", POT1)
+    bands.add("front", roombands.FRONT)
+    tb, tf = bands["back"], bands["front"]
     d = SDraw(tb)
 
     # ---- floor: corridor + lobby recess, one shared tile grid
@@ -632,29 +674,44 @@ def render(layers=False):
     # overlay, exactly as before: ImageDraw fills REPLACE pixels rather
     # than blending, so routing them through a second composite is not
     # the same picture and moved the shipped bake by a few units.
-    sh_lay = Image.new("RGBA", (DW, DH), (0, 0, 0, 0)) if layers else None
-    ds = SDraw(sh_lay) if layers else dl
-    for pu, pv in ((-7.0, -3.0), (2.9, -1.0)):      # == the two plant()s
+    shadows = {}
+
+    def sd(name):
+        """A shadow belongs to its OBJECT, not to the floor: parked on
+        the floor band the object lifts clean off it the moment the
+        character walks between them. In FLAT mode they still go
+        straight into the gloss overlay exactly as before — ImageDraw
+        fills REPLACE pixels rather than blending, so routing them
+        through a second composite is not the same picture."""
+        if not bands.on:
+            return dl
+        shadows[name] = Image.new("RGBA", (DW, DH), (0, 0, 0, 0))
+        return SDraw(shadows[name])
+
+    for pi, (pu, pv) in enumerate(PLANTS):
+        ds = sd("pot%d" % pi)
         x, y = iso(pu, pv)
-        ds.ellipse([x - 26, y - 9, x + 26, y + 9],
+        ds.ellipse([x - PLANT_R_PX, y - 9, x + PLANT_R_PX, y + 9],
                    fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
         ds.ellipse([x - 14, y + 4, x + 14, y + 28],
                    fill=hx("#2c3d28") + (26,))
-    fxp, fyp = iso(-5.4, -3.1)
-    ds.ellipse([fxp - 19, fyp - 8, fxp + 19, fyp + 8],
+    ds = sd("figure")
+    fxp, fyp = iso(*FIGURE_AT)
+    ds.ellipse([fxp - FIGURE_R_PX, fyp - 8, fxp + FIGURE_R_PX,
+                fyp + 8],
                fill=tuple(shade(FLOOR_D, 0.7)) + (70,))
     ds.polygon([(fxp - 10, fyp + 4), (fxp + 10, fyp + 4),
                 (fxp + 7, fyp + 28), (fxp - 7, fyp + 28)],
                fill=BLUE + (26,))
     tb.alpha_composite(lay)
-    if layers:
-        tm.alpha_composite(sh_lay)
+    for nm, im in shadows.items():
+        bands[nm].alpha_composite(im)
     d = SDraw(tb)
 
-    # ---- things standing on the floor (back-to-front) -> MID
-    d = SDraw(tm)
-    plant(d, -7.0, -3.0)
-    ffx, ffy = figure(d, -5.4, -3.1)
+    # ---- things standing on the floor, EACH IN ITS OWN BAND at its
+    # own plan depth, because the character can walk round any of them
+    plant(SDraw(bands["pot0"]), *PLANTS[0])
+    ffx, ffy = figure(SDraw(bands["figure"]), *FIGURE_AT)
     # the second pot stands in the CORRIDOR, between the directory and
     # the unnamed door. It stood deep in the alcove at (-3.0, -4.0),
     # chosen so the casing post would not slice it — but every screen
@@ -663,50 +720,75 @@ def render(layers=False):
     # painted in the mid band over that wall's face, its floor shadow
     # landing on the plaster as a pale disc. The alcove's whole visible
     # floor is the legislator's; the plant goes where a plant can be.
-    plant(d, 2.9, -1.0)
+    plant(SDraw(bands["pot1"]), *PLANTS[1])
 
     # white casing posts at the lobby mouth (photo's cased opening) —
-    # they also seat the wall seams where the recess interrupts the run
-    # -> BACK: a post that caps a wall end must not drift off it
-    d = SDraw(tb)
-    pilaster(d, iso(LU0, -VH), -1)
-    pilaster(d, iso(LU1, -VH), +1)
+    # they also seat the wall seams where the recess interrupts the run.
+    # THEIR OWN BANDS: the character passes in FRONT of a post from the
+    # corridor and BEHIND it from inside the alcove, so a post parked in
+    # the back band is one the player can never walk behind. (They sat
+    # in BACK for the parallax spike, where the rule was that a post
+    # capping a wall end must not drift off it — nothing drifts when
+    # the bands are static.)
+    pilaster(SDraw(bands["post0"]), iso(LU0, -VH), -1)
+    pilaster(SDraw(bands["post1"]), iso(LU1, -VH), +1)
 
     # ---- near walls, sliced (far-to-near) -> FRONT
     d = SDraw(tf)
     cut_wall(d, iso(U0, VH), iso(U1, VH), (-18, -10))        # SW run
     cut_wall(d, iso(U1, -VH), iso(U1, VH), (18, -10))        # near end
 
-    if layers:
-        # RECOMPOSITING THE BANDS MUST REPRODUCE THE FLAT BAKE. That is
-        # the only thing standing between a depth split and a room that
-        # quietly stops matching the one that shipped, so it is checked
-        # against the PNG on disk rather than trusted.
-        flat = img.copy()
-        for L in (back, mid, front):
-            flat.alpha_composite(L)
-        # Both sides of this compare have to be at SHIP size: `flat` is
-        # still in DRAW space, and the bake on disk is not.
-        flat = flat.convert("RGB").resize((W * SHIP, H * SHIP),
-                                          Image.LANCZOS)
+    # ---- THE SHIPPED PICTURE IS THE BANDS, COMPOSITED. Nothing is
+    # painted twice and there is no second code path that can rot: the
+    # flat bake is literally what the layered room adds up to, and it
+    # is checked against the PNG already on disk before that PNG is
+    # replaced. A band moved past something it OVERLAPS shows up here
+    # as a nonzero pixel count, which is the whole point of the gate.
+    flat = img.copy()
+    for _, _, L in bands.order:
+        flat.alpha_composite(L)
+    # Both sides of the compare have to be at SHIP size: `flat` is
+    # still in DRAW space and the bake on disk is not.
+    flat = flat.convert("RGB").resize((W * SHIP, H * SHIP), Image.LANCZOS)
+    if bands.on and OUT_PNG.exists():
         ref = np.asarray(Image.open(OUT_PNG).convert("RGB"), np.int16)
         cur = np.asarray(flat, np.int16)
-        dd = np.abs(ref - cur).max(axis=-1)
-        print(f"recomposite vs shipped bake: {int((dd > 8).sum())} px "
-              f"differ (max {int(dd.max())}, mean {dd.mean():.2f})")
-        names = ("back", "mid", "front")
-        for nm, L in zip(names, (back, mid, front)):
-            out = ROOT / "site" / "assets" / "map" / f"hallway_{nm}.png"
-            L.resize((W * SHIP, H * SHIP), Image.LANCZOS).save(out)
-            print("  wrote", out.name, f"{W * SHIP}x{H * SHIP}")
-        return
+        if ref.shape == cur.shape:
+            dd = np.abs(ref - cur).max(axis=-1)
+            n = int((dd > 0).sum())
+            print(f"bands recomposite vs shipped bake: {n} px differ "
+                  f"(max {int(dd.max())})")
+            if n:
+                ys, xs = np.where(dd > 0)
+                print(f"  diff bbox scene px "
+                      f"({int(xs.min()) // SHIP}, {int(ys.min()) // SHIP})"
+                      f"-({int(xs.max()) // SHIP}, {int(ys.max()) // SHIP})"
+                      f"  |  {int((dd > 8).sum())} px over the "
+                      f"alpha-arithmetic floor of 8")
+            # A TOLERANCE OF 8, AND IT IS NOT SLOP. Painters fill with
+            # ImageDraw, which REPLACES pixels rather than blending, so
+            # in the flat bake a translucent contact shadow drawn over
+            # a translucent floor reflection overwrites it — while in
+            # band mode the two live on different layers and get
+            # alpha-composited, which blends. That is a real arithmetic
+            # difference of a few units wherever those two overlap, and
+            # nothing else in the room can produce one: a band actually
+            # moved past something it occludes swaps OPAQUE pixels and
+            # lands in the hundreds. So the gate is on the MAGNITUDE.
+            if int((dd > 8).sum()):
+                raise AssertionError(
+                    f"the banded render is not the shipped picture "
+                    f"({int((dd > 8).sum())} px differ by more than 8, "
+                    f"max {int(dd.max())}) — a band was declared out of "
+                    f"draw order past something it overlaps")
+    img = flat
 
-    img = img.convert("RGB")
     # DOWN BY `OVER`, NOT TO SCENE SIZE — that difference is the whole
     # OVER/SHIP split. The AA is baked here, once, by a real filter;
     # the resolution SHIP bought is kept.
-    img = img.resize((W * SHIP, H * SHIP), Image.LANCZOS)
     img.save(OUT_PNG)
+    band_meta = bands.emit(OUT_PNG.parent, "hallway", SHIP, OVER) \
+        if bands.on else []
     bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
 
     # content bbox against the ink — the JS `view` rect is measured
@@ -734,10 +816,20 @@ def render(layers=False):
     def sp(v):
         return int(round(v))
 
+    # WHERE THE PLAYER STANDS TO USE EACH HOTSPOT, from the same screen
+    # point that placed it: a door's own point is ON the wall and the
+    # legislator's is inside their own footprint, so roomplan.approach()
+    # spirals out to the nearest floor. A hotspot with an `at` is walked
+    # to before it acts; one without acts on the tap.
+    def at(px_, py_):
+        a = roomplan.approach(WALK, *BASIS.plan(px_, py_))
+        assert a, f"no standable floor near ({px_:.0f}, {py_:.0f})"
+        return list(a)
+
     hotspots = [
         dict(id="legislator", name="Your Introducer", kind="door",
              px=sp(ffx), py=sp(ffy - 60),
-             zone=zone(ffx, ffy - 44, 66, 100),
+             zone=zone(ffx, ffy - 44, 66, 100), at=at(ffx, ffy),
              text="Rep. X — the member who agreed to carry your "
                   "bills, waiting off to the side between the morning "
                   "caucus and the first floor session. Opening Day is "
@@ -745,12 +837,14 @@ def render(layers=False):
         dict(id="caucus", name="Caucus Room", kind="poi",
              px=sp(caucus_c[0]), py=sp(caucus_c[1] - 40),
              zone=zone(caucus_c[0], caucus_c[1] - 50, 92, 108),
+             at=at(*caucus_c),
              text="Koa doors and a taped agenda: the majority caucus "
                   "met behind them before the session even opened. "
                   "The floor ratifies; rooms like this decide."),
         dict(id="office", name="Member's Office", kind="poi",
              px=sp(office_c[0]), py=sp(office_c[1] - 40),
              zone=zone(office_c[0], office_c[1] - 50, 88, 106),
+             at=at(*office_c),
              text="Your introducer's office — nameplate polished, a "
                   "lei on the door pull. Every member gets one door "
                   "on these hallways; what they carry through it is "
@@ -758,6 +852,7 @@ def render(layers=False):
         dict(id="directory", name="Directory", kind="poi",
              px=sp(dirx_c[0]), py=sp(dirx_c[1] - 36),
              zone=zone(dirx_c[0], dirx_c[1] - 50, 80, 58),
+             at=at(*dirx_c),
              text="The building directory behind glass. Committee "
                   "rooms below, member offices along these wings — "
                   "the Capitol is small enough to walk and big "
@@ -799,21 +894,47 @@ def render(layers=False):
         # is unchanged by SHIP. The runtime multiplies the sprite by
         # this to put the file back into scene space.
         "w": W, "h": H, "scale": 1 / SHIP, "bg": bg,
+        # LEGACY, screen px, and superseded by walk.spawn below — which
+        # is in PLAN units, the space a moving character lives in.
         "spawn": [sp(iso(6, 0)[0]), sp(iso(6, 0)[1])],
+        # THE PROJECTION AND THE FLOOR (tools/roomplan.py). The basis is
+        # this room's own iso() — 40x20 px per unit here against the
+        # Capitol's 16x8, which is exactly why it ships per room rather
+        # than living as a constant in main.js.
+        "basis": BASIS.json(),
+        "walk": WALK.json(),
+        # DEPTH BANDS. The runtime draws these instead of `image` when
+        # present, each at its own depth, and puts the character
+        # between them by its plan u+v. `image` stays as the flat
+        # reference and the fallback.
+        "bands": band_meta,
         "hotspots": hotspots,
     }
+    # The floor must still match the room the painters just drew.
+    roomplan.check("hallway", BASIS, WALK, iso, view=VIEW,
+                   targets=[(h["id"], *h["at"]) for h in hotspots
+                            if "at" in h])
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}",
           "and", OUT_JSON.name)
     print("content bbox:", bbox,
           "-> suggested view:",
           [bbox[0] - 24, bbox[1] - 24, bbox[2] + 24, bbox[3] + 24])
+    if walk_png:
+        roomplan.debug_png(img, BASIS, WALK,
+                           ROOT / "build" / "debug_walk_hallway.png",
+                           ship=SHIP, view=VIEW)
 
 
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--layers", action="store_true",
-                    help="emit the three depth bands for the "
-                         "diorama-parallax spike instead of the flat bake")
-    render(layers=ap.parse_args().layers)
+    ap.add_argument("--flat", action="store_true",
+                    help="render the old single-canvas way, with every "
+                         "band pointing at one image — the escape hatch "
+                         "for checking that the split changed nothing")
+    ap.add_argument("--walk", action="store_true",
+                    help="also write build/debug_walk_hallway.png — the "
+                         "walkmask drawn over the bake")
+    a = ap.parse_args()
+    render(layers=not a.flat, walk_png=a.walk)

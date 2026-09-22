@@ -61,6 +61,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw
 
+import roomplan
+import roombands
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "capitol_scene.png"
 OUT_JSON = ROOT / "site" / "map" / "capitol.json"
@@ -128,6 +131,10 @@ W, H = 1680, 1240
 SHIP = 2
 OVER = 2
 K = SHIP * OVER
+SX, SY = 16.0, 8.0         # iso px per plan unit (2:1). NAMED so the
+                           # walkmask's exported basis and iso() are
+                           # ONE source — roomplan.check() asserts
+                           # the two agree on every bake.
 CX, CY = 840, 680          # centre of the gallery ring, at floor level.
                            # CY moved 590 -> 680 when the third level
                            # landed (2026-08-24): the new storey grows
@@ -623,7 +630,7 @@ def snap(v):
 
 
 def iso(u, v, dy=0.0):
-    return (snap(CX + 16.0 * (u - v)), snap(CY + 8.0 * (u + v) - dy))
+    return (snap(CX + SX * (u - v)), snap(CY + SY * (u + v) - dy))
 
 
 def diamond(a, dy=0.0):
@@ -1748,7 +1755,7 @@ def fluted_band(d, e0, e1, y_top, depth, f=1.0, flutes=True):
            fill=shade(hx("#8a8474"), f), width=1)
 
 
-def paint_railings(d):
+def paint_railings(d_makai, d_mauka):
     """The real railing, per the atrium photos, drawn CHUNKY enough to
     survive game zoom: a deep fluted white parapet fascia at the slab
     edge (hanging into the well), an OPEN run of dark metal pickets
@@ -1759,6 +1766,16 @@ def paint_railings(d):
     edges = [(hole[3], hole[0], False), (hole[0], hole[1], False),
              (hole[1], hole[2], True), (hole[2], hole[3], True)]
     for e0, e1, near in edges:
+        # THE TWO SIDES OF THE RING ARE DIFFERENT DEPTH BANDS, and
+        # neither needs a per-pixel sort. A character on the MAUKA
+        # walkway stands outside the well, i.e. further from the
+        # camera than the railing beside them, so the mauka runs are
+        # always IN FRONT of them; a character on the MAKAI walkway is
+        # always nearer than its railing, so those runs are always
+        # BEHIND. The far side and the near side never overlap a
+        # character on the other side's walkway on screen, so two
+        # bands is the whole answer here.
+        d = d_makai if near else d_mauka
         # NB the near slabs' own fascia faces the well, i.e. AWAY from
         # the camera — drawing it here painted over the walkway floor
         # and made the front decks read as tilted faces (user-caught).
@@ -1823,6 +1840,26 @@ def paint_railings(d):
                 (c[0] + 2, c[1] - RAIL_H - 6)], fill=KOA_LT, width=1)
 
 
+RAIL_POT_T = (0.34, 0.72)
+# the pot base sits 16 draw px toward the camera from the rail line —
+# a pure +y screen offset, which in PLAN is an equal step in u and v
+RAIL_POT_OFF = 16 / (K * SY) / 2
+
+
+def rail_pot_plan():
+    """Plan positions of the rail pots, from the SAME edges and t
+    values paint_rail_pots draws them at — they are obstacles on the
+    walkway, and before this the character walked straight through
+    them."""
+    hole = rdiamond(A_IN)
+    out = []
+    for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):
+        for t in RAIL_POT_T:
+            u, v = BASIS.plan(*lerp(e0, e1, t))
+            out.append((u + RAIL_POT_OFF, v + RAIL_POT_OFF))
+    return out
+
+
 def paint_rail_pots(d):
     """Potted plants set against the well railing on the walkway —
     the small life the gallery-corner photo shows at intervals.
@@ -1838,7 +1875,7 @@ def paint_rail_pots(d):
               (7, -10, "#8fb37c"), (-10, -4, "#567a4c"),
               (10, -5, "#3f5f3a"))
     for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):  # near edges
-        for t in (0.34, 0.72):
+        for t in RAIL_POT_T:
             p = lerp(e0, e1, t)
             # tight to the rail: the walkway is only 40px deep here
             x, y = p[0], p[1] + 16
@@ -2109,8 +2146,8 @@ def bench_at(d, e0, e1, t, f):
     # Run 0 falls to the right (slope -0.5) and its normal is
     # (+2, +1); run 1 rises and its normal mirrors to (-2, +1).
     sgn = 1 if ex[1] / ex[0] < 0 else -1
-    dx, dy = 6 * sgn, 3                     # 0.375 plan units of depth
-    hw, ht = FEAT_HW["bench"] - 2, 9
+    dx, dy = BENCH_OUT * SX * sgn, BENCH_OUT * SY
+    hw, ht = BENCH_HW, 9
 
     def pt(w, y, out=0):
         return (round(p[0] + ux * w + dx * out),
@@ -2268,6 +2305,17 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
 
 FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19,
            "bench": 21, "alcove": 17}
+
+# THE BENCH'S FOOTPRINT, named because bench_at DRAWS it and walk_plan()
+# has to BLOCK it, and a bench in two places is a bench the player walks
+# through. Depth is in plan units measured from the wall toward the
+# court: bench_at's outward step was the literal (6, 3) screen px, which
+# is exactly this fraction of one plan unit's (SX, SY). Shallow on
+# purpose — a backless seat is ~37 cm deep — but against a 2.5-unit
+# balcony it still pushes the walking line out by 15%.
+BENCH_OUT = 0.375
+BENCH_HW = FEAT_HW["bench"] - 2    # half-length along the run, screen px
+WING_BENCH_T = 0.72                # the wing run carries one of its own
 
 # THE CLICKABLE BOX OF A WALL FEATURE, in the same wall coordinates
 # the painters use: (half-width along the RUN, y_lo, y_hi) where y is
@@ -3042,7 +3090,7 @@ def paint_walls(d):
                      b[0] + mw // 2, b[1] - my0],
                     fill=shade(CONC, fw * wrng.uniform(0.94, 1.06)))
     door_at(d, w0, w1, 0.35, "office", hw=11)
-    bench_at(d, w0, w1, 0.72, fw)
+    bench_at(d, w0, w1, WING_BENCH_T, fw)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
               fill=shade(hx(FLUTE_FIELD), white_f(fw)))
     for b in even_run(out_g[0], w1, FLUTE_PITCH):
@@ -3146,9 +3194,10 @@ def paint_planters(d):
     (user: "the central potted plant should be removed") — wedged at
     the corner between the two walls it read as clutter."""
     stone = hx("#c9b88f")
-    for u, v in ((10.25, -10.25), (-10.25, 10.25)):
+    for u, v in PLANTERS:
         x, y = iso(u, v)
-        d.polygon([(x - 16, y), (x, y - 8), (x + 16, y), (x, y + 8)],
+        d.polygon([(x - PLANTER_HW_PX, y), (x, y - PLANTER_HW_PX / 2),
+                   (x + PLANTER_HW_PX, y), (x, y + PLANTER_HW_PX / 2)],
                   fill=stone)
         d.polygon([(x - 16, y), (x, y + 8), (x, y + 13), (x - 16, y + 5)],
                   fill=shade(stone, 0.78))
@@ -3166,6 +3215,80 @@ def paint_planters(d):
                        (-4, 3)):
             d.line([(x + lx, y + ly), (x + lx + 2, y + ly - 2)],
                    fill=hx("#8fb37c"), width=1)
+
+
+# ---- THE PLAN FLOOR (see tools/roomplan.py). The gallery walkway is
+# the ring between the outer diamond and the well — expressed here from
+# the SAME A_OUT / A_IN / WING_EXT the painters draw it with, so
+# lengthening the wing or deepening the balcony moves the walkmask with
+# the picture. render() asserts the two have not come apart.
+#
+# The well is a BLOCK rather than a hole in the floor because that is
+# what it is on the ground: a railing you stop at, and a storey of air.
+PLANTERS = ((10.25, -10.25), (-10.25, 10.25))
+PLANTER_HW_PX = 16         # == the top face paint_planters draws; the
+                           # obstacle radius follows the art from it
+BASIS = roomplan.Basis(CX, CY, SX, SY)
+
+
+def bench_blocks():
+    """The walkway's benches as plan rects.
+
+    THE RUN GEOMETRY IS NOT RE-DERIVED HERE. `place_feats` is pure, so
+    this calls the SAME function with the SAME arguments the wall
+    painter does and gets the identical schedule back; each bench's
+    screen point is then the painter's own `lerp(e0, e1, t)`, inverted
+    through the basis. Writing out "run 0 is u = -A_OUT, v = a(1-2t)"
+    would be a second copy of the run maths, free to disagree with
+    `run_x` the next time a wall moves — and a bench in two places is
+    a bench the player walks through.
+
+    A run's wall is axis-aligned in PLAN (ʻEwa is u = -A_OUT, Diamond
+    Head is v = -A_OUT), so a bench standing against it is a plain
+    rect: long along the run, BENCH_OUT deep toward the court.
+    """
+    hl = BENCH_HW / math.hypot(SX, SY)      # half-length, plan units
+    g = diamond(A_OUT)
+    rects = []
+
+    def seat(p, run):
+        u, v = BASIS.plan(*p)
+        if run == 0:                        # ʻEwa wall: u fixed
+            return roomplan.rect(u, u + BENCH_OUT, v - hl, v + hl)
+        return roomplan.rect(u - hl, u + hl, v, v + BENCH_OUT)
+
+    for r, (e0, e1) in enumerate(((g[3], g[0]), (g[0], g[1]))):
+        for _, t, kind in place_feats(r, A_OUT, col_hw(58),
+                                      GALLERY_FEATS[r]):
+            if kind == "bench":
+                rects.append(seat(lerp(e0, e1, t), r))
+    # the wing run carries one of its own (see the wing block in
+    # paint_walls) — same Diamond Head wall, past the old E corner
+    w0, w1 = g[1], iso(A_OUT + WING_EXT, -A_OUT)
+    rects.append(seat(lerp(w0, w1, WING_BENCH_T), 1))
+    return rects
+
+
+def walk_plan():
+    """The walkable ring, built after col_hw() and place_feats() so the
+    corner column's radius comes from the shaft the painters taper and
+    the benches come from the schedule they actually lay out."""
+    return roomplan.Walk(
+        allow=[roomplan.rect(-A_OUT, A_OUT + WING_EXT, -A_OUT, A_OUT)],
+        block=[roomplan.rect(-A_IN, A_IN + WING_EXT, -A_IN, A_IN)]
+              + [roomplan.disc_from_px(BASIS, u, v, PLANTER_HW_PX)
+                 for u, v in PLANTERS]
+              # the corner column stands free at the mauka apex, on the
+              # walkway rather than in the wall (COL_APEX_U) — the one
+              # column the player can actually walk into
+              + [roomplan.disc_from_px(BASIS, -COL_APEX_U, -COL_APEX_U,
+                                       col_hw(0))]
+              + bench_blocks()
+              # the pots standing against the makai rail
+              + [roomplan.disc(u, v, 0.30) for u, v in rail_pot_plan()],
+        # the makai run by the stairs, pulled in off the rail
+        spawn=(11.5, 10.5),
+    )
 
 
 # ------------------------------------------------------------- finish
@@ -3442,7 +3565,7 @@ def painterly(img):
 
 
 # ---------------------------------------------------------------- main
-def render(raw=False):
+def render(raw=False, walk_png=False, banded=True):
     img = Image.new("RGBA", (W * K, H * K), INK + (255,))
     d = SDraw(img)
 
@@ -3455,12 +3578,32 @@ def render(raw=False):
     paint_ring_shade(img)
     d = SDraw(img)
     paint_well(img)
-    d = SDraw(img)
-    paint_railings(d)
-    paint_rail_pots(d)
-    upper = paint_upper_level(d)          # furthest: before the walls
-    doors = paint_walls(d)
-    doors.update(upper)
+
+    # ---- DEPTH BANDS (tools/roombands.py) START HERE AND NOT EARLIER.
+    # Everything above reads and regrades pixels already on the canvas
+    # — mottle_ink, paint_sun, paint_ring_shade, and paint_well's own
+    # clipped composite — and a whole-image pass over a transparent
+    # layer is simply not the same operation. So the ground stays ONE
+    # canvas and becomes the back band's base.
+    #
+    # Only two bands, because nothing on this walkway can be walked
+    # round on both sides: benches are against the wall, the planters
+    # and rail pots seal the floor behind them (they are walkmask
+    # obstacles), and the corner column stands in the wall corner. The
+    # one genuine sort is the railing, and the two sides of the ring
+    # answer it without a per-pixel depth — see paint_railings.
+    ground = img
+    bands = roombands.Bands((W * K, H * K), img, banded)
+    bands.add("back", roombands.BACK)
+    bands.add("front", roombands.FRONT)
+    db, df = SDraw(bands["back"]), SDraw(bands["front"])
+
+    paint_railings(db, df)
+    paint_rail_pots(db)
+    upper = paint_upper_level(db)         # furthest: before the walls
+    doors = paint_walls(db)
+    gallery = set(doors)                  # LEVEL 2 — the walkway the
+    doors.update(upper)                   # player is actually standing on
     # NO free-standing column above the gallery floor any more: from
     # the second storey up the shaft is FLUSH in the wall and was
     # already painted there, by wall_column() inside paint_walls and
@@ -3472,22 +3615,100 @@ def render(raw=False):
     # the second and third floors").
     # planters AFTER walls: the W/E corner planters sit in front of
     # the corner-most doors' floor reflections and must occlude them
-    paint_planters(d)
-    paint_front_edge(d)
-    paint_cut_ends(d)
+    paint_planters(df)
+    paint_front_edge(df)
+    paint_cut_ends(df)
 
-    img = img.convert("RGB")
+    # ---- THE SHIPPED PICTURE IS THE BANDS, COMPOSITED — one code path,
+    # so the split cannot quietly become a different room. Checked
+    # against the PNG on disk before it is replaced.
+    flat = ground.copy()
+    for _, _, L in bands.order:
+        flat.alpha_composite(L)
+    img = flat.convert("RGB")
     if not raw:
         img = painterly(img)
     # down by OVER, not to scene size — that split is the point
     img = img.resize((W * SHIP, H * SHIP), Image.LANCZOS)
+    if banded and OUT_PNG.exists():
+        ref = np.asarray(Image.open(OUT_PNG).convert("RGB"), np.int16)
+        cur = np.asarray(img, np.int16)
+        if ref.shape == cur.shape:
+            dd = np.abs(ref - cur).max(axis=-1)
+            over = int((dd > 8).sum())
+            print(f"bands recomposite vs shipped bake: "
+                  f"{int((dd > 0).sum())} px differ (max {int(dd.max())}, "
+                  f"{over} over the alpha-arithmetic floor of 8)")
+            # See the same gate in render_hallway: ImageDraw fills
+            # REPLACE, so a translucent thing drawn over another
+            # translucent thing differs by a few units once the two are
+            # on separate layers and get composited instead. A band
+            # actually moved past something it occludes swaps OPAQUE
+            # pixels and lands far above that.
+            # THE RAILING CORNERS ARE AN IRREDUCIBLE EXCEPTION, and
+            # naming them is better than loosening the gate. The mauka
+            # runs have to sit ABOVE the character and the makai runs
+            # BELOW, so they land in different bands — and at the two
+            # side corners of the ring the runs MEET and cap each
+            # other. Whichever band owns the mauka run, one of the two
+            # joints ends up drawn the other way round. It is a few
+            # pixels of handrail at W and E', both koa, on a 3360x2480
+            # canvas. Every other pixel must still match exactly, so
+            # the allowance is a RADIUS around those two points rather
+            # than a pixel budget: an unrelated regression of any size
+            # still fails here.
+            if over:
+                # EVERY DIFFERENCE MUST LIE ON THE MAUKA RAILING, and
+                # naming that is better than loosening the gate.
+                #
+                # The mauka runs have to sit ABOVE the character and
+                # the makai runs BELOW, so they land in different
+                # bands — and the mauka run is therefore drawn after
+                # things it used to be drawn before: the makai runs it
+                # caps at the two side corners, and a column's floor
+                # reflection under its handrail at the apex. In every
+                # one of those the railing is genuinely NEARER than
+                # what it now covers, so the new order is the more
+                # correct one; it is still a CHANGE to the shipped
+                # picture, so it is bounded here rather than waved
+                # through. Anything off the railing still fails.
+                hole = rdiamond(A_IN)
+                runs = [(hole[3], hole[0]), (hole[0], hole[1])]
+                ys, xs = np.where(dd > 8)
+                px, py = xs / SHIP, ys / SHIP        # back to scene px
+                far = np.ones(len(xs), bool)
+                for (ax, ay), (bx, by) in runs:
+                    vx, vy = bx - ax, by - ay
+                    L2 = vx * vx + vy * vy
+                    t = np.clip(((px - ax) * vx + (py - ay) * vy) / L2, 0, 1)
+                    far &= np.hypot(px - (ax + t * vx),
+                                    py - (ay + t * vy)) > 30
+                stray = int(far.sum())
+                print(f"  {over} px differ ON the mauka railing "
+                      f"({stray} of them off it)")
+                if stray:
+                    Image.fromarray(np.clip(dd, 0, 255).astype("uint8")
+                                    ).save(ROOT / "build"
+                                           / "debug_bands_capitol.png")
+                    raise AssertionError(
+                        f"the banded render is not the shipped picture: "
+                        f"{stray} px differ by more than 8 away from "
+                        f"the mauka railing (max {int(dd.max())}) — a "
+                        f"band was declared out of draw order past "
+                        f"something it overlaps. See "
+                        f"build/debug_bands_capitol.png")
     img.save(OUT_PNG)
+    # PAINTERLY IS A WHOLE-IMAGE PASS, so it cannot be applied per
+    # band — the flag is a comparison path, not a shipping one.
+    band_meta = (bands.emit(OUT_PNG.parent, "capitol", SHIP, OVER,
+                            base=ground) if banded and raw else [])
     # the runtime paints this behind the image (letterbox bars at odd
     # aspect ratios) — sample the finished surround so they can never
     # disagree, same one-source rule as `deep` in the island bakes
     bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
 
     # ---- hotspots, computed from the same geometry
+    walk = walk_plan()
     out = diamond(A_OUT)
     # int() TRUNCATES, and iso() carries 1/K precision now — so this
     # has to round, or every fractional door px lands a pixel low.
@@ -3501,6 +3722,30 @@ def render(raw=False):
     rects = {k: r for k, (_, r, _) in doors.items()}
     rects["mosaic"] = (CX - 62, CY + DROP - 44, CX + 62, CY + DROP + 20)
     dz = zones_for(rects)
+    # ---- WHERE THE PLAYER STANDS TO USE EACH DOOR. Derived from the
+    # SAME `pos` the painter returned — a door's own point is ON the
+    # wall, the one place nobody can stand, so roomplan.approach()
+    # spirals out to the nearest floor. The mosaic is a storey down in
+    # the well and can only be looked at, so its approach is the makai
+    # rail at the middle of the run, expressed against A_IN.
+    # A LEVEL-3 DOOR HAS NO APPROACH, AND THAT IS THE CONTENT. The
+    # player stands on level 2 and the room models no stairs between
+    # the storeys, so the Speaker's door and House Finance are things
+    # you can see and point at across the well, not things you can walk
+    # to. A hotspot with no `at` acts on the tap itself, exactly as
+    # every hotspot did before tap-to-walk; one WITH an `at` is walked
+    # to first. Level 2 must always have one — that is asserted, so a
+    # gallery door that drifts into a wall fails the bake instead of
+    # becoming untappable in play.
+    app = {}
+    for k, (pos, _, _) in doors.items():
+        a = roomplan.approach(walk, *BASIS.plan(*pos))
+        if a:
+            app[k] = list(a)
+        elif k in gallery:
+            raise AssertionError(
+                f"level-2 hotspot '{k}' has no standable floor near it")
+    app["mosaic"] = list(roomplan.approach(walk, 0.0, A_IN + 0.6))
     # ---- door swings. Only doors that GO somewhere get one: the swing
     # covers a scene transition that was a hard cut, which is where the
     # animation earns its cost. A door that only shows text stays shut.
@@ -3511,7 +3756,18 @@ def render(raw=False):
         "swings": swings,
         # w/h stay SCENE size; `scale` is scene px per FILE px
         "w": W, "h": H, "scale": 1 / SHIP, "bg": bg,
+        # LEGACY, screen px, and superseded by walk.spawn — which is in
+        # PLAN units, the space a moving character lives in.
         "spawn": [CX, int(round(out[2][1])) - 60],   # iso is 1/K now
+        # THE PROJECTION AND THE FLOOR (tools/roomplan.py). Per room:
+        # this basis is 16x8 px per plan unit against the hallway's
+        # 40x20, which is why it ships with the bake rather than living
+        # as a constant in main.js.
+        "basis": BASIS.json(),
+        "walk": walk.json(),
+        # DEPTH BANDS — drawn instead of `image` when present, each at
+        # its own depth, with the character sorted between them.
+        "bands": band_meta,
         # LEVEL 2 IS THE SENATE'S, LEVEL 3 IS THE HOUSE'S — see the
         # note over GALLERY_FEATS/UPPER_FEATS. The text says which
         # floor you are on, because the whole point of the split is
@@ -3521,6 +3777,7 @@ def render(raw=False):
             dict(id="senate", name="Senate Gallery", kind="door",
                  px=dpx["senate"][0], py=dpx["senate"][1] + 6,
                  zone=dz["senate"],
+                 at=app.get("senate"),
                  text="Second level, and this floor is the Senate's. "
                       "The ʻEwa cone below this door: Hawaiʻi's 25 "
                       "senators under the Moon — a chandelier of 620 "
@@ -3529,12 +3786,14 @@ def render(raw=False):
             dict(id="wam", name="Ways & Means", kind="door",
                  px=dpx["wam"][0], py=dpx["wam"][1] + 6,
                  zone=dz["wam"],
+                 at=app.get("wam"),
                  text="The Senate's money committee, on the Senate's "
                       "own floor. A revenue bill that cannot clear "
                       "Ways & Means goes no further."),
             dict(id="senpres", name="Senate President", kind="door",
                  px=dpx["senpres"][0], py=dpx["senpres"][1] + 6,
                  zone=dz["senpres"],
+                 at=app.get("senpres"),
                  text="Referrals are settled behind this door — which "
                       "committees a measure must clear before it can "
                       "reach the floor, and so how many ways it can "
@@ -3542,6 +3801,7 @@ def render(raw=False):
             dict(id="senclerk", name="Senate Clerk", kind="door",
                  px=dpx["senclerk"][0], py=dpx["senclerk"][1] + 6,
                  zone=dz["senclerk"],
+                 at=app.get("senclerk"),
                  text="Every Senate measure is journaled here. What "
                       "the chamber did is whatever this office wrote "
                       "down — the journal is the record, not anyone's "
@@ -3549,6 +3809,7 @@ def render(raw=False):
             dict(id="gov", name="Governor · Level 5", kind="door",
                  px=dpx["gov"][0], py=dpx["gov"][1] + 6,
                  zone=dz["gov"],
+                 at=app.get("gov"),
                  text="The elevator to Level 5, where the Governor "
                       "and Lieutenant Governor look down into the "
                       "rotunda. It belongs to neither chamber, which "
@@ -3558,6 +3819,7 @@ def render(raw=False):
             dict(id="house", name="House Gallery", kind="door",
                  px=dpx["house"][0], py=dpx["house"][1] + 6,
                  zone=dz["house"],
+                 at=app.get("house"),
                  text="Third level, and this floor is the House's. "
                       "The Diamond Head cone: the 51 representatives "
                       "under the Sun, a chandelier of gold-plated "
@@ -3566,6 +3828,7 @@ def render(raw=False):
             dict(id="finance", name="House Finance", kind="door",
                  px=dpx["finance"][0], py=dpx["finance"][1] + 6,
                  zone=dz["finance"],
+                 at=app.get("finance"),
                  text="The House's money committee, on the House's "
                       "own floor — every appropriation in the state "
                       "budget passes across these tables."),
@@ -3573,6 +3836,7 @@ def render(raw=False):
                  kind="door",
                  px=dpx["speaker"][0], py=dpx["speaker"][1] + 6,
                  zone=dz["speaker"],
+                 at=app.get("speaker"),
                  text="The Speaker refers every House bill to "
                       "committee and decides what reaches the floor "
                       "calendar. A measure nobody schedules is not "
@@ -3580,12 +3844,14 @@ def render(raw=False):
             dict(id="houseclerk", name="House Clerk", kind="door",
                  px=dpx["houseclerk"][0], py=dpx["houseclerk"][1] + 6,
                  zone=dz["houseclerk"],
+                 at=app.get("houseclerk"),
                  text="Bills are filed, numbered and time-stamped "
                       "here. A measure that misses a filing deadline "
                       "by an hour is as dead as one voted down, and "
                       "this counter is where the hour is decided."),
             dict(id="mosaic", name="Aquarius", kind="poi",
                  px=CX, py=CY + DROP + 6, zone=dz["mosaic"],
+                 at=app.get("mosaic"),
                  text="The floor medallion below marks where Tadashi "
                       "Sato's sea-stone mosaic lies. Look up instead: "
                       "no dome — the rotunda "
@@ -3602,6 +3868,9 @@ def render(raw=False):
     # 39% of a zone under the old fixed 120x84 boxes, and the lift won.
     # This is the gate on ZONE_PAD: grow the padding past what the bay
     # layout leaves clear and the build fails here instead of shipping.
+    for h in meta["hotspots"]:
+        if h.get("at") is None:
+            h.pop("at", None)
     zs = [(h["id"], h["zone"]) for h in meta["hotspots"] if "zone" in h]
     for i in range(len(zs)):
         for j in range(i + 1, len(zs)):
@@ -3612,10 +3881,23 @@ def render(raw=False):
                 f"hotspot zones {ai} and {bi} overlap by "
                 f"{ox:.0f}x{oy:.0f} px — lower ZONE_PAD or re-space "
                 f"the door schedule")
+    # THE FLOOR MUST STILL MATCH THE ROOM THE PAINTERS JUST DREW. The
+    # view rect lives in main.js (ROOM_CAPITOL.view); it is repeated
+    # here for the same reason the hallway repeats its own — the
+    # consequence of the pairing is baked, so the bake asserts it
+    # rather than trusting it. Keep the two in step.
+    VIEW = (368, 288, 1440, 976)
+    roomplan.check("capitol", BASIS, walk, iso, view=VIEW,
+                   targets=[(h["id"], *h["at"]) for h in meta["hotspots"]
+                            if "at" in h])
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
           f" (scene {W}x{H} @ ship {SHIP}x, over {OVER}x)",
           "and", OUT_JSON.name)
+    if walk_png:
+        roomplan.debug_png(img, BASIS, walk,
+                           ROOT / "build" / "debug_walk_capitol.png",
+                           ship=SHIP, view=VIEW)
 
 
 if __name__ == "__main__":
@@ -3625,4 +3907,12 @@ if __name__ == "__main__":
                          "measured 2026-08-22, radius 4 smears the "
                          "railing pickets into uneven blobs — the pass "
                          "is tuned for terrain, not architecture)")
-    render(raw=not ap.parse_args().painterly)
+    ap.add_argument("--walk", action="store_true",
+                    help="also write build/debug_walk_capitol.png — the "
+                         "walkmask drawn over the bake")
+    ap.add_argument("--flat", action="store_true",
+                    help="render the old single-canvas way — the escape "
+                         "hatch for checking the band split changed "
+                         "nothing")
+    a = ap.parse_args()
+    render(raw=not a.painterly, walk_png=a.walk, banded=not a.flat)

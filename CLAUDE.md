@@ -3749,6 +3749,366 @@ stairs hotspot or Esc. Rules:
       nearly every element. The tightened view above delivered most of
       the perceived gain for none of the cost.
 
+## The walkmask and the iso basis (2026-09-17)
+
+`tools/roomplan.py` — the plan-space floor the rooms have always had
+implicitly and never written down. Groundwork for a walk-around player
+character; nothing at runtime reads it yet.
+
+A room bake now emits two blocks into its JSON beside the hotspots:
+
+- **`basis`** — the room's own 2:1 projection (`cx, cy, sx, sy`). The
+  character lives in PLAN coordinates and is projected through this,
+  NEVER positioned in screen px. Same rule as the island map's
+  `lonlat_to_cell()`. It ships **per room** because the rooms disagree:
+  the hallway runs 40x20 px per plan unit against the Capitol's 16x8, so
+  a constant in main.js would be wrong for one of them. `Basis.plan()`
+  is the inverse at floor level — that is the half that makes
+  tap-to-walk possible, and it is valid ONLY for dy = 0 (a click on a
+  wall resolves to the floor behind it, which is right for a walk target
+  and wrong for anything else).
+- **`walk`** — `allow` floors minus `block` obstacles, as plan rects and
+  discs, plus a plan-space `spawn` and the nominal character radius
+  `pad`. The top-level `spawn` in both JSONs is the LEGACY screen-px one
+  and is superseded; nothing reads either yet.
+
+**EVERYTHING IS DERIVED FROM THE PAINTERS' OWN CONSTANTS, and that is
+the whole design.** The isometric render is still moving — storeys, wing
+extensions, corridor widths and CY have all shifted recently, and each
+of those moves the floor. A hand-authored collision map would silently
+stop matching the picture on the first re-bake, and the failure mode is
+a player walking through a wall. So the hallway declares its floor from
+U0/U1/VH/LU0/LU1/LV and the Capitol from A_OUT/A_IN/WING_EXT, and
+`roomplan.check()` refuses to write a bake whose geometry has come
+apart. Rules that must survive edits:
+
+- **A position may not exist twice.** Obstacle positions were literals
+  inside `render()`; they are module constants now (`PLANTS`,
+  `FIGURE_AT`, `PLANTERS`) read by BOTH the painters and the walkmask.
+  Likewise `SX, SY` are named in render_capitol.py and `iso()` reads
+  them, so the exported basis cannot drift from the projection —
+  `check()` asserts the two agree at four sample points.
+- **An obstacle's radius comes from its own art**, via
+  `disc_from_px()`: the hallway's plants and legislator are sized from
+  the half-width of the CONTACT SHADOW the painter draws (an object's
+  footprint on the floor IS its obstacle), the Capitol's planters from
+  the top face, the corner column from `col_hw(0)`.
+- **THE INSET IS AGAINST THE UNION, NOT AGAINST EACH REGION.** Shrinking
+  every rect by the character radius and asking whether the point is in
+  any of them opens a SEAM wherever two floors abut. The hallway's
+  alcove meets its corridor on a straight join and the first version
+  severed the two — caught by the connectivity check, which reported a
+  floor in two pieces with 78% reachable. `ok()` now requires the
+  character's whole disc to fit inside the union.
+- **A POCKET IS NOT A SEVERED FLOOR.** The connectivity report ignores
+  components too small for the character to turn around in: the
+  Capitol's ʻEwa corner is a 0.4 x 0.5 unit scrap sealed behind its
+  planter, which is correct, empty and unreachable. Warning on it every
+  bake would train everyone to ignore the warning that matters.
+- **The view rect is repeated in the bake** (ROOM_*.view lives in
+  main.js) so `check()` can assert the spawn is on screen — same
+  pairing, and same reason, as the existing zone-fits-view assert.
+  Keep the two in step.
+- **THE GATE IS THAT THE PNG DOES NOT MOVE.** All of this was a pure
+  refactor of constants, so both bakes must come out byte-identical —
+  they do, and that is the check to re-run before shipping any edit
+  here. Only the JSONs changed (CAP_V 43, HALL_V 6).
+
+`--walk` on either renderer writes `build/debug_walk_<room>.png`: the
+mask drawn over the bake, obstacles ringed at their drawn footprint and
+again grown by the character, spawn crossed, view rect outlined. Same
+role as `build/debug_rain_<slug>.png` — derived, gitignored, and the
+way to check a render change by eye. It SAMPLES `ok()` rather than
+drawing the declared regions, so it shows the floor the character will
+really move through and not what was typed.
+
+**The Capitol's wall BENCHES are obstacles** (`bench_blocks()`), and the
+way they are extracted is the rule for anything else on a wall: the run
+geometry is NOT re-derived. `place_feats` is pure, so walk_plan calls
+the SAME function with the SAME arguments the wall painter does and
+gets the identical schedule back; each bench's screen point is then the
+painter's own `lerp(e0, e1, t)`, inverted through `Basis.plan()`.
+Writing out "run 0 is u = -A_OUT, v = a(1-2t)" would be a second copy
+of the run maths, free to disagree with `run_x` the next time a wall
+moves. `BENCH_OUT` / `BENCH_HW` / `WING_BENCH_T` are named constants
+read by `bench_at` AND by the walkmask. A bench is shallow — 0.375 plan
+units, a backless seat — but against a 2.5-unit balcony it still pushes
+the walking line out by 15%.
+
+**THE RUNTIME HALF** is `RoomPlan` in main.js, built in
+`RoomScene.create()` as `this.plan`. It reads `basis` and `walk` off
+the room meta and offers `px()` / `plan()` / `ok()`. Nothing walks yet.
+Rules:
+
+- **`RoomPlan.ok()` MIRRORS `roomplan.Walk.ok()` AND MUST KEEP
+  MIRRORING IT** — union inset included. Both sides of a walk decision
+  have to agree or the bake's asserts stop describing the game: the
+  bake is what proves the floor is connected and reachable, the runtime
+  is what walks it. Verified by running an identical grid through both
+  and comparing a POSITIONAL hash, not just a count — hallway 28,028
+  samples / 10,954 walkable / sig 32528892, Capitol 59,220 / 14,537 /
+  sig 520608382, exact on both. Re-run that after any edit to either
+  `ok()`; matching totals alone would not catch a shifted mask.
+- **The basis is never hardcoded in main.js.** It ships per room
+  because the rooms disagree (hallway 40x20 px per plan unit, Capitol
+  16x8), and `plan()` is valid only at dy 0.
+- **`?walk=1`** draws the mask over the live room — the browser twin of
+  the debug PNG, same sampling-not-declaring rule. It is baked into a
+  canvas texture ONCE: a Phaser Graphics re-issues all ~30k draw calls
+  every frame on the Canvas renderer. Pane-testing trap, hit again
+  here: main.js is `?v=`-stable across uncommitted edits, so refetch
+  `document.scripts`' exact src with `{cache:"reload"}` and reload, or
+  the overlay silently isn't there.
+
+## The player character (2026-09-17)
+
+`tools/render_character.py` -> `site/assets/map/char_advocate.png` +
+`site/map/character.json`, token `CHAR_V`. Eight facings x (idle + 6
+walk frames). `Actor` in main.js puts it on the plan floor.
+
+**WHY IT IS NOT `figure()` WITH MORE FRAMES.** The introducer is a
+BILLBOARD — drawn in flat body coordinates, `P(x, y)` straight to
+screen — which is the right model for a character in an iso room and is
+still the model here. What changed is that a walking character has
+EIGHT facings and a billboard cannot be turned. So the body is defined
+in real 3D (bx across, by forward, bz up), rotated by the facing angle
+in PLAN, and pushed through the room's own iso — the same argument
+`swing_sheet` makes for the door leaf. It buys three things that would
+otherwise be hand-drawn eight times over: shoulders foreshorten as the
+body turns, the forward leg in profile separates fore-and-aft instead
+of side-to-side, and **the key light stays fixed in the WORLD while the
+character turns inside it**, which is what makes N and S different
+drawings rather than one drawing mirrored.
+
+- **UNITS ARE METRES.** Plan units are ~1 m in both rooms, so the
+  skeleton is a real 1.75 m person and every station reads as an
+  anatomy measurement (ankle 0.08, knee 0.50, hip 0.95, shoulder 1.42)
+  rather than a pixel count. `ZS` 55 px/m is the height exaggeration,
+  measured off the introducer's own 96 px — the architecture carries
+  the same lie, so a character at true iso height looks squat beside
+  it.
+- **ONE BAKE, SCALED PER ROOM.** Authored at `CHAR_SX` 40 (the
+  hallway's plan scale); the runtime scales by `room.basis.sx /
+  char.sx`, which is 0.4 in the Capitol. Measured live: 96.25 scene px
+  tall in the hallway, 38.5 in the Capitol, from one sheet. A sheet per
+  room would be two sources for one character.
+- **A HALF-WIDTH IS NOT A SILHOUETTE.** The first bake gave every torso
+  section the CENTRE's screen y and only varied x, so the shoulder line
+  stayed flat and 3/4 views came out stepped. Moving across the body
+  changes screen y too — `silhouette()` solves for the cross-section's
+  extreme points and projects them as POINTS, which is what makes a
+  shoulder tilt (near low, far high).
+- **A LIMB TUBE'S CAP STICKS OUT.** The sleeve started exactly at the
+  shoulder joint, so its flat cap cleared the trunk by half a sleeve
+  width and on the far side read as a flap standing off the shoulder,
+  in every 3/4 facing. The arm hangs FROM the joint and the trapezius
+  is above it: the sleeve starts 0.045 below, the torso top 0.05 above.
+- **A SHOE NEEDS HEIGHT.** Drawn flat on the ground plane it is seen
+  almost edge-on from this camera and reads as a smear of shadow. It is
+  a lofted lozenge from heel to toe like every other limb.
+- **PREMULTIPLY BEFORE THE DOWNSAMPLE** — PIL resizes RGBA channels
+  independently, so a silhouette edge averages its colour with the
+  transparent ground and comes back as a dark hairline all round the
+  figure. Same trap the door-swing sheet already paid for.
+- The Advocate is NOT the introducer: no aloha print, no lei (those say
+  "member on Opening Day"). A plain brick shirt, dark slacks, and a
+  canvas SHOULDER BAG — the one prop, and what separates the two
+  silhouettes at 38 px in the Capitol. Faceless, per the house rule;
+  the hair grows over the skull as the head turns away, which is the
+  only cue saying which way it is facing.
+
+**`Actor` (main.js)** lives in PLAN coordinates and is projected
+through `RoomPlan.px()` every step — never positioned in scene px.
+`dirFor()` reads the sheet's own `theta = 45 - 45i` relation backwards
+rather than hand-mapping the names. `step()` SLIDES along whatever
+blocks it (full move, then each axis alone): without that, walking into
+a corridor wall at an angle stops dead instead of running along it.
+Arrow keys / WASD are SCREEN-relative — up is away from the camera,
+which in plan is -u-v; mapping keys onto u/v directly sends the player
+diagonally for no reason they can see.
+
+**Two known gaps, both real:**
+- **Depth is a flat constant, so the character always draws OVER the
+  room** — it cannot yet walk behind the Capitol's railing or a column.
+  `render_hallway.py --layers` already emits depth bands and asserts
+  the recomposite is byte-identical, so the machinery exists and is
+  unwired. This is the next piece.
+- **Tap-to-walk and pathfinding are not built.** Hotspots still act on
+  the tap itself rather than walking there first. `ROT.Path.AStar` is
+  vendored and still unused.
+
+A room whose bake predates the walkmask (office_finance.json) has no
+`basis`/`walk`, so `plan.ready` is false, no actor is built, and the
+room behaves exactly as before — verified live.
+
+**Pane-testing note**: the Browser pane runs the game loop at ~1.3 fps
+even with `?raf=mc`, so `update()`-driven movement barely advances and
+looks broken. Drive `actor.step(du, dv, dt)` directly at a fixed dt to
+test movement — it is the same code the loop calls. Wrapping
+`scene.update` to instrument it does NOT work: Phaser holds its own
+reference and the wrapper never fires.
+
+## Depth bands (2026-09-17)
+
+`tools/roombands.py`. A room is one painting, so a character drawn over
+it is drawn over ALL of it — no railing, post or planter could ever
+stand in front. Each room now bakes onto several targets and the
+runtime interleaves the character by depth.
+
+**WHY THERE ARE SO FEW BANDS.** Depth here is plan u+v, so in principle
+every element wants its own. Occlusion only matters where two things
+OVERLAP ON SCREEN, and that collapses the list hard: anything the
+character can only ever see from ONE side needs a side, not a sort.
+The Capitol's mauka railing is only ever overlapped by characters
+standing behind it and its makai railing only by characters in front —
+two bands, no depths. Only something you can walk BOTH WAYS AROUND
+needs its own: the hallway's two pots, its two casing posts and the
+legislator. So the Capitol is back + front, and the hallway is those
+two plus five small ones.
+
+- **THE GATE IS THE RECOMPOSITE.** The shipped picture IS the bands
+  composited in order — one code path, checked against the PNG on disk
+  before it is replaced. A band declared out of draw order past
+  something it overlaps shows up here, and did.
+- **TWO TOLERANCES, BOTH NAMED, NEITHER A BLANKET.**
+  - **≤ 8 per pixel, from alpha arithmetic.** ImageDraw fills REPLACE
+    pixels rather than blending, so in the flat bake a translucent
+    contact shadow drawn over a translucent floor reflection
+    overwrites it, while in band mode the two are composited. Real,
+    a few units, and confined to where those overlap (measured on the
+    hallway: 783 px, max 8, bbox exactly spanning the legislator and
+    the second pot). A band actually moved past something it occludes
+    swaps OPAQUE pixels and lands in the hundreds.
+  - **The Capitol's MAUKA RAILING, scoped to its own footprint.** It
+    has to sit above the character and the makai runs below, so they
+    are in different bands — and the mauka run is therefore drawn
+    after things it used to precede: the makai runs it caps at the two
+    side corners, and a column's floor reflection under its handrail at
+    the apex. 1575 px, max 182. The gate asserts every one of them lies
+    within 30 scene px of a mauka run, so an unrelated regression of
+    any size still fails. In each case the railing is genuinely NEARER
+    than what it now covers, so the new order is the more correct one
+    — it is still a change to the shipped picture, which is why it is
+    bounded here rather than waved through.
+- **BANDS ARE CROPPED to their own content** and carry the scene-px
+  corner they were cut from. That is what makes per-object bands
+  affordable: the hallway's seven total 123.7 KB against the flat
+  bake's 122.8 KB, and its two casing posts are 0.5 KB each.
+- **THE CAPITOL'S BANDS START AFTER `paint_well`, NOT AT THE TOP.**
+  Everything above it reads and regrades pixels already on the canvas
+  (`mottle_ink`, `paint_sun`, `paint_ring_shade`, `paint_well`'s
+  clipped composite), and a whole-image pass over a transparent layer
+  is not the same operation. The ground stays ONE canvas and becomes
+  the back band's base. Same reason `--painterly` cannot be banded:
+  the flag is a comparison path, not a shipping one, and band emission
+  is skipped under it.
+- **A banded room does NOT download the flat picture.** Which one a
+  room has is in its json, which is still loading during preload, so
+  the choice is made on that file's own load event — the same
+  chicken-and-egg the door swings and the character sheet have. The
+  flat PNG stays on disk as the bake's regression reference and as the
+  fallback for a room whose bake predates bands (office_finance.json,
+  verified: no bands, no plan, no actor, behaves exactly as before).
+- Runtime: `BAND_BACK` -1000 / `BAND_FRONT` 1000 park the always-behind
+  and always-in-front layers outside any plan depth the rooms reach
+  (about -25..+31) while staying far below the HUD labels at 10000.
+  The character's depth is its own `u + v`, so walking the ring moves
+  it THROUGH the layers rather than switching it between two states. A
+  door swing sits at `BAND_BACK + 1` — it belongs with the wall it is
+  cut into, and always under the character.
+- **The rail pots became walkmask obstacles in the same pass**
+  (`rail_pot_plan()`, from the same edges and t values
+  `paint_rail_pots` draws them at). Before this the character walked
+  straight through them, and it is also what makes their band
+  unambiguous: sealed floor behind them means they are always behind
+  the player.
+
+Verified live in both rooms: the hallway's casing post, at ONE screen
+position with the character a unit either side of it, occludes and then
+does not; the Capitol's mauka railing crosses the character's legs on
+the mauka walkway while the makai railing passes behind them on the
+makai walkway.
+
+**Still open**: tap-to-walk and pathfinding. Hotspots act on the tap
+rather than walking there first, and `ROT.Path.AStar` is vendored and
+still unused.
+
+## Tap-to-walk (2026-09-18)
+
+Tapping the floor walks there; tapping a hotspot walks to it and THEN
+acts. Keyboard still works and overrides.
+
+**THE APPROACH POINT COMES OUT OF THE BAKE** (`roomplan.approach()`,
+emitted as each hotspot's `at`). A door's own position is ON the wall,
+the one place nobody can stand, so "walk to that door" has to mean
+"walk to the floor in front of it". It SPIRALS OUT from the feature
+rather than stepping along a hand-named normal: a door, a lift lobby,
+an alcove mouth and a person standing in a recess all want different
+directions, and the floor already knows which way is open.
+
+- **A hotspot with NO `at` acts on the tap, and that is CONTENT, not a
+  fallback.** The Capitol's level-3 doors — Speaker, House Finance,
+  House Gallery, House Clerk — are on the storey above the walkway,
+  and the room models no stairs between them: things you can see and
+  point at across the well, not things you can walk to. Level 2 must
+  always have an approach, and the bake asserts it, so a gallery door
+  that drifts into a wall fails the bake instead of going quietly
+  untappable in play. Current split: 6 walk-first (senate, wam,
+  senpres, senclerk, gov, mosaic), 4 act-on-tap.
+- **Reachability is checked against the SPAWN'S OWN COMPONENT**, not
+  merely "is it walkable" — the Capitol has a sealed pocket behind the
+  ʻEwa planter, and an approach that landed in it would pass the
+  weaker test and strand the player mid-walk.
+- The mosaic is a storey down in the well and can only be looked at,
+  so its approach is the makai rail at the middle of the run,
+  expressed against `A_IN` rather than typed in.
+
+**ROUTING — `RoomPlan.route()`.** A* runs on **ROT.Path**, which is
+the concrete reason the vendored rot.js finally gets used beyond its
+RNG (CLAUDE.md said not to reach for it without one). Two rules:
+
+- **The grid is COARSE on purpose** (0.25 plan units, ~25 cm). It only
+  has to find the way round a planter; it does not place the
+  character.
+- **THE STRING PULL IS NOT COSMETIC.** An 8-way grid path is a
+  staircase, and a character following one visibly zigzags down a
+  straight corridor. Pulling each node as far along the list as an
+  unbroken line allows turns it back into the route's real corners —
+  measured on the hallway, spawn to the legislator: **42 grid cells ->
+  3 waypoints**. Both endpoints snap outward to a passable cell first,
+  because the coarse grid can miss a legal spot the character is
+  actually standing on.
+
+**`Actor.goto()` FAILS OPEN.** If no route can be found the action runs
+immediately rather than being swallowed: a door that silently does
+nothing is a worse bug than one that skips its walk, and the bake
+already asserts every approach is reachable, so that branch is a
+backstop. `follow()` carries an arrival TOLERANCE (a fixed step
+overshoots a waypoint forever otherwise, and the character shivers in
+place instead of turning the corner) and a STUCK GUARD that gives up
+after a few frames and runs the action rather than grinding at a wall.
+
+- **Taking the keys cancels a walk AND drops its pending action.** The
+  player has changed their mind; a door opening a second later because
+  of a tap they already overrode is the game arguing with them.
+- **The floor tap hit-tests explicitly** rather than relying on a flag
+  or on event order — Phaser promises nothing about whether a game
+  object's own `pointerup` runs before or after the input plugin's,
+  and a tap must never both open a door and start a second walk.
+- **`CHAR_SPEED` is 2.4 plan units/sec**, faster than a real walk on
+  purpose: at a true 1.4 the hallway took 7.3 s end to end with the
+  player just watching, and a tap-to-walk game spends that wait on
+  every move. The animation's frame rate is DERIVED from it through
+  `CHAR_STRIDE` (how far one cycle of the sheet covers), so speed and
+  cadence cannot drift into foot-slide.
+
+Verified live: a real MouseEvent tap on bare floor routes and walks; a
+tap on the legislator does NOT open the panel immediately, walks to the
+approach point, and opens it on arrival (4.55 s); arrow keys mid-walk
+drop both the path and the pending action; the Capitol routes from the
+makai spawn round the well to the ʻEwa senate door with **0 legs
+crossing the floor**.
+
 ## Vendored: rot.js + Phaser iso plugin (2026-08-26)
 
 Two libraries vendored ahead of features that aren't built yet — neither
