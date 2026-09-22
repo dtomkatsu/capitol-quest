@@ -40,6 +40,7 @@
   --plate-lo:  rgba(15, 19, 27, .86);  /* its foot */
   --plate-mid: #171c27;   /* top of a modal panel (opaque) */
   --plate-deep: #0b0e14;  /* its floor, and the deepest ground */
+  --plate-top:  #1b2130;  /* the lit top of a panel's gradient */
   --plate-edge: rgba(255, 255, 255, .13);  /* the hairline, not a border */
 
   /* — line, shadow and radius: the vocabulary the plate never had.
@@ -55,6 +56,11 @@
      shadow to stay legible — a soft one. The hard 1px black outline it
      replaces is the single loudest dated cue in the sheet. */
   --text-lift: 0 1px 3px rgba(0, 0, 0, .8);
+  /* the film grain every panel wears — one SVG turbulence tile (2026-09-22:
+     a token, so the greeting box can wear the same grain) */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  --r-sm: 6px;      /* a control or a box inside a card (2026-09-22) */
+  --r-card: 8px;    /* a card or a row in a list */
   --r-chip: 10px;
   --r-panel: 14px;
 
@@ -91,6 +97,8 @@
   --gold-deep:   #d9a72f;   /* bottom of the gold CTA gradient */
   --gold-mut:    #e3b64b;   /* the revenue metric, one step down */
   --gold-brt:    #ffd166;   /* gold that has to win against gold */
+  --gold-dim:    #c8b06a;   /* gold as a QUIET label: section heads,
+                               choice numerals (2026-09-22) */
 
   /* — type on dark */
   --txt:         #eef2ff;   /* primary */
@@ -174,13 +182,17 @@
   --gold-mut-rgb:227, 182, 75;
   --gold-brt-rgb:255, 209, 102;
   --txt-4-rgb:   159, 176, 232;
+  --danger-rgb:  217, 80, 63;
 }
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   overflow: hidden;
-  background: #1d4f8c;
+  /* the ink every room is painted on, so the page, the canvas and the
+     room are ONE ground from the first frame (it was a royal blue,
+     then the map's sea, then the room — three flashes per load) */
+  background: var(--ink);
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
 }
 
@@ -190,6 +202,123 @@ html, body {
   touch-action: none;
 }
 #game canvas { image-rendering: pixelated; }
+
+/* ---------- the rooms' keyboard layer (RoomScene.buildHotLayer): one
+   real button laid over each painted hotspot, so Tab reaches every door
+   and the focus ring draws ON the door. Over the canvas, under the HUD;
+   no pointer events, so a mouse or a finger still lands on the canvas. */
+.room-hot {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.room-hot[hidden] { display: none; }
+.room-hot .rh {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.room-hot .rh:focus-visible { outline-offset: 1px; }
+
+/* visually hidden, still read by a screen reader */
+.vh {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- tips (main.js Tip): what `title=` used to carry, for every
+   input — hover, keyboard focus, and a tap on anything whose tap does
+   nothing else. Above the overlays (a meter inside a panel tips too),
+   under the boot screen. */
+#tip {
+  position: fixed;
+  left: 0; top: 0;
+  z-index: 45;
+  max-width: min(280px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 7px 10px 8px;
+  background: linear-gradient(rgba(23, 28, 39, .97), rgba(11, 14, 20, .98));
+  border: 1px solid var(--line-hi);
+  border-radius: 8px;
+  box-shadow: var(--shadow-chip);
+  color: var(--txt-2);
+  font: 12px/1.45 "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity .12s ease, transform .12s ease, visibility 0s .12s;
+}
+#tip.show {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition: opacity .12s ease, transform .12s ease, visibility 0s;
+}
+/* a tip-bearing element that is not a control shows it can be asked */
+[data-tip]:not(button):not([role="button"]) { cursor: help; }
+@media (prefers-reduced-motion: reduce) {
+  #tip, #tip.show { transition: none; }
+}
+
+/* ---------- the boot screen (see #boot in index.html) ---------- */
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;                 /* over everything, overlays included */
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  transition: opacity .45s ease;
+}
+#boot.gone { opacity: 0; pointer-events: none; }
+.boot-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+}
+.boot-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: var(--w-label);
+  letter-spacing: var(--track-label);
+}
+.boot-title .star { color: var(--gold); }
+.boot-bar {
+  width: 180px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+.boot-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-brt));
+  transition: width .25s ease;
+}
+#boot small {
+  color: var(--txt-5b);
+  font-size: 11px;
+}
+/* nothing on the HUD is true until the session has rendered: the
+   markup's "Week 1 / End Turn", an empty budget pill and the map's own
+   hint all showed over a returning save's first second */
+body.booting #hud { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  #boot, .boot-bar i { transition: none; }
+}
 
 /* KEYBOARD FOCUS (2026-09-22). Every control in the game used to be
    wired to pointerdown alone, so none of them answered Enter or Space
@@ -365,8 +494,9 @@ html, body {
 
 /* the flow receipt: hovering near a tax streak strokes its route and
    pins this to the cursor — source area, ZIP, dollars, share. Fixed and
-   inert; z 20 keeps it under the overlays (z 30), so an open panel
-   covers it. Created by buildFlows, reused across scene restarts. */
+   inert; --z-tip keeps it under the greeting box and every overlay, so
+   an open panel covers it. Created by buildFlows, reused across scene
+   restarts. */
 #flow-tip {
   position: fixed;
   z-index: var(--z-tip);
@@ -428,6 +558,11 @@ html, body {
   color: #fff;
 }
 #toolbar button svg { width: 20px; height: 20px; }
+/* a toolbar button that is ON — the Map button while you are on the map */
+#toolbar button.on {
+  border-color: rgba(var(--gold-rgb), .5);
+  color: var(--gold-lt);
+}
 #toolbar .ic-paper  { fill: var(--ico-paper); }
 #toolbar .ic-ink    { fill: var(--ico-ink); }
 #toolbar .ic-tan    { fill: var(--ico-tan); }
@@ -490,7 +625,7 @@ html, body {
       rgba(96, 124, 200, .22) 0%, rgba(96, 124, 200, 0) 55%),
     radial-gradient(120% 90% at 85% 108%,
       rgba(6, 8, 22, .9) 0%, rgba(6, 8, 22, 0) 52%),
-    linear-gradient(172deg, #1b2130 0%, #121721 44%, var(--plate-deep) 100%);
+    linear-gradient(172deg, var(--plate-top) 0%, #121721 44%, var(--plate-deep) 100%);
   border: 1px solid var(--plate-edge);
   border-radius: var(--r-panel);
   color: #fff;
@@ -512,13 +647,17 @@ html, body {
   border-radius: inherit;
   pointer-events: none;
   opacity: .05;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-image: var(--grain);
   background-size: 140px 140px;
 }
 /* a thin gold scrollbar keeps even the chrome in-world — every overlay's
    scrolling list, not just the session transcript (WebKit; the Firefox
    shorthand keeps it tidy there too) */
 .ovl-rows {
+  /* never sideways: .sh-row's full-bleed hover (margin 0 -8px) overran
+     the list's 6px padding by 2px, and that alone drew a scrollbar
+     strip under every week's hub */
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--gold-rgb), .45) rgba(255, 255, 255, .06);
 }
@@ -769,7 +908,9 @@ html, body {
 }
 .flow-svg image { image-rendering: pixelated; }
 .flow-svg .spoke { stroke: var(--txt-5b); stroke-opacity: .13; fill: none; }
-.flow-svg .mote { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
+/* the glow is ONE filter on the motes' group — it was a drop-shadow on
+   each of ~110-150 motes, every one its own filter pass every frame */
+.flow-svg .motes { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
 .flow-svg .node {
   fill: #1d2433;
   stroke: rgba(255, 255, 255, .22);
@@ -878,6 +1019,11 @@ html, body {
   text-overflow: ellipsis;
   text-align: right;
 }
+/* on a phone a department's name WRAPS instead of ellipsising — the
+   full name was only ever in a hover tooltip, which touch never sees */
+@media (max-width: 600px) {
+  .brow .bname { white-space: normal; line-height: 1.2; }
+}
 .brow .bbar {
   display: flex;
   gap: 2px;                 /* 2px surface gap between stacked segments */
@@ -929,6 +1075,13 @@ html, body {
   line-height: 1.35;
   margin-top: 1px;
 }
+/* the policy's source, printed (it was a hover title) — the creation
+   cards' .agc-src voice */
+.prow .pname small.psrc {
+  margin-top: 3px;
+  color: var(--txt-7);
+  font-size: 10px;
+}
 .prow .ptag {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -964,11 +1117,13 @@ html, body {
   width: 45%;
   background: linear-gradient(100deg, transparent,
     rgba(255, 240, 200, .14), transparent);
-  transform: skewX(-18deg);
-  transition: left .4s ease;
+  /* moved by TRANSFORM, not `left` (a layout property, re-laid-out
+     every frame): 180% of the button = 4x the sheen's own 45% */
+  transform: translateX(0) skewX(-18deg);
+  transition: transform .4s ease;
   pointer-events: none;
 }
-.prow .pgo:hover::before { left: 120%; }
+.prow .pgo:hover::before { transform: translateX(400%) skewX(-18deg); }
 .prow .pgo:hover {
   border-color: rgba(var(--gold-rgb), .6);
   color: var(--gold-lt);
@@ -1416,9 +1571,6 @@ html, body {
   gap: 6px;
   margin-top: 7px;
 }
-@media (max-width: 520px) {
-  #sess-metrics { grid-template-columns: 1fr; }
-}
 #sess-metrics .metc {
   position: relative;
   min-width: 0;
@@ -1537,6 +1689,43 @@ html, body {
 #sess-metrics .m-rev.gain { --mc: var(--gain); --mct: rgba(89, 201, 139, .15); }
 #sess-metrics .m-rev.cost .mv { color: var(--trend-down); }
 #sess-metrics .m-rev.cost { --mc: var(--cost); --mct: rgba(217, 106, 94, .17); }
+/* PHONES KEEP THE THREE ACROSS (2026-09-22). They stacked into one
+   column here, three full-width cards and bars — ~190px of a 375px
+   phone's panel before a word of the week showed. Three narrow cards
+   instead: the icon goes, the label takes its own row (and may wrap —
+   the cards stretch to one shared height, so the row stays even), the
+   value sits under it and the bar under that. ~62px. */
+@media (max-width: 520px) {
+  #sess-metrics { gap: 5px; }
+  #sess-metrics .metc {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: 2px;
+    padding: 5px 7px 6px;
+  }
+  #sess-metrics .metc > .sym { display: none; }
+  #sess-metrics .metc .ml { grid-column: 1; grid-row: 1; }
+  #sess-metrics .metc .mv { grid-column: 1; grid-row: 2; font-size: 14px; }
+  #sess-metrics .metc .bar { grid-row: 3; margin-top: 3px; }
+}
+/* SHORT screens (a landscape phone): the week gets the height. The
+   panel may use 94vh instead of 86, its padding tightens, and the meters
+   drop their bars and shrink to one line each — the numbers stay, and
+   the HUD beside the panel carries the bars anyway. 163px of content at
+   812x375 before; ~230 after. (The story's banner also takes half of
+   that height rather than two-thirds — sizeArt in main.js.) */
+@media (max-height: 560px) {
+  /* 100vh - 40, not a vh share: the session masthead rides 19px ABOVE
+     the panel's top edge, so the panel must stop 20px short of the
+     window or the plate is cut off (94vh left it 11px) */
+  .ovl-panel { max-height: calc(100vh - 40px); padding: 10px 16px 8px; }
+  #sess-metrics { margin-top: 4px; }
+  #sess-metrics .metc { padding: 3px 9px 4px; }
+  #sess-metrics .metc .bar { display: none; }
+  #sess-metrics .metc .mv { font-size: 13px; }
+  #session-overlay #sess-head { margin-bottom: 1px; }
+  #sess-foot { margin-top: 3px; padding-top: 3px; }
+}
 
 /* the scrollbar is the shared .ovl-rows one */
 #sess-body { margin-top: 8px; }
@@ -1557,7 +1746,7 @@ html, body {
     linear-gradient(180deg, rgba(10, 11, 16, .92), rgba(6, 7, 11, .88));
   border: 1px solid rgba(var(--paper-rgb), .07);
   border-left: 2px solid rgba(var(--gold-rgb), .28);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
     "Times New Roman", serif;
 }
@@ -1647,17 +1836,16 @@ html, body {
     transition: none !important;
   }
   .sd-scene.hush .sd-pre > .sd-beat,
-  .sd-scene.hush .sd-pre > .sd-beat,
-.sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
+  .sd-scene.hush .sd-log > .sd-beat:not(:last-child) { opacity: .48; }
 }
 
-/* event banner — designed at 320x160, SHIPPED pre-upscaled to 640x320 by
-   tools/make_event_art.py, bled to the scene's edges.
-   Deliberately NOT image-rendering:pixelated. The column is ~615-652px
-   depending on the overlay scrollbar, so the file is only ever resampled
-   by about a percent; pixelated would make that small downscale drop
-   whole pixel rows, where the default filter just softens them. The
-   crispness comes from the baked-in nearest upscale, not from this. */
+/* event banner — 1920x960 out of tools/make_event_art.py (DISPLAY 6: the
+   size that meets the ~1000px column in DEVICE px on a dpr-2 screen; the
+   ratio, the resolution and the on-screen height are coupled — CLAUDE.md
+   "Three numbers decide whether a banner is SEEN"), bled to the scene's
+   edges. Deliberately NOT image-rendering:pixelated: the file is always
+   resampled to fit the column, and pixelated would make that resample
+   drop whole pixel rows, where the default filter just softens them. */
 .sd-art {
   display: block;
   width: calc(100% + 36px);
@@ -1728,9 +1916,9 @@ html, body {
   padding: 11px 14px 12px;
   background:
     linear-gradient(103deg, rgba(var(--gold-rgb), .12), transparent 62%),
-    linear-gradient(#161d47, #0e1332);
+    linear-gradient(var(--plate-top), var(--plate-deep));   /* was navy */
   border: 1px solid rgba(var(--gold-rgb), .38);
-  border-radius: 11px;
+  border-radius: var(--r-chip);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
 }
 .sd-card.on { display: flex; }
@@ -1977,6 +2165,18 @@ html, body {
   border-top: 1px solid rgba(var(--paper-rgb), .08);
 }
 .sd-narr { color: var(--paper-4); font-style: italic; }   /* unattributed prose */
+/* an action's result page: one short scene (sd-solo), the header and
+   the Continue plate inside the reader's own surface */
+.sd-solo { margin-top: 10px; }
+.sd-solo .sd-speaker { margin-top: 0; font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif; }
+/* On a phone the hanging indent is width the column cannot spare — a
+   19px hang on ~28-character lines. Speech keeps a short one (the name
+   still leads its line); narration has no name to hang under at all,
+   so it drops it. (2026-09-22) */
+@media (max-width: 560px) {
+  .sd-said { padding-left: 10px; text-indent: -10px; }
+  .sd-narr { padding-left: 0; text-indent: 0; }
+}
 
 /* voices: italic body, upright colored name. Each voice re-runs the
    entrance on its own inline delay (voiceHtml), so the instincts pipe
@@ -1991,7 +2191,6 @@ html, body {
 .sd-voice b {
   font-style: normal;
   font-size: 12.5px;
-  letter-spacing: 1.3px;
 }
 /* symbols inside the dialogue reader: sized off the serif line, and
    never allowed to force the hanging indent open */
@@ -2021,7 +2220,7 @@ html, body {
   text-indent: 0;
   color: var(--de-ink);
   border: 1px solid color-mix(in srgb, var(--pole, var(--gold)) 30%, transparent);
-  border-radius: 10px;
+  border-radius: var(--r-chip);
   background:
     linear-gradient(101deg,
       color-mix(in srgb, var(--pole, var(--gold)) 15%, transparent) 0%,
@@ -2090,7 +2289,7 @@ html, body {
   background: none;
   border: none;
   border-left: 2px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   color: var(--danger);
   font-family: inherit;
   font-size: 15.5px;
@@ -2178,7 +2377,7 @@ html, body {
 .sd-roll {
   margin: 2px 0 12px 19px;
   padding: 9px 13px;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   border-left: 3px solid;
   background: linear-gradient(90deg, rgba(0,0,0,.42), rgba(0,0,0,.18));
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
@@ -2186,7 +2385,9 @@ html, body {
 .sd-roll > b {
   display: block;
   font-size: 11.5px;
-  letter-spacing: 1.2px;
+  /* the skill's name is mixed case — tracking is for caps; the stamp
+     beside it keeps its own (the roll theatre is exempt) */
+  letter-spacing: normal;
 }
 .sd-roll small b { color: var(--txt); }   /* the total, inline in the math */
 .sd-roll small {
@@ -2223,7 +2424,6 @@ html, body {
 .sd-roll.rolling .sd-wait {
   font-weight: 400;
   font-style: italic;
-  letter-spacing: .4px;
   color: var(--paper-5);
   animation: wait-breathe 1s ease infinite;
 }
@@ -2312,7 +2512,7 @@ html, body {
   max-width: min(420px, calc(100vw - 56px));
   padding: 20px 26px 22px;
   text-align: center;
-  background: linear-gradient(165deg, #1d2331 0%, var(--plate-deep) 100%);
+  background: linear-gradient(165deg, var(--plate-top) 0%, var(--plate-deep) 100%);
   border: 1px solid rgba(255, 255, 255, .16);
   border-radius: var(--r-panel);
   box-shadow: 0 26px 60px -14px rgba(0, 0, 0, .8),
@@ -2545,12 +2745,19 @@ html, body {
    each a left-ruled card in the verdict's color. The post-mortem under
    a death itemises the odds as they stood — the module's central
    lesson, rendered as arithmetic the player can argue with. */
+/* THE HUB'S CARD (2026-09-22): a 1px hairline, the meaning as a 3px left
+   rule, var(--r-card). Six cards used six treatments — 2/3/4px rules, a
+   border or none, radii from 4 to 8 — and the hub read as six widgets.
+   .mv-row, .introc and .sess-score share it now; .sh-gap keeps its gold
+   hairline (it is the scoreboard) at the same radius; boxes INSIDE a card
+   (.pm, .pm-lesson) are one step smaller, var(--r-sm). */
 .mv-row {
   margin: 0 0 6px;
   padding: 8px 12px 9px;
   background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .07);
   border-left: 3px solid var(--txt-5b);
-  border-radius: 7px;
+  border-radius: var(--r-card);
   animation: sd-in .3s ease both;
 }
 .mv-row.won  { border-left-color: var(--good); }
@@ -2565,6 +2772,22 @@ html, body {
   35% { background: rgba(255, 180, 58, .14); border-left-color: var(--gold-brt); }
 }
 .mv-row.dead { border-left-color: var(--bad); }
+/* THE AMBER HEARTBEAT IS FOR A NEAR MISS ONLY (2026-09-22). Five other
+   kinds of row borrowed .near and pulsed like one — a routine "Influence
+   slipped" throbbed every week as if a chair had just pulled the file.
+   Each has its own kind now, and none of them pulses:
+   - cut: the bill moved but lost money (diluted, halved in conference)
+   - drift: the CAMPAIGN lost ground (support burn, influence decay),
+     in the meter's own hue so the row reads as that meter moving
+   - quiet: nothing happened, on purpose (the recess) */
+.mv-row.cut   { border-left-color: var(--cost); }
+.mv-row.cut .mv-what { color: var(--cost); }
+.mv-row.drift.d-sup { border-left-color: var(--support); }
+.mv-row.drift.d-sup .mv-what { color: var(--support); }
+.mv-row.drift.d-inf { border-left-color: var(--influence); }
+.mv-row.drift.d-inf .mv-what { color: var(--influence); }
+.mv-row.quiet { border-left-color: var(--txt-6); }
+.mv-row.quiet .mv-what { color: var(--txt-5b); }
 /* a bill becoming law is the rarest event in the game — one gold sweep
    across the card, once, and then it behaves like everything else */
 .mv-row.enacted {
@@ -2596,6 +2819,8 @@ html, body {
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
 }
+/* a campaign row has no bill name for the label to follow */
+.mv-row > b > .mv-what:first-child { margin-left: 0; }
 .mv-row.won  .mv-what { color: var(--good); }
 .mv-row.near .mv-what { color: var(--near); }
 .mv-row.dead .mv-what { color: var(--bad); }
@@ -2612,7 +2837,7 @@ html, body {
   padding: 8px 10px 9px;
   background: rgba(0, 0, 0, .28);
   border: 1px solid rgba(255, 255, 255, .09);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-variant-numeric: tabular-nums;
 }
 /* the cascade: rows arrive top to bottom so the arithmetic reads as an
@@ -2668,8 +2893,8 @@ html, body {
   margin-top: 7px;
   padding: 7px 9px;
   background: rgba(var(--gold-rgb), .07);
-  border-left: 2px solid var(--gold-mut);
-  border-radius: 4px;
+  border-left: 3px solid var(--gold-mut);
+  border-radius: var(--r-sm);
   color: var(--cream);
   font-size: 10.5px;
   line-height: 1.55;
@@ -2694,8 +2919,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
 .bill-row:last-child { border-bottom: none; }
 .bill-row .shname { flex: 1 1 auto; min-width: 0; }
@@ -2735,9 +2960,10 @@ html, body {
 .sess-score {
   margin: 6px 0 8px;
   padding: 10px 12px;
-  background: rgba(255,255,255,.06);
-  border-left: 4px solid var(--gold);
-  border-radius: 8px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-card);
 }
 .sess-score b { display: block; font-size: 15px; color: var(--gold-lt); }
 .sess-score small {
@@ -2820,14 +3046,15 @@ html, body {
   position: absolute;
   top: -40%; bottom: -40%; left: -70%;
   width: 55%;
-  transform: rotate(18deg);
+  transform: translateX(0) rotate(18deg);
   background: linear-gradient(90deg, transparent,
     rgba(var(--gold-lt-rgb), .4), transparent);
   animation: pip-glint 3s ease 1.2s infinite;
 }
+/* by transform: 200% of the pip = 3.64x the glint's own 55% */
 @keyframes pip-glint {
-  0%   { left: -70%; }
-  35%, 100% { left: 130%; }
+  0%   { transform: translateX(0) rotate(18deg); }
+  35%, 100% { transform: translateX(364%) rotate(18deg); }
 }
 .sk-row .skname { flex: 1 1 auto; min-width: 0; }
 .sk-row .skname b {
@@ -2838,6 +3065,19 @@ html, body {
   font-size: 12px;
 }
 .sk-row .skname b .sym { width: 14px; height: 14px; color: var(--pole); }
+.sk-row .skrank {
+  margin-left: 8px;
+  color: var(--txt-5b);
+  font-size: 10px;
+  font-weight: var(--w-label);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+}
+.sk-row .skhone {
+  margin-top: 2px;
+  color: var(--gold-lt);
+  font-style: italic;
+}
 .sk-row .skname small {
   display: block;
   color: var(--txt-5);
@@ -2853,6 +3093,12 @@ html, body {
    the panel goes full-bleed on a near-opaque ground. renderSelect adds
    the class, renderHub and showDialogue remove it. */
 #session-overlay.creating { background: rgba(5, 7, 13, .97); }
+/* and nothing to blur: the ground above is 97% opaque, so the scrim's
+   backdrop-filter was blurring a picture no one could see */
+#session-overlay.creating::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 #session-overlay.creating .ovl-title,
 #session-overlay.creating .ovl-close,
 #session-overlay.creating #sess-head,
@@ -3680,9 +3926,9 @@ html, body {
   min-width: 0;
   padding: 8px 10px 9px;
   background: rgba(0, 0, 0, .22);
-  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .07);
   border-left: 3px solid #6f7fb8;
-  border-radius: 8px;
+  border-radius: var(--r-card);
 }
 .introc.active { border-left-color: var(--gold); }
 .introc .ic-top b {
@@ -3778,8 +4024,11 @@ html, body {
 }
 .sk-row .skup {
   flex: 0 0 auto;
-  width: 22px;
-  padding: 3px 0;
+  /* 32px, not 22: the legacy spend path (an old save with unspent
+     points) was the smallest tap target left in the panel */
+  width: 32px;
+  height: 32px;
+  padding: 0;
   background: none;
   border: 1.5px dashed var(--pole, var(--gold));
   border-radius: 3px;
@@ -3799,7 +4048,7 @@ html, body {
   margin: 8px 0;
   padding: 8px 12px;
   background: rgba(255,255,255,.05);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--txt-2b);
@@ -3824,9 +4073,12 @@ html, body {
   margin-top: 10px;
   padding: 9px 0 8px;
   background: rgba(var(--paper-rgb), .04);
-  border: 1px solid rgba(var(--gold-rgb), .35);
-  border-radius: 5px;
-  color: #e6c35c;
+  /* QUIET (2026-09-22): Continue is navigation, and gold is for
+     spends. It had a gold border and gold text while the week's one
+     real spend, "Act ▸", sat in neutral grey — exactly backwards. */
+  border: 1px solid rgba(var(--paper-rgb), .14);
+  border-radius: var(--r-sm);
+  color: var(--paper-2);
   font-family: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   font-size: 11px;
   font-weight: var(--w-label);
@@ -3861,7 +4113,6 @@ html, body {
   gap: 8px;
   color: var(--gold-lt);
   font-size: 15px;
-  letter-spacing: .6px;
   text-shadow: none;
 }
 .sd-speaker b .sym { width: 17px; height: 17px; color: var(--gold); }
@@ -3871,13 +4122,6 @@ html, body {
   font-weight: var(--w-label);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-}
-.sd-text {
-  margin: 8px 0;
-  font-family: Georgia, "Iowan Old Style", Palatino, serif;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--txt-2);
 }
 
 /* hub view — section headers carry a gold rule out to the right edge,
@@ -3893,10 +4137,12 @@ html, body {
 .sh-gap {
   margin: 10px 0 4px;
   padding: 9px 12px 10px;
-  background: linear-gradient(160deg, rgba(43, 54, 112, .55),
-    rgba(13, 18, 52, .55));
+  /* neutral glass under a gold hairline — it was a navy gradient, the
+     last royal-blue ground in the hub */
+  background: linear-gradient(160deg, rgba(34, 40, 55, .6),
+    rgba(12, 15, 22, .6));
   border: 1px solid rgba(var(--gold-rgb), .28);
-  border-radius: 8px;
+  border-radius: var(--r-card);
 }
 .sh-gap .gap-top {
   display: flex;
@@ -3954,7 +4200,7 @@ html, body {
   font-weight: var(--w-label);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: #c8b06a;
+  color: var(--gold-dim);
 }
 .sh-sec .sym { color: var(--gold-mut); width: 13px; height: 13px; }
 .sh-sec::after {
@@ -3972,7 +4218,14 @@ html, body {
   border-radius: 8px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.sh-row:hover { background: rgba(255, 255, 255, .045); }
+/* hover only where there is something to press — it lit rows that do
+   nothing (a restated bill, a handled event) */
+.sh-row:has(.shgo:not(:disabled)):hover { background: rgba(255, 255, 255, .045); }
+/* the last row of a GROUP drops its rule. renderHub lays every section
+   flat into #sess-body, so the old :last-child rules never matched and
+   each group's last row drew a line into the next heading */
+.sh-row:has(+ .sh-sec), .bill-row:has(+ .sh-sec),
+.intel-row:has(+ .sh-sec) { border-bottom: none; }
 .sh-row:last-child { border-bottom: none; }
 .sh-row .shname { flex: 1 1 auto; min-width: 0; }
 .sh-row .shname b {
@@ -3999,6 +4252,17 @@ html, body {
   cursor: pointer;
 }
 .sh-row .shgo:hover { border-color: var(--gold); color: var(--gold-lt); }
+/* "Act ▸" is the week's ONE spend, so it carries the gold outline that
+   Continue gave up */
+.sh-row .shgo.act:not(:disabled) {
+  border-color: rgba(var(--gold-rgb), .6);
+  color: var(--gold-lt);
+  background: rgba(var(--gold-rgb), .08);
+}
+.sh-row .shgo.act:not(:disabled):hover {
+  background: rgba(var(--gold-rgb), .16);
+  border-color: var(--gold);
+}
 .sh-row .shgo:disabled {
   opacity: .45;
   cursor: default;
@@ -4023,9 +4287,11 @@ html, body {
   box-shadow: 0 10px 26px -10px rgba(var(--gold-rgb), .55);
   transition: filter .18s ease;
 }
-.sh-week-end:hover:not(:disabled) {
-  background: linear-gradient(#ffdc7c, #eab73c);
-}
+/* the same hover as End Turn (brightness), not a second literal
+   gradient; and room under it, so its glow is not cut flat by the
+   bottom of the list */
+.sh-week-end:hover:not(:disabled) { filter: brightness(1.06); }
+.sh-week-end { margin-bottom: 16px; }
 /* ending the week presses like a stamp — the panel drops away right
    after, so the press is the first frame of the hand-off to the map */
 .sh-week-end:active:not(:disabled) {
@@ -4033,7 +4299,9 @@ html, body {
   box-shadow: 0 0 0 rgba(0, 0, 0, .38);
 }
 .sh-week-end:disabled { opacity: .45; cursor: default; box-shadow: none; }
-.sh-agenda-cap {
+/* a quiet caption line in the hub (was .sh-agenda-cap, named for the
+   hub's long-gone agenda picker) */
+.sh-note {
   font-size: 10.5px;
   line-height: 1.5;
   color: var(--txt-4);
@@ -4101,6 +4369,11 @@ html, body {
 #hud-turn {
   position: fixed;
   bottom: 10px; left: 12px;
+  /* FIXED, so the column does not grow with the week's title (it went
+     to 212px on "The Other Chamber" and the room's greeting, which
+     sits beside it on a short screen, needs a known edge). A long
+     title wraps inside End Turn instead. */
+  width: 184px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -4126,6 +4399,13 @@ html, body {
 #turn-chip:disabled:hover { filter: none; }
 #turn-chip .tc-label {
   display: block;
+  /* ONE line, always: the column is a fixed width, and a long week name
+     ("Week 11 · Second Lateral") wrapping to two lines made the whole
+     bottom-left column taller on those weeks — into the greeting box
+     that sits just above it. The masthead carries the full title. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: var(--track-label);
@@ -4366,7 +4646,7 @@ html, body {
   /* bars STAY on mobile (2026-08-18, user's call) — this only tightens
      the spacing so two rows plus the timeline and End Turn still clear
      the bottom of a 375px phone. The type holds the 10px floor. */
-  #hud-standing, #hud-timeline { width: 176px; }
+  #hud-standing, #hud-timeline, #hud-turn { width: 176px; }
   #hud-standing .hs-row { margin-bottom: 3px; }
   #hud-standing .hs-l { font-size: 10px; letter-spacing: var(--track-micro); }
   #hud-standing .hs-v { font-size: 11px; }
@@ -4419,9 +4699,21 @@ html, body {
   border-radius: var(--r-panel);
   color: #fff;
   z-index: var(--z-dialog);
-  box-shadow: var(--shadow-panel);
+  /* the panels' material (2026-09-22): the gold hairline just inside
+     the edge, and the grain below — it was the one surface without */
+  box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), .22), var(--shadow-panel);
   cursor: pointer;
   user-select: none;
+}
+#dialog::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .05;
+  background-image: var(--grain);
+  background-size: 140px 140px;
 }
 #dialog.hidden { display: none; }
 /* THE GREETING NEVER SITS OVER THE HUD'S CONTROLS (2026-09-22). 640px
@@ -4433,6 +4725,25 @@ html, body {
    is in the 600px block below, where the column also sits 30px higher. */
 @media (max-width: 1060px) {
   #dialog { bottom: 162px; }
+}
+/* …and on a SHORT screen it rides BESIDE the column instead (2026-09-22,
+   a regression of the lift above: on a landscape phone, 812x375, the
+   lifted box covered the whole toolbar and most of the room). Between
+   the 184px column and the budget chip, down on the bottom edge, with
+   smaller type and its own scroll if the text outgrows the space. */
+@media (max-height: 560px) and (min-width: 601px) {
+  #dialog {
+    left: 208px;
+    right: 158px;
+    bottom: 10px;
+    width: auto;
+    max-width: 640px;
+    transform: none;
+    max-height: calc(100vh - 128px);
+    overflow-y: auto;
+    padding: 10px 14px 16px;
+  }
+  #dialog-text { font-size: 13.5px; min-height: 0; }
 }
 
 #dialog-name {
@@ -4447,7 +4758,7 @@ html, body {
   color: var(--gold);
   font-weight: 700;
   font-size: 10.5px;
-  letter-spacing: .16em;
+  letter-spacing: var(--track-micro);
   text-transform: uppercase;
 }
 
@@ -4534,7 +4845,7 @@ html, body {
   border: 1px solid rgba(var(--paper-rgb), .07);
   border-left: 2px solid transparent;
 }
-#session-overlay .sd-choices button .sd-num { color: #b99b4a; }
+#session-overlay .sd-choices button .sd-num { color: var(--gold-dim); }
 #session-overlay .sd-choices button::before {
   content: "";
   position: absolute;
@@ -4543,18 +4854,21 @@ html, body {
   width: 34%;
   background: linear-gradient(100deg, transparent,
     rgba(255, 240, 200, .06), transparent);
-  transform: skewX(-18deg);
-  transition: left .38s ease;
+  /* by transform: 148% of the button = 4.35x the sheen's 34% */
+  transform: translateX(0) skewX(-18deg);
+  transition: transform .38s ease;
   pointer-events: none;
 }
 #session-overlay .sd-choices button:hover {
-  background: linear-gradient(90deg, rgba(216, 80, 63, .16),
-    rgba(216, 80, 63, .03) 70%, transparent);
-  border-color: rgba(216, 80, 63, .35);
+  background: linear-gradient(90deg, rgba(var(--danger-rgb), .16),
+    rgba(var(--danger-rgb), .03) 70%, transparent);
+  border-color: rgba(var(--danger-rgb), .35);
   border-left-color: var(--danger);
 }
-#session-overlay .sd-choices button:hover::before { left: 108%; }
-#session-overlay .sd-choices button:hover .sd-num { color: #ffd27d; }
+#session-overlay .sd-choices button:hover::before {
+  transform: translateX(435%) skewX(-18deg);
+}
+#session-overlay .sd-choices button:hover .sd-num { color: var(--gold-brt); }
 #session-overlay .sd-choices button.c-white {
   border-left-color: rgba(210, 226, 255, .35);
 }
@@ -4590,8 +4904,8 @@ html, body {
 #session-overlay .sd-done {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(var(--gold-rgb), .07),
-    rgba(var(--gold-rgb), .02));
+  background: linear-gradient(180deg, rgba(var(--paper-rgb), .05),
+    rgba(var(--paper-rgb), .02));
 }
 #session-overlay .sd-done::before {
   content: "";
@@ -4601,11 +4915,14 @@ html, body {
   width: 30%;
   background: linear-gradient(100deg, transparent,
     rgba(255, 240, 200, .10), transparent);
-  transform: skewX(-18deg);
-  transition: left .45s ease;
+  /* by transform: 150% of the plate = 5x the sheen's 30% */
+  transform: translateX(0) skewX(-18deg);
+  transition: transform .45s ease;
   pointer-events: none;
 }
-#session-overlay .sd-done:hover::before { left: 110%; }
+#session-overlay .sd-done:hover::before {
+  transform: translateX(500%) skewX(-18deg);
+}
 
 /* the masthead numeral block: foil sheen across the gold, and the
    plate's shadow warms so the tab reads embossed on the frame. The
@@ -4624,6 +4941,18 @@ html, body {
     linear-gradient(var(--gold), var(--gold-deep));
 }
 
+/* reduced motion, the rest (2026-09-22): three loops the blocks above
+   missed — the drill node's pulse, End Turn's unspent-week dot, the
+   greeting's bobbing arrow — and the progress bars' slides */
+@media (prefers-reduced-motion: reduce) {
+  .flow-svg .node.drill, #turn-chip .tc-dot, #dialog-next {
+    animation: none !important;
+  }
+  .htl .htl-fill, .htl .htl-head, .sess-timeline .stl-fill,
+  #hud-standing .hs-bar i, #sess-metrics .metc .bar i {
+    transition: none !important;
+  }
+}
 /* the sheen crossers respect reduced motion (they are transitions, but
    a crossing highlight is still motion) */
 @media (prefers-reduced-motion: reduce) {

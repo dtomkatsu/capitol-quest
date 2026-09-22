@@ -4,10 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Capitol Quest — Hawaiʻi</title>
-  <link rel="stylesheet" href="css/style.css?v=20260922111049">
+  <link rel="stylesheet" href="css/style.css?v=20260922121042">
 </head>
-<body>
+<body class="booting">
   <div id="game"></div>
+  <!-- The boot screen (2026-09-22). Until it existed the page showed a
+       royal-blue ground, then the map's sea blue, then the room's ink,
+       with a HUD full of placeholder numbers ("Week 1" for a returning
+       save) and no sign anything was loading. main.js Boot drives the
+       bar from Phaser's own loader and removes the screen when the
+       landing room is up; `booting` hides the HUD until then. -->
+  <div id="boot" role="status" aria-live="polite">
+    <div class="boot-card">
+      <div class="boot-title"><span class="star">★</span> CAPITOL QUEST</div>
+      <div class="boot-bar"><i id="boot-fill"></i></div>
+      <small id="boot-note">Opening the Capitol…</small>
+    </div>
+  </div>
 
   <div id="hud">
     <div id="title-chip">
@@ -233,10 +246,14 @@
     </div>
   </div>
 
-  <div id="dialog" class="hidden" role="dialog" aria-live="polite">
-    <div id="dialog-name"></div>
-    <div id="dialog-text"></div>
-    <div id="dialog-next">▼</div>
+  <!-- the greeting box: the typewriter text is for the eye, so it is
+       aria-hidden; #dialog-say carries the whole line for a screen
+       reader in one go (it read fragments as the text typed out) -->
+  <div id="dialog" class="hidden">
+    <div id="dialog-name" aria-hidden="true"></div>
+    <div id="dialog-text" aria-hidden="true"></div>
+    <div id="dialog-next" aria-hidden="true">▼</div>
+    <div id="dialog-say" class="vh" role="status" aria-live="polite"></div>
   </div>
 
   <script>
@@ -282,6 +299,6 @@
   <!-- UI sound: synthesised at runtime, no audio files. Loaded
        BEFORE main.js, which calls window.SFX from its handlers. -->
   <script src="js/sfx.js?v=20260819125954"></script>
-  <script src="js/main.js?v=20260922111049"></script>
+  <script src="js/main.js?v=20260922121042"></script>
 </body>
 </html>

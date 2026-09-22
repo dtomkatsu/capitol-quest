@@ -212,8 +212,12 @@ dollars via the same Σ(rate × duration) normalisation as the map
 streams. targetMotes keeps DOLLARS-PER-MOTE EQUAL across views (110 ⇒
 sources 110, taxes ~43) — the sparser tax view is the teaching point
 (federal funds + bonds spend on top of state taxes); don't "fix" it.
-Animation gating is `offsetParent !== null` on the map div — hiding via
-overlay/tab/sub-view/List all no-op the rAF loop. The ▤ List toggles
+Animation gating is `offsetParent !== null` on the map div, and since
+2026-09-22 a hidden map's loop STOPS rather than idling: MoneyPanel
+`wakeFlows()` restarts it from every door that can show a map (toolbar,
+tab, drill and back, List toggle) — an IntersectionObserver was tried and
+never fired in a page without focus. A new way to show a map must call
+wakeFlows or it opens frozen. The ▤ List toggles
 keep the bar views — don't delete them, they carry the precise numbers.
 Budget nodes are labeled by DOTAX/budget CODE (HMS, TRN, EDN…); tax
 nodes by the SHORT/ICON maps in `buildRevenue()`, whose keys must match
@@ -770,6 +774,10 @@ Rules that must survive edits:
 - Revenue effects (`revenueK`, $ thousands/yr) flow into the budget
   scoreboard via `PolicyPanel.setExternal(S.metrics.revenueK)` — call
   it after EVERY metric change and once on boot, or the chip drifts.
+  **The session panel's Revenue card shows the same NET** —
+  `revenueK + billsNetK()` (2026-09-22). It read revenueK alone, so a
+  campaign that had enacted $75M showed +$0/yr on its own scoreboard
+  while the chip and the gap bar said otherwise.
 - **Talk story and actions are OPENINGS the week's event grants — NOT
   a weekly allowance** (changed 2026-08-15, user's call). Nothing is
   owed to the player: an unplayed event means a hub with no talk rows
@@ -1388,7 +1396,11 @@ roll. Rules that must survive edits:
 - Voices stagger in via inline `animation-delay` from `voiceHtml`
   (~110ms apart) — the instincts pipe up one after another.
 - One-shot pulses only in content: the near-miss card gets a single
-  amber heartbeat, `hone` fx text one glint. The only loop anywhere is
+  amber heartbeat, `hone` fx text one glint. **The heartbeat is for a
+  REAL near miss only** (2026-09-22): diluted and conference cuts are
+  `.cut`, the support burn and influence decay are `.drift` in their
+  meter's hue, the recess is `.quiet` — five kinds had borrowed `.near`,
+  so a routine "Influence slipped" pulsed every week. The only loop anywhere is
   the honing pip's slow glint in the hub — the READER never loops
   (the grey-past/bright-now contrast needs stillness).
 
@@ -1914,6 +1926,108 @@ own: 28 text-range greys in all, one pair a single unit apart
   offset shadows (`.sk-begin`, `.ag-back`), the reader's name labels, and
   `.stl-lbl`, whose 9px is what the 940px strip's no-collision
   measurement was taken against.
+
+### Tier 6 — the second polish pass (2026-09-22)
+
+From "scope more polish for the game's user interface", then "do all of
+those fixes": live checks at desktop, phone portrait and phone LANDSCAPE
+(812x375 — not tested in tier 5, and where one of its fixes regressed)
+plus a code audit of the hub, the reader, the rooms and boot. Rules:
+
+**Bugs that were shipping:**
+- **The sine-die verdict is the GAP** — `raisedK()` against `targetK()`,
+  the gap bar's own numbers. It weighed enacted SPENDING bills, and there
+  have been none since priorities stopped being bills, so every game that
+  passed anything was told "you raised the money and funded none of it".
+  At sine die the verdict, the gap bar and a gold "Start a new session"
+  lead the hub (they sat under every post-mortem, forced open); the stamp
+  reads SINE DIE, not "Week 17 · Interim"; introducers read "adjourned".
+- **One restart path** (`restartSession`, `armed()` for the two-press
+  confirm, copy "Press again" — it said "tap" to keyboard players), and
+  it switches WHICHEVER scene is active to the hallway (a restart from
+  the office or the map stayed there).
+- **`.ovl-rows` never scrolls sideways.** `.sh-row`'s full-bleed hover
+  (margin 0 -8px) overran a 6px padding by 2px and drew a scrollbar
+  strip under every week's hub.
+- The greeting box on a SHORT screen rides beside the HUD column
+  (between it and the budget chip), not above it — tier 5's lift covered
+  the whole toolbar on a landscape phone. `#hud-turn` is a FIXED 184px
+  (176 on a phone), and End Turn's label never wraps (ellipsis; the
+  masthead has the full title) — a wrapping week name made the column
+  taller on long-named weeks, straight into the box above it.
+
+**Boot:** `#boot` (index.html) shows a title and a real progress bar
+from Phaser's own loaders (`Boot.progress`: BootScene 30%, the landing
+room 70%) and lifts when the landing room's `enterRoom()` runs
+(`Boot.done()`, idempotent, with a 20s wall-clock backstop). `body.
+booting` hides the HUD until then — it showed "Week 1 / End Turn" and an
+empty budget pill over a returning save. The page, the canvas and the
+room are one ink ground now (it flashed royal blue, then sea, then ink).
+**A boot-time exception strands the player behind this screen for 20s**
+— that is how an `esc()` used outside its closure showed up in testing.
+
+**Touch and keyboard:**
+- **Tips, not titles.** `data-tip` (main.js `Tip`) shows on hover, on
+  focus, and on a TAP when the element does nothing else on tap; a button
+  keeps hover/focus only (every control acts on pointerdown, so no press
+  is left for a tip). The meters' teaching (a STOCK you spend, a RATE that
+  decays), each bill's measured hearing rate, the introducers' voices and
+  the revenue list's "who pays" moved onto it. **Never put information a
+  player needs into `title=`** — touch never shows it. Policy sources are
+  PRINTED in the rows (`.psrc`), like the creation cards'.
+- **Rooms have a keyboard layer** (`RoomScene.buildHotLayer`): one real
+  button per hotspot, laid over its zone through the camera (`placeHot`,
+  run by `fit()`). Tab reaches every door with the focus ring ON the
+  door; Enter does what a tap does (`useHotspot`: walk there, then
+  `fireHotspot`). The layer takes no pointer events. The Finance office
+  had no keyboard way in at all.
+- **Fat-finger taps** (`nearHotspot`): a touch on no zone goes to the
+  nearest one within 16 CSS px — doors are ~20x34 CSS px on a phone, and
+  zones cannot grow (the bake asserts they never overlap).
+- **Points of interest get a quieter marker** — smaller, dimmer, it
+  breathes instead of bouncing (the bounce stays the door's promise).
+  Room markers do not tween under reduced motion.
+- The Instincts sheet prints the rank word and the ladder ("Good · 4/6")
+  and the honing note; the legacy `+` is a 32px target.
+
+**Phones and short screens:** the meters stay three across on a phone
+(label on its own row, ~62px — they stacked to ~190); on a short screen
+they drop their bars to one line, the panel takes `100vh - 40px` (not a
+vh share — the masthead rides 19px above the panel and was cut off) and
+the story's banner takes half the body, not two-thirds (`sizeArt`).
+Narration drops its hanging indent on a phone, speech keeps a short one.
+Department names wrap in the phone list view.
+
+**One card language in the hub:** a 1px hairline, the meaning as a 3px
+left rule, `--r-card`; boxes inside a card `--r-sm`. **Continue is
+quiet** (paper) and **"Act ▸" is gold** — it was exactly backwards, and
+"gold is for spends". End Week hovers by brightness like End Turn and has
+room under it for its glow. Section headings are type, no icons. Action
+and push results render inside the reader (`.sd-scene.sd-solo`, prose as
+`.sd-narr` at 16.5px — it was 13.5px Georgia under 16.5px voices). The
+greeting box wears the panels' gold hairline and grain, and its
+typewriter is `aria-hidden` with the whole line in a live `#dialog-say`.
+New tokens: `--r-sm`, `--r-card`, `--gold-dim`, `--plate-top`, `--grain`,
+`--danger-rgb`, `--z-*` from tier 5 unchanged.
+
+**Motion and performance:**
+- **THE CANVAS SLEEPS UNDER A PANEL** (`Stage`): Phaser's loop sleeps
+  while any overlay is open and wakes when the last one closes. Anything
+  that must keep time with a panel up — the dice tray, count-ups, the
+  flow map — must run on its own timers or rAF, NEVER Phaser's clock. A
+  scene switch requested with a panel up lands when it closes (the
+  week-1 hallway hands over to the Capitol then). It never sleeps before
+  `Boot.over` plus a beat, or the room under the creation funnel would
+  never paint.
+- Sheens and the honing glint move by transform, not `left`; the flow
+  motes share ONE group filter (it was ~150 per-mote drop-shadows); the
+  creation screens' scrim does not blur its own opaque ground; reduced
+  motion now also stops the drill pulse, End Turn's dot, the greeting's
+  bob and the progress bars' slides.
+
+**Small:** the Map button reads "Capitol" and shows pressed while you are
+on the map (derived from the body's class, so no path leaves it stale);
+the map hint names the device's gestures; `.sh-agenda-cap` is `.sh-note`.
 
 ## UI sound (2026-08-19)
 
@@ -3403,7 +3517,10 @@ stairs hotspot or Esc. Rules:
     live in its `create()`. Booting a room directly instead would
     leave the entire game uninitialised. The map is built, then slept
     behind the room; nothing is deleted and nothing sits on a second
-    code path that can rot.
+    code path that can rot. **Except Oʻahu's two slices** (2026-09-22):
+    with a room as home they are NOT preloaded (7 MB of an ~11 MB boot)
+    — the island manager fetches them the first time the map is on
+    screen, with the always-loaded overview covering the moment.
   - **The map is no longer player-reachable** (2026-08-26, `noExit` —
     see the HUD bullet below; before that the stairs/Esc led out).
     `exitTo: "world"` remains in the config and `parkOnCapitol` still

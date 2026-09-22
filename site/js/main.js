@@ -223,6 +223,85 @@ const bootRoom = () => {
   }
 };
 
+/* ------------------------------------------------------------- boot screen */
+/* Boot (2026-09-22): the #boot screen's bar and its removal. Two loader
+   stages feed it — BootScene's data + map backdrop, then the landing
+   room's own art — weighted by how much each actually downloads. done()
+   is called by the landing room's first enterRoom() (or WorldScene when
+   the map is home) and is idempotent; the wall-clock backstop means a
+   failed asset can never strand the player behind a loading screen. */
+const Boot = {
+  weight: { boot: 0.3, room: 0.7 },
+  got: { boot: 0, room: 0 },
+  over: false,
+  progress(stage, v) {
+    if (this.over) return;
+    this.got[stage] = Math.max(this.got[stage], v);
+    const p = this.got.boot * this.weight.boot + this.got.room * this.weight.room;
+    const fill = document.getElementById("boot-fill");
+    if (fill) fill.style.width = Math.round(p * 100) + "%";
+  },
+  done() {
+    if (this.over) return;
+    this.over = true;
+    const el = document.getElementById("boot");
+    const fill = document.getElementById("boot-fill");
+    if (fill) fill.style.width = "100%";
+    document.body.classList.remove("booting");
+    // a panel opened during boot (the creation funnel) may now let the
+    // canvas sleep, once the room under it has painted
+    setTimeout(() => Stage.check(), 0);
+    if (!el) return;
+    el.classList.add("gone");
+    el.setAttribute("aria-busy", "false");
+    setTimeout(() => el.remove(), 600);
+  },
+};
+setTimeout(() => Boot.done(), 20000);
+
+/* THE CANVAS SLEEPS UNDER A PANEL (2026-09-22). An open overlay covers
+   the room with a blurred scrim, and the room kept rendering 60 frames a
+   second behind it for as long as the player read — markers bouncing,
+   the character idling, the blur re-sampling a canvas that changed every
+   frame. While any overlay is open Phaser's loop SLEEPS: the last frame
+   stays on the canvas, which is all the scrim shows. It wakes the moment
+   the last overlay closes.
+   - Never before the landing room has painted (Boot.over, then a beat):
+     the creation funnel opens during boot, and sleeping then would leave
+     the canvas blank under it, and the room never built.
+   - Anything that must keep time while a panel is up — the dice tray,
+     the meters' count-ups, the flow map — runs on its own timers or
+     rAF, never on Phaser's clock. A scene switch requested while a panel
+     is up (the week-1 hallway handing over to the Capitol) simply lands
+     when the panel closes. */
+const Stage = {
+  t: 0,
+  covered: () => !!document.querySelector(".ovl:not(.hidden)"),
+  check() {
+    clearTimeout(this.t);
+    const g = window.__game;
+    if (!g || !g.loop || !Boot.over) return;
+    if (!this.covered()) {
+      if (!g.loop.running) g.loop.wake();
+      return;
+    }
+    this.t = setTimeout(() => {
+      if (this.covered() && g.loop.running) g.loop.sleep();
+    }, 150);
+  },
+};
+{
+  const mo = new MutationObserver(() => Stage.check());
+  for (const ov of document.querySelectorAll(".ovl"))
+    mo.observe(ov, { attributes: true, attributeFilter: ["class"] });
+}
+
+/* One reduced-motion test for code outside the session panel (which
+   keeps its own `reduced()`): the rooms' markers, the greeting's
+   typewriter, the flow map's motes. */
+const prefersReducedMotion = () => !!(window.matchMedia &&
+  matchMedia("(prefers-reduced-motion: reduce)").matches);
+
 /* ---------------------------------------------------------------- dialogue */
 const Dialog = {
   el: null, nameEl: null, textEl: null,
@@ -231,6 +310,7 @@ const Dialog = {
     this.el = document.getElementById("dialog");
     this.nameEl = document.getElementById("dialog-name");
     this.textEl = document.getElementById("dialog-text");
+    this.sayEl = document.getElementById("dialog-say");
     this.el.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.hide();
@@ -240,10 +320,16 @@ const Dialog = {
       if (e.key === "Escape") this.hide();
     });
   },
+  /* The typewriter is for the EYE. A screen reader gets the whole line
+     at once through a hidden live copy (#dialog-say): the box itself was
+     aria-live over a two-characters-per-frame typewriter, which read out
+     fragments. Under reduced motion the text simply appears. */
   show(name, text) {
     clearInterval(this.timer);
     this.nameEl.textContent = name;
     this.el.classList.remove("hidden");
+    if (this.sayEl) this.sayEl.textContent = name + ". " + text;
+    if (prefersReducedMotion()) { this.textEl.textContent = text; return; }
     this.textEl.textContent = "";
     let i = 0;
     this.timer = setInterval(() => {
@@ -413,6 +499,93 @@ const A11y = (() => {
   return { usable };
 })();
 
+/* ------------------------------------------------------------------- tips */
+/* TIPS (2026-09-22). `title=` is mouse-only — touch never shows it — and
+   several carried the game's own teaching: what the two meters ARE (a
+   stock you spend, a rate that decays), each bill's MEASURED hearing
+   rate (public data, which must stay reachable by everyone), who pays
+   each tax. An element with `data-tip` shows one styled tip:
+   - mouse: on hover, after a short delay;
+   - keyboard: on focus;
+   - touch: on a TAP, when the element does nothing else on tap (a
+     meter, a bill's row). An element whose tap already acts — a button —
+     keeps its tip for hover and focus only: every control here acts on
+     pointerdown, so there is no press left over to spend on a tip.
+   One #tip element, above its anchor (below when there is no room),
+   clamped inside the window; hidden on scroll, Escape, and any tap
+   elsewhere. */
+const Tip = (() => {
+  const el = document.createElement("div");
+  el.id = "tip";
+  el.setAttribute("role", "tooltip");
+  document.body.appendChild(el);
+  let anchor = null, timer = 0;
+  const CONTROL = 'button, [role="button"], a[href]';
+  const place = () => {
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect();
+    el.style.left = "0px";
+    el.style.top = "0px";
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const x = Math.max(8, Math.min(innerWidth - w - 8,
+      r.left + r.width / 2 - w / 2));
+    let y = r.top - h - 8;
+    if (y < 8) y = r.bottom + 8;
+    el.style.left = Math.round(x) + "px";
+    el.style.top = Math.round(y) + "px";
+  };
+  const show = (a) => {
+    clearTimeout(timer);
+    if (anchor && anchor !== a) anchor.removeAttribute("aria-describedby");
+    anchor = a;
+    el.textContent = a.dataset.tip;
+    el.classList.add("show");
+    a.setAttribute("aria-describedby", "tip");
+    place();
+  };
+  const hide = () => {
+    clearTimeout(timer);
+    if (anchor) anchor.removeAttribute("aria-describedby");
+    anchor = null;
+    el.classList.remove("show");
+  };
+  const tipOf = (t) => (t && t.closest && t.closest("[data-tip]")) || null;
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const a = tipOf(e.target);
+    if (!a || a === anchor || !a.dataset.tip) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => show(a), 350);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const a = tipOf(e.target);
+    if (!a || (e.relatedTarget && a.contains(e.relatedTarget))) return;
+    hide();
+  });
+  document.addEventListener("focusin", (e) => {
+    const a = tipOf(e.target);
+    if (a && a === e.target && a.dataset.tip && a.matches(":focus-visible"))
+      show(a);
+  });
+  document.addEventListener("focusout", (e) => {
+    if (anchor && anchor.contains(e.target)) hide();
+  });
+  /* capture phase: a control's own handler stops propagation, and a tap
+     anywhere must still close a tip left open elsewhere */
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") { hide(); return; }
+    const a = tipOf(e.target);
+    const ctl = e.target.closest && e.target.closest(CONTROL);
+    if (!a || !a.dataset.tip || a.matches(CONTROL) ||
+        (ctl && a.contains(ctl))) { hide(); return; }
+    if (a === anchor) hide(); else show(a);
+  }, true);
+  window.addEventListener("scroll", hide, true);
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+  return { hide };
+})();
+
 /* A design token, read from the stylesheet so a colour has ONE source.
    The flow map's motes and the legend swatch beside it used to be two
    different sets of hexes, one in each file. */
@@ -447,7 +620,7 @@ function buildRadialFlow(cfg) {
 
   const maxTotal = Math.max(...cfg.nodes.map((n) => n.total));
   const spokeG = mk("g", {});
-  const moteG = mk("g", {});
+  const moteG = mk("g", { class: "motes" });   // one glow for all of them
   const nodeG = mk("g", {});
   cfg.svg.append(spokeG, moteG, nodeG);
 
@@ -564,11 +737,22 @@ function buildRadialFlow(cfg) {
     pool.push({ el: c, free: true, t: 0, s: null });
   }
 
-  let last = 0;
+  /* THE LOOP RUNS ONLY WHILE THE MAP IS ON SCREEN (2026-09-22). It used
+     to reschedule itself every frame forever — one per map, three maps —
+     and read offsetParent each time to decide whether to do anything. It
+     now stops itself the frame it finds its map hidden, and MoneyPanel
+     WAKES it from every door that can show a map (the toolbar, a tab, the
+     drill and its back button, the List toggle) — explicitly, because an
+     IntersectionObserver was tried first and never fired at all in a
+     page without focus (the Browser pane), which would have left the map
+     silently frozen. Under reduced motion the motes do not travel at
+     all: the spokes and nodes carry the diagram. */
+  let last = 0, running = false;
   const frame = (now) => {
+    if (!cfg.isActive()) { running = false; last = 0; return; }
     const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
     last = now;
-    if (cfg.isActive()) {
+    {
       for (const s of streams) {
         s.acc += s.rate * dt;
         while (s.acc >= 1) {
@@ -603,7 +787,14 @@ function buildRadialFlow(cfg) {
     }
     requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  const start = () => {
+    if (running || prefersReducedMotion() || !cfg.isActive()) return;
+    running = true;
+    last = 0;
+    requestAnimationFrame(frame);
+  };
+  start();
+  return { wake: start };
 }
 
 /* --------------------------------------------------------- money overlay */
@@ -619,6 +810,11 @@ const MoneyPanel = {
     this.built = true;
     const $ = (id) => document.getElementById(id);
     const overlay = $("money-overlay");
+    // the three flow maps' loops stop while hidden; every door that can
+    // show one wakes them (after the DOM change has landed)
+    this.flows = [];
+    const wakeFlows = () =>
+      requestAnimationFrame(() => this.flows.forEach((f) => f && f.wake()));
 
     const views = {
       revenue: { el: $("mv-revenue"), tab: $("mt-revenue") },
@@ -644,6 +840,7 @@ const MoneyPanel = {
       $("rv-taxes").classList.toggle("hidden", s !== "taxes");
       if (cur === "revenue")
         $("money-title").textContent = subTitles[s];
+      wakeFlows();
     };
     const setView = (v) => {
       cur = v;
@@ -653,6 +850,7 @@ const MoneyPanel = {
       }
       if (v === "revenue") setSub("sources");   // always land on the split
       else $("money-title").textContent = views[v].title;
+      wakeFlows();
     };
     for (const k in views) {
       views[k].tab.addEventListener("pointerdown", (e) => {
@@ -669,6 +867,7 @@ const MoneyPanel = {
           setView(view);
           overlay.classList.remove("hidden");
           Dialog.hide();
+          wakeFlows();
         }
       });
     };
@@ -695,6 +894,7 @@ const MoneyPanel = {
         const listOn = $(rowsId).classList.toggle("hidden");
         $(mapId).classList.toggle("hidden", !listOn);
         btn.textContent = listOn ? "▤ List" : "◎ Map";
+        wakeFlows();
       });
     };
     // a map animates only while actually on screen — offsetParent is
@@ -757,7 +957,7 @@ const MoneyPanel = {
       "is spent through the same departments but never passes through " +
       "the general fund.";
 
-    buildRadialFlow({
+    this.flows.push(buildRadialFlow({
       svg: $("sources-svg"),
       detail: $("sources-detail"),
       dir: "in",
@@ -766,7 +966,7 @@ const MoneyPanel = {
       targetMotes: 110,          // same dollars-per-mote as money out
       isActive: activeWhen("sources-map"),
       defaultDetail: '<span class="dim">Three kinds of money pay for ' +
-        "everything the state does. Hover one to see what it is — and " +
+        "everything the state does. Hover or tap one to see what it is — and " +
         "tap General funds, the pulsing gold one, to meet the taxes " +
         "that fill it.</span>",
       nodes: FUNDS.map((f) => ({
@@ -780,7 +980,7 @@ const MoneyPanel = {
           pct(f.amt) + " of the budget<br>" +
           '<span class="dim">' + f.who + "</span>",
       })),
-    });
+    }));
   },
 
   buildBudget(data, $, wireListToggle, activeWhen) {
@@ -806,9 +1006,9 @@ const MoneyPanel = {
         share >= 0.05 ? share.toFixed(1) + "%" : "<0.1%";
       const seg = (v, cls, label) => v / max * 100 < 0.15 ? "" :
         '<i class="' + cls + '" style="width:' + (v / max * 100) +
-        '%" title="' + d.short + " — " + label + ": " + fmt(v) + '"></i>';
+        '%" data-tip="' + d.short + " — " + label + ": " + fmt(v) + '"></i>';
       row.innerHTML =
-        '<span class="bname" title="' + d.name + '">' + d.short + "</span>" +
+        '<span class="bname" data-tip="' + d.name + '">' + d.short + "</span>" +
         '<span class="bbar">' +
         seg(d.gf, "sw-gf", "general funds") +
         seg(d.fed, "sw-fed", "federal funds") +
@@ -829,14 +1029,14 @@ const MoneyPanel = {
 
     const pct = (v, d) => Math.round(100 * v / d.total) + "%";
     const C = flowColors();
-    buildRadialFlow({
+    this.flows.push(buildRadialFlow({
       svg: $("budget-svg"),
       detail: $("budget-detail"),
       dir: "out",
       hubText: fmt(data.total) + " appropriated",
       targetMotes: 110,          // steady-state, whole diagram
       isActive: activeWhen("budget-map"),
-      defaultDetail: '<span class="dim">Hover a department to see its ' +
+      defaultDetail: '<span class="dim">Hover or tap a department to see its ' +
         "budget and where the money comes from. Gold motes are general " +
         "funds, blue federal, green everything else.</span>",
       nodes: data.departments.map((d) => ({
@@ -855,7 +1055,7 @@ const MoneyPanel = {
           ") · Federal " + fmt(d.fed) + " (" + pct(d.fed, d) +
           ") · Other " + fmt(d.other) + " (" + pct(d.other, d) + ")</span>",
       })),
-    });
+    }));
   },
 
   buildRevenue(data, budget, $, wireListToggle, activeWhen) {
@@ -916,7 +1116,7 @@ const MoneyPanel = {
     for (const t of data.taxes) {
       const row = document.createElement("div");
       row.className = "brow";
-      row.title = t.who;
+      row.dataset.tip = t.who;
       const cls = t.stream === "income" ? "sw-gf"
         : t.stream === "get" ? "sw-get" : "sw-oth";
       row.innerHTML =
@@ -946,7 +1146,7 @@ const MoneyPanel = {
     // keep dollars-per-mote equal to the budget tab (110 motes ≙ $24.8B)
     const target = Math.round(110 * (data.total * 1e3) / budget.total);
 
-    buildRadialFlow({
+    this.flows.push(buildRadialFlow({
       svg: $("revenue-svg"),
       detail: $("revenue-detail"),
       dir: "in",
@@ -954,7 +1154,7 @@ const MoneyPanel = {
         (data.projected ? " projected" : " collected"),
       targetMotes: target,
       isActive: activeWhen("revenue-map"),
-      defaultDetail: '<span class="dim">Hover a tax to see what it is ' +
+      defaultDetail: '<span class="dim">Hover or tap a tax to see what it is ' +
         "projected to raise and who pays it. Gold motes are the income " +
         "tax and teal the GET — the two streams drawn on the island map " +
         "— green everything else.</span>",
@@ -969,7 +1169,7 @@ const MoneyPanel = {
           shareTxt(t.amt) + " of general-fund taxes<br>" +
           '<span class="dim">' + t.who + "</span>",
       })),
-    });
+    }));
   },
 };
 
@@ -1068,12 +1268,19 @@ const PolicyPanel = {
       for (const p of list) {
         const row = document.createElement("div");
         row.className = "prow" + (enacted.has(p.id) ? " on" : "");
-        row.title = "Source: " + p.src;
         row.innerHTML =
           // the same SYM drawing the creation cards and the hub use for
-          // this policy; the JSON's emoji is only the fallback
+          // this policy; the JSON's emoji is only the fallback. The
+          // SOURCE is printed, not hidden in a hover title (2026-09-22)
+          // — the same line the creation cards carry.
           '<span class="pname"><b>' + (sym(p.id) || p.icon) + " " + p.name +
-          "</b><small>" + p.who + "</small></span>" +
+          "</b><small>" + p.who + "</small>" +
+          // (esc() lives in SessionPanel's closure; this panel escapes
+          // its own — the source is content JSON, not trusted HTML)
+          (p.src ? '<small class="psrc">' + String(p.src).replace(/[&<>]/g,
+            (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch]) +
+            "</small>" : "") +
+          "</span>" +
           '<span class="ptag ' + kind + '">' +
           (kind === "cost" ? "−" : "+") + fmtK(p.amt) + "/yr</span>" +
           '<button class="pgo" type="button"></button>';
@@ -1082,7 +1289,13 @@ const PolicyPanel = {
           const on = enacted.has(p.id);
           row.classList.toggle("on", on);
           btn.textContent = on ? "✓ Passed" : "Enact";
-          btn.title = on ? "Tap to repeal" : "";
+          if (on) {
+            btn.dataset.tip = "Press again to repeal it.";
+            btn.setAttribute("aria-label", "Passed — press to repeal");
+          } else {
+            delete btn.dataset.tip;
+            btn.removeAttribute("aria-label");
+          }
         };
         btn.addEventListener("pointerdown", (e) => {
           e.stopPropagation();
@@ -1102,12 +1315,12 @@ const PolicyPanel = {
 
     $("prio-foot").textContent =
       "Price tags are annual, FY2027 scale — Hawaiʻi Appleseed and " +
-      "Budget Primer analyses (hover a row for its source). Spending " +
+      "Budget Primer analyses (each row names its source). Spending " +
       "here is stylized: real appropriations go through the " +
       "legislature's budget bill.";
     $("rpol-foot").textContent =
       "Revenue estimates are annual — Budget Primer tax-fairness " +
-      "analyses and ITEP (hover a row for its source). The GET is the " +
+      "analyses and ITEP (each row names its source). The GET is the " +
       "biggest lever but the most regressive; the reforms below it " +
       "raise money from those most able to pay.";
 
@@ -1324,7 +1537,7 @@ const SYM = (() => {
       '<path d="M8 5.5l8 4" opacity=".55"/>',
   };
   // aliases: characters and actions that share a drawing
-  S.kawaguchi = S.souza = S.chamber;
+  S.kawaguchi = S.souza = S.yamamoto = S.chamber;
   S["rep-x"] = S["sen-x"] = S.introducer;
   S.grange = S.briefcase;
   S.office = S.clipboard;
@@ -1942,15 +2155,16 @@ const SessionPanel = {
       if (!el) return;
       const ROWS = [
         { key: "support", cls: "hs-sup", label: "Support",
-          tip: "Public support — spent at hearings and floor votes. " +
-               "Loud, but only at specific moments." },
+          tip: "Public support — a stock you spend at hearings and " +
+               "floor votes. Loud, but only at specific moments." },
         { key: "influence", cls: "hs-inf", label: "Influence",
-          tip: "Political influence — your standing inside the " +
-               "building. Applies quietly to every scheduling decision." },
+          tip: "Political influence — a rate: your standing inside the " +
+               "building, applied quietly to every scheduling decision." },
       ];
       if (!el.dataset.built) {
         el.innerHTML = ROWS.map((r) =>
-          '<div class="hs-row ' + r.cls + '" title="' + esc(r.tip) + '">' +
+          '<div class="hs-row ' + r.cls + '" tabindex="0" data-tip="' +
+            escA(r.tip) + '">' +
           '<span class="hs-l">' + esc(r.label) + "</span>" +
           '<span class="hs-v"></span><span class="hs-t"></span>' +
           '<span class="hs-bar"><i></i></span></div>').join("");
@@ -1985,20 +2199,33 @@ const SessionPanel = {
     const renderMetrics = () => {
       const el = $("sess-metrics");
       if (!el) return;
-      const now = { rev: S.metrics.revenueK, sup: S.metrics.support,
+      /* the card is "net FY2027 revenue your campaign has moved", so it
+         counts ENACTED BILLS as well as event effects — the same sum the
+         budget chip gets (syncScore). It read revenueK alone, so a
+         campaign that passed $75M showed +$0/yr on its own scoreboard
+         while the chip and the gap bar both said otherwise. */
+      const now = { rev: S.metrics.revenueK + billsNetK(),
+                    sup: S.metrics.support,
                     inf: S.metrics.influence };
       if (!el.dataset.built) {
         el.innerHTML =
-          '<div class="metc m-rev" id="mc-rev" title="Net FY2027 ' +
-          'revenue your campaign has moved">' + sym("revenue") +
+          // tips, not titles: this is the module's teaching about what
+          // the two meters ARE, and a title never reaches a touch player
+          '<div class="metc m-rev" id="mc-rev" tabindex="0" data-tip="' +
+          'Net FY2027 revenue your campaign has moved: the bills it ' +
+          'enacted, plus whatever the session\'s events cost or found.">' +
+          sym("revenue") +
           '<span class="ml">Revenue</span><span class="mv"></span></div>' +
-          '<div class="metc m-sup" id="mc-sup" title="Spent at hearings ' +
-          'and floor votes — loud, but only at specific moments">' +
+          '<div class="metc m-sup" id="mc-sup" tabindex="0" data-tip="' +
+          "A STOCK you spend: hearings and floor votes draw on it, and " +
+          "every week you ask people to show up for a vote that is never " +
+          'called costs some. Loud, but only at specific moments.">' +
           sym("support") + '<span class="ml">Public Support</span>' +
           '<span class="mv"></span><span class="bar"><i></i></span></div>' +
-          '<div class="metc m-inf" id="mc-inf" title="Your standing ' +
-          'inside the building — applies quietly to every scheduling ' +
-          'decision">' + sym("influence") +
+          '<div class="metc m-inf" id="mc-inf" tabindex="0" data-tip="' +
+          "A RATE: your standing inside the building, applied quietly to " +
+          "every scheduling decision. It slips back toward where you " +
+          'started unless you spend weeks on it.">' + sym("influence") +
           '<span class="ml">Political Influence</span>' +
           '<span class="mv"></span><span class="bar"><i></i></span></div>';
         el.dataset.built = "1";
@@ -2040,12 +2267,20 @@ const SessionPanel = {
          old #sess-week row promoted INTO the title-chip slot — the two
          used to sit stacked, both naming the week, and the chip's own
          "The Campaign · Week N" said nothing the plate didn't. */
-      $("session-title").innerHTML =
-        '<span class="mast-no"><small>Week</small><b>' + S.week +
-        "</b></span>" +
-        '<span class="mast-t"><b>' + esc(cal.title) + "</b><small>" +
-        esc(cal.phase) + (dateStr ? " · " + esc(dateStr) : "") +
-        "</small></span>";
+      // after the last week the stamp reads SINE DIE — the Legislature's
+      // own word for it — not "Week 17 · Interim", a week that isn't one
+      const over = S.week > data.sineDieWeek;
+      const endDate = over ? dateRangeFor(data.sineDieWeek) : dateStr;
+      $("session-title").innerHTML = over
+        ? '<span class="mast-no"><small>Sine</small><b>die</b></span>' +
+          '<span class="mast-t"><b>The session has adjourned</b><small>' +
+          "Adjournment" + (endDate ? " · " + esc(endDate) : "") +
+          "</small></span>"
+        : '<span class="mast-no"><small>Week</small><b>' + S.week +
+          "</b></span>" +
+          '<span class="mast-t"><b>' + esc(cal.title) + "</b><small>" +
+          esc(cal.phase) + (dateStr ? " · " + esc(dateStr) : "") +
+          "</small></span>";
       renderTimeline();
       renderProgress($("sess-progress"), "show the calendar");
       renderHudTimeline();
@@ -2081,7 +2316,7 @@ const SessionPanel = {
           needAgenda ? "Set agenda ▸" :
           S.week === data.sineDieWeek ? "Leave the building ▸" :
           "End Turn ▸") +
-        (pending ? '<span class="tc-dot" title="This week still has ' +
+        (pending ? '<span class="tc-dot" data-tip="This week still has ' +
           'something unspent"></span>' : "");
       btn.title = interim ? "The session has adjourned" :
         needAgenda ? "Pick the bills you'll introduce, then the clock starts" :
@@ -2552,8 +2787,12 @@ const SessionPanel = {
       const max = parseFloat(getComputedStyle(panel).maxHeight);
       if (!(max > 0)) return;
       const chrome = panel.offsetHeight - body.offsetHeight;
+      // on a SHORT window (a landscape phone) the picture takes half,
+      // not two-thirds, or the first beat opens as a banner and a line
+      // of prose (2026-09-22)
+      const share = window.innerHeight < 560 ? 0.5 : ART_SHARE;
       body.style.setProperty("--art-max",
-        Math.round((max - chrome) * ART_SHARE) + "px");
+        Math.round((max - chrome) * share) + "px");
     };
     window.addEventListener("resize", sizeArt);
     const showDialogue = (dlgId, onDone) => {
@@ -3451,12 +3690,19 @@ const SessionPanel = {
         const s = data.skills[k];
         const v = S.skills[k];
         const honing = (S.train[k] || 0) > 0 && v < (skStart.cap || 6);
+        /* the level in WORDS as well as the numeral, and on its ladder
+           (2026-09-22): a bare "3" is the problem the creation cards'
+           rank word was added to solve, and the sheet — where you check
+           your instincts any week — never got it. Honing is printed too;
+           it was a hover title. */
         return '<div class="sk-row" data-skill="' + k + '">' +
-          '<span class="skpip' + (honing ? " honing" : "") + '" title="' +
-          v + (honing ? " — honing: one more week of practice" : "") +
-          '">' + v + "</span>" +
+          '<span class="skpip' + (honing ? " honing" : "") + '">' + v +
+          "</span>" +
           '<span class="skname"><b>' + sym(k) + " " + esc(s.name) +
-          "</b><small>" + esc(s.desc) + "</small></span>" +
+          '<span class="skrank">' + esc(rankOf(v)) + " · " + v + "/" + cap +
+          "</span></b><small>" + esc(s.desc) + "</small>" +
+          (honing ? '<small class="skhone">Honing — one more week of ' +
+            "practice raises it.</small>" : "") + "</span>" +
           (S.skillPts > 0
             ? '<button class="skup" type="button"' +
               (v >= cap ? " disabled" : "") + ">+</button>"
@@ -3506,7 +3752,7 @@ const SessionPanel = {
         (S.skillPts ? " <small>" + S.skillPts + " point" +
           (S.skillPts > 1 ? "s" : "") + " to spend</small>" : "") +
         "</div>" + sheetHtml() +
-        '<div class="sh-agenda-cap">Checks roll 2d6 + skill against a ' +
+        '<div class="sh-note">Checks roll 2d6 + skill against a ' +
         "difficulty. Support and influence add to the roll — so does " +
         "being the kind of advocate who noticed. What you practice " +
         "each week, you sharpen.</div>";
@@ -3530,6 +3776,12 @@ const SessionPanel = {
       const cal = calFor(S.week);
       const interim = S.week > data.sineDieWeek;
       let html = "";
+
+      // SINE DIE LEADS (2026-09-22). The verdict is the answer to the
+      // only question the module asks, so at adjournment it is the first
+      // thing on the panel — it used to sit at the very bottom, under
+      // every post-mortem, all of them forced open.
+      if (interim) html += sineDieHtml();
 
       // what the gauntlet did while the week turned — leads the hub,
       // because "did my bill move" is the question the player opened with
@@ -3641,7 +3893,7 @@ const SessionPanel = {
                 (dlLeft <= 0 ? "deadline week" :
                   "deadline week " + stDl.deadline) + "</b>" : "") +
               "</small></span>" +
-              '<button class="shgo" type="button"' +
+              '<button class="shgo act" type="button"' +
               (used ? " disabled" : "") +
               ">" + (used ? "—" : "Act ▸") + "</button></div>";
           }
@@ -3652,7 +3904,7 @@ const SessionPanel = {
             '"><span class="shname"><b>' + (sym(aid) || a.icon) + " " +
             esc(a.name) +
             "</b><small>" + esc(a.desc) + "</small></span>" +
-            '<button class="shgo" type="button"' +
+            '<button class="shgo act" type="button"' +
             (used ? " disabled" : "") + ">" +
             (used ? "—" : "Act ▸") + "</button></div>";
         }
@@ -3660,47 +3912,19 @@ const SessionPanel = {
         // the event granted nothing — say so, or the missing sections
         // read as a bug rather than a closed building
         html += '<div class="sh-sec">Openings</div>' +
-          '<div class="sh-agenda-cap">The week didn’t open any ' +
+          '<div class="sh-note">The week didn’t open any ' +
           "doors — no meeting stuck, no moment worth spending. End it " +
           "when you’re ready.</div>";
       }
 
-      // end of week
-      if (interim) {
-        const enacted = S.bills.filter((b) => b.status === "enacted");
-        const raised = enacted.filter((b) => b.kind === "gain")
-          .reduce((s, b) => s + b.amtK * b.amtScale, 0);
-        const funded = enacted.filter((b) => b.kind === "cost")
-          .reduce((s, b) => s + b.amtK * b.amtScale, 0);
-        const unheard = S.bills.filter(
-          (b) => b.death && b.death.cause === "never heard").length;
-        html += '<div class="sh-sec">Sine die</div>' +
-          '<div class="sess-score"><b>' + fmtK(raised) + "/yr raised · " +
-          fmtK(funded) + "/yr funded</b><small>" +
-          // the verdict keys on what actually passed — an earlier version
-          // branched on `funded` alone and told a player who had just
-          // enacted a revenue bill that nothing became law
-          (!enacted.length
-            ? "Nothing the campaign carried became law."
-            : funded && raised >= funded
-              ? "You paid for what you passed."
-              : funded
-                ? "You funded " + fmtK(funded - raised) + "/yr more than " +
-                  "you raised — next year's problem, and it always is."
-                : "You raised the money and funded none of it. The surplus " +
-                  "is somebody else's argument now.") +
-          "</small></div>" +
-          (unheard ? '<div class="sh-agenda-cap">' + unheard + " of your bills " +
-            "died without a hearing — no vote was taken, and no record " +
-            "exists of anyone killing them. That is how most bills die." +
-            "</div>" : "");
-      } else {
+      // end of week (at sine die the verdict and "start over" lead the hub)
+      if (!interim) {
         const skipping = !cal.noAction && S.actionWeek !== S.week &&
           (canPush || actIds.length);
         html += '<button class="sh-week-end" id="sess-next" type="button">' +
           (S.week === data.sineDieWeek ? "Leave the building ▸" :
             "End Week " + S.week + " ▸") + "</button>" +
-          (skipping ? '<div class="sh-agenda-cap">An opening is ' +
+          (skipping ? '<div class="sh-note">An opening is ' +
             "unused — ending the week lets it close.</div>" : "");
       }
 
@@ -3770,11 +3994,14 @@ const SessionPanel = {
           const trHtml = train("procedure");
           save();
           renderHead();
-          body.innerHTML =
+          // in the READER's own surface and type (2026-09-22): this prose
+          // was 13.5px Georgia straight on the panel while the voices
+          // under it rendered at the reader's 16.5px
+          body.innerHTML = '<div class="sd-scene sd-solo">' +
             '<div class="sd-speaker"><b>' + sym("push") +
             " Working the building</b>" +
             "<small>your action this week</small></div>" +
-            '<div class="sd-text">' + esc(
+            '<div class="sd-narr">' + esc(
               "You spend the week in " + ch.name + "'s outer office, on " +
               b.name + ". You are not the only one waiting.") + "</div>" +
             (ch.voice ? '<div class="sd-reply">' + esc(ch.voice) +
@@ -3785,7 +4012,7 @@ const SessionPanel = {
             " " + esc(b.name) +
             "'s influence +" + (G.pushInfluence || 4) +
             "</span></div>" + trHtml +
-            '<button class="sd-done" type="button">Continue ▸</button>';
+            '<button class="sd-done" type="button">Continue ▸</button></div>';
           body.querySelector(".sd-done").addEventListener("pointerdown",
             (e2) => { e2.stopPropagation(); SFX.choice(); renderHub(); });
         });
@@ -3794,6 +4021,11 @@ const SessionPanel = {
       if (next) next.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
         advanceWeek();
+      });
+      const fresh = body.querySelector("#sess-new");
+      if (fresh) fresh.addEventListener("pointerdown", (ev) => {
+        ev.stopPropagation();
+        armed(fresh, "Press again to start over", restartSession);
       });
     };
 
@@ -3860,13 +4092,14 @@ const SessionPanel = {
       const trHtml = train(a.trains);
       S.log.push({ week: S.week, action: aid });
       save();
-      body.innerHTML =
+      // the reader's surface and type, like every other scene
+      body.innerHTML = '<div class="sd-scene sd-solo">' +
         '<div class="sd-speaker"><b>' + (sym(aid) || a.icon) + " " +
         esc(a.name) +
         "</b><small>your action this week</small></div>" +
-        '<div class="sd-text">' + esc(a.result) + "</div>" +
+        '<div class="sd-narr">' + esc(a.result) + "</div>" +
         voiceHtml(a.voices) + fxHtml + trHtml +
-        '<button class="sd-done" type="button">Continue ▸</button>';
+        '<button class="sd-done" type="button">Continue ▸</button></div>';
       body.querySelector(".sd-done").addEventListener("pointerdown",
         (ev) => { ev.stopPropagation(); SFX.choice(); renderHub(); });
     };
@@ -4542,7 +4775,9 @@ const SessionPanel = {
       if (!live.length) return "";
       const proc = S.skills[(IN.clock || {}).skill || "procedure"] || 0;
       const fisc = S.skills[(IN.basis || {}).skill || "fiscal"] || 0;
-      let h = '<div class="sh-sec">' + sym("intel") +
+      // headings are TYPE, the rows carry the icons (2026-09-22): three of
+      // nine headings had one, and sym("event") marked two different things
+      let h = '<div class="sh-sec">' +
         " The week’s intel</div>";
       for (const b of live) {
         const sid = b.route[b.stage];
@@ -4588,7 +4823,7 @@ const SessionPanel = {
           '</small></span><span class="isrc">' + esc(src) +
           "</span></div>";
       }
-      h += '<div class="sh-agenda-cap">What you hear is only as good ' +
+      h += '<div class="sh-note">What you hear is only as good ' +
         "as your skills: Talk Story prices the chairs, Procedure reads " +
         "the clock, Policy Brain knows the measured numbers.</div>";
       return h;
@@ -4638,20 +4873,23 @@ const SessionPanel = {
         const w = carrierFor(b.route[b.stage]);
         if (w) onPoint[w] = (onPoint[w] || 0) + 1;
       }
-      let h = '<div class="sh-sec">' + sym("introducer") +
-        " Your introducers</div><div class=\"intro-strip\">";
+      let h = '<div class="sh-sec">Your introducers</div>' +
+        '<div class="intro-strip">';
       for (const k of ks) {
         const i = INTROS[k];
         const r = introRap(k);
         const n = onPoint[k] || 0;
-        h += '<div class="introc' + (n ? " active" : "") +
-          '" title="' + escA(i.voice || "") + '">' +
+        h += '<div class="introc' + (n ? " active" : "") + '"' +
+          (i.voice ? ' tabindex="0" data-tip="' + escA(i.voice) + '"' : "") +
+          ">" +
           '<div class="ic-top"><b>' + esc(i.name) + "</b><span>" +
           esc(i.role || "") + "</span></div>" +
           '<div class="ic-bar"><i style="width:' + r + '%"></i></div>' +
           '<div class="ic-foot"><span>Rapport <b>' + r + "</b></span>" +
           (n ? '<span class="ic-on">carrying ' + n + "</span>" :
-            '<span class="ic-off">waiting</span>') + "</div></div>";
+            '<span class="ic-off">' +
+              (S.week > data.sineDieWeek ? "adjourned" : "waiting") +
+              "</span>") + "</div></div>";
       }
       return h + "</div>";
     };
@@ -4750,13 +4988,13 @@ const SessionPanel = {
                   "it back. At " + Math.round((m.p || 0) * 100) +
                   "% it was close — and close is not a hearing." };
           case "diluted":
-            return { cls: "near", t: "Cut on the way through",
+            return { cls: "cut", t: "Cut on the way through",
               s: "Support was " + Math.round(m.support) + ". It cleared " +
                  "the committee at " + Math.round(m.scale * 100) +
                  "% of the ask — " + fmtK(Math.round(m.amtK * m.scale)) +
                  "/yr." };
           case "conf":
-            return { cls: m.ok ? "won" : "near",
+            return { cls: m.ok ? "won" : "cut",
               t: m.ok ? "Held the number in conference"
                       : "Halved in conference",
               s: "Rolled " + m.total + " against " + m.dc + " on " +
@@ -4779,7 +5017,7 @@ const SessionPanel = {
             // the recess has to be VISIBLE or the week reads as a bug.
             // Name the cost explicitly: a week skipped against a
             // deadline that did not move to make up for it.
-            return { cls: "near", t: "Recess — nothing moved",
+            return { cls: "quiet", t: "Recess — nothing moved",
               s: (m.floor
                 ? "Neither chamber convened, so it was never called."
                 : esc(m.chair || "The chair") + " scheduled nothing, " +
@@ -4791,14 +5029,14 @@ const SessionPanel = {
              a meter that moves while the panel is shut, with no line
              in the report, reads as a bug in the scoreboard. */
           case "burn":
-            return { cls: "near", campaign: true,
+            return { cls: "drift d-sup", campaign: true,
               t: "The base spent a week on the floor calendar",
               s: "A vote was expected and never called" +
                  (m.bills > 1 ? " on " + m.bills + " of your bills" : "") +
                  ". Public Support −" + m.n + ". Turnout is a stock: " +
                  "you spend it every week you ask people to show up." };
           case "decay":
-            return { cls: "near", campaign: true,
+            return { cls: "drift d-inf", campaign: true,
               t: "Influence slipped",
               s: "Political Influence −" + m.n + ", to " + m.to +
                  ". Standing inside the building is a rate, not a " +
@@ -4806,8 +5044,7 @@ const SessionPanel = {
           default: return null;
         }
       };
-      let h = '<div class="sh-sec">' + sym("event") +
-        " Since you ended the week</div>";
+      let h = '<div class="sh-sec">Since you ended the week</div>';
       for (const m of mv) {
         const l = line(m);
         if (!l) continue;
@@ -4853,9 +5090,51 @@ const SessionPanel = {
         "</div></div>";
     };
 
+    /* ---- SINE DIE: the session's verdict (2026-09-22).
+       It is the GAP — what the campaign promised (its priorities,
+       targetK) against what its enacted tax bills raise (raisedK), the
+       same two numbers gapHtml draws. It used to weigh enacted SPENDING
+       bills, and since priorities stopped being bills (2026-08-19) there
+       are none, so every game that passed anything was told "you raised
+       the money and funded none of it" — under a bar that said the
+       priorities were funded. The gap bar rides here at sine die rather
+       than in the ledger, so the card and the bar cannot disagree. */
+    const sineDieHtml = () => {
+      const want = targetK(), got = raisedK();
+      const enacted = S.bills.some((b) => b.status === "enacted");
+      const unheard = S.bills.filter(
+        (b) => b.death && b.death.cause === "never heard").length;
+      const verdict = !enacted
+        ? "Nothing the campaign carried became law."
+        : !want
+          ? "You raised " + fmtK(got) + "/yr with nothing promised " +
+            "against it — somebody else's argument now."
+          : got > want
+            ? "You raised what you promised, and " + fmtK(got - want) +
+              "/yr more."
+            : got === want
+              ? "You raised exactly what you promised."
+              : "You raised " + fmtK(got) + " of the " + fmtK(want) +
+                "/yr you promised. The other " + fmtK(want - got) +
+                "/yr of your priorities go unfunded — next year's " +
+                "problem, and it always is.";
+      return '<div class="sh-sec">Sine die</div>' +
+        '<div class="sess-score"><b>The session has adjourned</b>' +
+        "<small>" + verdict + "</small></div>" + gapHtml() +
+        (unheard ? '<div class="sh-note">' + unheard + " of your bills " +
+          "died without a hearing — no vote was taken, and no record " +
+          "exists of anyone killing them. That is how most bills die." +
+          "</div>" : "") +
+        // the one verb left, so it is the one gold plate on the screen,
+        // exactly as End Week is on every other week's
+        '<button class="sh-week-end" id="sess-new" type="button">' +
+        "Start a new session ▸</button>";
+    };
+
     const billLedger = (reveal) => {
       if (!S.bills.length) return "";
-      let h = gapHtml() + '<div class="sh-sec">Your bills</div>';
+      // at sine die (reveal) the gap bar rides with the verdict instead
+      let h = (reveal ? "" : gapHtml()) + '<div class="sh-sec">Your bills</div>';
       for (const b of S.bills) {
         const sid = b.route[b.stage] || b.route[b.route.length - 1];
         const st = stageOf(sid);
@@ -4896,14 +5175,16 @@ const SessionPanel = {
               Math.round(b.amtScale * 100) + "%" : "") +
             meterNote(b);
         }
+        // the measured rate is PUBLIC DATA and must reach every player —
+        // a tip, which a tap opens, not a title, which touch never shows
+        const unknown = b.status === "alive" && bstatFor(b, sid, ch) === "?";
         h += '<div class="bill-row ' + cls + '"' +
-          (ch ? ' title="' + escA(rateNote(ch.committee, b.kind, b.tax)) +
-            '"' : "") +
+          (ch ? ' tabindex="0" data-tip="' +
+            escA(rateNote(ch.committee, b.kind, b.tax)) + '"' : "") +
           '><span class="shname"><b>' + esc(b.name) + "</b><small>" +
-          line + '</small></span><span class="bstat" title="' +
-          (b.status === "alive" && bstatFor(b, sid, ch) === "?"
-            ? "You don&#39;t know this chair well enough yet."
-            : "") + '">' +
+          line + '</small></span><span class="bstat"' +
+          (unknown ? ' data-tip="You don&#39;t know this chair well ' +
+            'enough yet."' : "") + ">" +
           (b.status === "enacted" ? "✓" : b.status === "dead" ? "✕" :
             bstatFor(b, sid, ch)) + "</span></div>";
       }
@@ -5160,46 +5441,57 @@ const SessionPanel = {
        no longer read anywhere in the UI. */
     $("sess-foot").innerHTML =
       '<button id="sess-reset" type="button">Restart session</button>';
+    /* Two-press confirm for a destructive button: the first press arms
+       it and says what the second does, a timer disarms it. The copy
+       says PRESS, not "tap" — the same control is a click, a tap and an
+       Enter key (it said "(tap again)" to keyboard players). */
+    const armed = (btn, armText, go) => {
+      if (btn.dataset.arm) { go(); return; }
+      const rest = btn.textContent;
+      btn.dataset.arm = "1";
+      btn.textContent = armText;
+      setTimeout(() => {
+        if (!btn.isConnected) return;
+        btn.dataset.arm = "";
+        btn.textContent = rest;
+      }, 2500);
+    };
+    const restartSession = () => {
+      S = defaults();
+      seedChairs();
+      seedIntroducers();
+      save();
+      PolicyPanel.setExternal(0);
+      renderHead();
+      /* a new campaign starts back in the opening-week hallway — the
+         mirror of the advanceWeek swap — from WHEREVER the player is
+         standing. It only handled the Capitol, so a restart from the
+         Finance office or the map stayed there. */
+      {
+        const g = window.__game;
+        const cur = g && g.scene.getScenes(true)[0];
+        if (START_ROOM && cur && cur.scene.key !== "hallway")
+          cur.scene.switch("hallway");
+      }
+      /* A restart is a NEW CAMPAIGN and has to land on the creation
+         funnel, exactly the way boot does — it used to call runEvent()
+         directly, which walked straight past SELECT INSTINCTS and the
+         bill package into week 1's narrative with a default character
+         nobody chose (2026-08-19, user's call: "make sure the intro
+         screen pops up when the game is restarted too").
+         renderHub() is the funnel gate: its early bail sends an unspent
+         point pool to renderSelect and an unlocked agenda to
+         renderAgendaSelect, which is the documented rule — every entry
+         point goes through renderHub rather than testing for the
+         screens itself. The branch below mirrors boot exactly so the
+         two doors into a fresh campaign cannot drift apart. */
+      const cal = calFor(S.week);
+      if (cal.agenda && !S.agendaLocked) renderHub();
+      else runEvent();
+    };
     $("sess-reset").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
-      const b = e.target;
-      if (b.dataset.arm) {
-        S = defaults();
-        seedChairs();
-        seedIntroducers();
-        save();
-        PolicyPanel.setExternal(0);
-        renderHead();
-        // a new campaign starts back in the opening-week hallway —
-        // the mirror of the advanceWeek swap, same reason restart
-        // mirrors boot's funnel branch below
-        {
-          const cap = window.__game && window.__game.scene.getScene("capitol");
-          if (cap && cap.sys.isActive()) cap.scene.switch("hallway");
-        }
-        /* A restart is a NEW CAMPAIGN and has to land on the creation
-           funnel, exactly the way boot does — it used to call runEvent()
-           directly, which walked straight past SELECT INSTINCTS and the
-           bill package into week 1's narrative with a default character
-           nobody chose (2026-08-19, user's call: "make sure the intro
-           screen pops up when the game is restarted too").
-           renderHub() is the funnel gate: its early bail sends an unspent
-           point pool to renderSelect and an unlocked agenda to
-           renderAgendaSelect, which is the documented rule — every entry
-           point goes through renderHub rather than testing for the
-           screens itself. The branch below mirrors boot exactly so the
-           two doors into a fresh campaign cannot drift apart. */
-        const cal = calFor(S.week);
-        if (cal.agenda && !S.agendaLocked) renderHub();
-        else runEvent();
-      } else {
-        b.dataset.arm = "1";
-        b.textContent = "Really restart? (tap again)";
-        setTimeout(() => {
-          b.dataset.arm = "";
-          b.textContent = "Restart session";
-        }, 2500);
-      }
+      armed(e.currentTarget, "Really restart? Press again", restartSession);
     });
 
     /* ---- boot: reflect saved revenue + enacted bills, pop an unplayed week */
@@ -5319,6 +5611,7 @@ const IslandUI = {
 class BootScene extends Phaser.Scene {
   constructor() { super("boot"); }
   preload() {
+    this.load.on("progress", (v) => Boot.progress("boot", v * 0.4));
     this.load.json("world", "map/world.json?v=" + MAP_V);
     this.load.json("meta_oahu", "map/oahu.json?v=" + MAP_V);
     this.load.json("flows", "map/tax_flows.json?v=1");
@@ -5335,12 +5628,21 @@ class BootScene extends Phaser.Scene {
   }
   create() {
     const world = this.cache.json.get("world");
+    this.load.on("progress", (v) => Boot.progress("boot", 0.4 + v * 0.6));
     this.load.image("overview",
                     "assets/map/" + world.overview.file + "?v=" + MAP_V);
-    // Oʻahu is preloaded — the intro dives into the Capitol
-    const oahu = this.cache.json.get("meta_oahu");
-    for (const s of oahu.slices) {
-      this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=" + MAP_V);
+    /* Oʻahu's slices are preloaded ONLY when the map is the home view —
+       the intro dives into them. With a room as home the map is a side
+       trip, and its two slices were 7 MB of a ~11 MB boot the player
+       sat through before seeing the room (2026-09-22). WorldScene's
+       island manager fetches them the first time the map is actually
+       on screen; the overview backdrop, still loaded here, covers the
+       moment it takes. */
+    if (!START_ROOM) {
+      const oahu = this.cache.json.get("meta_oahu");
+      for (const s of oahu.slices) {
+        this.load.image("map_" + s.file, "assets/map/" + s.file + "?v=" + MAP_V);
+      }
     }
     this.load.image("capitol", "assets/sprites/capitol.png?v=2");
     this.load.image("marker", "assets/sprites/marker.png?v=1");
@@ -5402,7 +5704,9 @@ class WorldScene extends Phaser.Scene {
     this.setupCamera(world);
     this.setupInput();
 
-    this.ensureIsland("oahu");     // slices preloaded by BootScene
+    // slices preloaded by BootScene when the map is home; otherwise the
+    // island manager loads Oʻahu the first time the map is opened
+    if (!START_ROOM) this.ensureIsland("oahu");
     this.time.addEvent({ delay: 400, loop: true,
                          callback: () => this.manageIslands() });
     this.scale.on("resize", () => {
@@ -5418,6 +5722,8 @@ class WorldScene extends Phaser.Scene {
       this.stopIntro();
       this.parkOnCapitol(world);
       this.scene.switch(bootRoom());   // week 1 lands in the hallway
+    } else {
+      Boot.done();                     // the map IS the landing view
     }
   }
 
@@ -6648,6 +6954,7 @@ class RoomScene extends Phaser.Scene {
   constructor(cfg) { super(cfg.key); this.cfg = cfg; }
 
   preload() {
+    this.load.on("progress", (v) => Boot.progress("room", v));
     this.load.json(this.cfg.key + "_meta",
                    this.cfg.json + "?v=" + this.cfg.v);
     /* DEPTH BANDS, or the flat bake — NEVER BOTH. Which one this room
@@ -6807,14 +7114,30 @@ class RoomScene extends Phaser.Scene {
       poi: { size: 11, color: "#fff6dc" },
       exit: { size: 13, color: "#eaf2ff" },
     };
+    this.hot = [];
+    const still = prefersReducedMotion();
     for (const h of meta.hotspots) {
       // noExit: this room is the game's home — it has no way out and
       // draws no exit affordance (the Capitol, since 2026-08-26).
       if (h.kind === "exit" && this.cfg.noExit) continue;
       if (h.kind === "door") {
         const mk = this.add.image(h.px, h.py - 30, "marker");
-        this.tweens.add({ targets: mk, y: mk.y - 7, duration: 550,
-          yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        if (!still) this.tweens.add({ targets: mk, y: mk.y - 7,
+          duration: 550, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        this.markers.push(mk);
+      } else if (h.kind === "poi") {
+        /* A POINT OF INTEREST gets a marker too (2026-09-22) — a
+           QUIETER one: smaller, dimmer, and it breathes instead of
+           bouncing. Seven of them (the floor mosaic, the hallway's
+           directory, the office's desk…) had no marker at all, and
+           their names only appeared on hover, so a touch player had no
+           way to know they were there. The bounce stays the door's:
+           "this goes somewhere" is a different promise from "look". */
+        const mk = this.add.image(h.px, h.py - 22, "marker")
+          .setAlpha(0.75);
+        mk._small = true;
+        if (!still) this.tweens.add({ targets: mk, alpha: 0.35,
+          duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
         this.markers.push(mk);
       }
       const st = styles[h.kind] || styles.poi;
@@ -6862,33 +7185,11 @@ class RoomScene extends Phaser.Scene {
       }
       zone.on("pointerup", (pointer) => {
         if (pointer.getDistance() > 8 * DPR) return;   // 8 CSS px
-        const fire = () => {
-          if (h.kind === "exit") { this.leave(); return; }
-          const go = this.cfg.enter && this.cfg.enter[h.id];
-          if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
-          // cfg.action: {hotspotId: fn} — a hotspot that DOES something
-          // instead of showing its text (the hallway legislator opens
-          // the session panel). Same shape as `enter`, which stays the
-          // door-to-a-room map; the hotspot's text is the fallback for
-          // a config without the handler.
-          const act = this.cfg.action && this.cfg.action[h.id];
-          if (act) { Dialog.hide(); act(); return; }
-          Dialog.show(h.name, h.text);
-        };
-        /* WALK THERE FIRST, when the bake says there is a floor to
-           walk to. `h.at` is the approach point roomplan.approach()
-           spiralled out of the feature's own position, and the bake
-           asserts every one of them is reachable from spawn.
-
-           A hotspot with NO `at` acts on the tap, exactly as every
-           hotspot did before this existed — that is not a fallback,
-           it is the Capitol's level-3 doors, which you can see and
-           point at across the well from the storey below and cannot
-           walk to at all. */
-        if (this.actor && h.at) this.actor.goto(h.at[0], h.at[1], fire);
-        else fire();
+        this.useHotspot(h);
       });
+      this.hot.push({ h, lab, zone });
     }
+    this.buildHotLayer();
 
     /* TAP THE FLOOR TO WALK THERE. The pointer is in scene px and
        RoomPlan.plan() reads it back as the floor point under it —
@@ -6907,6 +7208,8 @@ class RoomScene extends Phaser.Scene {
         if (!this.actor) return;
         if (pointer.getDistance() > 8 * DPR) return;
         if (this.input.hitTestPointer(pointer).length) return;
+        const near = this.nearHotspot(pointer);
+        if (near) { this.useHotspot(near.h); return; }
         const q = this.plan.plan(pointer.worldX, pointer.worldY);
         this.actor.goto(q.u, q.v, null);
       });
@@ -7078,8 +7381,118 @@ class RoomScene extends Phaser.Scene {
     this.scene.switch(key);
   }
 
+  /* WHAT A HOTSPOT DOES — one path for a tap, a fat-finger tap and a
+     keyboard press. */
+  fireHotspot(h) {
+    if (h.kind === "exit") { this.leave(); return; }
+    const go = this.cfg.enter && this.cfg.enter[h.id];
+    if (go) { this.openThen(h.id, () => this.enterChild(go)); return; }
+    // cfg.action: {hotspotId: fn} — a hotspot that DOES something
+    // instead of showing its text (the hallway legislator opens the
+    // session panel). Same shape as `enter`, which stays the
+    // door-to-a-room map; the hotspot's text is the fallback for a
+    // config without the handler.
+    const act = this.cfg.action && this.cfg.action[h.id];
+    if (act) { Dialog.hide(); act(); return; }
+    Dialog.show(h.name, h.text);
+  }
+
+  /* WALK THERE FIRST, when the bake says there is a floor to walk to.
+     `h.at` is the approach point roomplan.approach() spiralled out of
+     the feature's own position, and the bake asserts every one of them
+     is reachable from spawn.
+     A hotspot with NO `at` acts at once, exactly as every hotspot did
+     before walking existed — that is not a fallback, it is the
+     Capitol's level-3 doors, which you can see and point at across the
+     well from the storey below and cannot walk to at all. */
+  useHotspot(h) {
+    if (this.actor && h.at) this.actor.goto(h.at[0], h.at[1], () => this.fireHotspot(h));
+    else this.fireHotspot(h);
+  }
+
+  /* THE KEYBOARD'S WAY INTO A ROOM (2026-09-22). Every hotspot is a
+     painted zone on the canvas, which no keyboard can reach — the arrow
+     keys walked the player around, and nothing then opened a door (the
+     Finance office, every hotspot's text) without a mouse or a tap. So
+     each hotspot also gets a REAL button in a DOM layer laid exactly over
+     its zone: Tab reaches it, the focus ring draws on the door itself,
+     Enter or Space press it (A11y) and it does what a tap does — walk
+     there first, then act — and a screen reader reads its name.
+     The layer takes no pointer events, so mouse and touch still land on
+     the canvas; it follows the room through fit(), and hides when the
+     room sleeps. */
+  buildHotLayer() {
+    const layer = document.createElement("div");
+    layer.className = "room-hot";
+    layer.setAttribute("aria-label", this.cfg.greet ? this.cfg.greet[0] : "Room");
+    for (const rec of this.hot) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "rh";
+      b.setAttribute("aria-label", rec.h.name +
+        (rec.h.kind === "exit" ? " — leave" : ""));
+      b.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.useHotspot(rec.h);
+      });
+      b.addEventListener("focus", () => rec.lab.setVisible(true));
+      b.addEventListener("blur", () => {
+        if (rec.h.kind !== "exit") rec.lab.setVisible(false);
+      });
+      rec.btn = b;
+      layer.appendChild(b);
+    }
+    document.body.appendChild(layer);
+    this.hotLayer = layer;
+    const show = (on) => { layer.hidden = !on; };
+    this.events.on("sleep", () => show(false));
+    this.events.on("wake", () => { show(true); this.placeHot(); });
+    this.events.once("shutdown", () => layer.remove());
+  }
+
+  /* each button onto its zone: world -> device px through the camera,
+     then / DPR, since the canvas sits at the page origin in CSS px */
+  placeHot() {
+    if (!this.hotLayer || !this.hot) return;
+    const cam = this.cameras.main;
+    const z = cam.zoom, mx = cam.scrollX + cam.width / 2,
+      my = cam.scrollY + cam.height / 2;
+    for (const rec of this.hot) {
+      const zn = rec.zone;
+      const x = ((zn.x - zn.width / 2) - mx) * z + cam.width / 2;
+      const y = ((zn.y - zn.height / 2) - my) * z + cam.height / 2;
+      const s = rec.btn.style;
+      s.left = x / DPR + "px";
+      s.top = y / DPR + "px";
+      s.width = zn.width * z / DPR + "px";
+      s.height = zn.height * z / DPR + "px";
+    }
+  }
+
+  /* A FAT-FINGER tap (2026-09-22): on a phone the Capitol is drawn so
+     small that a door's zone is ~20x34 CSS px, under half the 44px a
+     finger needs. A touch that lands on no zone is given to the nearest
+     one within 16 CSS px of it, instead of walking to the floor there.
+     Zones cannot simply be grown — at this scale they would overlap
+     their neighbours, and the bake asserts they never do. */
+  nearHotspot(pointer) {
+    if (!pointer.wasTouch || !this.hot) return null;
+    const cam = this.cameras.main;
+    const reach = 16 * DPR / cam.zoom;          // 16 CSS px, in world px
+    let best = null, bestD = reach;
+    for (const rec of this.hot) {
+      const zn = rec.zone;
+      const dx = Math.max(Math.abs(pointer.worldX - zn.x) - zn.width / 2, 0);
+      const dy = Math.max(Math.abs(pointer.worldY - zn.y) - zn.height / 2, 0);
+      const d = Math.hypot(dx, dy);
+      if (d <= bestD) { best = rec; bestD = d; }
+    }
+    return best;
+  }
+
   enterRoom() {
     document.body.classList.add("in-capitol");
+    Boot.done();                 // the landing room is up (idempotent)
     // every door shuts behind you: walking back out of a child room
     // must not find the door still standing open on its last frame
     for (const id in (this.swings || {})) {
@@ -7149,7 +7562,9 @@ class RoomScene extends Phaser.Scene {
       // marker is a fixed-resolution SPRITE, so its scale is the
       // CSS-space one unchanged or it would come out half size
       for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
-      for (const m of this.markers) m.setScale(Math.min(1 / zc, 1.6));
+      for (const m of this.markers)
+        m.setScale(Math.min(1 / zc, 1.6) * (m._small ? 0.72 : 1));
+      this.placeHot();
       return;
     }
     // SNAP the zoom so one baked pixel covers a WHOLE number of device
@@ -7178,7 +7593,9 @@ class RoomScene extends Phaser.Scene {
     cam.centerOn(this.meta.w / 2, this.meta.h / 2);
     const zc = zCss(z);
     for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
-    for (const m of this.markers) m.setScale(Math.min(1 / zc, 1.6));
+    for (const m of this.markers)
+      m.setScale(Math.min(1 / zc, 1.6) * (m._small ? 0.72 : 1));
+    this.placeHot();
   }
 
   leave() {
@@ -7281,7 +7698,9 @@ window.addEventListener("load", () => {
     // embedded-webview WebGL quirks.
     type: Phaser.CANVAS,
     parent: "game",
-    backgroundColor: DEEP_BLUE,
+    // the room's ink when a room is home, so the canvas does not flash
+    // the map's sea before the room paints; WorldScene sets its own sea
+    backgroundColor: START_ROOM ? "#0a0e18" : DEEP_BLUE,
     pixelArt: true,
     roundPixels: true,
     /* Scale.NONE + device-px game size + zoom 1/DPR. NOT Scale.RESIZE:
@@ -7332,6 +7751,34 @@ window.addEventListener("load", () => {
       g.scene.getScene("world").scene.switch(lastRoomKey);
     }
   });
+  /* The Map button says where it GOES (2026-09-22): "Map" from a room,
+     "Capitol" — and pressed — from the map. It read "Map" both ways, so
+     on the map nothing on screen said it was also the way back. Derived
+     from the page's own state, so no path can leave it stale. */
+  {
+    const btn = document.getElementById("tb-map");
+    const label = btn.querySelector(".tb-t");
+    const sync = () => {
+      const cls = document.body.classList;
+      const onMap = !cls.contains("in-capitol") && !cls.contains("booting");
+      btn.classList.toggle("on", onMap);
+      btn.setAttribute("aria-pressed", onMap ? "true" : "false");
+      if (label) label.textContent = onMap ? "Capitol" : "Map";
+      btn.title = onMap ? "Back into the Capitol"
+        : "The island map — zoom out to Oʻahu and the neighbor islands";
+    };
+    new MutationObserver(sync).observe(document.body,
+      { attributes: true, attributeFilter: ["class"] });
+    sync();
+  }
+  // the map's hint names the gestures of the device in hand — it said
+  // "Scroll or pinch" to a phone and "Tap" to a mouse
+  {
+    const hint = document.getElementById("hint");
+    if (hint) hint.textContent = matchMedia("(pointer: coarse)").matches
+      ? "Drag to pan · Pinch to zoom · Tap the Capitol"
+      : "Drag to pan · Scroll to zoom · Click the Capitol";
+  }
 
   /* Scale.NONE does not follow the window, so this is what RESIZE used
      to do for us — and it still ends in scale.resize(), which fires
