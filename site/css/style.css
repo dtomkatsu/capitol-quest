@@ -95,11 +95,33 @@
   /* — type on dark */
   --txt:         #eef2ff;   /* primary */
   --txt-2:       #dfe8ff;   /* on a plate */
+  --txt-2b:      #d2dbf5;   /* a half step down: labels beside primary
+                               type — creation chips, the rolling dice,
+                               a reply, a meter's name */
   --txt-3:       #b9c4ea;   /* secondary */
   --txt-4:       #9fb0e8;   /* tertiary — the workhorse muted blue */
   --txt-5:       #a8b4dd;   /* quieter still */
+  --txt-5b:      #96a1c9;   /* muted: a label that is ON but not the
+                               subject — calendar names, an off chip, a
+                               receipt's footnote */
   --txt-6:       #8b95bb;   /* the quietest legible step */
+  --txt-7:       #7c88b4;   /* past and done: a milestone behind you, a
+                               finished row, a source line (5.2:1 on a
+                               panel — the floor for small type) */
+
+  /* — type on PAPER: the warm ramp (2026-09-22). The reader and the
+     creation screens are a warm, literary surface (hue ~92 in OKLCH,
+     against the chrome's ~272), and their greys were loose literals —
+     two of them drifted copies of the reader's own --de-* locals. Each
+     step is a role in use, not an even ladder: prose, the reader's ink,
+     card body, narration, dim. .sd-scene's --de-ink/--de-dim point here. */
   --paper:       #f4f1e8;   /* warm off-white, the reader's prose */
+  --paper-2:     #ddd6c6;   /* the reader's ink: speech, voices */
+  --paper-3:     #cdc9ba;   /* card body on the creation screens */
+  --paper-4:     #b6afa0;   /* narration */
+  --paper-5:     #97917f;   /* dim: a speaker's role, the dash, the wait */
+  --cream:       #e9dfc4;   /* a quote, a lesson, the gap figure — paper
+                               with a little gold in it */
 
   /* — semantic, and these already carry meaning: do not repaint */
   --support:     #e8795c;   /* the street and the mic (organizer pole) */
@@ -332,14 +354,14 @@ html, body {
 }
 #chips button.off {
   border-color: rgba(255,255,255,.4);
-  color: #9aa4c8;
+  color: var(--txt-5b);
 }
 #chips button.hidden { display: none; }
 #get-chip { border-color: var(--flow-get); color: var(--teal-lt); }
 /* the stream-highlight toggle: white-gold, quieter than the two data
    chips — it changes presentation, not which data is on the map */
 #hi-chip { border-color: rgba(var(--gold-lt-rgb), .75); color: #fff3cf; }
-#hi-chip.off { border-color: rgba(255,255,255,.3); color: #8f99bd; }
+#hi-chip.off { border-color: rgba(255,255,255,.3); color: var(--txt-5b); }
 
 /* the flow receipt: hovering near a tax streak strokes its route and
    pins this to the cursor — source area, ZIP, dollars, share. Fixed and
@@ -366,9 +388,9 @@ html, body {
 #flow-tip b { color: var(--gold-lt); font-size: 12.5px; }
 #flow-tip.teal { border-color: rgba(79, 216, 200, .6); }
 #flow-tip.teal b { color: var(--teal-lt); }
-#flow-tip .ft-zip { color: #9aa4c8; }
+#flow-tip .ft-zip { color: var(--txt-5b); }
 #flow-tip .ft-line { margin-top: 2px; }
-#flow-tip .ft-note { margin-top: 1px; color: #9aa4c8; font-size: 11px; }
+#flow-tip .ft-note { margin-top: 1px; color: var(--txt-5b); font-size: 11px; }
 
 /* ---------- toolbar ---------- */
 #toolbar {
@@ -746,7 +768,7 @@ html, body {
   overflow: visible;
 }
 .flow-svg image { image-rendering: pixelated; }
-.flow-svg .spoke { stroke: #93a4dd; stroke-opacity: .13; fill: none; }
+.flow-svg .spoke { stroke: var(--txt-5b); stroke-opacity: .13; fill: none; }
 .flow-svg .mote { filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
 .flow-svg .node {
   fill: #1d2433;
@@ -781,11 +803,17 @@ html, body {
   stroke: var(--plate-deep);
   stroke-width: 3px;
 }
+/* the node badge is a SYM drawing (main.js buildRadialFlow) in the
+   colour of the money it names, set per node as --ic; when the node
+   lights gold (hover, selected) the drawing inks dark instead, or a gold
+   glyph would vanish into a gold circle */
 .flow-svg .icon {
-  text-anchor: middle;
-  dominant-baseline: central;
+  color: var(--ic, var(--txt-2));
   pointer-events: none;
+  transition: color .12s;
 }
+.flow-svg .node:hover + .icon,
+.flow-svg .node.sel + .icon { color: var(--gold-dk); }
 .flow-svg .node.drill {
   stroke: var(--gold);
   stroke-width: 2.5;
@@ -863,7 +891,7 @@ html, body {
 }
 .brow .bbar i:first-child { border-radius: 3px; }
 .brow .bval {
-  color: #c3cdf0;
+  color: var(--txt-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1323,14 +1351,14 @@ html, body {
   font-size: 9px;
   letter-spacing: .4px;
   line-height: 1.2;
-  color: #8fa0d8;
+  color: var(--txt-5b);
   white-space: nowrap;
   opacity: 0;
   transition: opacity .18s ease, color .14s ease;
 }
 .sess-timeline .stl-m.lbl-t .stl-lbl { bottom: 14px; }
 .sess-timeline .stl-m.lbl-b .stl-lbl { top: 14px; }
-.sess-timeline .stl-m.past .stl-lbl { color: #7c88b4; }
+.sess-timeline .stl-m.past .stl-lbl { color: var(--txt-7); }
 .sess-timeline .stl-m.cur-stage .stl-lbl {
   opacity: 1;
   color: var(--gold-lt);
@@ -1413,7 +1441,7 @@ html, body {
     inset 0 1px 0 rgba(255, 255, 255, .08),
     inset 0 10px 18px -14px var(--mct, rgba(var(--txt-4-rgb), .35)),
     0 2px 6px rgba(0, 0, 0, .35);
-  color: #eef3ff;
+  color: var(--txt);
 }
 #sess-metrics .metc > .sym {
   grid-column: 1;
@@ -1436,7 +1464,7 @@ html, body {
   line-height: 1.2;
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: #c8d6f6;
+  color: var(--txt-2b);
   text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
 }
 #sess-metrics .metc .mv {
@@ -1521,8 +1549,8 @@ html, body {
    hang under the TEXT so the colored names form a clean left column,
    every voice owns a color, and choices are numbered in signal red. */
 .sd-scene {
-  --de-ink: #ddd6c6;
-  --de-dim: #97917f;
+  --de-ink: var(--paper-2);
+  --de-dim: var(--paper-5);
   margin: 6px -6px 0;
   padding: 14px 18px 12px;
   background:
@@ -1723,7 +1751,7 @@ html, body {
   overflow: hidden;
   background: linear-gradient(158deg, #2b3670, #0d1234 72%);
   border: 1px solid rgba(var(--gold-rgb), .45);
-  color: #8fa0d8;                       /* the silhouette's own ink */
+  color: var(--txt-5b);                       /* the silhouette's own ink */
 }
 .sd-card .cc-art svg { display: block; width: 100%; height: 100%; }
 /* A PHOTOGRAPHIC portrait (cc-photo) fills the plate instead of being
@@ -1782,7 +1810,7 @@ html, body {
 }
 .sd-card .cc-note {
   margin-top: 8px;
-  color: #c3cdf0;
+  color: var(--txt-3);
   font-family: Georgia, "Iowan Old Style", Palatino, serif;
   font-size: 12.5px;
   line-height: 1.5;
@@ -1791,7 +1819,7 @@ html, body {
   margin-top: 7px;
   padding-top: 7px;
   border-top: 1px solid rgba(255, 255, 255, .12);
-  color: #e9dfc4;
+  color: var(--cream);
   font-family: Georgia, "Iowan Old Style", Palatino, serif;
   font-size: 12.5px;
   font-style: italic;
@@ -1923,7 +1951,7 @@ html, body {
   text-indent: -19px;
   font-size: 16.5px;
   line-height: 1.68;
-  color: var(--de-ink, #ddd6c6);
+  color: var(--de-ink, var(--paper-2));
   text-rendering: optimizeLegibility;
 }
 .sd-said:last-child, .sd-voice:last-child { margin-bottom: 4px; }
@@ -1937,10 +1965,10 @@ html, body {
   font-size: 12px;
   font-style: italic;
   letter-spacing: .2px;
-  color: var(--de-dim, #97917f);
+  color: var(--de-dim, var(--paper-5));
   margin-left: 6px;
 }
-.sd-dash { color: var(--de-dim, #97917f); margin: 0 8px; }
+.sd-dash { color: var(--de-dim, var(--paper-5)); margin: 0 8px; }
 /* YOUR line: cool against the room's warmth, with a hairline lead-in */
 .sd-said.sd-you .sd-who { color: #a9c6e8; }
 .sd-said.sd-you {
@@ -1948,7 +1976,7 @@ html, body {
   padding-top: 9px;
   border-top: 1px solid rgba(var(--paper-rgb), .08);
 }
-.sd-narr { color: #b6afa0; font-style: italic; }   /* unattributed prose */
+.sd-narr { color: var(--paper-4); font-style: italic; }   /* unattributed prose */
 
 /* voices: italic body, upright colored name. Each voice re-runs the
    entrance on its own inline delay (voiceHtml), so the instincts pipe
@@ -1968,7 +1996,7 @@ html, body {
 /* symbols inside the dialogue reader: sized off the serif line, and
    never allowed to force the hanging indent open */
 .sd-voice b .sym, .sd-who .sym { width: 14px; height: 14px; }
-.sd-who .sym { margin-right: 6px; color: var(--de-dim, #9c9584); }
+.sd-who .sym { margin-right: 6px; color: var(--de-dim, var(--paper-5)); }
 .sd-roll > b .sym { width: 13px; height: 13px; }
 .sd-roll small .sym { width: 12px; height: 12px; opacity: .8; }
 .sd-fx .sym { width: 13px; height: 13px; }
@@ -2073,7 +2101,7 @@ html, body {
 }
 .sd-choices button .sd-num {
   flex: 0 0 auto;
-  color: #8d8672;
+  color: var(--paper-5);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition: color .13s ease;
@@ -2145,7 +2173,7 @@ html, body {
   border-left-color: rgba(255,255,255,.25);
   color: var(--danger);
 }
-.sd-choices button.chk.spent:hover .sd-num { color: #8d8672; }
+.sd-choices button.chk.spent:hover .sd-num { color: var(--paper-5); }
 
 .sd-roll {
   margin: 2px 0 12px 19px;
@@ -2191,12 +2219,12 @@ html, body {
   border-radius: 4px;
 }
 .sd-roll.rolling { border-color: var(--txt-3); }
-.sd-roll.rolling b { color: #d6ddf5; }
+.sd-roll.rolling b { color: var(--txt-2b); }
 .sd-roll.rolling .sd-wait {
   font-weight: 400;
   font-style: italic;
   letter-spacing: .4px;
-  color: #97917f;
+  color: var(--paper-5);
   animation: wait-breathe 1s ease infinite;
 }
 @keyframes wait-breathe { 50% { opacity: .45; } }
@@ -2521,7 +2549,7 @@ html, body {
   margin: 0 0 6px;
   padding: 8px 12px 9px;
   background: rgba(0, 0, 0, .22);
-  border-left: 3px solid #8fa0d8;
+  border-left: 3px solid var(--txt-5b);
   border-radius: 7px;
   animation: sd-in .3s ease both;
 }
@@ -2597,7 +2625,7 @@ html, body {
   gap: 10px;
   padding: 2.5px 0;
   font-size: 10.5px;
-  color: #c3cdf0;
+  color: var(--txt-3);
   animation: pm-in .34s ease both;
 }
 @keyframes pm-in {
@@ -2642,7 +2670,7 @@ html, body {
   background: rgba(var(--gold-rgb), .07);
   border-left: 2px solid var(--gold-mut);
   border-radius: 4px;
-  color: #e8dfc4;
+  color: var(--cream);
   font-size: 10.5px;
   line-height: 1.55;
   font-style: italic;
@@ -2716,7 +2744,7 @@ html, body {
   display: block;
   margin-top: 3px;
   font-size: 11.5px;
-  color: #cfd8f5;
+  color: var(--txt-2b);
   line-height: 1.45;
 }
 
@@ -2871,7 +2899,7 @@ html, body {
   padding: 4px 10px;
   background: var(--ink-panel);
   border: 1px solid rgba(var(--gold-rgb), .8);
-  color: #d6ddf5;
+  color: var(--txt-2b);
   font-size: 10.5px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
@@ -3077,7 +3105,7 @@ html, body {
   flex: 1 1 auto;
   padding: 6px 9px 8px;
   background: var(--ink-deep);
-  color: #cdc9ba;
+  color: var(--paper-3);
   font-family: Georgia, "Iowan Old Style", Palatino, serif;
   font-size: 10px;
   line-height: 1.45;
@@ -3108,7 +3136,7 @@ html, body {
    number beside it, not as a second pole label. */
 .skc-rank {
   flex: 0 0 auto;
-  color: #cdc9ba;
+  color: var(--paper-3);
   font-family: Georgia, "Iowan Old Style", Palatino, serif;
   font-size: 11px;
   font-style: italic;
@@ -3157,7 +3185,7 @@ html, body {
    card's neutral ink so the eye still lands on + */
 .skc-foot .skdn {
   border-color: rgba(var(--paper-rgb), .4);
-  color: #cdc9ba;
+  color: var(--paper-3);
 }
 .skc:hover:not(.capped) .skc-foot .skup {
   background: color-mix(in srgb, var(--pole) 24%, transparent);
@@ -3265,7 +3293,7 @@ html, body {
   font-weight: var(--w-label);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: #d6ddf5;
+  color: var(--txt-2b);
 }
 .ag-step.now .ag-lbl { color: var(--gold-lt); }
 .ag-lede {
@@ -3357,7 +3385,7 @@ html, body {
   flex: 1 1 auto;
   padding: 7px 10px 8px;
   background: var(--ink-deep);
-  color: #cdc9ba;
+  color: var(--paper-3);
   font-family: Georgia, "Iowan Old Style", Palatino, serif;
   font-size: 10.5px;
   line-height: 1.5;
@@ -3365,7 +3393,7 @@ html, body {
 .agc-src {
   padding: 0 10px 9px;
   background: var(--ink-deep);
-  color: #6f7796;
+  color: var(--txt-7);
   font-size: 8.5px;
   line-height: 1.4;
   letter-spacing: .2px;
@@ -3463,7 +3491,7 @@ html, body {
   padding: 11px 18px 10px 14px;
   background: var(--ink-panel);
   border: 2px solid rgba(var(--paper-rgb), .45);
-  color: #d6ddf5;
+  color: var(--txt-2b);
   font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next",
     sans-serif;
   font-size: 14px;
@@ -3702,7 +3730,7 @@ html, body {
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
 }
-.introc .ic-off { color: #6f7796; font-style: italic; }
+.introc .ic-off { color: var(--txt-7); font-style: italic; }
 
 /* ---------- weekly intel ---------- */
 .intel-row {
@@ -3774,7 +3802,7 @@ html, body {
   border-radius: 8px;
   font-size: 12.5px;
   line-height: 1.45;
-  color: #cfd8f5;
+  color: var(--txt-2b);
 }
 /* effect readouts and buttons are HUD, not prose — they must NOT
    inherit the dialogue serif when they render inside .sd-scene */
@@ -3884,7 +3912,7 @@ html, body {
   text-transform: uppercase;
 }
 .sh-gap .gap-num {
-  color: #e9dfc4;
+  color: var(--cream);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -3977,7 +4005,7 @@ html, body {
   border-color: var(--plate-edge);
 }
 .sh-row.done .shname b { color: var(--txt-4); }
-.sh-row.done .shname b .sym { color: #7c88b4; }
+.sh-row.done .shname b .sym { color: var(--txt-7); }
 .sh-week-end {
   margin-top: 14px;
   width: 100%;
@@ -4178,7 +4206,7 @@ html, body {
   font-weight: var(--w-label);
   letter-spacing: var(--track-micro);
   text-transform: uppercase;
-  color: #dfeaff;
+  color: var(--txt-2);
   text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
 }
 /* a HAIRLINE, half the height of the timeline's track: this is a glance,

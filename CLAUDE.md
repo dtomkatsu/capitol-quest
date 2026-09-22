@@ -205,7 +205,8 @@ wired listeners onto both ids (PolicyPanel's close-on-open loop,
 SessionPanel's) now lists tb-budget alone.
 `buildRadialFlow()` is the shared component: Capitol sprite at the hub,
 nodes on an ellipse (r ∝ √total, dollar amount as a second label line,
-optional emoji icon inside circles with r ≥ 6.5, optional onClick +
+optional SYM badge inside circles with r ≥ 6.5 — see "Custom symbols"
+below — optional onClick +
 .drill pulse, `scatter` spreads beads on few-spoke views), density ∝
 dollars via the same Σ(rate × duration) normalisation as the map
 streams. targetMotes keeps DOLLARS-PER-MOTE EQUAL across views (110 ⇒
@@ -933,6 +934,24 @@ Rules that must survive edits:
   through it; the `icon` keys still in session.json / policies.json are
   only the fallback for anything unmapped. Add new drawings to `SYM` —
   never paste an emoji into main.js.
+  **The money overlay routes through it too, since 2026-09-22** — its
+  flow-map nodes were the last stock emoji in the UI (user's call:
+  "replace the emojis with new icons"). The funds are `moneybag`,
+  `usflag`, `jar` (special funds: money in a LABELLED jar, set aside by
+  law); the taxes are the `ICON` map in `buildRevenue()`, keyed by the
+  revenue.json tax name exactly (`cart`, `banknote`, `bed`, `castle`,
+  `tower`, `umbrella`, `bulb`, `house`, `bank`, `cigarette`, `bottle`,
+  `parcel`). All fifteen are drawn even though only the big nodes show
+  one today (r ≥ 6.5 — five taxes and the three funds): the next Council
+  on Revenues forecast can push a small tax over the floor. Two rules in
+  `buildRadialFlow`'s badge:
+  - It is a nested `<svg>` inked in the node's OWN stream colour
+    (`--ic`), and inks `--gold-dk` when the node lights gold — which is
+    a `.node + .icon` sibling rule, so the badge must stay appended
+    DIRECTLY after its circle.
+  - Its stroke THICKENS as it shrinks (`1.8 × 18/s`, capped at 2.6), or
+    a 10px badge is lint; `pointer-events: none` so a tap on the drawing
+    still lands on the node.
 - The weekly overlay auto-pops only while the week's narrative is
   unplayed; generic weeks cycle `genericEvents` by `(week-2) % n`.
   **Pinning does NOT shift the cycle** — the index is a pure function
@@ -1808,11 +1827,10 @@ Budget and Policies had kept a flat navy scrim and a plain panel.
   `0 8px 0` under the session panel. Both removed, and the session
   panel's opaque near-white border (`#e9e6da`) with them.
 - Tab icons are SYM drawings set from JS (`moneyin`, `moneyout`,
-  `target`, `revenue`); the markup's arrows and emoji are only the
-  pre-boot fallback. The policy rows use `sym(p.id)` like the creation
-  cards and the hub. **Not done: the flow-map NODES still carry emoji**
-  (💰🦅🧰 and twelve tax badges) — replacing them means drawing fifteen
-  new SYM glyphs, which is art, not polish.
+  `target`, `revenue`); the markup's plain labels are only the pre-boot
+  fallback. The policy rows use `sym(p.id)` like the creation
+  cards and the hub. The flow-map NODES followed the same day, with
+  fifteen new drawings — see "Custom symbols, not stock emoji".
 - The close button is a 36px target (44 on a phone); the tabs moved down
   26px to clear it. The sound toggle keeps its 13px glyph with a 33px hit
   area (`::after`, so the title chip does not move).
@@ -1837,11 +1855,48 @@ Budget and Policies had kept a flat navy scrim and a plain panel.
   flow fallback drifts from its token — run it after touching `:root`.**
 - Nine repeated colours with no token got one (`--sky`, `--gold-hi`,
   `--cost-lt`/`--gain-lt`, `--trend-up`/`--trend-down`, `--near`,
-  `--teal-lt`, `--bar-ink`). **Not done, deliberately:** the warm
-  reader/creation greys (`#d6ddf5`, `#cdc9ba`, `#97917f`, `#c3cdf0`,
-  `#8fa0d8`, `#9aa4c8`, `#7c88b4`). Each repeats 2-4 times, but each is
-  NEAR a `--txt-*` step without equalling it; tokenising them honestly
-  is designing a second text ramp, not a rename.
+  `--teal-lt`, `--bar-ink`).
+
+**The two TEXT RAMPS** (same day, user's call: "go to the seven off
+white text colors"). Seven repeated off-whites had no token because
+each sat NEAR a `--txt-*` step without equalling it. Measured in OKLCH,
+they were two families — five cool (hue ~272, the chrome's `--txt`
+family, sitting in its GAPS) and two warm (hue ~92, the `--paper`
+family, which had no ramp at all) — and each had near-copies of its
+own: 28 text-range greys in all, one pair a single unit apart
+(`#e9dfc4`/`#e8dfc4`), one a drifted fallback of the reader's own
+`--de-dim`.
+- **Cool: the existing six are untouched; three steps fill the gaps.**
+  `--txt-2b` (L89, creation labels, the rolling dice, a reply, a meter's
+  name), `--txt-5b` (L71, "on but not the subject": calendar names, off
+  chips, receipt footnotes, the portrait silhouette), `--txt-7` (L63,
+  past and done). The half-step names say where each sits on the ladder
+  without renumbering tokens the rest of the doc is written against.
+- **Warm: `--paper` gained a ramp** — `--paper-2` the reader's ink,
+  `--paper-3` creation card body, `--paper-4` narration, `--paper-5` dim
+  — plus `--cream` (a quote, a lesson, the gap figure: paper with a
+  little gold). Each step is a ROLE IN USE at the value it already had,
+  not an even ladder; the reader's art direction was deliberate.
+  `.sd-scene`'s `--de-ink`/`--de-dim` point here now, and so do their
+  fallbacks, which is what killed the drifted `#9c9584`.
+- **Done in two gated steps, and re-use the pattern.** Step 1 put
+  tokens in at EXACT existing values (gate: resolved sheet identical).
+  Step 2 snapped the near-copies onto the steps (gate: the resolved
+  sheets differ ONLY by the declared old -> new pairs, so no stray
+  colour can ride along). Every snap but one is under ~3 OKLab (x100;
+  ~2 is a just-noticeable difference): `--txt-2b` and `--txt-5b` are
+  their members' weighted centroids, within 2.8 of each.
+- **The one visible change is deliberate: `#6f7796` -> `--txt-7`**, a
+  lift of 6.3 on the creation cards' source lines and the introducer
+  strip's "off" label. It sat at 4.06:1 on the panel — under WCAG AA
+  for small type — and now reads 5.16:1, still well under the
+  descriptions above it.
+- **A new text colour goes ON a ramp step.** If no step fits, that is a
+  design decision — add a step with a role and a contrast check — never
+  a literal. The four repeated literals left in the sheet are one-
+  component art, not text: the drawn portrait's navy backdrop
+  (`#2b3670`/`#0d1234`), the reader's coral choice hover (`#ff8a72`) and
+  the introducer strip's rapport bar (`#6f7fb8`).
 
 **Type:**
 - The HUD has a 10px floor (toolbar labels, standing, trend, the fund

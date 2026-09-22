@@ -489,22 +489,36 @@ function buildRadialFlow(cfg) {
       class: "code", x: nx, y: ny + (above ? -r - (n.sub ? 17 : 6) : r + 11),
     });
     label.textContent = n.label;
-    nodeG.append(node, label);
+    /* the badge inside the circle: a SYM drawing (2026-09-22 — these
+       were stock emoji, the last in the UI), drawn in the colour of the
+       money the node carries and inked dark when the node lights gold.
+       It goes RIGHT AFTER the circle, because the hover/selected ink is a
+       `.node + .icon` sibling rule; pointer-events none, so a tap on the
+       drawing still lands on the node under it. Only on circles big
+       enough to hold one, the same floor the emoji had. */
+    const badge = n.icon && SYM[n.icon] && r >= 6.5 ? (() => {
+      const s = Math.max(10, r * 1.25);
+      // strokes thicken as the drawing shrinks, or a 10px badge is lint
+      const sw = Math.min(2.6, 1.8 * Math.max(1, 18 / s));
+      const g = mk("svg", {
+        class: "icon", x: nx - s / 2, y: ny - s / 2, width: s, height: s,
+        viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+        "stroke-width": sw, "stroke-linecap": "round",
+        "stroke-linejoin": "round", "aria-hidden": "true",
+      });
+      g.innerHTML = SYM[n.icon];
+      if (n.streams[0]) g.style.setProperty("--ic", n.streams[0].color);
+      return g;
+    })() : null;
+    nodeG.append(node);
+    if (badge) nodeG.append(badge);
+    nodeG.append(label);
     if (n.sub) {
       const sub = mk("text", {
         class: "subv", x: nx, y: ny + (above ? -r - 6 : r + 22),
       });
       sub.textContent = n.sub;
       nodeG.append(sub);
-    }
-    // emoji badge inside the circle, when the circle is big enough
-    if (n.icon && r >= 6.5) {
-      const ic = mk("text", {
-        class: "icon", x: nx, y: ny,
-        "font-size": Math.max(10, Math.round(r * 1.3)),
-      });
-      ic.textContent = n.icon;
-      nodeG.append(ic);
     }
     const show = () => {
       for (const el of nodeG.querySelectorAll(".node"))
@@ -712,18 +726,18 @@ const MoneyPanel = {
     const C = flowColors();
 
     const FUNDS = [
-      { name: "General funds", icon: "💰", color: C.gf, amt: gf,
+      { name: "General funds", icon: "moneybag", color: C.gf, amt: gf,
         onClick: drill,
         who: "The state's own checkbook, filled almost entirely by the " +
           "taxes Hawaiʻi collects — GET, income tax and the rest. The " +
           "Legislature can spend it on anything. Tap the money bag to " +
           "see the taxes." },
-      { name: "Federal funds", icon: "🦅", color: C.fed, amt: fed,
+      { name: "Federal funds", icon: "usflag", color: C.fed, amt: fed,
         who: "Money from Washington tied to specific programs — the " +
           "Medicaid match, SNAP, highway and airport aid, disaster " +
           "relief. It arrives with rules attached, which is why some " +
           "departments feel federal budget fights." },
-      { name: "All other funds", icon: "🧰", color: C.oth, amt: other,
+      { name: "All other funds", icon: "jar", color: C.oth, amt: other,
         who: "Money earmarked by law before it ever reaches the general " +
           "fund — special funds like the highway fund, university " +
           "tuition and harbor fees — plus bond borrowing for " +
@@ -753,7 +767,8 @@ const MoneyPanel = {
       isActive: activeWhen("sources-map"),
       defaultDetail: '<span class="dim">Three kinds of money pay for ' +
         "everything the state does. Hover one to see what it is — and " +
-        "tap 💰 General funds to meet the taxes that fill it.</span>",
+        "tap General funds, the pulsing gold one, to meet the taxes " +
+        "that fill it.</span>",
       nodes: FUNDS.map((f) => ({
         label: f.name,
         sub: fmt(f.amt) + " · " + pct(f.amt),
@@ -871,20 +886,21 @@ const MoneyPanel = {
     const color = (t) =>
       t.stream === "income" ? C.gf :
       t.stream === "get" ? C.get : C.oth;
-    // badges for the bigger sources (small nodes skip theirs)
+    // badges for the bigger sources (small nodes skip theirs) — SYM ids,
+    // keyed by the revenue.json tax name exactly, like SHORT above
     const ICON = {
-      "General excise & use (GET)": "🛒",
-      "Individual income tax": "💵",
-      "Transient accommodations (TAT)": "🏨",
-      "Estate tax": "🏰",
-      "Corporate income tax": "🏢",
-      "Insurance premiums tax": "☂️",
-      "Public service companies": "💡",
-      "Conveyance tax": "🏠",
-      "Banks & financial corporations": "🏦",
-      "Tobacco tax": "🚬",
-      "Liquor tax": "🍺",
-      "All other taxes & fees": "📦",
+      "General excise & use (GET)": "cart",
+      "Individual income tax": "banknote",
+      "Transient accommodations (TAT)": "bed",
+      "Estate tax": "castle",
+      "Corporate income tax": "tower",
+      "Insurance premiums tax": "umbrella",
+      "Public service companies": "bulb",
+      "Conveyance tax": "house",
+      "Banks & financial corporations": "bank",
+      "Tobacco tax": "cigarette",
+      "Liquor tax": "bottle",
+      "All other taxes & fees": "parcel",
     };
 
     $("revenue-hero").innerHTML =
@@ -1254,6 +1270,58 @@ const SYM = (() => {
       '1.5-1.5v-3.5"/>',
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.4"/>' +
       '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+    // the money overlay's kinds of money (2026-09-22) — the flow-map
+    // nodes carried stock emoji until these existed
+    moneybag: '<path d="M9.2 7.2 7.6 3.8c1.4.6 2.9.6 4.4 0 1.5.6 3 .6 ' +
+      '4.4 0l-1.6 3.4"/><path d="M9.2 7.2h5.6"/>' +
+      '<path d="M9.2 7.2C6.3 9.4 4.5 12.3 4.5 15.4c0 3 2.4 4.6 7.5 4.6' +
+      's7.5-1.6 7.5-4.6c0-3.1-1.8-6-4.7-8.2"/>' +
+      '<path d="M14 11.8c-.5-.8-3.6-1-3.8.5-.2 1.6 3.9 1.1 3.8 2.8-.1 ' +
+      '1.5-3.3 1.4-4 .4M12 10.6v1M12 16.4v1"/>',
+    usflag: '<path d="M5 21V3.5"/><path d="M5 4.5h14v9H5"/>' +
+      '<path d="M5 9h6V4.5M11 6.75h8M5 11.25h14"/>' +
+      '<circle cx="8" cy="6.75" r="1" fill="currentColor" stroke="none"/>',
+    // special funds: money in a LABELLED jar — set aside by law for one
+    // purpose before it ever reaches the general fund
+    jar: '<path d="M8.5 3.5h7"/>' +
+      '<path d="M9.5 3.5v2.3c-2.6 1.1-4 3.3-4 6.2v6.5A1.5 1.5 0 0 0 7 20h10' +
+      'a1.5 1.5 0 0 0 1.5-1.5V12c0-2.9-1.4-5.1-4-6.2V3.5"/>' +
+      '<path d="M5.5 11.5h13M5.5 16h13"/>' +
+      '<circle cx="12" cy="13.75" r="1.1" fill="currentColor" stroke="none"/>',
+    // the taxes (cart and house are shared with the policies)
+    banknote: '<rect x="3" y="6.5" width="18" height="11" rx="1.5"/>' +
+      '<circle cx="12" cy="12" r="2.6"/><path d="M6.2 9.5v5M17.8 9.5v5"/>',
+    bed: '<path d="M3.5 6v13.5M3.5 15.5h17v4"/>' +
+      '<path d="M9 15.5v-4h9.5a2 2 0 0 1 2 2v2"/>' +
+      '<rect x="5" y="11.6" width="3" height="2.6" rx="1.1"/>',
+    castle: '<path d="M3.5 20.5h17"/>' +
+      '<path d="M5 20.5V8h2.5v2H10V8h4v2h2.5V8H19v12.5"/>' +
+      '<path d="M10 20.5v-4a2 2 0 0 1 4 0v4"/>',
+    tower: '<path d="M5 20.5h14"/><path d="M7.5 20.5V7.5L12 4.5l4.5 3v13"/>' +
+      '<path d="M12 4.5V2.5"/>' +
+      '<path d="M10 10h.01M14 10h.01M10 13.2h.01M14 13.2h.01M10 16.4h.01' +
+      'M14 16.4h.01"/>',
+    umbrella: '<path d="M3.5 12.5a8.5 8 0 0 1 17 0"/>' +
+      '<path d="M3.5 12.5c1.4-1 2.9-1 4.25 0 1.4-1 2.85-1 4.25 0 ' +
+      '1.4-1 2.85-1 4.25 0 1.4-1 2.85-1 4.25 0"/>' +
+      '<path d="M12 12.5V18a1.9 1.9 0 0 1-3.8 0M12 4.5V3"/>',
+    bulb: '<path d="M9.2 15.5c0-2-2.7-3.3-2.7-6.5a5.5 5.5 0 0 1 11 0' +
+      'c0 3.2-2.7 4.5-2.7 6.5Z"/><path d="M9.5 18h5M10.5 20.5h3"/>' +
+      '<path d="M10.6 12.2 12 10.4l1.4 1.8" opacity=".6"/>',
+    bank: '<path d="M3.5 9.5 12 4l8.5 5.5Z"/>' +
+      '<path d="M4.5 20.5h15M5.5 18h13"/>' +
+      '<path d="M6.8 11.5v6.5M10.3 11.5v6.5M13.7 11.5v6.5M17.2 11.5v6.5"/>' +
+      '<circle cx="12" cy="7.4" r="1" fill="currentColor" stroke="none"/>',
+    cigarette: '<rect x="3" y="12.5" width="16" height="3.5" rx=".6"/>' +
+      '<path d="M7 12.5v3.5"/>' +
+      '<path d="M19.6 10.5c0-1.4 1.5-1.6 1.5-3s-1.5-1.6-1.5-3" opacity=".7"/>',
+    bottle: '<path d="M10 3.5h4"/>' +
+      '<path d="M10.5 3.5v3.3c0 1-2.5 2-2.5 4.7V19a1.5 1.5 0 0 0 1.5 1.5h5' +
+      'A1.5 1.5 0 0 0 16 19v-7.5c0-2.7-2.5-3.7-2.5-4.7V3.5"/>' +
+      '<path d="M8 13h8v3.5H8"/>',
+    parcel: '<path d="M12 3.5 20 7.5v9l-8 4-8-4v-9Z"/>' +
+      '<path d="M4 7.5l8 4 8-4M12 11.5v9"/>' +
+      '<path d="M8 5.5l8 4" opacity=".55"/>',
   };
   // aliases: characters and actions that share a drawing
   S.kawaguchi = S.souza = S.chamber;
