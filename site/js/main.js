@@ -6380,6 +6380,31 @@ window.addEventListener("load", () => {
             new RoomScene(ROOM_HALLWAY)],
   });
 
+  /* The toolbar's door to the overworld map (2026-09-21). The map still
+     runs asleep under every room (see START_ROOM / noExit above) — the
+     only thing missing was a way IN, since the stairs/Esc exit was
+     deliberately removed. This toggles between the map and whichever
+     room was active when it was pressed, rather than reintroducing
+     noExit's per-room exit hotspot. */
+  const ROOM_KEYS = ["capitol", "office", "hallway"];
+  let lastRoomKey = "capitol";
+  document.getElementById("tb-map").addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    document.querySelectorAll(".ovl:not(.hidden)")
+      .forEach((o) => o.classList.add("hidden"));
+    const g = window.__game;
+    if (document.body.classList.contains("in-capitol")) {
+      const active = g.scene.getScenes(true)
+        .find((s) => ROOM_KEYS.includes(s.scene.key));
+      if (!active) return;
+      lastRoomKey = active.scene.key;
+      document.body.classList.remove("in-capitol");
+      active.scene.switch("world");
+    } else {
+      g.scene.getScene("world").scene.switch(lastRoomKey);
+    }
+  });
+
   /* Scale.NONE does not follow the window, so this is what RESIZE used
      to do for us — and it still ends in scale.resize(), which fires
      the ScaleManager's "resize" event the scenes already listen on.
