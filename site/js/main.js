@@ -143,7 +143,23 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 45;   // 45 = hotspot approach points for tap-to-walk;
+const CAP_V = 50;   // 50 = the glass doors end at the first column, and
+                    // their own pier is gone (2026-09-22);
+                    // 49 = the loggia shafts' ends: a V foot on the
+                    // floor, the gallery slab's shade on everything
+                    // under the band, the door pier sheared with its
+                    // wall (2026-09-22);
+                    // 48 = every loggia column on the corner column's
+                    // line, under the fascia and plumb under its strip
+                    // (2026-09-22);
+                    // 47 = the layout framework: capitol_frame.json for
+                    // ?layout=1, pots' collision where the pots are
+                    // drawn, no phantom apex column (2026-09-22);
+                    // 46 = column tapers on the 1/K grid, posts to
+                    // the floor, the apex under its slab band, the
+                    // Diamond Head planter at the wing's corner, no
+                    // exit stairs (2026-09-22);
+                    // 45 = hotspot approach points for tap-to-walk;
                     // 44 = depth bands, mauka railing caps the
                     // makai runs at the two corner joints (2026-09-17)
                     // 41 = the OVER/SHIP re-bake (2026-08-28)
@@ -185,6 +201,9 @@ const HALL_V = 8;   // 8 = hotspot approach points for tap-to-walk;
    (tools/render_character.py) — its own token, because it changes
    on a different clock from any single room. */
 const CHAR_V = 1;
+/* ?layout=1 — the reference-frame overlay (FrameOverlay). A dev flag:
+   without it no frame file is fetched and nothing is drawn. */
+const FRAME_DEBUG = location.search.includes("layout=1");
 /* DEPTH BANDS. A room ships as layers at their own PLAN depth (u+v),
    and the character is sorted between them by its own. These two park
    the always-behind and always-in-front layers well outside any plan
@@ -6781,6 +6800,404 @@ class RoomPlan {
 const CHAR_SPEED = 2.4;
 const CHAR_STRIDE = 1.4;
 
+/* ?layout=1 — THE REFERENCE FRAME over the room (tools/roomframe.py;
+   2026-09-22, user: "figure out framework so we can more easily adjust
+   the layout of places like this capitol and have a reference frame or
+   something"). The browser twin of build/debug_layout_<room>.png: every
+   level's floor grid (1 plan unit, bold every 5), every run with its t0
+   end and name, every placed item with its id — plus a CURSOR READOUT
+   naming the level and plan (u, v) under the pointer (or, on a wall
+   face, the run, t and height) and the item it is over. The readout is
+   the point: a position can be READ off the room and written straight
+   into the bake's placement table. `L` hides/shows it, `C` copies it.
+
+   A room whose bake predates roomframe (no `frame` in its config) still
+   gets its basis's grid over its walk floor and the (u, v) readout, so
+   every room with a basis has a frame to talk in.
+
+   Drawn ONCE into a canvas texture like ?walk=1 — at up to 2x scene
+   resolution, so its type stays legible at the room's ~2 device px per
+   scene px. A level with a `window` (the Capitol's court, seen only
+   through the well) is clipped to it, and a `tall` item is marked at
+   the middle of its VISIBLE span: the same two rules the image follows,
+   so the two cannot disagree about where anything is. */
+class FrameOverlay {
+  constructor(scene, frame) {
+    this.s = scene;
+    this.P = scene.plan;
+    this.f = frame || FrameOverlay.fallback(scene);
+    if (!this.f) {
+      console.warn("[layout] " + scene.cfg.key + " has no basis in its "
+                   + "json — nothing to draw a frame in");
+      return;
+    }
+    this.lv = {};
+    for (const L of this.f.levels) this.lv[L.name] = L;
+    this.on = true;
+    this.marks = [];
+    this.text = "";
+    this.draw();
+    let tip = document.getElementById("frame-tip");
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.id = "frame-tip";
+      document.body.appendChild(tip);
+    }
+    this.tip = tip;
+    scene.input.on("pointermove", (p) => this.hover(p));
+    scene.input.on("gameout", () => this.hide());
+    scene.events.on("sleep", () => this.hide());
+    scene.events.on("shutdown", () => this.hide());
+    const kb = scene.input.keyboard;
+    if (kb) {
+      kb.on("keydown-L", () => this.toggle());
+      kb.on("keydown-C", () => this.copy());
+    }
+    console.log("[layout] " + scene.cfg.key + ": " + this.f.items.length
+                + " items, " + this.f.runs.length + " runs — hover to "
+                + "read a position; L toggles, C copies the readout");
+  }
+
+  static fallback(scene) {
+    const P = scene.plan;
+    if (!P.ready) return null;
+    return {
+      room: scene.cfg.key, axes: {}, runs: [], regions: [], items: [],
+      kinds: {},
+      levels: [{ name: "ground", dy: 0, color: cssVar("--gold", "#f2c14e"),
+                 floors: P.walk.allow.map((a) => [[a.u0, a.v0], [a.u1, a.v0],
+                                                   [a.u1, a.v1], [a.u0, a.v1]]) }],
+    };
+  }
+
+  static inPoly(poly, u, v) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [ui, vi] = poly[i], [uj, vj] = poly[j];
+      if ((vi > v) !== (vj > v) &&
+          u < (uj - ui) * (v - vi) / (vj - vi) + ui) inside = !inside;
+    }
+    return inside;
+  }
+
+  /* A plan point in a run's own frame — the inverse of roomframe's
+     Run.at(): t along it, s in plan units from its t0 end, n into the
+     room (the run's `into` normal). */
+  static locate(r, u, v) {
+    const du = r.b[0] - r.a[0], dv = r.b[1] - r.a[1];
+    const len = Math.hypot(du, dv);
+    const pu = u - r.a[0], pv = v - r.a[1];
+    const s = (pu * du + pv * dv) / len;
+    return { t: s / len, s, n: pu * r.into[0] + pv * r.into[1], len };
+  }
+
+  /* scene px -> plan, at height dy: RoomPlan.plan() generalised off the
+     floor, which is what a court seen through the well or a terrace a
+     storey up needs */
+  inv(x, y, dy) {
+    const b = this.P.basis;
+    const du = (x - b.cx) / b.sx, dv = (y + (dy || 0) - b.cy) / b.sy;
+    return { u: (dv + du) / 2, v: (dv - du) / 2 };
+  }
+
+  /* can level L be seen at scene px (x, y)? Only through its window */
+  seen(L, x, y) {
+    if (!L.window) return true;
+    const q = this.inv(x, y, L.window.dy);
+    return FrameOverlay.inPoly(L.window.poly, q.u, q.v);
+  }
+
+  kindColor(kind) {
+    const k = this.f.kinds || {};
+    return k[kind] || k["*"] || "#80ed99";
+  }
+
+  draw() {
+    const s = this.s, f = this.f, P = this.P;
+    const R = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const key = s.cfg.key + "_framedbg";
+    if (s.textures.exists(key)) s.textures.remove(key);
+    const cv = s.textures.createCanvas(key, Math.ceil(s.meta.w * R),
+                                       Math.ceil(s.meta.h * R));
+    const g = cv.getContext();
+    g.setTransform(R, 0, 0, R, 0, 0);
+    const rgba = (hex, a) => {
+      const n = parseInt(hex.slice(1), 16);
+      return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + ","
+             + (n & 255) + "," + a + ")";
+    };
+    const trace = (poly, dy) => poly.forEach(([u, v], i) => {
+      const q = P.px(u, v, dy);
+      if (i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y);
+    });
+    const clipWindow = (L) => {
+      if (!L.window) return;
+      g.beginPath();
+      trace(L.window.poly, L.window.dy);
+      g.closePath();
+      g.clip();
+    };
+    const label = (text, x, y, col, size) => {
+      g.font = "700 " + size + "px system-ui, sans-serif";
+      g.lineJoin = "round";
+      g.lineWidth = 2.4;
+      g.strokeStyle = "rgba(0,0,0,.9)";
+      g.strokeText(text, x, y);
+      g.fillStyle = col;
+      g.fillText(text, x, y);
+    };
+    const line = (a, b) => {
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+    };
+
+    // ---- floors + grid, each level clipped to its floors (and window)
+    for (const L of f.levels) {
+      if (!L.floors.length) continue;
+      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+      for (const poly of L.floors)
+        for (const [u, v] of poly) {
+          u0 = Math.min(u0, u); u1 = Math.max(u1, u);
+          v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+        }
+      g.save();
+      clipWindow(L);
+      g.beginPath();
+      for (const poly of L.floors) { trace(poly, L.dy); g.closePath(); }
+      g.clip();
+      g.fillStyle = rgba(L.color, 0.13);
+      g.fillRect(0, 0, s.meta.w, s.meta.h);
+      for (let k = Math.floor(u0); k <= Math.ceil(u1); k++) {
+        g.strokeStyle = rgba(L.color, k % 5 === 0 ? 0.8 : 0.3);
+        g.lineWidth = k % 5 === 0 ? 1.1 : 0.5;
+        line(P.px(k, v0, L.dy), P.px(k, v1, L.dy));
+      }
+      for (let k = Math.floor(v0); k <= Math.ceil(v1); k++) {
+        g.strokeStyle = rgba(L.color, k % 5 === 0 ? 0.8 : 0.3);
+        g.lineWidth = k % 5 === 0 ? 1.1 : 0.5;
+        line(P.px(u0, k, L.dy), P.px(u1, k, L.dy));
+      }
+      g.restore();
+      // each major line labelled at its first visible floor point
+      for (const axis of ["u", "v"]) {
+        const lo = axis === "u" ? u0 : v0, hi = axis === "u" ? u1 : v1;
+        const o0 = axis === "u" ? v0 : u0, o1 = axis === "u" ? v1 : u1;
+        for (let k = Math.ceil(lo / 5) * 5; k <= hi; k += 5)
+          for (let i = 0; i <= 60; i++) {
+            const o = o1 - (o1 - o0) * i / 60;
+            const uu = axis === "u" ? k : o, vv = axis === "u" ? o : k;
+            const q = P.px(uu, vv, L.dy);
+            if (L.floors.some((pl) => FrameOverlay.inPoly(pl, uu, vv))
+                && this.seen(L, q.x, q.y)) {
+              label(L.name + " " + axis + "=" + k, q.x + 3, q.y - 3,
+                    rgba(L.color, 1), 8);
+              break;
+            }
+          }
+      }
+    }
+
+    // ---- runs: the foot line, a tick every plan unit, name and t0
+    for (const r of f.runs) {
+      const L = this.lv[r.level];
+      const a = P.px(r.a[0], r.a[1], L.dy), b = P.px(r.b[0], r.b[1], L.dy);
+      const len = Math.hypot(r.b[0] - r.a[0], r.b[1] - r.a[1]);
+      const at = (t) => P.px(r.a[0] + (r.b[0] - r.a[0]) * t,
+                             r.a[1] + (r.b[1] - r.a[1]) * t, L.dy);
+      g.save();
+      clipWindow(L);
+      g.strokeStyle = rgba(L.color, 0.95);
+      g.lineWidth = 1.1;
+      line(a, b);
+      for (let k = 0; k <= Math.floor(len); k++) {
+        const q = at(k / len);
+        line(q, { x: q.x, y: q.y - (k % 5 === 0 ? 5 : 2.5) });
+      }
+      g.restore();
+      const vis = [];
+      for (let i = 0; i <= 40; i++) {
+        const q = at(i / 40);
+        if (this.seen(L, q.x, q.y)) vis.push(q);
+      }
+      if (vis.length) {
+        const q = vis[vis.length >> 1];
+        const hh = r.kind === "wall" ? Math.min(r.h * 0.55, 30) : 12;
+        label(r.name, q.x - 18, q.y - hh, rgba(L.color, 1), 9);
+      }
+      if (this.seen(L, a.x, a.y))
+        label("t0", a.x - 4, a.y + 9, rgba(L.color, 0.9), 7);
+    }
+
+    // ---- items: footprint, marker, id
+    for (const it of f.items) {
+      const L = this.lv[it.level];
+      const col = this.kindColor(it.kind);
+      let q = P.px(it.u, it.v, L.dy);
+      if (!this.seen(L, q.x, q.y)) {
+        if (!it.tall) continue;           // hidden, and nothing rises
+        const span = [];
+        for (let h = 0; h <= it.tall; h += 2) {
+          const p = P.px(it.u, it.v, L.dy + h);
+          if (this.seen(L, p.x, p.y)) span.push(p);
+        }
+        if (!span.length) continue;
+        q = span[span.length >> 1];
+      } else if (it.foot) {
+        g.save();
+        clipWindow(L);
+        g.strokeStyle = rgba(col, 0.8);
+        g.lineWidth = 0.8;
+        for (const reg of it.foot) {
+          g.beginPath();
+          if (reg.t === "disc") {
+            for (let k = 0; k <= 36; k++) {
+              const th = k * Math.PI / 18;
+              const p = P.px(reg.u + reg.r * Math.cos(th),
+                             reg.v + reg.r * Math.sin(th), L.dy);
+              if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y);
+            }
+          } else {
+            trace([[reg.u0, reg.v0], [reg.u1, reg.v0], [reg.u1, reg.v1],
+                   [reg.u0, reg.v1]], L.dy);
+            g.closePath();
+          }
+          g.stroke();
+        }
+        g.restore();
+      }
+      g.beginPath();
+      g.arc(q.x, q.y, 2.2, 0, Math.PI * 2);
+      g.fillStyle = col;
+      g.fill();
+      g.strokeStyle = "#000";
+      g.lineWidth = 0.8;
+      g.stroke();
+      label(it.id, q.x + 3, q.y - 4, col, 7.5);
+      this.marks.push({ it, x: q.x, y: q.y });
+    }
+    cv.refresh();
+    this.img = s.add.image(0, 0, key).setOrigin(0, 0).setScale(1 / R)
+                .setDepth(9100);
+  }
+
+  /* What is under scene px (x, y), in frame terms — the lines the tip
+     shows and C copies. */
+  readout(x, y) {
+    const f = this.f, out = [];
+    const fx = (n, d) => (n < 0 ? "-" : " ") + Math.abs(n).toFixed(d || 2);
+    // frame names and ids go into innerHTML: escape them like any text
+    const h = (v) => String(v).replace(/[&<>"]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c]);
+    // 1. a floor — levels top-down; a windowed one only through it
+    let hit = null;
+    for (const L of [...f.levels].sort((a, b) => b.dy - a.dy)) {
+      if (!this.seen(L, x, y)) continue;
+      const q = this.inv(x, y, L.dy);
+      if (L.floors.some((pl) => FrameOverlay.inPoly(pl, q.u, q.v))) {
+        hit = { L, q };
+        break;
+      }
+    }
+    if (hit) {
+      const { L, q } = hit;
+      out.push("<b>" + h(L.name) + " floor</b>   u " + fx(q.u) + "   v " + fx(q.v));
+      const reg = f.regions.find((r) => r.level === L.name
+        && r.kind === "floor" && FrameOverlay.inPoly(r.poly, q.u, q.v));
+      let best = null;
+      for (const r of f.runs) {
+        if (r.level !== L.name) continue;
+        const loc = FrameOverlay.locate(r, q.u, q.v);
+        if (loc.t < -0.001 || loc.t > 1.001) continue;
+        if (!best || Math.abs(loc.n) < Math.abs(best.loc.n))
+          best = { r, loc };
+      }
+      if (reg) out.push("in " + h(reg.name));
+      if (best)
+        out.push("off " + h(best.r.name) + "   t " + best.loc.t.toFixed(3)
+                 + "  s " + best.loc.s.toFixed(2) + "  n "
+                 + best.loc.n.toFixed(2));
+    } else {
+      // 2. a wall face: the run whose face holds the point
+      let best = null;
+      for (const r of f.runs) {
+        if (r.kind !== "wall") continue;
+        const L = this.lv[r.level];
+        if (!this.seen(L, x, y)) continue;
+        const a = this.P.px(r.a[0], r.a[1], L.dy);
+        const b = this.P.px(r.b[0], r.b[1], L.dy);
+        if (Math.abs(b.x - a.x) < 1e-6) continue;
+        const t = (x - a.x) / (b.x - a.x);
+        if (t < 0 || t > 1) continue;
+        const h = a.y + (b.y - a.y) * t - y;
+        if (h < 0 || h > r.h + 14) continue;
+        if (!best || h < best.h) best = { r, t, h };
+      }
+      if (best) {
+        const len = Math.hypot(best.r.b[0] - best.r.a[0],
+                               best.r.b[1] - best.r.a[1]);
+        out.push("<b>wall " + h(best.r.name) + "</b>   t " + best.t.toFixed(3)
+                 + "  s " + (best.t * len).toFixed(2) + "  h "
+                 + Math.round(best.h) + " px");
+      } else {
+        out.push("(no floor or wall frame here)");
+      }
+    }
+    // 3. the item under the pointer, and where its entry puts it
+    let near = null;
+    for (const m of this.marks) {
+      const d = Math.hypot(m.x - x, m.y - y);
+      if (d < 10 && (!near || d < near.d)) near = { m, d };
+    }
+    if (near) {
+      const it = near.m.it;
+      const at = Object.entries(it.at || {})
+        .map(([k, v]) => k + " " + v).join("  ");
+      out.push("▸ <b>" + h(it.id) + "</b>  " + h(it.kind)
+               + (it.derived ? " (derived)" : ""));
+      out.push("  " + h(it.frame) + "   " + h(at));
+    }
+    return out;
+  }
+
+  hover(p) {
+    if (!this.on || !this.tip) return;
+    const w = this.s.cameras.main.getWorldPoint(p.x, p.y);
+    const lines = this.readout(w.x, w.y);
+    this.text = lines.join("\n").replace(/<\/?b>/g, "");
+    this.tip.innerHTML = lines.join("\n")
+      + "\n<span style=\"opacity:.6\">L hide · C copy</span>";
+    this.tip.style.display = "block";
+    // the DOM wants CSS px: read the event's own client coords rather
+    // than dividing the canvas pointer by DPR (see updateHover)
+    const e = p.event || {};
+    const cx = e.clientX != null ? e.clientX : p.x / (window.devicePixelRatio || 1);
+    const cy = e.clientY != null ? e.clientY : p.y / (window.devicePixelRatio || 1);
+    const tw = this.tip.offsetWidth, th = this.tip.offsetHeight;
+    const left = cx + 16 + tw > window.innerWidth ? cx - 16 - tw : cx + 16;
+    const top = cy + 16 + th > window.innerHeight ? cy - 16 - th : cy + 16;
+    this.tip.style.left = Math.max(4, left) + "px";
+    this.tip.style.top = Math.max(4, top) + "px";
+  }
+
+  hide() { if (this.tip) this.tip.style.display = "none"; }
+
+  toggle() {
+    this.on = !this.on;
+    if (this.img) this.img.setVisible(this.on);
+    if (!this.on) this.hide();
+  }
+
+  copy() {
+    if (!this.text) return;
+    const done = () => {
+      if (this.tip) this.tip.innerHTML += "\n<b>copied</b>";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(this.text).then(done, () =>
+        console.log("[layout] " + this.text));
+    else console.log("[layout] " + this.text);
+  }
+}
+
 class Actor {
   constructor(scene, meta) {
     this.s = scene;
@@ -6957,6 +7374,10 @@ class RoomScene extends Phaser.Scene {
     this.load.on("progress", (v) => Boot.progress("room", v));
     this.load.json(this.cfg.key + "_meta",
                    this.cfg.json + "?v=" + this.cfg.v);
+    // the room's reference frame, only when ?layout=1 asks for it
+    if (FRAME_DEBUG && this.cfg.frame)
+      this.load.json(this.cfg.key + "_frame",
+                     this.cfg.frame + "?v=" + this.cfg.v);
     /* DEPTH BANDS, or the flat bake — NEVER BOTH. Which one this room
        has is in its json, which is still loading, so the decision is
        made on that file's own load event. A room baked with bands does
@@ -7057,6 +7478,9 @@ class RoomScene extends Phaser.Scene {
        rather than only in build/debug_walk_<room>.png. */
     this.plan = new RoomPlan(meta);
     if (location.search.includes("walk=1")) this.drawWalkOverlay();
+    if (FRAME_DEBUG)
+      this.frameOverlay = new FrameOverlay(this,
+        this.cache.json.get(this.cfg.key + "_frame") || null);
     if (this.plan.ready && this.textures.exists("char_sheet"))
       this.actor = new Actor(this, this.cache.json.get("char_meta"));
     this.keys = this.input.keyboard && this.input.keyboard.addKeys({
@@ -7610,6 +8034,8 @@ class RoomScene extends Phaser.Scene {
 const ROOM_CAPITOL = {
   key: "capitol", v: CAP_V,
   json: "map/capitol.json", img: "assets/map/capitol_scene.png",
+  // the layout's reference frame (tools/roomframe.py) for ?layout=1
+  frame: "map/capitol_frame.json",
   // The Capitol is the game's HOME view (2026-08-26): no exit hotspot,
   // no Esc-out — the map sleeps underneath, reachable again only by
   // code (drop noExit and restore exitTo's door if it ever comes back).

@@ -1,0 +1,1655 @@
+{
+ "room": "capitol",
+ "basis": {
+  "cx": 840,
+  "cy": 680,
+  "sx": 16.0,
+  "sy": 8.0
+ },
+ "axes": {
+  "+u": "Diamond Head",
+  "-u": "ʻEwa",
+  "+v": "makai",
+  "-v": "mauka",
+  "origin": "the rotunda centre",
+  "unit": "plan unit, ~1 m"
+ },
+ "levels": [
+  {
+   "name": "court",
+   "dy": -100.0,
+   "color": "#4fd1c5",
+   "floors": [
+    [
+     [
+      -9.0,
+      -9.0
+     ],
+     [
+      17.0,
+      -9.0
+     ],
+     [
+      17.0,
+      9.0
+     ],
+     [
+      -9.0,
+      9.0
+     ]
+    ]
+   ],
+   "window": {
+    "poly": [
+     [
+      -9,
+      -9
+     ],
+     [
+      17.0,
+      -9
+     ],
+     [
+      17.0,
+      9
+     ],
+     [
+      -9,
+      9
+     ]
+    ],
+    "dy": 0.0
+   }
+  },
+  {
+   "name": "L2",
+   "dy": 0.0,
+   "color": "#ffb454",
+   "floors": [
+    [
+     [
+      -11.5,
+      -11.5
+     ],
+     [
+      -9.0,
+      -11.5
+     ],
+     [
+      -9.0,
+      -9.0
+     ],
+     [
+      -11.5,
+      -9.0
+     ]
+    ],
+    [
+     [
+      -9.0,
+      -11.5
+     ],
+     [
+      17.0,
+      -11.5
+     ],
+     [
+      17.0,
+      -9.0
+     ],
+     [
+      -9.0,
+      -9.0
+     ]
+    ],
+    [
+     [
+      17.0,
+      -11.5
+     ],
+     [
+      19.5,
+      -11.5
+     ],
+     [
+      19.5,
+      -9.0
+     ],
+     [
+      17.0,
+      -9.0
+     ]
+    ],
+    [
+     [
+      17.0,
+      -9.0
+     ],
+     [
+      19.5,
+      -9.0
+     ],
+     [
+      19.5,
+      9.0
+     ],
+     [
+      17.0,
+      9.0
+     ]
+    ],
+    [
+     [
+      17.0,
+      9.0
+     ],
+     [
+      19.5,
+      9.0
+     ],
+     [
+      19.5,
+      11.5
+     ],
+     [
+      17.0,
+      11.5
+     ]
+    ],
+    [
+     [
+      -9.0,
+      9.0
+     ],
+     [
+      17.0,
+      9.0
+     ],
+     [
+      17.0,
+      11.5
+     ],
+     [
+      -9.0,
+      11.5
+     ]
+    ],
+    [
+     [
+      -11.5,
+      9.0
+     ],
+     [
+      -9.0,
+      9.0
+     ],
+     [
+      -9.0,
+      11.5
+     ],
+     [
+      -11.5,
+      11.5
+     ]
+    ],
+    [
+     [
+      -11.5,
+      -9.0
+     ],
+     [
+      -9.0,
+      -9.0
+     ],
+     [
+      -9.0,
+      9.0
+     ],
+     [
+      -11.5,
+      9.0
+     ]
+    ]
+   ]
+  },
+  {
+   "name": "L3",
+   "dy": 72.0,
+   "color": "#c792ea",
+   "floors": [
+    [
+     [
+      -11.5,
+      11.5
+     ],
+     [
+      -11.5,
+      -11.5
+     ],
+     [
+      -14.0,
+      -14.0
+     ],
+     [
+      -14.0,
+      14.0
+     ]
+    ],
+    [
+     [
+      -11.5,
+      -11.5
+     ],
+     [
+      11.5,
+      -11.5
+     ],
+     [
+      14.0,
+      -14.0
+     ],
+     [
+      -14.0,
+      -14.0
+     ]
+    ],
+    [
+     [
+      11.5,
+      -11.5
+     ],
+     [
+      19.5,
+      -11.5
+     ],
+     [
+      22.0,
+      -14.0
+     ],
+     [
+      14.0,
+      -14.0
+     ]
+    ]
+   ]
+  }
+ ],
+ "runs": [
+  {
+   "name": "L2.ewa",
+   "level": "L2",
+   "kind": "wall",
+   "a": [
+    -11.5,
+    11.5
+   ],
+   "b": [
+    -11.5,
+    -11.5
+   ],
+   "into": [
+    1.0,
+    0.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "L2.dh",
+   "level": "L2",
+   "kind": "wall",
+   "a": [
+    -11.5,
+    -11.5
+   ],
+   "b": [
+    11.5,
+    -11.5
+   ],
+   "into": [
+    -0.0,
+    1.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "L2.dh.wing",
+   "level": "L2",
+   "kind": "wall",
+   "a": [
+    11.5,
+    -11.5
+   ],
+   "b": [
+    19.5,
+    -11.5
+   ],
+   "into": [
+    -0.0,
+    1.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "L3.ewa",
+   "level": "L3",
+   "kind": "wall",
+   "a": [
+    -14.0,
+    14.0
+   ],
+   "b": [
+    -14.0,
+    -14.0
+   ],
+   "into": [
+    1.0,
+    0.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "L3.dh",
+   "level": "L3",
+   "kind": "wall",
+   "a": [
+    -14.0,
+    -14.0
+   ],
+   "b": [
+    14.0,
+    -14.0
+   ],
+   "into": [
+    -0.0,
+    1.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "L3.dh.wing",
+   "level": "L3",
+   "kind": "wall",
+   "a": [
+    14.0,
+    -14.0
+   ],
+   "b": [
+    22.0,
+    -14.0
+   ],
+   "into": [
+    -0.0,
+    1.0
+   ],
+   "h": 58.0
+  },
+  {
+   "name": "rail.ewa",
+   "level": "L2",
+   "kind": "rail",
+   "a": [
+    -9.0,
+    9.0
+   ],
+   "b": [
+    -9.0,
+    -9.0
+   ],
+   "into": [
+    -1.0,
+    -0.0
+   ],
+   "h": 21.0
+  },
+  {
+   "name": "rail.dh",
+   "level": "L2",
+   "kind": "rail",
+   "a": [
+    -9.0,
+    -9.0
+   ],
+   "b": [
+    17.0,
+    -9.0
+   ],
+   "into": [
+    0.0,
+    -1.0
+   ],
+   "h": 21.0
+  },
+  {
+   "name": "rail.east",
+   "level": "L2",
+   "kind": "rail",
+   "a": [
+    17.0,
+    -9.0
+   ],
+   "b": [
+    17.0,
+    9.0
+   ],
+   "into": [
+    1.0,
+    -0.0
+   ],
+   "h": 21.0
+  },
+  {
+   "name": "rail.makai",
+   "level": "L2",
+   "kind": "rail",
+   "a": [
+    17.0,
+    9.0
+   ],
+   "b": [
+    -9.0,
+    9.0
+   ],
+   "into": [
+    0.0,
+    1.0
+   ],
+   "h": 21.0
+  },
+  {
+   "name": "court.ewa",
+   "level": "court",
+   "kind": "wall",
+   "a": [
+    -11.4,
+    11.4
+   ],
+   "b": [
+    -11.4,
+    -11.4
+   ],
+   "into": [
+    1.0,
+    0.0
+   ],
+   "h": 100.0
+  },
+  {
+   "name": "court.dh",
+   "level": "court",
+   "kind": "wall",
+   "a": [
+    -11.4,
+    -11.4
+   ],
+   "b": [
+    19.4,
+    -11.4
+   ],
+   "into": [
+    -0.0,
+    1.0
+   ],
+   "h": 100.0
+  }
+ ],
+ "regions": [
+  {
+   "name": "court",
+   "level": "court",
+   "kind": "floor",
+   "poly": [
+    [
+     -9.0,
+     -9.0
+    ],
+    [
+     17.0,
+     -9.0
+    ],
+    [
+     17.0,
+     9.0
+    ],
+    [
+     -9.0,
+     9.0
+    ]
+   ]
+  },
+  {
+   "name": "L2.corner.N",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     -11.5,
+     -11.5
+    ],
+    [
+     -9.0,
+     -11.5
+    ],
+    [
+     -9.0,
+     -9.0
+    ],
+    [
+     -11.5,
+     -9.0
+    ]
+   ]
+  },
+  {
+   "name": "L2.walk.dh",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     -9.0,
+     -11.5
+    ],
+    [
+     17.0,
+     -11.5
+    ],
+    [
+     17.0,
+     -9.0
+    ],
+    [
+     -9.0,
+     -9.0
+    ]
+   ]
+  },
+  {
+   "name": "L2.corner.E",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     17.0,
+     -11.5
+    ],
+    [
+     19.5,
+     -11.5
+    ],
+    [
+     19.5,
+     -9.0
+    ],
+    [
+     17.0,
+     -9.0
+    ]
+   ]
+  },
+  {
+   "name": "L2.walk.east",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     17.0,
+     -9.0
+    ],
+    [
+     19.5,
+     -9.0
+    ],
+    [
+     19.5,
+     9.0
+    ],
+    [
+     17.0,
+     9.0
+    ]
+   ]
+  },
+  {
+   "name": "L2.corner.S",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     17.0,
+     9.0
+    ],
+    [
+     19.5,
+     9.0
+    ],
+    [
+     19.5,
+     11.5
+    ],
+    [
+     17.0,
+     11.5
+    ]
+   ]
+  },
+  {
+   "name": "L2.walk.makai",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     -9.0,
+     9.0
+    ],
+    [
+     17.0,
+     9.0
+    ],
+    [
+     17.0,
+     11.5
+    ],
+    [
+     -9.0,
+     11.5
+    ]
+   ]
+  },
+  {
+   "name": "L2.corner.W",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     -11.5,
+     9.0
+    ],
+    [
+     -9.0,
+     9.0
+    ],
+    [
+     -9.0,
+     11.5
+    ],
+    [
+     -11.5,
+     11.5
+    ]
+   ]
+  },
+  {
+   "name": "L2.walk.ewa",
+   "level": "L2",
+   "kind": "floor",
+   "poly": [
+    [
+     -11.5,
+     -9.0
+    ],
+    [
+     -9.0,
+     -9.0
+    ],
+    [
+     -9.0,
+     9.0
+    ],
+    [
+     -11.5,
+     9.0
+    ]
+   ]
+  },
+  {
+   "name": "L3.walk.ewa",
+   "level": "L3",
+   "kind": "floor",
+   "poly": [
+    [
+     -11.5,
+     11.5
+    ],
+    [
+     -11.5,
+     -11.5
+    ],
+    [
+     -14.0,
+     -14.0
+    ],
+    [
+     -14.0,
+     14.0
+    ]
+   ]
+  },
+  {
+   "name": "L3.walk.dh",
+   "level": "L3",
+   "kind": "floor",
+   "poly": [
+    [
+     -11.5,
+     -11.5
+    ],
+    [
+     11.5,
+     -11.5
+    ],
+    [
+     14.0,
+     -14.0
+    ],
+    [
+     -14.0,
+     -14.0
+    ]
+   ]
+  },
+  {
+   "name": "L3.walk.wing",
+   "level": "L3",
+   "kind": "floor",
+   "poly": [
+    [
+     11.5,
+     -11.5
+    ],
+    [
+     19.5,
+     -11.5
+    ],
+    [
+     22.0,
+     -14.0
+    ],
+    [
+     14.0,
+     -14.0
+    ]
+   ]
+  }
+ ],
+ "items": [
+  {
+   "id": "senate",
+   "kind": "door",
+   "level": "L2",
+   "u": -11.5,
+   "v": 9.5497,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.0848
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.ewa.office1",
+   "kind": "office",
+   "level": "L2",
+   "u": -11.5,
+   "v": 6.3494,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.2239
+   },
+   "derived": true
+  },
+  {
+   "id": "wam",
+   "kind": "door",
+   "level": "L2",
+   "u": -11.5,
+   "v": 3.1491,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.3631
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.ewa.bench1",
+   "kind": "bench",
+   "level": "L2",
+   "u": -11.5,
+   "v": -2.5,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.6087
+   },
+   "derived": true,
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": -11.5,
+     "u1": -11.125,
+     "v0": -3.5621,
+     "v1": -1.4379
+    }
+   ]
+  },
+  {
+   "id": "L2.ewa.office2",
+   "kind": "office",
+   "level": "L2",
+   "u": -11.5,
+   "v": -7.1913,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.8127
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.ewa.alcove1",
+   "kind": "alcove",
+   "level": "L2",
+   "u": -11.5,
+   "v": -9.6212,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.9183
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.hall1",
+   "kind": "hall",
+   "level": "L2",
+   "u": -9.5796,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.0835
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.office1",
+   "kind": "office",
+   "level": "L2",
+   "u": -7.1079,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.191
+   },
+   "derived": true
+  },
+  {
+   "id": "senpres",
+   "kind": "door",
+   "level": "L2",
+   "u": -2.5,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.3913
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.bench1",
+   "kind": "bench",
+   "level": "L2",
+   "u": 3.0241,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.6315
+   },
+   "derived": true,
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": 1.9691,
+     "u1": 4.0934,
+     "v0": -11.5,
+     "v1": -11.125
+    }
+   ]
+  },
+  {
+   "id": "senclerk",
+   "kind": "door",
+   "level": "L2",
+   "u": 6.4744,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.7815
+   },
+   "derived": true
+  },
+  {
+   "id": "gov",
+   "kind": "lift",
+   "level": "L2",
+   "u": 9.7997,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.9261
+   },
+   "derived": true
+  },
+  {
+   "id": "speaker",
+   "kind": "door",
+   "level": "L3",
+   "u": -14.0,
+   "v": 11.8193,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.0779
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.office1",
+   "kind": "office",
+   "level": "L3",
+   "u": -14.0,
+   "v": 8.3885,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.2004
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.bench1",
+   "kind": "bench",
+   "level": "L3",
+   "u": -14.0,
+   "v": 4.8953,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.3252
+   },
+   "derived": true,
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": -13.9922,
+     "u1": -13.6172,
+     "v0": 3.8363,
+     "v1": 5.9606
+    }
+   ]
+  },
+  {
+   "id": "houseclerk",
+   "kind": "door",
+   "level": "L3",
+   "u": -14.0,
+   "v": 1.027,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.4633
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.bench2",
+   "kind": "bench",
+   "level": "L3",
+   "u": -14.0,
+   "v": -5.0,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.6786
+   },
+   "derived": true,
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": -14.0,
+     "u1": -13.625,
+     "v0": -6.0621,
+     "v1": -3.9379
+    }
+   ]
+  },
+  {
+   "id": "L3.ewa.alcove1",
+   "kind": "alcove",
+   "level": "L3",
+   "u": -14.0,
+   "v": -11.0,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.8929
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.dh.hall1",
+   "kind": "hall",
+   "level": "L3",
+   "u": -11.0,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.1071
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.dh.office1",
+   "kind": "office",
+   "level": "L3",
+   "u": -5.0,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.3214
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.dh.bench1",
+   "kind": "bench",
+   "level": "L3",
+   "u": 0.4761,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.517
+   },
+   "derived": true,
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": -0.5934,
+     "u1": 1.5309,
+     "v0": -14.0,
+     "v1": -13.625
+    }
+   ]
+  },
+  {
+   "id": "finance",
+   "kind": "door",
+   "level": "L3",
+   "u": 3.7309,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.6332
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.dh.office2",
+   "kind": "office",
+   "level": "L3",
+   "u": 6.5482,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.7339
+   },
+   "derived": true
+  },
+  {
+   "id": "house",
+   "kind": "door",
+   "level": "L3",
+   "u": 9.3654,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.8345
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.dh.hall2",
+   "kind": "hall",
+   "level": "L3",
+   "u": 12.4952,
+   "v": -14.0,
+   "frame": "L3.dh",
+   "at": {
+    "t": 0.9463
+   },
+   "derived": true
+  },
+  {
+   "id": "planter.dh",
+   "kind": "planter",
+   "level": "L2",
+   "u": 18.25,
+   "v": -10.25,
+   "frame": "L2.corner.E",
+   "at": {
+    "fu": 0.5,
+    "fv": 0.5
+   },
+   "band": "front",
+   "foot": [
+    {
+     "t": "disc",
+     "u": 18.25,
+     "v": -10.25,
+     "r": 0.7071
+    }
+   ]
+  },
+  {
+   "id": "planter.ewa",
+   "kind": "planter",
+   "level": "L2",
+   "u": -10.25,
+   "v": 10.25,
+   "frame": "L2.corner.W",
+   "at": {
+    "fu": 0.5,
+    "fv": 0.5
+   },
+   "band": "front",
+   "foot": [
+    {
+     "t": "disc",
+     "u": -10.25,
+     "v": 10.25,
+     "r": 0.7071
+    }
+   ]
+  },
+  {
+   "id": "pot.east1",
+   "kind": "pot",
+   "level": "L2",
+   "u": 18.0,
+   "v": -1.88,
+   "frame": "rail.east",
+   "at": {
+    "s": 7.12,
+    "n": 1.0
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "disc",
+     "u": 18.0,
+     "v": -1.88,
+     "r": 0.3
+    },
+    {
+     "t": "rect",
+     "u0": 17.0,
+     "u1": 18.0,
+     "v0": -2.18,
+     "v1": -1.58
+    }
+   ]
+  },
+  {
+   "id": "pot.east2",
+   "kind": "pot",
+   "level": "L2",
+   "u": 18.0,
+   "v": 4.96,
+   "frame": "rail.east",
+   "at": {
+    "s": 13.96,
+    "n": 1.0
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "disc",
+     "u": 18.0,
+     "v": 4.96,
+     "r": 0.3
+    },
+    {
+     "t": "rect",
+     "u0": 17.0,
+     "u1": 18.0,
+     "v0": 4.66,
+     "v1": 5.26
+    }
+   ]
+  },
+  {
+   "id": "pot.makai1",
+   "kind": "pot",
+   "level": "L2",
+   "u": 9.16,
+   "v": 10.0,
+   "frame": "rail.makai",
+   "at": {
+    "s": 7.84,
+    "n": 1.0
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "disc",
+     "u": 9.16,
+     "v": 10.0,
+     "r": 0.3
+    },
+    {
+     "t": "rect",
+     "u0": 8.86,
+     "u1": 9.46,
+     "v0": 9.0,
+     "v1": 10.0
+    }
+   ]
+  },
+  {
+   "id": "pot.makai2",
+   "kind": "pot",
+   "level": "L2",
+   "u": -0.72,
+   "v": 10.0,
+   "frame": "rail.makai",
+   "at": {
+    "s": 17.72,
+    "n": 1.0
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "disc",
+     "u": -0.72,
+     "v": 10.0,
+     "r": 0.3
+    },
+    {
+     "t": "rect",
+     "u0": -1.02,
+     "u1": -0.42,
+     "v0": 9.0,
+     "v1": 10.0
+    }
+   ]
+  },
+  {
+   "id": "L2.wing.office",
+   "kind": "office",
+   "level": "L2",
+   "u": 14.3,
+   "v": -11.5,
+   "frame": "L2.dh.wing",
+   "at": {
+    "t": 0.35
+   }
+  },
+  {
+   "id": "L2.wing.bench",
+   "kind": "bench",
+   "level": "L2",
+   "u": 17.26,
+   "v": -11.5,
+   "frame": "L2.dh.wing",
+   "at": {
+    "t": 0.72
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": 16.1957,
+     "u1": 18.3199,
+     "v0": -11.5078,
+     "v1": -11.1328
+    }
+   ]
+  },
+  {
+   "id": "L3.wing.office",
+   "kind": "office",
+   "level": "L3",
+   "u": 16.8,
+   "v": -14.0,
+   "frame": "L3.dh.wing",
+   "at": {
+    "t": 0.35
+   }
+  },
+  {
+   "id": "L3.wing.bench",
+   "kind": "bench",
+   "level": "L3",
+   "u": 19.76,
+   "v": -14.0,
+   "frame": "L3.dh.wing",
+   "at": {
+    "t": 0.72
+   },
+   "band": "back",
+   "foot": [
+    {
+     "t": "rect",
+     "u0": 18.6957,
+     "u1": 20.8199,
+     "v0": -14.0078,
+     "v1": -13.6328
+    }
+   ]
+  },
+  {
+   "id": "mosaic",
+   "kind": "mosaic",
+   "level": "court",
+   "u": -0.75,
+   "v": -0.75,
+   "frame": "court",
+   "at": {
+    "u": -0.75,
+    "v": -0.75
+   },
+   "foot": [
+    {
+     "t": "disc",
+     "u": -0.75,
+     "v": -0.75,
+     "r": 2.5633
+    }
+   ]
+  },
+  {
+   "id": "planterbench.treed",
+   "kind": "planterbench",
+   "level": "court",
+   "u": -5.25,
+   "v": -1.25,
+   "frame": "court",
+   "at": {
+    "u": -5.25,
+    "v": -1.25
+   },
+   "foot": [
+    {
+     "t": "disc",
+     "u": -5.25,
+     "v": -1.25,
+     "r": 1.3258
+    }
+   ]
+  },
+  {
+   "id": "planterbench.bare",
+   "kind": "planterbench",
+   "level": "court",
+   "u": -1.25,
+   "v": -5.25,
+   "frame": "court",
+   "at": {
+    "u": -1.25,
+    "v": -5.25
+   },
+   "foot": [
+    {
+     "t": "disc",
+     "u": -1.25,
+     "v": -5.25,
+     "r": 1.3258
+    }
+   ]
+  },
+  {
+   "id": "spawn",
+   "kind": "spawn",
+   "level": "L2",
+   "u": 11.5,
+   "v": 10.5,
+   "frame": "L2.walk.makai",
+   "at": {
+    "u": 11.5,
+    "v": 10.5
+   }
+  },
+  {
+   "id": "col.apex",
+   "kind": "column",
+   "level": "court",
+   "u": -11.4,
+   "v": -11.4,
+   "frame": "court.dh",
+   "at": {
+    "t": 0.0
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": -11.4,
+     "v": -11.4,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "col.ewa1",
+   "kind": "column",
+   "level": "court",
+   "u": -11.4,
+   "v": 0.6,
+   "frame": "court.ewa",
+   "at": {
+    "t": 0.4737
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": -11.4,
+     "v": 0.6,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "col.ewa2",
+   "kind": "column",
+   "level": "court",
+   "u": -11.4,
+   "v": -5.4,
+   "frame": "court.ewa",
+   "at": {
+    "t": 0.7368
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": -11.4,
+     "v": -5.4,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "col.dh1",
+   "kind": "column",
+   "level": "court",
+   "u": -5.4,
+   "v": -11.4,
+   "frame": "court.dh",
+   "at": {
+    "t": 0.1948
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": -5.4,
+     "v": -11.4,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "col.dh2",
+   "kind": "column",
+   "level": "court",
+   "u": 0.6,
+   "v": -11.4,
+   "frame": "court.dh",
+   "at": {
+    "t": 0.3896
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": 0.6,
+     "v": -11.4,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "col.dh3",
+   "kind": "column",
+   "level": "court",
+   "u": 6.6,
+   "v": -11.4,
+   "frame": "court.dh",
+   "at": {
+    "t": 0.5844
+   },
+   "derived": true,
+   "foot": [
+    {
+     "t": "disc",
+     "u": 6.6,
+     "v": -11.4,
+     "r": 0.2652
+    }
+   ],
+   "tall": 100.0
+  },
+  {
+   "id": "L2.ewa.post1",
+   "kind": "post",
+   "level": "L2",
+   "u": -11.5,
+   "v": 11.5,
+   "frame": "L2.ewa",
+   "at": {
+    "t": 0.0
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.post1",
+   "kind": "post",
+   "level": "L2",
+   "u": 11.5,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 1.0
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.post2",
+   "kind": "post",
+   "level": "L2",
+   "u": 4.7492,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.7065
+   },
+   "derived": true
+  },
+  {
+   "id": "L2.dh.post3",
+   "kind": "post",
+   "level": "L2",
+   "u": 8.137,
+   "v": -11.5,
+   "frame": "L2.dh",
+   "at": {
+    "t": 0.8538
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.post1",
+   "kind": "post",
+   "level": "L3",
+   "u": -14.0,
+   "v": 14.0,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.0
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.post2",
+   "kind": "post",
+   "level": "L3",
+   "u": -14.0,
+   "v": 10.1039,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.1391
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.post3",
+   "kind": "post",
+   "level": "L3",
+   "u": -14.0,
+   "v": 6.6419,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.2628
+   },
+   "derived": true
+  },
+  {
+   "id": "L3.ewa.post4",
+   "kind": "post",
+   "level": "L3",
+   "u": -14.0,
+   "v": 2.9612,
+   "frame": "L3.ewa",
+   "at": {
+    "t": 0.3942
+   },
+   "derived": true
+  }
+ ],
+ "kinds": {
+  "door": "#ffd166",
+  "lift": "#ffd166",
+  "hall": "#f4a261",
+  "office": "#f4a261",
+  "alcove": "#f4a261",
+  "bench": "#e76f51",
+  "post": "#9aa0a6",
+  "column": "#e9ecef",
+  "spawn": "#ffe066",
+  "*": "#80ed99"
+ },
+ "view": [
+  368,
+  288,
+  1440,
+  976
+ ]
+}

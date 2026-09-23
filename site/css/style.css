@@ -522,6 +522,26 @@ body.booting #hud { visibility: hidden; }
 #flow-tip .ft-line { margin-top: 2px; }
 #flow-tip .ft-note { margin-top: 1px; color: var(--txt-5b); font-size: 11px; }
 
+/* ?layout=1 — the reference-frame readout (FrameOverlay in main.js). A
+   dev instrument, not player chrome: monospace so the numbers hold still
+   while they change under the pointer, and `pre` so each fact keeps its
+   own line. Never shown without the URL flag. */
+#frame-tip {
+  position: fixed;
+  z-index: var(--z-tip);
+  padding: 6px 9px 7px;
+  background: var(--plate-deep);
+  border: 1px solid rgba(var(--gold-rgb), .65);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-chip);
+  color: var(--txt-2);
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  pointer-events: none;
+  display: none;
+}
+#frame-tip b { color: var(--gold-lt); font-weight: 700; }
+
 /* ---------- toolbar ---------- */
 #toolbar {
   position: fixed;

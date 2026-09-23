@@ -40,11 +40,19 @@ Palette and treatment follow the interior banners (make_event_art.py):
 bright daylit concrete, LIGHT rail over DARK recess, koa doors, one
 warm key. Ground outside the room is the overlay's own ink.
 
-Outputs (both hand-versioned in JS via CAP_V — bump together):
-  site/assets/map/capitol_scene.png
+WHAT STANDS WHERE lives in ONE place: THE LAYOUT (build_layout), a
+named reference frame plus a placement table — see tools/roomframe.py.
+To move something, find its id on the reference image (--layout) or in
+the game at ?layout=1, and change its entry there.
+
+Outputs (all hand-versioned in JS via CAP_V — bump together):
+  site/assets/map/capitol_scene.png  (+ its depth bands, capitol_*.png)
   site/map/capitol.json          (spawn + hotspots, px in image space)
+  site/map/capitol_frame.json    (the reference frame, for ?layout=1)
 
 Build:  python3 tools/render_capitol.py              (crisp, default)
+        python3 tools/render_capitol.py --layout    (+ the reference
+        image, build/debug_layout_capitol.png)
         python3 tools/render_capitol.py --painterly (oil pass; it
         destroys the railing detail — kept only to re-run the
         comparison, never for a shipped bake)
@@ -63,10 +71,14 @@ from PIL import Image, ImageChops, ImageDraw
 
 import roomplan
 import roombands
+import roomframe
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "capitol_scene.png"
 OUT_JSON = ROOT / "site" / "map" / "capitol.json"
+# the reference frame the in-game `?layout=1` overlay reads (see
+# roomframe.py and THE LAYOUT below); versioned with the rest by CAP_V
+OUT_FRAME = ROOT / "site" / "map" / "capitol_frame.json"
 
 W, H = 1680, 1240
 # SS 2 -> 1 (2026-08-27). The supersample was right for the framing it
@@ -275,21 +287,31 @@ POST_H = 19
 # the near edges, removed 2026-08-24 (user: "don't need the walls, just
 # showing the walkway is fine") — the walkway ends at its own slab
 # fascia. It lingered as the stair's datum, which left the treads
-# starting 10px below an edge that no longer had a wall on it.
+# starting 10px below an edge that no longer had a wall on it. (The
+# exit stairs themselves went 2026-09-22 — see paint_front_edge.)
 CUT_CORE = "#9a927c"       # the sliced wall's CORE. Must sit well clear
                            # of the dressed flutes (#ece6d4) in VALUE —
                            # a near-white cut face vanished entirely at
                            # the 0.5 game zoom, which is the only scale
                            # that matters here.
 
-# THE GROUND FLOOR IS A LOGGIA: THE WALL IS SET BACK AND THE COLUMNS
-# STAND IN FRONT OF IT (2026-08-25, from the executive-floor photo —
-# user: "fix the column taper and the loggia setback"). Until now the
-# courtyard walls stood ON the well line, so the ground storey was a
-# flat elevation with piers pasted to it. In the photograph the wall
-# is set back the better part of a bay and the columns are free-
-# standing out in the court, with a deep shaded gap behind them; that
-# gap is most of what says "ground floor" rather than "wall".
+# THE GROUND FLOOR IS A LOGGIA: THE WALL IS SET BACK UNDER THE GALLERY
+# (2026-08-25, from the executive-floor photo — user: "fix the column
+# taper and the loggia setback"). Until now the courtyard walls stood
+# ON the well line, so the ground storey was a flat elevation with
+# piers pasted to it. In the photograph the wall is set back the
+# better part of a bay and the columns are free-standing out in the
+# court, with a deep shaded gap behind them; that gap is most of what
+# says "ground floor" rather than "wall".
+#
+# THE COLUMNS DO NOT STAND OUT ON THE WELL LINE, THOUGH (2026-09-22,
+# see COL_LINE). In the photograph the pier line IS the upper walls'
+# line, and it is the ground wall that is set back behind it. Here
+# the two lines are 0.1 unit apart (GND_OUT, A_OUT), so the piers
+# stand against the wall, not a bay in front of it, and the shaded
+# strip in front of them is the loggia. Freeing them would mean
+# pushing this wall back past A_OUT, which buries more of the glass.
+# That is the trade described below.
 #
 # THE SET-BACK IS FREE, GEOMETRICALLY: paint_well already clips its
 # whole layer to the hole diamond, and the mask is exactly the right
@@ -323,11 +345,13 @@ GND_OUT = A_IN + GND_BACK  # the ground storey's wall plane
 # What survives from the second is the ALIGNMENT: the flush strip on
 # each upper wall is drawn at the SAME SCREEN X as the shaft below
 # it, so the eye still reads one column from the rotunda floor to the
-# top. It is a cheat — the walls really do stand a walkway further
-# back, and a true projection would step the strip 20 display px
-# sideways per storey — but the storey's own floor and slab fix the
-# strip's vertical extent, so screen x is the only thing tying the
-# pieces together and it is the one that has to be honest.
+# top. The storey's own floor and slab fix the strip's vertical
+# extent, so screen x is the only thing tying the pieces together and
+# it is the one that has to be honest. Since the shafts moved back
+# onto COL_LINE (2026-09-22) the gallery strip is also truly PLUMB
+# over its shaft. Only the third storey's still cheats: that wall is
+# recessed a full bay, and a true projection would step its strip
+# ~20 display px sideways.
 COL_DY0, COL_DY1 = -DROP, LVL2_Y + 72     # foot / head, world height
 # Half-width at foot / head. The RATIO is what has to survive the SS
 # downsample — at display scale the shaft is only ~6px at the foot,
@@ -365,32 +389,61 @@ COL_FLARE = 1.0            # LINEAR, and measured: a power curve was
 # read as a picket fence; the corner one is what makes the fold
 # structural, and it is FREE — the mauka apex is the one place every
 # diamond shares a screen x (x = 16(u - v) = 0 when u == v), so the
-# same column lands at CX on the court edge and on both walls, and
-# each run draws its own half of it against its own slope.
+# same column lands at CX in the loggia's corner and on both walls,
+# and each run draws its own half of it against its own slope.
 #
 # The ʻEwa and Diamond Head corners get no column: a vertical line at
 # the well diamond's W or E point meets the hole at exactly ONE pixel,
 # so paint_well's mask eats any shaft standing there. Those two ends
 # are the dollhouse cut anyway — a sawn face, not a fold.
 COL_T = (1 / 3.0, 2 / 3.0)  # the interior pair; the apex is added per run
-# THE CORNER COLUMN STANDS ON THE WALL CORNER, NOT THE COURT EDGE
-# (user, 2026-08-25: "the central column should be further back. the
-# top point of the graphic, next to the hallway, is where a little
-# alcove is. the column goes up through there"). Measured off the
-# executive-floor photograph: the corner strip's foot sits at y=250.5
-# where the two wall faces' intersection extrapolates to y=251.0 and
-# 251.3 from the left and right runs — one full walkway width behind
-# the railing, and plumb under the strips on the floors above. The
-# mid-run ground columns are NOT affected: those really are
-# free-standing in the loggia with the koa wall a bay behind them.
+# EVERY GROUND COLUMN STANDS ON ONE LINE: THE LOGGIA'S BACK WALL,
+# PLUMB UNDER THE STRIPS ABOVE IT — NOT ON THE COURT EDGE.
+# The corner column went there first (user, 2026-08-25: "the central
+# column should be further back. the top point of the graphic, next
+# to the hallway, is where a little alcove is. the column goes up
+# through there"). Measured off the executive-floor photograph: the
+# corner strip's foot sits at y=250.5 where the two wall faces'
+# intersection extrapolates to y=251.0 and 251.3 from the left and
+# right runs — one full walkway width behind the railing, and plumb
+# under the strips on the floors above.
+# The mid-run columns stayed forward on the well line, on the theory
+# that they stood free out in the loggia, and the user's verdict once
+# the corner one was right was exact (2026-09-22): "the first floor
+# columns are not properly aligned. only the central one on first
+# floor is". On the well line a shaft stands 2.4 units IN FRONT of
+# the wall its strips are drawn on, so it cannot be the same column
+# as the strip above it. It ran up past the slab's fascia to the
+# railing's kerb, where the photographs show the fascia passing in
+# front of every pier head. Four columns on one line and the fifth
+# 38 px back from it is also just not a colonnade.
 #
-# It costs nothing in screen x. u == v at the apex, so x = 16(u - v)
-# is CX on every diamond — the shaft still lines up with the flush
-# strips above. It moves UP 16*(GND_OUT - A_IN) = 38 scene px, and
-# paint_well's hole mask then trims its top 38 px, so it emerges from
-# under our own slab already deep in the corner. That is the whole
-# effect and it is free.
-COL_APEX_U = GND_OUT
+# The move costs nothing in screen x, and that is why it is free.
+# Sliding a point straight back along the line of sight, (-d, -d) in
+# plan, keeps x = 16(u - v). Every shaft still lands on col_xs(), so
+# the strips above and the door bays laid out between them do not
+# move by a pixel. Each shaft moves UP 16*(COL_LINE - A_IN) = 38
+# scene px. Our own slab then hides its top, and the fascia band,
+# painted after it, covers the head: ~38 px of shaft show under the
+# band, which is all the gallery leaves visible of anything under its
+# back edge. That is the whole geometry. The one-storey-deep look of
+# a free shaft on the well line was the misalignment.
+COL_LINE = GND_OUT
+# THE TWO ENDS OF A LOGGIA SHAFT (2026-09-22, user: "the columns still
+# look oddly cut off at the ends"). Both ends were CUTS. The foot was a
+# flat horizontal line across a 2:1 floor, and the head was sliced by
+# the fascia's bottom edge at full brightness, so nothing said the shaft
+# went on up behind it. court_column draws the foot (a V on the floor);
+# eave_shade() darkens the head, along with everything else under the
+# slab.
+#   COL_FOOT    the base edge, colour and width: court_panel's own
+#               foot line, so the corner pier and the shafts beside it
+#               meet the floor the same way
+#   EAVE        (ramp, factor): the gallery slab's shade darkens what
+#               stands under it over `ramp` scene px below the fascia's
+#               bottom edge, down to `factor` at the edge
+COL_FOOT = ("#7d7768", 1)
+EAVE = (16, 0.62)
 
 # THE FLUSH COLUMN'S SURFACE, as bands across its width. `u` runs -1
 # at the left arris to +1 at the right, as a FRACTION of the
@@ -433,7 +486,7 @@ COL_APEX_U = GND_OUT
 # the 5% head droop is the whole vertical variation there should be.
 """Facet palette de-yellowed 2026-08-27 with court_column's (the
 breezeway photo, "same with the columns"): same values, r-b warmth
-halved, so the flush strip stays the same concrete as the free shaft
+halved, so the flush strip stays the same concrete as the loggia shaft
 it continues."""
 COL_FACETS = (
     (-1.00, -0.84, "#706d64", "#6b685f"),   # lit-side reveal
@@ -545,7 +598,9 @@ assert PIER_DEP > 0, (
     % (ASM_IN, PIER_DEP, 0.10 + math.sin(math.acos(STACK_CUT)) * STACK_R))
 PIER_U1 = PIER_U0 + PIER_W                # right-facing flank
 DOOR_TA = (PIER_U1 + GND_OUT) / (2 * GND_OUT)   # the glass starts HERE
-DOOR_TB = 0.36
+# …and the doors END AT THE FIRST COLUMN (2026-09-22, user: "end the
+# doors at the column"): court_glass takes that column's screen x from
+# the layout (col.dh1), so there is no door-end constant to drift off it.
 
 rng = np.random.default_rng(7)
 
@@ -808,7 +863,7 @@ def paint_ring_shade(img):
     """Light falls off away from the well — the sky is the key light,
     so the walkway darkens toward the outer walls (atrium photo's
     value structure: dark frame, glowing centre). Stepped bands, not
-    a radial vignette; walls/stairs repaint their own ground after."""
+    a radial vignette; walls repaint their own ground after."""
     lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
     ld = SDraw(lay)
     ld.polygon(rdiamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
@@ -923,7 +978,7 @@ def court_paving(img):
                      iso(1.1, a, -DROP), iso(-1.1, a, -DROP)],
                     mix(FASCIA, COURT, 0.45)))
     # THE LOGGIA FLOOR IS IN SHADE, and this band is what makes the
-    # set-back read at all. The strip behind the columns came out the
+    # set-back read at all. The strip under the gallery came out the
     # same bright stone as the open court, so it read as a wall further
     # away and not as a recess. The gallery slab covers it, so it is
     # the one part of the floor that never sees the oculus — hence
@@ -991,9 +1046,11 @@ def paint_well(img):
     # it retreats to GND_OUT, and the shaded gap between the two is
     # the loggia. Drawing both off one edge is what made the ground
     # storey a flat elevation for so long.
-    for (h0, h1), (e0, e1), f, glazed in (
-            ((hole[3], hole[0]), (gnd[3], gnd[0]), 1.0, False),
-            ((hole[0], hole[1]), (gnd[0], gnd[1]), 0.86, True)):
+    # TWO PASSES over the same two runs: the walls first, the band much
+    # later (see "OUR OWN SLAB'S EDGE" below the corner assembly).
+    runs = (((hole[3], hole[0]), (gnd[3], gnd[0]), 1.0, False),
+            ((hole[0], hole[1]), (gnd[0], gnd[1]), 0.86, True))
+    for (h0, h1), (e0, e1), f, glazed in runs:
         def q(y0, y1, col):
             d.polygon([up(e0, -y0), up(e1, -y0), up(e1, -y1),
                        up(e0, -y1)], fill=col)
@@ -1002,13 +1059,15 @@ def paint_well(img):
         # floor or the columns have nothing to stand against
         q(-6, DROP, shade(RECESS_D, f * 0.82))        # ground level
         if glazed:
-            # the ASSEMBLY (corner wall, doors, drum curve, pier) is
+            # the ASSEMBLY (corner wall, doors, drum curve) is
             # anchored in absolute u and parameterised on the
             # ORIGINAL run — pass that, with the extended corner as
             # `ext` so the drum's glazing continues past its apex
-            # over the well's new length (see court_glass)
+            # over the well's new length (see court_glass). The doors
+            # end at the first loggia column, read from the layout.
+            c = layout()["col.dh1"]
             court_glass(d, e0, iso(GND_OUT, -GND_OUT), f, 21,
-                        DROP - 2, ext=e1)
+                        DROP - 2, ext=e1, door_x=iso(c.u, c.v)[0])
         else:
             # the WHOLE run is open — a breezeway, not a wall with a
             # bay (2026-08-24, breezeway photo). The koa slats that
@@ -1022,31 +1081,13 @@ def paint_well(img):
         # screen, gone with it)
         d.line([up(e0, -DROP + 2), up(e1, -DROP + 2)],
                fill=shade(COURT, f), width=2)
-        # OUR OWN SLAB'S EDGE, AND IT GOES LAST (2026-08-27, user:
-        # "the second floor is missing the white band extending
-        # beneath the railing. it just ends immediately"). It was
-        # drawn FIRST in this loop and had been invisible ever since
-        # the wall was set back (2026-08-25): the recess quad starts
-        # 6px above the SET-BACK line, which on the far runs is
-        # up-screen of the well line, so q(-6, DROP) spans 106px
-        # straight down over the 18px band — measured at x=1000, the
-        # band at y 616-634 sat under a fill covering 575-681. The
-        # fascia belongs to the near slab, a whole bay in front of
-        # that wall, so it is painted after everything the wall
-        # carries. It still goes BEFORE the loggia columns and the
-        # smokestack below: those stand at the well line and cross
-        # in front of the band, exactly as in the breezeway photo.
-        # FASCIA_D, not the old 18 — it is the same slab the makai
-        # edge shows (paint_front_edge: "exactly the band the well
-        # edges wear"), and the two disagreeing was only survivable
-        # while this one drew into the dark.
-        fluted_band(d, h0, h1, 0, FASCIA_D, f)
         # the flat pale piers that used to be pasted on this wall are
         # GONE — they were a ground-storey-only device standing on the
-        # wall plane. THIS storey's columns are the real ones and they
-        # stand free out in the loggia (court_column, just below);
-        # from the second floor up the same column is flush in the
-        # wall and wall_column() paints it there.
+        # wall plane. THIS storey's columns are the real ones: modelled
+        # shafts at the back of the loggia, on this wall's own line
+        # (court_column, below; see COL_LINE). From the second floor up
+        # the same column is flush in the wall and wall_column() paints
+        # it there.
     # THE SMOKESTACK-AND-CORNER ASSEMBLY (the STACK_*/PIER_* constants
     # carry the full story): the blank corner wall terminates the
     # glass facade with its ʻEwa flank ON the ʻEwa plane, the cone is
@@ -1057,34 +1098,72 @@ def paint_well(img):
     # runs TALL and the slab fascia SHEARS it (2026-08-25, user: "it
     # should look like it's under the 2nd floor") — the mouth is never
     # seen because the stack continues above the slab, off-stage;
-    # smokestack() clamps every point to the fascia's bottom line.
+    # smokestack() clamps every point to the fascia's bottom line, and
+    # the band itself now goes over the whole assembly (below).
     smokestack(d, STACK_U, STACK_V, DROP - 14, STACK_R, 0.55,
                STACK_CUT, 0.92)
-    # THE CORNER COLUMN, and it is drawn HERE — between the cone and
-    # the panel — because that is the depth order at the apex. The
-    # cone's axis is at v = STACK_V (farthest), the shaft at
-    # v = -COL_APEX_U, and the panel's face nearer still, so the cone
-    # goes behind the shaft and the corner wall in front of it. Drawn
-    # with the other stations at the end of this function it would
-    # paint over the corner mass instead of standing in it.
-    court_column(d, iso(-COL_APEX_U, -COL_APEX_U), COL_DY0, 0, 1.0)
+    # THE COLUMNS, foot to the gallery floor — ALL of them, and HERE,
+    # between the cone and the panel, because that is the depth order
+    # at the apex. The cone's axis is at v = STACK_V (farthest), the
+    # corner shaft at v = -COL_LINE, and the panel's face nearer still,
+    # so the cone goes behind the shaft and the corner wall in front of
+    # it. The other stations stand well clear of both and could go
+    # anywhere before the band. What they cannot do is go after it,
+    # which is where they were until 2026-09-22 (see COL_LINE).
+    # This layer is clipped to the hole, and that mask is the occlusion
+    # a shaft under the gallery needs: its shadow rises with it
+    # (s = (DROP - dy)/16), so each shaft disappears under our own slab
+    # at the same height, and one too far makai would be hidden
+    # altogether — both for free, no per-column test. Where they stand
+    # is the layout's (items of kind "column", from column_stations).
+    for it in layout().items("column"):
+        court_column(d, iso(it.u, it.v), COL_DY0, 0, it.meta["f"])
     court_panel(d, PIER_U0, PIER_U1, PIER_DEP, 0.9)
+    # the slab's shade on everything above that stands under it — the
+    # heads of the shafts included (see eave_shade)
+    eave_shade(lay)
 
-    # THE COLUMNS, lower half — foot to the gallery floor. Drawn here
-    # rather than with the upper half ON PURPOSE: this layer is
-    # clipped to the hole, which is exactly the occlusion a column
-    # standing at the court edge needs. Its shadow rises as the shaft
-    # does (s = (DROP - dy)/16), so each shaft fades out behind the
-    # slab right where it reaches the gallery, and a station too far
-    # makai is hidden altogether — both for free, no per-column test.
-    for b, cf in column_stations():
-        court_column(d, b, COL_DY0, 0, cf)
+    # OUR OWN SLAB'S EDGE, AFTER EVERYTHING THAT STANDS BEHIND IT
+    # (2026-08-27, user: "the second floor is missing the white band
+    # extending beneath the railing. it just ends immediately"). It was
+    # drawn FIRST in the wall loop and had been invisible ever since
+    # the wall was set back (2026-08-25): the recess quad starts 6px
+    # above the SET-BACK line, which on the far runs is up-screen of
+    # the well line, so q(-6, DROP) spans 106px straight down over the
+    # 18px band — measured at x=1000, the band at y 616-634 sat under
+    # a fill covering 575-681. The fascia belongs to the near slab, a
+    # whole bay in front of that wall, so it is painted after
+    # everything the wall carries.
+    # …AND AFTER THE CORNER ASSEMBLY TOO (2026-09-22, user: "some
+    # objects are clipping into others"). The band used to close each
+    # run's own loop iteration, which put it BEFORE the smokestack,
+    # the corner column and the corner pier — and the last two stand
+    # 2.2-2.4 units BEHIND it (COL_LINE, PIER_DEP), yet the hole
+    # mask only trims at the kerb, not at the band's foot. So both
+    # were painted straight over the band and broke its V at the
+    # apex: a pale block standing where the slab edge should wrap the
+    # corner. A second pass is the whole fix — whatever is set back
+    # goes before this line, the band covers its head, and the
+    # smokestack's clamp is now belt and braces.
+    # EVERY COLUMN is set back now, so nothing in the court is drawn
+    # over this band any more. The mid-run shafts used to be. They
+    # stood on the well line and crossed in front of it up to the
+    # railing's kerb, and that is what the user saw as "not properly
+    # aligned" (2026-09-22). The photographs put the band in front of
+    # every pier head.
+    # FASCIA_D, not the old 18 — it is the same slab the makai edge
+    # shows (paint_front_edge: "exactly the band the well edges wear"),
+    # and the two disagreeing was only survivable while this one drew
+    # into the dark.
+    for (h0, h1), _, f, _ in runs:
+        fluted_band(d, h0, h1, 0, FASCIA_D, f)
 
-    # the mosaic, in the sun
-    paint_mosaic(d, lay, CX, CY + DROP - 12)
+    # the mosaic, in the sun — WHERE is the layout's (item "mosaic")
+    m = layout()["mosaic"]
+    mx, my = iso(m.u, m.v, m.level.dy)
+    paint_mosaic(d, lay, mx, my)
 
     # chain-post ring around the medallion, as in the photos
-    mx, my = CX, CY + DROP - 12
     ring = []
     for a in range(12):
         ang = a * math.pi / 6
@@ -1151,8 +1230,10 @@ def paint_well(img):
                 d.line([(x + sx, y - 8), (x + sx + 2, y - 8 - sh)],
                        fill=hx("#8a7a5c"), width=1)
 
-    planter_bench(CX - 64, CY + DROP - 52, 30, treed=True)
-    planter_bench(CX + 64, CY + DROP - 52, 30, treed=False)
+    # positions, sizes and which one carries the tree: the layout's
+    for it in layout().items("planterbench"):
+        planter_bench(*iso(it.u, it.v, it.level.dy), it.meta["size"],
+                      treed=it.meta["treed"])
 
     # clip the whole layer to the hole and composite
     mask = Image.new("L", (W * K, H * K), 0)
@@ -1169,7 +1250,7 @@ def court_bay_pt(e0, e1, t, y):
     return (b[0], b[1] + y)
 
 
-def court_glass(d, e0, e1, f, top, bot, ext=None):
+def court_glass(d, e0, e1, f, top, bot, ext=None, door_x=None):
     """THE GLASS WALL at courtyard level on the Diamond Head run
     (executive-floor photo). Two sections, as in the photograph:
 
@@ -1186,9 +1267,19 @@ def court_glass(d, e0, e1, f, top, bot, ext=None):
       paired glazed leaves under a wide transom in a pale surround,
       per the Senate-entrance photo.
 
+    THE DOORS END AT THE COLUMN, and the curve starts there (2026-09-22,
+    user: "end the doors at the column"). `door_x` is the screen x of
+    the loggia column the two sections meet at (paint_well passes the
+    layout's col.dh1). That column is drawn after this, so it stands
+    over the join and is the pier between the two sections. Until then
+    the doors ran on to t 0.36, and a pier of their own stood 32 px
+    past the column, off the colonnade's rhythm and reading as a thin
+    extra post once the columns stood on the same wall.
+
     Dark neutral glazing throughout — a teal pass read as water.
     """
     dy = bot - top
+    tb_door = (door_x - e0[0]) / (e1[0] - e0[0])
 
     def face_pt(t, yfrac):
         b = lerp(e0, e1, t)
@@ -1199,7 +1290,7 @@ def court_glass(d, e0, e1, f, top, bot, ext=None):
     # constants at the top): the wall terminates the facade at the
     # corner, the door section attaches to its side, and the cone is
     # bonded to its other flank — the three read as one assembly.
-    ta, tb = DOOR_TA, DOOR_TB
+    ta, tb = DOOR_TA, tb_door
     p0, p1 = face_pt(ta, 0), face_pt(tb, 0)
     d.polygon([p0, p1, (p1[0], p1[1] + dy), (p0[0], p0[1] + dy)],
               fill=shade(hx("#d5cdb6"), f))            # pale surround
@@ -1251,7 +1342,7 @@ def court_glass(d, e0, e1, f, top, bot, ext=None):
     # at 0.42/0.72; the photograph has none — the mullions run head
     # to sill unbroken, and the horizontals were what made this read
     # as a shopfront rather than a chamber drum.
-    ta, tb = DOOR_TB, 0.98
+    ta, tb = tb_door, 0.98
     n = 20
     TH_A = math.radians(-64)   # the arc's far edge, turning away. Any
                                # steeper and the compressed end falls
@@ -1282,7 +1373,16 @@ def court_glass(d, e0, e1, f, top, bot, ext=None):
     # as a bluish haze instead of glazing. 20 bays at 2px gives the
     # bar-and-gap rhythm that survives the downsample; denser was
     # tried (30, 24) and both mushed at the compressed end.
+    # …but none under or against the column at the join. The arc's
+    # tightest bars are at its start, which is the column now, so the
+    # first falls behind the shaft and the second lands a px or two off
+    # its dark edge as a pale sliver: the clipping read. The clearance
+    # is the column's widest VISIBLE half-width (at the fascia's foot,
+    # where it disappears) plus the bar and a pixel.
+    clear = col_hw(-(16 * (COL_LINE - A_IN) + FASCIA_D)) + 2
     for i in range(n + 1):                             # angle mullions
+        if abs(tops[i][0] - door_x) < clear:
+            continue
         d.line([tops[i], sills[i]], fill=shade(hx("#a7ad9f"), f),
                width=2)
     d.line(tops, fill=shade(hx("#d9d2bc"), f), width=2)   # beam over
@@ -1290,27 +1390,12 @@ def court_glass(d, e0, e1, f, top, bot, ext=None):
            fill=shade(hx("#8f8874"), f), width=1)
     d.line(sills, fill=shade(hx("#3a352c"), f), width=2)  # sill shadow
 
-    # ---- the PIER between the doors and the curve, drawn LAST so it
-    # stands proud of both. It was implied before — the doors' right
-    # surround against the curve's dense left mullions — and the
-    # curve's sill shadow cut across its foot, so it hung in the glass
-    # without reaching the floor (user: "the middle column going
-    # through the glass also isn't meeting the ground"). A pier is a
-    # thing that STANDS: full height, a lit face, and a darker plinth
-    # block at the bottom that the floor line crosses.
-    pc = face_pt(0.352, 0)
-    pw = 5
-    d.polygon([(pc[0] - pw, pc[1] - 1), (pc[0] + pw, pc[1] - 1),
-               (pc[0] + pw, pc[1] + dy), (pc[0] - pw, pc[1] + dy)],
-              fill=shade(hx("#cfc8b2"), f))
-    d.rectangle([pc[0] + pw - 2, pc[1] - 1, pc[0] + pw, pc[1] + dy],
-                fill=shade(hx("#a29b87"), f))          # shaded flank
-    d.rectangle([pc[0] - pw, pc[1] + dy - 7, pc[0] + pw, pc[1] + dy],
-                fill=shade(hx("#b3ac97"), f))          # plinth foot
-    d.line([(pc[0] - pw, pc[1] + dy - 7), (pc[0] + pw, pc[1] + dy - 7)],
-           fill=shade(hx("#8b8574"), f), width=1)
-    d.line([(pc[0] - pw, pc[1] - 1), (pc[0] + pw, pc[1] - 1)],
-           fill=shade(hx("#e5deca"), f), width=1)      # lit head
+    # ---- NO PIER OF ITS OWN between the doors and the curve any more:
+    # the loggia column at door_x stands over the join (see the
+    # docstring). The pier this replaces was added 2026-08-25 because
+    # the join had nothing standing at it (user: "the middle column
+    # going through the glass also isn't meeting the ground"). A column
+    # now stands there, and it lands on the floor.
 
     # ---- THE DRUM CONTINUES PAST ITS APEX (the elongated well — see
     # rdiamond/WING_EXT). The main arc ends where the drum faces the
@@ -1441,48 +1526,66 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     d.line([q0, q1], fill=shade(hx("#4a4234"), f), width=2)  # head soffit
 
 
+def col_plan(r, t):
+    """Plan point of the column at parameter t of mauka run r (0 the
+    ʻEwa run, 1 the Diamond Head one), t counted on the WELL line
+    exactly as col_ts() counts it — then slid straight back along the
+    line of sight onto COL_LINE. (-d, -d) in plan keeps u - v, which is
+    screen x, so the point lands on run_x(r, A_IN, t) whatever COL_LINE
+    is: the shaft and the strips above it cannot come apart."""
+    d = COL_LINE - A_IN
+    if r == 0:
+        u, v = -A_IN, A_IN - 2 * A_IN * t
+    else:
+        u, v = -A_IN + 2 * A_IN * t, -A_IN
+    return u - d, v - d
+
+
 def column_stations():
-    """Plan positions of the courtyard columns, as screen points at
-    GALLERY FLOOR level, with each run's shading factor.
+    """Every courtyard column, as (id, plan point, shading factor).
+    The layout records them (build_layout) and paint_well draws them
+    from there.
 
     An EVEN division of each mauka run into COL_N + 1 bays, and
     nothing else — no door-dodging, because the doors are laid out
     around these now (place_feats) rather than the other way round.
     A colonnade is structural and this is what structural looks like.
 
-    ONE list, shared by the free-standing shaft in the loggia and by
-    the flush strip on each upper wall, so the three pieces of a
-    column cannot drift onto different centres.
+    ALL of them stand on COL_LINE, the corner column included: it is
+    t = 1 on the ʻEwa run and t = 0 on the Diamond Head one, the same
+    point, and it is listed once. There is no special case for it any
+    more, because it was never special. It was the one column in the
+    right place (see COL_LINE).
 
     Deliberately the ORIGINAL square hole, NOT rdiamond: these
     stations must land on col_xs()'s screen x (run_x over A_IN with
     no extension) or the loggia shaft and the flush wall strips
-    above it split apart. The elongated well's extension keeps the
-    colonnade rhythm it inherits — do not re-space it here without
-    re-deriving every wall's door bays.
+    above it split apart. col_plan() guarantees that for any t.
     """
-    hole = diamond(A_IN)
-    out = []
-    for (e0, e1), f in (((hole[3], hole[0]), 1.0),
-                        ((hole[0], hole[1]), 0.86)):
-        for t in COL_T:
-            out.append((lerp(e0, e1, t), f))
-    # ONE extra station mid-extension on the elongated DH run (see
-    # rdiamond/WING_EXT): without it the colonnade stops at the old
-    # 2/3 station and the drum glazing runs ~220px bare. A loggia
-    # shaft only — the wing walls above carry no flush strip, which
-    # is survivable because the strips are the subtlest element in
-    # the room; the free shafts are not.
-    out.append((iso(A_IN + WING_EXT / 2, -A_IN), 0.86))
+    out = [("col.apex", col_plan(0, 1.0), 1.0)]
+    for r, run, f in ((0, "ewa", 1.0), (1, "dh", 0.86)):
+        for k, t in enumerate(COL_T, 1):
+            out.append((f"col.{run}{k}", col_plan(r, t), f))
+    # ONE extra station on the elongated DH run (see rdiamond/WING_EXT):
+    # without it the colonnade stops at the 2/3 station and the drum
+    # glazing runs bare to the end of the court. It is the next station
+    # of the SAME rhythm, t = 1, the old square plan's E corner, which
+    # the wing turned into a mid-run point. It used to stand mid-wing
+    # on the well line (u = A_IN + WING_EXT/2). Slid back onto the line,
+    # that put its foot on the east slab's edge, tangent to it.
+    # A loggia shaft only: the walls above carry no flush strip at this
+    # x, because col_ts() does not list it and so no bay was cut for
+    # it. That is survivable because ~38 px of shaft is all that shows.
+    out.append(("col.dh3", col_plan(1, 1.0), 0.86))
     return out
 
 
 def col_hw(dy):
     """Half-width of a courtyard column at world height dy. ONE
     function, because a column is drawn in THREE pieces on three
-    different surfaces — free-standing in the loggia (paint_well's
+    different surfaces — a modelled shaft in the loggia (paint_well's
     clipped layer), then flush in the gallery wall, then flush in the
-    Senate wall — and separate taper maths in each would step at
+    third-storey wall — and separate taper maths in each would step at
     every join."""
     t = (dy - COL_DY0) / (COL_DY1 - COL_DY0)
     t = min(1.0, max(0.0, t))
@@ -1490,10 +1593,11 @@ def col_hw(dy):
 
 
 def court_column(d, b, dy_lo, dy_hi, f=1.0):
-    """A column WHERE IT STANDS FREE — the loggia, and only there.
-    Above the gallery floor the same shaft is flush in the wall and
-    wall_column() draws it; the two share col_hw(), so the taper runs
-    straight through the storeys the eye cannot see.
+    """A column in the LOGGIA — the one storey where it is drawn as a
+    modelled shaft rather than a strip in the wall. Above the gallery
+    floor the same shaft is flush in the wall and wall_column() draws
+    it; the two share col_hw(), so the taper runs straight through the
+    storeys the eye cannot see.
 
     THE TAPER IS THE POINT (2026-08-25, from the executive-floor
     photo). These read as plain posts until they FLARE: the Capitol's
@@ -1505,17 +1609,51 @@ def court_column(d, b, dy_lo, dy_hi, f=1.0):
     `b` is the screen point of the column's plan position AT GALLERY
     FLOOR LEVEL, so screen y is just b[1] - dy: a vertical column has
     a fixed screen x, and only the width answers to height.
+
+    EVERY POINT GOES THROUGH snap(), NEVER round() (2026-09-22, user:
+    "not all of the columns are consistent"). These shafts were the
+    one painter left on the whole-pixel grid when the room moved to
+    1/K, and a taper is exactly what that grid cannot draw: the shaft
+    widens about a pixel every ~30px of height, so each edge came out
+    as vertical runs joined by 1px JOGS — the ʻEwa shaft's left edge
+    ran 642, 641, 640, 639 in four flat runs — and the facet lines
+    inside it jogged at different heights. At SHIP 2 every jog is two
+    file px, which read as dents.
+    At K = 1 snap() IS round(), so SDraw's K = 1 gate still reproduces
+    the whole-pixel bake byte for byte.
     """
     steps = 14
     lo, hi = min(dy_lo, dy_hi), max(dy_lo, dy_hi)
     left, right, inner, lit = [], [], [], []
     for i in range(steps + 1):
         dy = lo + (hi - lo) * i / steps
-        hw, y = col_hw(dy), round(b[1] - dy)
-        left.append((round(b[0] - hw), y))
-        right.append((round(b[0] + hw), y))
-        inner.append((round(b[0] + hw * 0.10), y))
-        lit.append((round(b[0] - hw * 0.52), y))
+        hw, y = col_hw(dy), snap(b[1] - dy)
+        left.append((snap(b[0] - hw), y))
+        right.append((snap(b[0] + hw), y))
+        inner.append((snap(b[0] + hw * 0.10), y))
+        lit.append((snap(b[0] - hw * 0.52), y))
+    # THE FOOT STANDS ON THE FLOOR, IN THIS PROJECTION (2026-09-22,
+    # user: "the columns still look oddly cut off at the ends"). It
+    # was one flat horizontal cut at the station's floor point, and
+    # once the shafts moved onto the wall line that cut sat across the
+    # wall's own 2:1 base line: one corner a few px above the floor,
+    # the other sunk below it. It read as a strip pasted on, not a
+    # pier standing there.
+    # The shaft is a square pier with its back against the wall (both
+    # walls, at the corner), so its screen x is unchanged. Its foot is
+    # the two front faces meeting the floor: a V with the side corners
+    # hw/2 below the station and the front arris hw below it. Each
+    # side corner lands exactly on its wall's base line, on either run
+    # and at the corner. So every tone's bottom edge lies on the V and
+    # nothing floats.
+    hw0 = col_hw(lo)
+
+    def foot(k):
+        return snap(b[1] - lo + hw0 * (1 - abs(k) / 2))
+
+    left[0], right[0] = (left[0][0], foot(-1)), (right[0][0], foot(1))
+    lit[0], inner[0] = (lit[0][0], foot(-0.52)), (inner[0][0], foot(0.10))
+    arris = (snap(b[0]), foot(0))
     # THREE tones, not two: these shafts are faceted and nearly a
     # storey wide at the head, so a single flat face with one dark
     # edge read as a pale ribbon taped over the wall. Bright return,
@@ -1528,16 +1666,17 @@ def court_column(d, b, dy_lo, dy_hi, f=1.0):
     # (144,139,127 mid face) — smooth cool concrete; the shipped
     # palette carried r-b ≈ 30 and read as sandstone. Values kept,
     # warmth halved.
-    d.polygon(left + right[::-1], fill=shade(hx("#c5c1b6"), f))
+    d.polygon(left + right[::-1] + [arris], fill=shade(hx("#c5c1b6"), f))
     d.polygon(left + lit[::-1], fill=shade(hx("#d9d6cb"), f))
     d.polygon(inner + right[::-1], fill=shade(hx("#918d82"), f))
     # faint vertical weathering streaks on the lit face — the photo's
     # shafts are smooth but not flat; two 1px runs that follow the
     # taper (a straight line would exit the shaft as it flares)
     for uS in (-0.34, -0.16):
-        d.line([(round(b[0] + uS * col_hw(lo + (hi - lo) * i / steps)),
-                 round(b[1] - (lo + (hi - lo) * i / steps)))
-                for i in range(steps + 1)],
+        d.line([(snap(b[0] + uS * hw0), foot(uS))]
+               + [(snap(b[0] + uS * col_hw(lo + (hi - lo) * i / steps)),
+                   snap(b[1] - (lo + (hi - lo) * i / steps)))
+                  for i in range(1, steps + 1)],
                fill=shade(hx("#bcb8ac"), f), width=1)
     # BOTH edges get a real keyline. The ʻEwa run's backdrop is the
     # open breezeway — bright plaza bands — so a pale shaft against it
@@ -1545,15 +1684,74 @@ def court_column(d, b, dy_lo, dy_hi, f=1.0):
     # 2px keyline records against the glazing.
     d.line(left, fill=shade(hx("#e2ddd1"), f), width=1)      # lit arris
     d.line(right, fill=shade(hx("#6a665c"), f), width=2)     # dark edge
+    # the base edge, the same dark line court_panel draws along its own
+    # foot, a few px away at the corner
+    d.line([left[0], arris, right[0]], fill=shade(hx(COL_FOOT[0]), f),
+           width=COL_FOOT[1])
     # ONE pour joint per storey — the photo's shafts are cast in
     # lifts and the horizontal break is what keeps a tall shaft from
     # reading as an extruded sliver. Nothing finer: at display scale
     # a second line per storey is noise.
     for dy in (0, LVL2_Y):
         if lo < dy < hi:
-            hw, y = col_hw(dy), round(b[1] - dy)
-            d.line([(round(b[0] - hw) + 1, y), (round(b[0] + hw) - 1, y)],
+            hw, y = col_hw(dy), snap(b[1] - dy)
+            d.line([(snap(b[0] - hw) + 1, y), (snap(b[0] + hw) - 1, y)],
                    fill=shade(hx("#b0ac9f"), f), width=1)
+
+
+def fascia_foot_y(x):
+    """Screen y (scene px) of our own slab fascia's BOTTOM edge at screen
+    x, along the well's two mauka runs: the line every loggia shaft goes
+    up behind. Read off rdiamond(A_IN), the corners the band itself is
+    drawn from, so the shade cannot drift off the band. Takes arrays."""
+    hole = rdiamond(A_IN)
+    (wx, wy), (nx, ny), (ex, ey) = hole[3], hole[0], hole[1]
+    x = np.asarray(x, dtype=float)
+    return np.where(x <= nx, wy + (ny - wy) * (x - wx) / (nx - wx),
+                    ny + (ey - ny) * (x - nx) / (ex - nx)) + FASCIA_D
+
+
+def eave_shade(lay):
+    """THE GALLERY SLAB'S SHADE on everything standing under it — the
+    shafts, the corner pier, the glass, the breezeway, the cone
+    (2026-09-22, from "the columns still look oddly cut off at the
+    ends"). Run on paint_well's layer after all of that is painted and
+    before the fascia band goes over the top.
+
+    What it fixes is the head. With nothing under the band darker than
+    anything else, the band's bottom edge sliced every shaft at full
+    brightness and read as the shaft's own top. A slab casts a shade
+    on what stands under it, and a shaft that darkens toward the band
+    reads as going on up behind it.
+
+    WHY THE WHOLE EAVE AND NOT THE SHAFTS ALONE: that was tried first.
+    Shafts with shaded heads beside a bright door pier, a bright corner
+    wall and a bright breezeway read as columns with dark CAPS, not as
+    things under a slab. One pass over the strip under the band treats
+    every surface there alike.
+
+    SAFE BY GEOMETRY, not by masking. The strip is `ramp` px under the
+    band's bottom edge, and on both mauka runs the far wall shows for
+    37.6 px below that edge before the floor starts (the slab hides
+    16*GND_BACK, the band 24 more, of a DROP-tall storey), so no floor
+    pixel is ever in it. Everything above the edge gets the full shade
+    too, but the band covers it, or the hole mask drops it. Isolines
+    run parallel to the band's edge (fascia_foot_y), so the shade is an
+    even strip under the band on both runs and a V at the corner."""
+    ramp, g_top = EAVE
+    hole = rdiamond(A_IN)
+    x0, x1 = hole[3][0], hole[1][0]
+    y0 = hole[0][1]
+    y1 = float(np.max(fascia_foot_y([x0, x1]))) + ramp
+    box = (int(x0 * K), int(y0 * K), int(math.ceil(x1 * K)),
+           int(math.ceil(y1 * K)))
+    a = np.asarray(lay.crop(box)).astype(np.float32)
+    ys, xs = np.mgrid[box[1]:box[3], box[0]:box[2]]
+    s = (ys + 0.5) / K - fascia_foot_y((xs + 0.5) / K)
+    g = g_top + (1.0 - g_top) * np.clip(s / ramp, 0.0, 1.0)
+    a[..., :3] *= g[..., None]
+    lay.paste(Image.fromarray(np.clip(a + 0.5, 0, 255).astype(np.uint8),
+                              "RGBA"), box[:2])
 
 
 def court_panel(d, u_a, u_b, dep, f=1.0):
@@ -1840,74 +2038,56 @@ def paint_railings(d_makai, d_mauka):
                 (c[0] + 2, c[1] - RAIL_H - 6)], fill=KOA_LT, width=1)
 
 
-RAIL_POT_T = (0.34, 0.72)
-# the pot base sits 16 draw px toward the camera from the rail line —
-# a pure +y screen offset, which in PLAN is an equal step in u and v
-RAIL_POT_OFF = 16 / (K * SY) / 2
-
-
-def rail_pot_plan():
-    """Plan positions of the rail pots, from the SAME edges and t
-    values paint_rail_pots draws them at — they are obstacles on the
-    walkway, and before this the character walked straight through
-    them."""
-    hole = rdiamond(A_IN)
-    out = []
-    for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):
-        for t in RAIL_POT_T:
-            u, v = BASIS.plan(*lerp(e0, e1, t))
-            out.append((u + RAIL_POT_OFF, v + RAIL_POT_OFF))
-    return out
-
-
 def paint_rail_pots(d):
     """Potted plants set against the well railing on the walkway —
     the small life the gallery-corner photo shows at intervals.
     Terracotta pot lit from the well side (left), soil line, then
     arcing fronds drawn dark mass first, blades over, light tips
     last — the layering is what reads as a PLANT instead of a green
-    blob at this size."""
-    hole = rdiamond(A_IN)
+    blob at this size.
+
+    WHERE comes from the layout (items of kind "pot"), which the
+    walkmask reads too. It used to be `t` along the rail plus a +16px
+    screen nudge here, and a separate rail_pot_plan() for the walkmask
+    that took the nudge as 16 DRAW px — so each pot's collision disc
+    sat ~1 m from the pot and the player could stand on all four."""
     # (tip dx, tip dy rel. crown, colour) — a fan, asymmetric on
     # purpose; a symmetric fan reads as a printed icon
     fronds = ((-8, -8, "#3f5f3a"), (-5, -12, "#567a4c"),
               (-1, -14, "#6f9660"), (3, -13, "#567a4c"),
               (7, -10, "#8fb37c"), (-10, -4, "#567a4c"),
               (10, -5, "#3f5f3a"))
-    for e0, e1 in ((hole[1], hole[2]), (hole[2], hole[3])):  # near edges
-        for t in RAIL_POT_T:
-            p = lerp(e0, e1, t)
-            # tight to the rail: the walkway is only 40px deep here
-            x, y = p[0], p[1] + 16
-            d.ellipse([x - 7, y + 1, x + 7, y + 6],
-                      fill=shade(FLOOR, 0.72))              # cast shadow
-            # flared terracotta body, foot, lit rim
-            d.polygon([(x - 5, y - 5), (x + 5, y - 5),
-                       (x + 3, y + 2), (x - 3, y + 2)],
-                      fill=hx("#8c5535"))
-            d.polygon([(x - 5, y - 5), (x - 2, y - 5),
-                       (x - 2, y + 2), (x - 3, y + 2)],
-                      fill=hx("#a56a42"))                   # lit flank
-            d.polygon([(x + 2, y - 5), (x + 5, y - 5),
-                       (x + 3, y + 2), (x + 2, y + 2)],
-                      fill=hx("#6d3f26"))                   # shade flank
-            d.rectangle([x - 3, y + 2, x + 3, y + 3],
-                        fill=hx("#5a331f"))                 # foot
-            d.rectangle([x - 6, y - 8, x + 6, y - 5], fill=hx("#9c6038"))
-            d.rectangle([x - 6, y - 8, x + 6, y - 7], fill=hx("#c08050"))
-            d.rectangle([x + 4, y - 8, x + 6, y - 5], fill=hx("#7a4527"))
-            d.rectangle([x - 4, y - 9, x + 4, y - 8], fill=hx("#2e2118"))
-            # foliage: dark mass, then the frond fan out of the crown
-            cy0 = y - 9
-            d.ellipse([x - 6, cy0 - 8, x + 6, cy0 + 1],
-                      fill=hx("#33502f"))
-            for fx, fy, c in fronds:
-                tip = (x + fx, cy0 + fy)
-                bow = (x + round(fx * 0.45),
-                       cy0 + round(fy * 0.55) - 3)
-                d.line([(x, cy0), bow], fill=hx(c), width=1)
-                d.line([bow, tip], fill=hx(c), width=1)
-                d.point(tip, fill=hx("#a7c98f"))            # light tip
+    for it in layout().items("pot"):
+        x, y = iso(it.u, it.v, it.level.dy)
+        d.ellipse([x - 7, y + 1, x + 7, y + 6],
+                  fill=shade(FLOOR, 0.72))              # cast shadow
+        # flared terracotta body, foot, lit rim
+        d.polygon([(x - 5, y - 5), (x + 5, y - 5),
+                   (x + 3, y + 2), (x - 3, y + 2)],
+                  fill=hx("#8c5535"))
+        d.polygon([(x - 5, y - 5), (x - 2, y - 5),
+                   (x - 2, y + 2), (x - 3, y + 2)],
+                  fill=hx("#a56a42"))                   # lit flank
+        d.polygon([(x + 2, y - 5), (x + 5, y - 5),
+                   (x + 3, y + 2), (x + 2, y + 2)],
+                  fill=hx("#6d3f26"))                   # shade flank
+        d.rectangle([x - 3, y + 2, x + 3, y + 3],
+                    fill=hx("#5a331f"))                 # foot
+        d.rectangle([x - 6, y - 8, x + 6, y - 5], fill=hx("#9c6038"))
+        d.rectangle([x - 6, y - 8, x + 6, y - 7], fill=hx("#c08050"))
+        d.rectangle([x + 4, y - 8, x + 6, y - 5], fill=hx("#7a4527"))
+        d.rectangle([x - 4, y - 9, x + 4, y - 8], fill=hx("#2e2118"))
+        # foliage: dark mass, then the frond fan out of the crown
+        cy0 = y - 9
+        d.ellipse([x - 6, cy0 - 8, x + 6, cy0 + 1],
+                  fill=hx("#33502f"))
+        for fx, fy, c in fronds:
+            tip = (x + fx, cy0 + fy)
+            bow = (x + round(fx * 0.45),
+                   cy0 + round(fy * 0.55) - 3)
+            d.line([(x, cy0), bow], fill=hx(c), width=1)
+            d.line([bow, tip], fill=hx(c), width=1)
+            d.point(tip, fill=hx("#a7c98f"))            # light tip
 
 
 # ------------------------------------------------------- mauka walls
@@ -2315,7 +2495,8 @@ FEAT_HW = {"door": 20, "office": 14, "hall": 19, "lift": 19,
 # balcony it still pushes the walking line out by 15%.
 BENCH_OUT = 0.375
 BENCH_HW = FEAT_HW["bench"] - 2    # half-length along the run, screen px
-WING_BENCH_T = 0.72                # the wing run carries one of its own
+# (the wing's bench is placed in the layout — build_layout — now; its t
+# was WING_BENCH_T here, read by both bench_at and the walkmask)
 
 # THE CLICKABLE BOX OF A WALL FEATURE, in the same wall coordinates
 # the painters use: (half-width along the RUN, y_lo, y_hi) where y is
@@ -2638,8 +2819,10 @@ def wall_column(d, r, e0, e1, y_lo, y_hi, dy_lo, dy_hi, f):
             panel pasted flat on a receding wall — and its lower
             corner hung below the wall's own foot, which is the
             white nub that showed up along the base of both upper
-            storeys (user, 2026-08-25)."""
-            return (round(cx + dx), round(yb + dx * sl - y))
+            storeys (user, 2026-08-25). snap(), not round(): see
+            court_column — the same taper on the whole-pixel grid
+            jogged a pixel sideways every few slices."""
+            return (snap(cx + dx), snap(yb + dx * sl - y))
 
         # a corner column stands ON the run's end and only its half
         # belongs to this face; the other half is the next run's, and
@@ -2690,19 +2873,24 @@ def wall_column(d, r, e0, e1, y_lo, y_hi, dy_lo, dy_hi, f):
                    fill=shade(hx(cap_c), f), width=2)
 
 
-def bay_columns(d, r, e0, e1, f, feats, reflect=False):
-    """Dark bronze columns between the bays — placed at the CORNERS
-    and at the MIDPOINTS of the gaps between features, and only where
-    they actually CLEAR the neighbouring frames (2026-08-24, user:
-    "many of the columns in general are clipping into other
-    elements"). The old fixed i/8 grid landed columns inside door
-    architraves all along both walls — doors draw after columns, so
-    every collision left a bronze sliver poking out of a frame. A
-    column that cannot clear its gap is simply not drawn: on the
-    door-dense gallery runs the koa leaves carry the rhythm alone."""
+def bay_post_ts(r, e0, e1, feats):
+    """Where the dark bronze posts go on one wall run, as t values —
+    placed at the CORNERS and at the MIDPOINTS of the gaps between
+    features, and only where they actually CLEAR the neighbouring
+    frames (2026-08-24, user: "many of the columns in general are
+    clipping into other elements"). The old fixed i/8 grid landed
+    columns inside door architraves all along both walls — doors draw
+    after columns, so every collision left a bronze sliver poking out
+    of a frame. A column that cannot clear its gap is simply not
+    drawn: on the door-dense gallery runs the koa leaves carry the
+    rhythm alone.
+
+    PURE, so the layout records the posts (build_layout) and
+    bay_columns() draws them from that one list."""
     span = abs(e1[0] - e0[0])
     ts = sorted(t for _, t, _ in feats)
     cand = [0.0, 1.0] + [(a + b) / 2 for a, b in zip(ts, ts[1:])]
+    out = []
     for t in cand:
         if any(abs(t - ft) * span < FEAT_HW[k] + 6 for _, ft, k in feats):
             continue
@@ -2711,14 +2899,41 @@ def bay_columns(d, r, e0, e1, f, feats, reflect=False):
         # would otherwise take a bronze stripe down their middle
         if any(abs(b[0] - cx) < COL_HW1 + 6 for cx in col_xs(r)):
             continue
-        d.rectangle([b[0] - 2, b[1] - 58, b[0] + 2, b[1] - 6],
-                    fill=shade(hx("#241c15"), f))
-        d.rectangle([b[0] - 2, b[1] - 58, b[0] - 1, b[1] - 6],
-                    fill=shade(hx("#6b5c4a"), f))
+        out.append(t)
+    return out
+
+
+def bay_columns(d, run, e0, e1, f, reflect=False):
+    """Draw the bronze posts the layout recorded on `run` (see
+    bay_post_ts for where they go and why).
+
+    FOOT TO SLAB, AND SHEARED WITH THE WALL (2026-09-22). A post ran
+    from 58 down to 6 px above the wall foot, which was right when the
+    wall had an 8px white base strip for it to stand on — that strip
+    went on 2026-08-25 ("get rid of that white base strip too") and
+    every post was left hanging 6px off the floor. It stands on the
+    walkway now, and its foot and head run with the 2:1 face the way
+    wall_column's strips do: an axis-aligned box on a receding wall
+    lifts one corner off the floor line and drops the other below it.
+    Same 5px footprint and 2px lit edge as the rectangles it replaces."""
+    sl = (e1[1] - e0[1]) / (e1[0] - e0[0])       # ±0.5 on every run
+    for post in layout().items("post", frame=run):
+        b = lerp(e0, e1, post.t)
+
+        def pt(dx, y, b=b):
+            return (snap(b[0] + dx), snap(b[1] + dx * sl - y))
+
+        d.polygon([pt(-2, 0), pt(3, 0), pt(3, 58), pt(-2, 58)],
+                  fill=shade(hx("#241c15"), f))
+        d.polygon([pt(-2, 0), pt(0, 0), pt(0, 58), pt(-2, 58)],
+                  fill=shade(hx("#6b5c4a"), f))
         if reflect:
-            # column reflection in the walkway tile
-            d.line([(b[0], b[1] + 3), (b[0], b[1] + 9)],
-                   fill=mix(FLOOR, hx("#241c15"), 0.45), width=2)
+            # column reflection in the walkway tile, hanging straight
+            # off the foot line — it started 3px below the post when a
+            # base strip stood between them, and a gap between a post
+            # and its own reflection floats it all over again
+            d.polygon([pt(-1, 0), pt(1, 0), pt(1, -8), pt(-1, -8)],
+                      fill=mix(FLOOR, hx("#241c15"), 0.45))
 
 
 def upper_parapet(d, a0, a1, f, phase0=None):
@@ -2854,8 +3069,10 @@ def paint_upper_level(d):
         (3, 0, 1.10),
         (0, 1, 0.97),
     )):
-        feats = place_feats(r, LVL2_OUT, col_hw(LVL2_Y + 58),
-                            UPPER_FEATS[r])
+        # the schedule as the layout laid it out (UPPER_FEATS through
+        # place_feats, once, in build_layout)
+        run = MAIN_RUNS["L3"][r]
+        feats = feats_on(layout(), run)
         a0, a1 = inn[i0], inn[i1]
         e0, e1 = out[i0], out[i1]
 
@@ -2876,7 +3093,7 @@ def paint_upper_level(d):
         # the column, FLUSH in this wall — before the doors and long
         # before the walkway that crosses it
         wall_column(d, r, e0, e1, 0, 58, LVL2_Y, LVL2_Y + 58, f)
-        bay_columns(d, r, e0, e1, f, feats)
+        bay_columns(d, run, e0, e1, f)
         benches = []
         for did, t, kind in feats:
             if kind == "door":
@@ -2934,7 +3151,7 @@ def paint_upper_level(d):
     for y in (24, 41):
         d.line([up(w0, y), up(w1, y)],
                fill=shade(CONC, fdh * 0.90), width=1)
-    door_at(d, w0, w1, 0.35, "office", hw=11)
+    door_at(d, w0, w1, layout()["L3.wing.office"].t, "office", hw=11)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
               fill=shade(hx(FLUTE_FIELD), white_f(fdh)))
     for b in even_run(out[0], w1, FLUTE_PITCH):
@@ -2944,7 +3161,7 @@ def paint_upper_level(d):
                fill=shade(hx(FLUTE_GROOVE), white_f(fdh)), width=FLUTE_W)
     d.polygon([aw0, aw1, w1, w0], fill=shade(FLOOR, fdh * 0.94))
     d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
-    bench_at(d, w0, w1, 0.72, fdh)
+    bench_at(d, w0, w1, layout()["L3.wing.bench"].t, fdh)
     upper_parapet(d, aw0, aw1, fdh, phase0=inn[0])
     # ---- the LOWER STOREY of the sliced ends goes again, LAST.
     # Two things above spilled onto it: a door's floor reflection at
@@ -2989,7 +3206,10 @@ def paint_walls(d):
         (out[3], out[0], 1.0),
         (out[0], out[1], 0.88),
     )):
-        feats = place_feats(r, A_OUT, col_hw(58), GALLERY_FEATS[r])
+        # the schedule as the layout laid it out (GALLERY_FEATS through
+        # place_feats, once, in build_layout)
+        run = MAIN_RUNS["L2"][r]
+        feats = feats_on(layout(), run)
         benches = []
 
         def q(y0, y1, col):
@@ -3017,7 +3237,7 @@ def paint_walls(d):
         wall_column(d, r, e0, e1, 0, 58, 0, 58, f)
         # dark bronze columns between the bays (clearance-placed —
         # see bay_columns)
-        bay_columns(d, r, e0, e1, f, feats, reflect=True)
+        bay_columns(d, run, e0, e1, f, reflect=True)
         # doors, hallway portals, elevator lobbies
         for did, t, kind in feats:
             if kind == "door":
@@ -3089,8 +3309,8 @@ def paint_walls(d):
         d.rectangle([b[0] - mw // 2, b[1] - my0 - int(wrng.integers(4, 9)),
                      b[0] + mw // 2, b[1] - my0],
                     fill=shade(CONC, fw * wrng.uniform(0.94, 1.06)))
-    door_at(d, w0, w1, 0.35, "office", hw=11)
-    bench_at(d, w0, w1, WING_BENCH_T, fw)
+    door_at(d, w0, w1, layout()["L2.wing.office"].t, "office", hw=11)
+    bench_at(d, w0, w1, layout()["L2.wing.bench"].t, fw)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
               fill=shade(hx(FLUTE_FIELD), white_f(fw)))
     for b in even_run(out_g[0], w1, FLUTE_PITCH):
@@ -3101,7 +3321,7 @@ def paint_walls(d):
     return doors
 
 
-# ------------------------------------------- makai edge + exit stairs
+# ------------------------------------------- makai edge + sawn ends
 def cut_face(d, a0, a1, off, arris=True):
     """One sliced surface: the wall's core between the run `a0..a1` and
     the same run pushed out by the wall's thickness. Shared by the
@@ -3140,62 +3360,33 @@ def paint_front_edge(d):
     "don't need the walls, just showing the walkway is fine") — the
     knee-high cutaway stub walls were removed. The floor ends at the
     slab edge with its own fluted fascia hanging below, exactly the
-    band the well edges wear, and nothing stands on it."""
+    band the well edges wear, and nothing stands on it.
+
+    NO EXIT STAIRS (2026-09-22, user's call: "remove the stairs"). They
+    hung off the SW edge into bare ink, drawn head-on — level treads
+    and mirror-image cheeks under a 2:1 edge, the one flat projection
+    in the room — and since the Capitol became the home view (noExit,
+    2026-08-26) they led nowhere. The SW band is unbroken again. The
+    JSON still carries the noExit-skipped `exit` hotspot at the old
+    spot, so restoring the route to the map means dropping noExit AND
+    drawing a way down here — in iso this time."""
     out = rdiamond(A_OUT)
-    # THE STAIRS KEEP THEIR SPOT: the old S corner, now an ordinary
-    # point on the longer SW edge (the rectangular plan has no bottom
-    # apex). spawn and the (unused) exit hotspot both derive from
-    # diamond(A_OUT)[2] in render(), so nothing else moves.
-    s = iso(A_OUT, A_OUT)
-    # SE edge — the wing's far side, one unbroken band. PLAIN, no
-    # flutes: this is the sawn dollhouse cut (see fluted_band)
+    # SE edge — the wing's far side — and SW edge, each one unbroken
+    # band. PLAIN, no flutes: this is the sawn dollhouse cut (see
+    # fluted_band)
     fluted_band(d, out[1], out[2], 0, FASCIA_D, 0.92, flutes=False)
-    # SW edge — broken at the stairs
-    e0, e1 = out[2], out[3]
-    span = float(e0[0] - e1[0])   # horizontal extent, px
-    t_s = (e0[0] - s[0]) / span
-    half = 34.0 / span
-    fluted_band(d, e0, lerp(e0, e1, t_s - half), 0, FASCIA_D, 0.92,
-                flutes=False)
-    fluted_band(d, lerp(e0, e1, t_s + half), e1, 0, FASCIA_D, 0.92,
-                flutes=False)
-    # stairs down out of the room. The top tread sits ON the slab
-    # edge: the treads used to start STUB_H below it, which was the
-    # top of the knee-high stub wall they descended from — with the
-    # stubs gone (2026-08-24) that offset was a 10px slot of bare ink
-    # between the walkway and the first step.
-    top = s[1]
-    for i in range(5):
-        y = top + i * 8
-        wdt = 40 - i * 2
-        d.polygon([(s[0] - wdt, y), (s[0] + wdt, y),
-                   (s[0] + wdt - 4, y + 6), (s[0] - wdt + 4, y + 6)],
-                  fill=shade(hx("#cbc3ae"), 0.95 - i * 0.13))
-    # cheek walls flanking the run, ending AT the landing's top edge:
-    # they used to run 8px past it at x = ±30, where the landing has
-    # already narrowed to ±27, so each left a spike hanging under the
-    # foot of the stair
-    for sgn in (-1, 1):
-        d.polygon([(s[0] + sgn * 40, top),
-                   (s[0] + sgn * 30, top + 44),
-                   (s[0] + sgn * 34, top + 44),
-                   (s[0] + sgn * 44, top + 4)],
-                  fill=shade(hx("#b5ad98"), 0.9))
-    d.polygon([(s[0] - 32, top + 44),
-               (s[0] + 32, top + 44),
-               (s[0] + 24, top + 56),
-               (s[0] - 24, top + 56)],
-              fill=shade(hx("#8f8a7a"), 0.85))
+    fluted_band(d, out[2], out[3], 0, FASCIA_D, 0.92, flutes=False)
 
 
 def paint_planters(d):
     """Raised TAN STONE planter boxes at the ʻEwa and Diamond Head
     corners of the walkway. The third one at the N apex was removed
     (user: "the central potted plant should be removed") — wedged at
-    the corner between the two walls it read as clutter."""
+    the corner between the two walls it read as clutter. WHERE: the
+    layout's "planter" items, centred in the walkway's corner squares."""
     stone = hx("#c9b88f")
-    for u, v in PLANTERS:
-        x, y = iso(u, v)
+    for it in layout().items("planter"):
+        x, y = iso(it.u, it.v, it.level.dy)
         d.polygon([(x - PLANTER_HW_PX, y), (x, y - PLANTER_HW_PX / 2),
                    (x + PLANTER_HW_PX, y), (x, y + PLANTER_HW_PX / 2)],
                   fill=stone)
@@ -3217,77 +3408,255 @@ def paint_planters(d):
                    fill=hx("#8fb37c"), width=1)
 
 
-# ---- THE PLAN FLOOR (see tools/roomplan.py). The gallery walkway is
-# the ring between the outer diamond and the well — expressed here from
-# the SAME A_OUT / A_IN / WING_EXT the painters draw it with, so
-# lengthening the wing or deepening the balcony moves the walkmask with
-# the picture. render() asserts the two have not come apart.
+# ============================================================ THE LAYOUT
+# WHAT STANDS WHERE, IN ONE PLACE (tools/roomframe.py; 2026-09-22, user:
+# "figure out framework so we can more easily adjust the layout of places
+# like this capitol and have a reference frame or something").
 #
-# The well is a BLOCK rather than a hole in the floor because that is
-# what it is on the ground: a railing you stop at, and a storey of air.
-PLANTERS = ((10.25, -10.25), (-10.25, 10.25))
+# THE REFERENCE FRAME. Plan (u, v) in plan units (~1 m), origin at the
+# rotunda centre; +u runs toward Diamond Head, +v toward makai. Three
+# levels: `court` (the rotunda floor, dy -DROP), `L2` (the gallery the
+# player walks, dy 0) and `L3` (the stepped-back House floor, dy LVL2_Y).
+# SEE IT: `python3 tools/render_capitol.py --layout` writes
+# build/debug_layout_capitol.png, and the game at `?layout=1` draws the
+# same frame over the room with a cursor readout — hover a spot, read its
+# level, (u, v) and wall run + t, and write that into the table below.
+#
+# THE FRAMES are derived from the structure constants at the top of this
+# file and never typed: change A_OUT or WING_EXT and every frame — and
+# every item placed in one — moves with it. That is the point: the
+# Diamond Head planter was a typed position, and when the wing slid its
+# corner out (2026-08-26) it stayed behind on the governor's lift.
+#
+# THREE KINDS OF THING, three places to change them:
+#   STRUCTURE   walls, well, storeys — the constants at the top
+#   SCHEDULES   what hangs on the four main wall runs, in order:
+#               GALLERY_FEATS / UPPER_FEATS. place_feats() lays them out
+#               between the columns; they are recorded here as DERIVED
+#               items (so the overlay and the checks see them), and the
+#               painters read them back from here — one layout, not three
+#               calls to place_feats that had to agree
+#   PLACEMENTS  everything else — the table in build_layout()
+#
+# THE CHECKS run on every bake (roomframe.Layout.check): an item outside
+# its frame, two footprints overlapping, or anything that cuts the walk
+# ring fails the bake; a footprint in a doorway or a depth-band policy the
+# walk mask contradicts is printed as a warning.
+BASIS = roomplan.Basis(CX, CY, SX, SY)
+PU = math.hypot(SX, SY)    # scene px per plan unit ALONG a 2:1 wall run
 PLANTER_HW_PX = 16         # == the top face paint_planters draws; the
                            # obstacle radius follows the art from it
-BASIS = roomplan.Basis(CX, CY, SX, SY)
+# what the depth-band check overlaps the character against: each kind's
+# drawn box in scene px around its floor point (read off its painter)
+EXTENT = {"planter": (-16, -8, 16, 13), "pot": (-7, -24, 7, 6)}
+CHAR_BOX = (-7, -39, 7, 0)  # the walking character at this room's scale
+MAIN_RUNS = {"L2": ("L2.ewa", "L2.dh"), "L3": ("L3.ewa", "L3.dh")}
+# ROOM_CAPITOL.view in main.js — repeated here because the bake asserts
+# against it (spawn on screen) and frames the reference image with it.
+# Keep the two in step.
+VIEW = (368, 288, 1440, 976)
 
 
-def bench_blocks():
-    """The walkway's benches as plan rects.
+def build_layout():
+    """The Capitol's frames and items. Painters, the walkmask, the frame
+    JSON and both overlays all read the result, through layout()."""
+    L = roomframe.Layout("capitol", BASIS, axes={
+        "+u": "Diamond Head", "-u": "ʻEwa", "+v": "makai", "-v": "mauka",
+        "origin": "the rotunda centre", "unit": "plan unit, ~1 m"})
+    E_in, E_out = A_IN + WING_EXT, A_OUT + WING_EXT       # the wing's end
+    well = [(-A_IN, -A_IN), (E_in, -A_IN), (E_in, A_IN), (-A_IN, A_IN)]
+    # the court is only ever seen through the well, so its grid is too
+    L.add_level("court", -DROP, "#4fd1c5", window=(well, 0.0))
+    L.add_level("L2", 0.0, "#ffb454")
+    L.add_level("L3", LVL2_Y, "#c792ea")
 
-    THE RUN GEOMETRY IS NOT RE-DERIVED HERE. `place_feats` is pure, so
-    this calls the SAME function with the SAME arguments the wall
-    painter does and gets the identical schedule back; each bench's
-    screen point is then the painter's own `lerp(e0, e1, t)`, inverted
-    through the basis. Writing out "run 0 is u = -A_OUT, v = a(1-2t)"
-    would be a second copy of the run maths, free to disagree with
-    `run_x` the next time a wall moves — and a bench in two places is
-    a bench the player walks through.
+    # ---- FLOORS. The court as far as the well shows it; the gallery ring
+    # as four runs and four corner squares (the corners are where the
+    # planters stand); the L3 terrace as painted — mitred, mauka only.
+    L.add_rect("court", "court", -A_IN, E_in, -A_IN, A_IN)
+    L.add_rect("L2.corner.N", "L2", -A_OUT, -A_IN, -A_OUT, -A_IN)
+    L.add_rect("L2.walk.dh", "L2", -A_IN, E_in, -A_OUT, -A_IN)
+    L.add_rect("L2.corner.E", "L2", E_in, E_out, -A_OUT, -A_IN)
+    L.add_rect("L2.walk.east", "L2", E_in, E_out, -A_IN, A_IN)
+    L.add_rect("L2.corner.S", "L2", E_in, E_out, A_IN, A_OUT)
+    L.add_rect("L2.walk.makai", "L2", -A_IN, E_in, A_IN, A_OUT)
+    L.add_rect("L2.corner.W", "L2", -A_OUT, -A_IN, A_IN, A_OUT)
+    L.add_rect("L2.walk.ewa", "L2", -A_OUT, -A_IN, -A_IN, A_IN)
+    i3, o3 = LVL2_IN, LVL2_OUT
+    L.add_region("L3.walk.ewa", "L3",
+                 [(-i3, i3), (-i3, -i3), (-o3, -o3), (-o3, o3)])
+    L.add_region("L3.walk.dh", "L3",
+                 [(-i3, -i3), (i3, -i3), (o3, -o3), (-o3, -o3)])
+    L.add_region("L3.walk.wing", "L3",
+                 [(i3, -i3), (i3 + WING_EXT, -i3),
+                  (o3 + WING_EXT, -o3), (o3, -o3)])
 
-    A run's wall is axis-aligned in PLAN (ʻEwa is u = -A_OUT, Diamond
-    Head is v = -A_OUT), so a bench standing against it is a plain
-    rect: long along the run, BENCH_OUT deep toward the court.
-    """
-    hl = BENCH_HW / math.hypot(SX, SY)      # half-length, plan units
-    g = diamond(A_OUT)
-    rects = []
+    # ---- RUNS. Walls go a -> b in the painters' own e0 -> e1 order, so a
+    # run's t IS the t their door_at / bench_at take.
+    for lv, a in (("L2", A_OUT), ("L3", LVL2_OUT)):
+        L.add_run(f"{lv}.ewa", lv, (-a, a), (-a, -a), into=(1, 0),
+                  height=58)
+        L.add_run(f"{lv}.dh", lv, (-a, -a), (a, -a), into=(0, 1),
+                  height=58)
+        L.add_run(f"{lv}.dh.wing", lv, (a, -a), (a + WING_EXT, -a),
+                  into=(0, 1), height=58)
+    # the railing round the well; `into` is the walkway side
+    for nm, a, b, into in (("rail.ewa", (-A_IN, A_IN), (-A_IN, -A_IN), (-1, 0)),
+                           ("rail.dh", (-A_IN, -A_IN), (E_in, -A_IN), (0, -1)),
+                           ("rail.east", (E_in, -A_IN), (E_in, A_IN), (1, 0)),
+                           ("rail.makai", (E_in, A_IN), (-A_IN, A_IN), (0, 1))):
+        L.add_run(nm, "L2", a, b, into=into, height=RAIL_H + 6, kind="rail")
+    # the court: its two set-back walls (the breezeway and the glass).
+    # Every loggia shaft stands on their line too (COL_LINE == GND_OUT),
+    # so the columns are filed on these runs. There used to be a separate
+    # colonnade run on the well line, and that line was the misalignment.
+    L.add_run("court.ewa", "court", (-GND_OUT, GND_OUT),
+              (-GND_OUT, -GND_OUT), into=(1, 0), height=DROP)
+    L.add_run("court.dh", "court", (-GND_OUT, -GND_OUT),
+              (GND_OUT + WING_EXT, -GND_OUT), into=(0, 1), height=DROP)
 
-    def seat(p, run):
-        u, v = BASIS.plan(*p)
-        if run == 0:                        # ʻEwa wall: u fixed
-            return roomplan.rect(u, u + BENCH_OUT, v - hl, v + hl)
-        return roomplan.rect(u - hl, u + hl, v, v + BENCH_OUT)
+    # ---- footprints, each computed from the item's resolved point
+    def disc_px(hw_px):
+        return lambda u, v: [roomplan.disc_from_px(BASIS, u, v, hw_px)]
 
-    for r, (e0, e1) in enumerate(((g[3], g[0]), (g[0], g[1]))):
-        for _, t, kind in place_feats(r, A_OUT, col_hw(58),
-                                      GALLERY_FEATS[r]):
-            if kind == "bench":
-                rects.append(seat(lerp(e0, e1, t), r))
-    # the wing run carries one of its own (see the wing block in
-    # paint_walls) — same Diamond Head wall, past the old E corner
-    w0, w1 = g[1], iso(A_OUT + WING_EXT, -A_OUT)
-    rects.append(seat(lerp(w0, w1, WING_BENCH_T), 1))
-    return rects
+    def bench_foot(run, t):
+        """The seat as a plan rect: long along the wall, BENCH_OUT deep.
+        From the PAINTER's own snapped point, lerp(e0, e1, t), inverted
+        through the basis — a bench in two places is a bench the player
+        walks through."""
+        f = L.run(run)
+        x, y = lerp(*f.ends(iso), t)
+        u, v = BASIS.plan(x, y + f.level.dy)     # inverted at ITS level
+        hl = BENCH_HW / PU                   # half-length, plan units
+        if abs(f.dir[0]) < 1e-9:             # runs along v: an ʻEwa wall
+            return lambda *_: [roomplan.rect(u, u + BENCH_OUT, v - hl, v + hl)]
+        return lambda *_: [roomplan.rect(u - hl, u + hl, v, v + BENCH_OUT)]
+
+    def pot_foot(run, s, n, r=0.30):
+        """The pot, AND the strip of floor between it and the rail. On
+        screen its body and fronds stand in front of the pickets, so it
+        reads as set against the rail; a character squeezing through the
+        0.4 m behind it would look like it walked through the pot."""
+        f = L.run(run)
+        pts = [f.at(s=s + k * r, n=m) for k in (-1, 1) for m in (0.0, n)]
+        us, vs = [p[0] for p in pts], [p[1] for p in pts]
+        return lambda u, v: [roomplan.disc(u, v, r),
+                             roomplan.rect(min(us), max(us),
+                                           min(vs), max(vs))]
+
+    # ---- SCHEDULES (derived): the four main runs, laid out ONCE by
+    # place_feats(), with the arguments the painters used to pass it
+    for lv, a, head, sched in (("L2", A_OUT, 58, GALLERY_FEATS),
+                               ("L3", LVL2_OUT, LVL2_Y + 58, UPPER_FEATS)):
+        for r, run in enumerate(MAIN_RUNS[lv]):
+            count = {}
+            for nm, t, kind in place_feats(r, a, col_hw(head), sched[r]):
+                count[kind] = count.get(kind, 0) + 1
+                iid = nm or f"{run}.{kind}{count[kind]}"
+                if kind == "bench":
+                    L.place(iid, kind, run, t=t, name=nm, derived=True,
+                            foot=bench_foot(run, t), blocks=True,
+                            band="back")
+                else:
+                    L.place(iid, kind, run, t=t, name=nm, derived=True,
+                            hw_plan=FEAT_HW[kind] / PU)
+
+    # ================================================================
+    # PLACEMENTS — THE TABLE TO EDIT. Coordinates are in the named frame:
+    # a run takes t (0..1 from its t0 end) or s (plan units from it) and
+    # n (plan units into the room); a region takes u, v — or nothing,
+    # for its centre. Read positions off `?layout=1` in the game.
+    # ================================================================
+    # the corner planters, centred in their corner squares — so the
+    # Diamond Head one follows the wing wherever WING_EXT puts it
+    for iid, corner in (("planter.dh", "L2.corner.E"),
+                        ("planter.ewa", "L2.corner.W")):
+        L.place(iid, "planter", corner, foot=disc_px(PLANTER_HW_PX),
+                blocks=True, band="front", extent=EXTENT["planter"])
+    # the rail pots, 1 m in from the rail. They were placed at t along the
+    # rail plus a "+16 px" screen nudge — and the walkmask read that nudge
+    # as 16 DRAW px (4 scene), so every pot's collision sat ~1 m from the
+    # pot and the player could stand on all four. These are the drawn
+    # positions; s is metres from the rail's t0 end.
+    for iid, run, s in (("pot.east1", "rail.east", 7.12),
+                        ("pot.east2", "rail.east", 13.96),
+                        ("pot.makai1", "rail.makai", 7.84),
+                        ("pot.makai2", "rail.makai", 17.72)):
+        L.place(iid, "pot", run, s=s, n=1.0, foot=pot_foot(run, s, 1.0),
+                blocks=True, band="back", extent=EXTENT["pot"])
+    # the wing runs carry unnamed filler only — an office door and a bench
+    # each. Never a hotspot: place_feats does not see the wing.
+    for lv in ("L2", "L3"):
+        run = f"{lv}.dh.wing"
+        L.place(f"{lv}.wing.office", "office", run, t=0.35,
+                hw_plan=FEAT_HW["office"] / PU)
+        L.place(f"{lv}.wing.bench", "bench", run, t=0.72,
+                foot=bench_foot(run, 0.72), blocks=True, band="back")
+    # the court, seen through the well: the medallion (rx 58 px) and the
+    # two stone planter-benches (30 px), in the court's own plan
+    L.place("mosaic", "mosaic", "court", u=-0.75, v=-0.75,
+            foot=disc_px(58))
+    L.place("planterbench.treed", "planterbench", "court", u=-5.25,
+            v=-1.25, treed=True, size=30, foot=disc_px(30))
+    L.place("planterbench.bare", "planterbench", "court", u=-1.25,
+            v=-5.25, treed=False, size=30, foot=disc_px(30))
+    # where the player arrives: the makai run, where the exit stairs
+    # stood, pulled in off the rail
+    L.place("spawn", "spawn", "L2.walk.makai", u=11.5, v=10.5)
+
+    # ---- COLUMNS (derived from COL_T, COL_LINE and the wing — move them
+    # there). paint_well draws them from these items. The corner one is
+    # on both walls; it is filed as t = 0 of the Diamond Head run.
+    for nm, (u, v), cf in column_stations():
+        run = "court.dh" if abs(v + COL_LINE) < 1e-6 else "court.ewa"
+        L.place_at(nm, "column", run, u, v, foot=disc_px(COL_HW0),
+                   tall=DROP, f=cf)
+
+    # ---- BRONZE POSTS (derived from the schedules above)
+    for lv in ("L2", "L3"):
+        for r, run in enumerate(MAIN_RUNS[lv]):
+            e0, e1 = L.run(run).ends(iso)
+            for k, t in enumerate(bay_post_ts(r, e0, e1, feats_on(L, run)),
+                                  1):
+                L.place(f"{run}.post{k}", "post", run, t=t, derived=True)
+    return L
+
+
+_LAYOUT = None
+
+
+def layout():
+    """The room's layout, built once per bake (lazily, so a caller that
+    patches the draw grid first — the K = 1 gate — gets it at that K)."""
+    global _LAYOUT
+    if _LAYOUT is None:
+        _LAYOUT = build_layout()
+    return _LAYOUT
+
+
+def feats_on(L, run):
+    """A main run's schedule as the painters take it — (name, t, kind) in
+    layout order — read back from the layout instead of re-laid-out."""
+    return [(it.meta.get("name"), it.t, it.kind)
+            for it in L.items(frame=run) if it.kind in FEAT_HW]
 
 
 def walk_plan():
-    """The walkable ring, built after col_hw() and place_feats() so the
-    corner column's radius comes from the shaft the painters taper and
-    the benches come from the schedule they actually lay out."""
+    """The walkable ring: the gallery floor minus the well, minus every
+    L2 item that blocks. The corner column used to be here too, as a
+    disc on the walkway at the apex — but that shaft stands a storey
+    DOWN, in the court's wall corner; at L2 the column is a flush strip
+    in the wall. The disc was an invisible post that stopped the player
+    ~0.4 m short of the corner, and the layout's rule (an obstacle is an
+    item drawn ON the walk level) has no item for it."""
+    L = layout()
     return roomplan.Walk(
         allow=[roomplan.rect(-A_OUT, A_OUT + WING_EXT, -A_OUT, A_OUT)],
         block=[roomplan.rect(-A_IN, A_IN + WING_EXT, -A_IN, A_IN)]
-              + [roomplan.disc_from_px(BASIS, u, v, PLANTER_HW_PX)
-                 for u, v in PLANTERS]
-              # the corner column stands free at the mauka apex, on the
-              # walkway rather than in the wall (COL_APEX_U) — the one
-              # column the player can actually walk into
-              + [roomplan.disc_from_px(BASIS, -COL_APEX_U, -COL_APEX_U,
-                                       col_hw(0))]
-              + bench_blocks()
-              # the pots standing against the makai rail
-              + [roomplan.disc(u, v, 0.30) for u, v in rail_pot_plan()],
-        # the makai run by the stairs, pulled in off the rail
-        spawn=(11.5, 10.5),
+              + [r for kind in ("planter", "bench", "pot")
+                 for it in L.items(kind=kind, level="L2") if it.blocks
+                 for r in it.foot],
+        spawn=(L["spawn"].u, L["spawn"].v),
     )
 
 
@@ -3565,7 +3934,7 @@ def painterly(img):
 
 
 # ---------------------------------------------------------------- main
-def render(raw=False, walk_png=False, banded=True):
+def render(raw=False, walk_png=False, banded=True, layout_png=False):
     img = Image.new("RGBA", (W * K, H * K), INK + (255,))
     d = SDraw(img)
 
@@ -3586,12 +3955,13 @@ def render(raw=False, walk_png=False, banded=True):
     # layer is simply not the same operation. So the ground stays ONE
     # canvas and becomes the back band's base.
     #
-    # Only two bands, because nothing on this walkway can be walked
-    # round on both sides: benches are against the wall, the planters
-    # and rail pots seal the floor behind them (they are walkmask
-    # obstacles), and the corner column stands in the wall corner. The
-    # one genuine sort is the railing, and the two sides of the ring
-    # answer it without a per-pixel depth — see paint_railings.
+    # Only two bands. Benches are against the wall, and the one genuine
+    # sort is the railing, whose two sides of the ring answer it without
+    # a per-pixel depth — see paint_railings. The corner PLANTERS (front)
+    # and rail POTS (back) are NOT sealed on every side, as this comment
+    # used to claim: the layout's band check (Layout.check, below)
+    # reports each with a spot where its band draws it the wrong way
+    # round. They want their own depth bands, like the hallway's pots.
     ground = img
     bands = roombands.Bands((W * K, H * K), img, banded)
     bands.add("back", roombands.BACK)
@@ -3720,7 +4090,9 @@ def render(raw=False, walk_png=False, banded=True):
     # ry 32 with its kerb), which sits a little above the hotspot's
     # label anchor.
     rects = {k: r for k, (_, r, _) in doors.items()}
-    rects["mosaic"] = (CX - 62, CY + DROP - 44, CX + 62, CY + DROP + 20)
+    mo = layout()["mosaic"]
+    mx, my = BASIS.px(mo.u, mo.v, mo.level.dy)
+    rects["mosaic"] = (mx - 62, my - 32, mx + 62, my + 32)
     dz = zones_for(rects)
     # ---- WHERE THE PLAYER STANDS TO USE EACH DOOR. Derived from the
     # SAME `pos` the painter returned — a door's own point is ON the
@@ -3850,7 +4222,8 @@ def render(raw=False, walk_png=False, banded=True):
                       "by an hour is as dead as one voted down, and "
                       "this counter is where the hour is decided."),
             dict(id="mosaic", name="Aquarius", kind="poi",
-                 px=CX, py=CY + DROP + 6, zone=dz["mosaic"],
+                 px=int(round(mx)), py=int(round(my)) + 18,
+                 zone=dz["mosaic"],
                  at=app.get("mosaic"),
                  text="The floor medallion below marks where Tadashi "
                       "Sato's sea-stone mosaic lies. Look up instead: "
@@ -3885,19 +4258,31 @@ def render(raw=False, walk_png=False, banded=True):
     # view rect lives in main.js (ROOM_CAPITOL.view); it is repeated
     # here for the same reason the hallway repeats its own — the
     # consequence of the pairing is baked, so the bake asserts it
-    # rather than trusting it. Keep the two in step.
-    VIEW = (368, 288, 1440, 976)
+    # rather than trusting it. Keep the two in step (VIEW, module top).
     roomplan.check("capitol", BASIS, walk, iso, view=VIEW,
                    targets=[(h["id"], *h["at"]) for h in meta["hotspots"]
                             if "at" in h])
+    # THE LAYOUT'S OWN CHECKS (roomframe.Layout.check): errors fail the
+    # bake before anything is written; warnings print. The ring has to
+    # stay a ring — a walkway blocked rail to wall is a floor that still
+    # reads as "connected" to roomplan.check, one way round.
+    L = layout()
+    L.check(walk, walk_level="L2", char_box=CHAR_BOX,
+            loops=[("the gallery ring", (WING_EXT / 2, 0.0))])
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
+    OUT_FRAME.write_text(json.dumps(L.json(extra={"view": list(VIEW)}),
+                                    ensure_ascii=False, indent=1))
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
-          f" (scene {W}x{H} @ ship {SHIP}x, over {OVER}x)",
-          "and", OUT_JSON.name)
+          f" (scene {W}x{H} @ ship {SHIP}x, over {OVER}x),",
+          OUT_JSON.name, "and", OUT_FRAME.name)
     if walk_png:
         roomplan.debug_png(img, BASIS, walk,
                            ROOT / "build" / "debug_walk_capitol.png",
                            ship=SHIP, view=VIEW)
+    if layout_png:
+        L.debug_png(img, ROOT / "build" / "debug_layout_capitol.png",
+                    ship=SHIP, view=VIEW,
+                    title="Hawaiʻi State Capitol — layout reference frame")
 
 
 if __name__ == "__main__":
@@ -3914,5 +4299,10 @@ if __name__ == "__main__":
                     help="render the old single-canvas way — the escape "
                          "hatch for checking the band split changed "
                          "nothing")
+    ap.add_argument("--layout", action="store_true",
+                    help="also write build/debug_layout_capitol.png — the "
+                         "reference frame (grids, runs, every item's id) "
+                         "over the bake")
     a = ap.parse_args()
-    render(raw=not a.painterly, walk_png=a.walk, banded=not a.flat)
+    render(raw=not a.painterly, walk_png=a.walk, banded=not a.flat,
+           layout_png=a.layout)

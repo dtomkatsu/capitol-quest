@@ -3,8 +3,9 @@
   "configurations": [
     {
       "name": "Capitol Quest",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8770", "--directory", "site"],
+      "autoPort": true,
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "exec python3 -m http.server \"${PORT:-8770}\" --directory site"],
       "port": 8770
     }
   ]

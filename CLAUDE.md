@@ -2565,7 +2565,8 @@ one-level rule; its chamber ownership was settled 2026-08-27 — see
 "THE FLOOR HAS AN OWNER" below) — with open HALLWAY MOUTHS and recessed
 ELEVATOR LOBBIES branching deeper into the building (corridor_at:
 dark opening, floor running in, steel doors + call light for a
-lift), and exit stairs at the makai corner. The courtyard has no
+lift). (The exit stairs that hung off the makai edge were removed
+2026-09-22 — see paint_front_edge.) The courtyard has no
 dark breezeway splotch and no ground-level doors (both removed,
 user's call).
 - **The third level is RECESSED, and the recess IS the feature**
@@ -2725,7 +2726,13 @@ user's call).
     midpoints, and only where they clear the neighbouring frames
     (FEAT_HW + 6px); a column that cannot clear its gap is not
     drawn — on the door-dense gallery runs the koa leaves carry the
-    rhythm alone.
+    rhythm alone. **They run FOOT TO SLAB, sheared with the wall**
+    (2026-09-22): drawn from 6px above the foot, they stood on the
+    8px white base strip, and when that strip went (2026-08-25) every
+    post was left hanging 6px off the floor for a month. They are
+    parallelograms now (the strip-shear rule below), and the gallery
+    floor's reflection hangs straight off the foot — a gap between a
+    post and its own reflection floats it all over again.
   - No form mottle on purpose: most distant thing in the room, and
     skipping it keeps the level off the shared `rng`, so adding a
     storey cannot reshuffle the level below's wall texture.
@@ -2773,7 +2780,9 @@ user's call).
       and did. Four things about the bars, all from the photograph
       (user, 2026-08-25: "fix the mullions on the curved glass"):
       - **It is ONE curtain over the whole rest of the run**
-        (`DOOR_TB` → 0.98). It used to stop at 0.62 with flat filler
+        (from the doors' end at `col.dh1` → 0.98; the doors ended at a
+        fixed `DOOR_TB` 0.36 until 2026-09-22, see below). It used to
+        stop at 0.62 with flat filler
         panes beyond on a sparser pitch, so the wall read as
         "mullions over the left third, then a dark slab". Past the
         well limit (t ≈ 0.66) our own slab eats the sill, so the bow
@@ -2941,20 +2950,40 @@ user's call).
       per-COURSE weathering only.
     - The photograph shows a PAIR flanking the entrance; only the
       near one is drawn, per the standing one-stack call.
-    - **The pier between the doors and the curve is an explicit
-      drawn thing, and it LANDS** (same day: "the middle column
-      going through the glass also isn't meeting the ground"). It
-      used to be implied — the doors' right surround against the
-      curve's dense left mullions — and the curve's sill shadow cut
-      across its foot, so it hung in the glass. It is drawn LAST in
-      court_glass, proud of both neighbours: full height, lit head,
-      shaded flank, and a darker plinth block at the bottom that the
-      floor line crosses.
-    - **There is only ONE, and no companion at the far end of the
-      glass** (user, same day): from this vantage the building hides
-      it anyway, and the pass that added one at t 0.65 stood it
-      between two courtyard piers, mid-colonnade, where it read as a
-      chimney dropped into the middle of the arcade.
+    - **THE DOORS END AT THE FIRST LOGGIA COLUMN, AND THAT COLUMN IS
+      THE PIER BETWEEN THE DOORS AND THE CURVE** (2026-09-22, user:
+      "end the doors at the column"). court_glass takes `door_x`, the
+      screen x of the layout's `col.dh1`, from paint_well: the door
+      section runs `DOOR_TA` → there and the curved glass from there
+      → 0.98. The column is drawn after the glass, so it stands over
+      the join. There is no door-end constant any more: the fixed
+      `DOOR_TB` 0.36 is gone, so the doors cannot drift off the
+      column when the colonnade moves.
+      - **History of that pier.** From 2026-08-25 a pier of the
+        doors' own stood at t 0.352, because the join was only
+        implied and the curve's sill shadow cut across it (user: "the
+        middle column going through the glass also isn't meeting the
+        ground"). Once the loggia columns moved onto the wall line
+        and came to the same height, it stood 32 px off `col.dh1`,
+        out of the colonnade's rhythm, and read as a thin extra post.
+        It is retired, not moved: the column stands at the join and
+        lands on the floor.
+      - **No bar is drawn within the column's widest VISIBLE
+        half-width (+2 px) of the join.** The arc's tightest bars are
+        at its start, which is now the column. The first falls behind
+        the shaft, and the second landed 1–2 px off its dark edge as
+        a pale sliver: the clipping read. With it skipped, the first
+        visible bar sits 8.7 px clear, the same as the local spacing
+        (9, then 9.9).
+      - Measured: 28,179 px changed, every one of them on the glass
+        wall between the fascia and the bowed sill. `capitol.json`,
+        the frame file and the swing sheet are byte-identical.
+    - **There is only ONE pier at the join, and no companion at the
+      far end of the glass** (user, 2026-08-25): from this vantage
+      the building hides it anyway, and the pass that added one at
+      t 0.65 stood it between two courtyard piers, mid-colonnade,
+      where it read as a chimney dropped into the middle of the
+      arcade.
     - **Everything on the Diamond Head run stops at t ≈ 0.65, and the
       WELL decides that, not composition.** The wall's floor line is
       only inside the hole up to t = 0.66 (solve
@@ -3041,7 +3070,7 @@ user's call).
       (a 13px band, wholly covered by the overhang shade); 3.2 buries
       the glazing. Shipped at 2.4 — wall visible to dy 61 of 100.
     - **Moving the wall buys NOTHING without shading the loggia
-      floor.** The strip behind the columns came out the same bright
+      floor.** The strip under the gallery came out the same bright
       stone as the open court, so it read as a wall further away and
       not as a recess. One band at `shade(COURT, .72)` between the
       A_IN and GND_OUT floor lines is what makes the set-back exist.
@@ -3068,7 +3097,7 @@ user's call).
       the next ran it unbroken up the COURT EDGE and put nine
       free-standing poles between the camera and the room.
     - **A column is drawn in THREE pieces on three surfaces and
-      `col_hw()` is why they line up**: free-standing in paint_well's
+      `col_hw()` is why they line up**: a modelled shaft in paint_well's
       clipped layer (`court_column`), then flush in the gallery wall
       and flush in the Senate wall (`wall_column`, called from
       paint_walls and paint_upper_level BEFORE the doors and long
@@ -3076,13 +3105,14 @@ user's call).
       step at a join, and the middle of every storey is hidden, so
       the taper has to run through the parts nobody sees.
     - **The upper strips are drawn at the SAME SCREEN X as the shaft
-      below, and that is a deliberate cheat.** The walls really do
-      stand a walkway further back, and a true projection would step
-      each strip ~20 display px sideways per storey — three
-      unrelated marks instead of a column. The storey's own floor and
-      slab fix the strip's vertical extent, so screen x is the only
-      thing tying the pieces together and it is the one that has to
-      be honest. `col_xs()` is the single source all three read.
+      below.** The storey's own floor and slab fix the strip's
+      vertical extent, so screen x is the only thing tying the pieces
+      together and it is the one that has to be honest. `col_xs()` is
+      the single source all three read. Since 2026-09-22 the shaft
+      stands on the wall line (see `COL_LINE` below), so the gallery
+      strip is truly plumb over it. Only the THIRD storey's strip
+      cheats: that wall is recessed a full bay, and a true projection
+      would step it ~20 display px sideways.
     - **THE STRIP'S SURFACE IS A TWO-FACET STEP, AND EVERY NUMBER IN
       IT IS MEASURED** (`COL_FACETS`; rebuilt 2026-08-25 after the
       user: "the columns appear to lose their shape as they get
@@ -3140,25 +3170,101 @@ user's call).
       the base. Foot and head run WITH the face (`sl = ±0.5`),
       exactly the way `door_at` already builds its frames. Anything
       else drawn on a wall follows the same rule.
-    - **THE CORNER COLUMN STANDS ON THE WALL CORNER, NOT THE COURT
-      EDGE** (`COL_APEX_U`; user, 2026-08-26: "the central column
-      should be further back… the column goes up through there").
-      Measured on the executive-floor photograph: the corner strip's
-      foot sits at y=250.5 where the two wall faces' intersection
-      extrapolates to 251.0 and 251.3 from the left and right runs —
-      one full walkway width behind the railing, plumb under the
-      strips above. The MID-RUN ground columns are not affected;
-      those really are free-standing in the loggia with the koa wall
-      a bay behind them.
-      It costs nothing in screen x — u == v at the apex, so it stays
-      at CX on every diamond — and it moves UP 38 scene px, after
-      which paint_well's hole mask trims its top 38 px, so it emerges
-      from under our own slab already deep in the corner.
-      **It is drawn between `smokestack()` and `court_panel()`**, not
-      with the other stations at the end of paint_well: the cone's
-      axis is farther out than the shaft and the corner wall's face
-      nearer, so that is the depth order at the apex. Drawn last it
-      painted over the corner mass instead of standing in it.
+    - **EVERY GROUND COLUMN STANDS ON ONE LINE, `COL_LINE`: THE
+      LOGGIA'S BACK WALL, PLUMB UNDER ITS STRIP — NEVER ON THE WELL
+      LINE.** The corner column went there first (user, 2026-08-26:
+      "the central column should be further back… the column goes up
+      through there"). Measured on the executive-floor photograph:
+      the corner strip's foot sits at y=250.5 where the two wall
+      faces' intersection extrapolates to 251.0 and 251.3 from the
+      left and right runs — one full walkway width behind the
+      railing, plumb under the strips above. The mid-run columns were
+      left forward on the well line as "free-standing in the loggia",
+      and the user's verdict once the corner one was right
+      (2026-09-22): "the first floor columns are not properly
+      aligned. only the central one on first floor is". On the well
+      line a shaft stands 2.4 units in front of the wall its strip is
+      drawn on, so it is not the same column as the strip. It ran up
+      past the slab's fascia to the railing's kerb, where the
+      photographs show the fascia passing in front of every pier
+      head. So:
+      - **`col_plan()` slides each station straight back along the
+        line of sight**, (-d, -d) in plan, which keeps `x = 16(u-v)`.
+        Every shaft still lands on `col_xs()`, so the strips, the
+        door bays and every hotspot stayed put. `capitol.json` came
+        out byte-identical, the pixel diff touched only the six
+        column sites, and the corner shaft moved 0 px.
+      - **~38 px of shaft shows under the band, on every column.**
+        That is all the gallery leaves visible of anything under its
+        back edge (the slab hides 16·2.4 px, the band 24 more). Do
+        NOT bring them forward to read taller. The tall shafts WERE
+        the misalignment.
+      - `COL_LINE` is `GND_OUT`, 0.1 unit short of the gallery wall's
+        plane (`A_OUT`): 1.6 px, close enough to plumb, and it is
+        exactly where the approved corner column stood. The photo's
+        piers stand FREE of a wall set back behind them. Freeing ours
+        means pushing `GND_OUT` past `A_OUT`, which is the glass-
+        burying trade above.
+      - **One loop draws them all, between `smokestack()` and
+        `court_panel()`, BEFORE the slab band.** That is the depth
+        order at the apex (the cone's axis farther out than the corner
+        shaft, the corner wall's face nearer). The band then covers
+        every head. The mask only trims at the kerb, so a shaft
+        painted after the band crosses in front of it.
+      - They are LAYOUT ITEMS now (`column_stations()` → build_layout,
+        filed on the `court.ewa` / `court.dh` wall runs; the corner is
+        t = 0 of the Diamond Head run), and paint_well draws them
+        from `layout().items("column")`. The old `court.colonnade.*`
+        runs on the well line are gone.
+      - **Ruled (2026-09-22, "end the doors at the column"):** the
+        glass doors' own pier at t 0.352 stood 32 px off `col.dh1` at
+        the same height and read as a thin extra post. The doors now
+        end at the column and the pier is retired. See THE DOORS END
+        AT THE FIRST LOGGIA COLUMN in the glass-wall notes.
+    - **A SHAFT HAS TWO ENDS, AND BOTH HAVE TO READ AS ENDS**
+      (2026-09-22, user, once the shafts were on `COL_LINE`: "the
+      columns still look oddly cut off at the ends"). Both ends were
+      cuts:
+      - **The foot is a V on the floor, never a horizontal line.**
+        The flat cut sat across the wall's 2:1 base line, a few px
+        above the floor at one corner and below it at the other, so
+        the shaft read as a strip pasted on. court_column now draws
+        each shaft as a square pier with its back against its wall
+        (both walls at the corner): side corners `hw/2` below the
+        station, front arris `hw` below. **Each side corner lands
+        exactly on its wall's base line, on either run and at the
+        corner**, and every tone's bottom edge lies on the V. Screen
+        x is unchanged, so the strips above did not move. `COL_FOOT`
+        is court_panel's own foot line, so the corner pier and the
+        shafts meet the floor the same way.
+      - **The head goes up into the gallery slab's shade**
+        (`eave_shade()`, `EAVE` = 16 px ramp down to 0.62 at the
+        fascia's bottom edge). With nothing under the band darker
+        than anything else, the band's edge sliced every shaft at
+        full brightness and read as the shaft's own top.
+      - **The shade is on EVERYTHING under the band, not the shafts
+        alone.** Shafts-only was baked first, and shaded heads beside
+        a bright door pier, corner wall and breezeway read as columns
+        with dark CAPS. One per-pixel pass on paint_well's layer,
+        after the panel and before the band, with isolines parallel
+        to the band's edge (`fascia_foot_y`, read off the same hole
+        corners the band is drawn from).
+      - **It is safe by geometry, not by a mask.** On both mauka runs
+        the far wall shows for 37.6 px under the band's edge before
+        the floor starts (the slab hides `16*GND_BACK`, the band 24,
+        of a `DROP` storey). A 16 px ramp never reaches a floor
+        pixel. Raising `EAVE[0]` past ~37 would shade the loggia
+        floor, and the mosaic and planters are drawn after it
+        precisely so they never are.
+      - The doors' own pier had the same flat foot and was sheared
+        with its wall in this pass. It was retired an hour later,
+        when the doors were ended at the column. Anything drawn ON a
+        wall still follows the strip rule.
+      - Measured on the bake against the previous one: 43,142 px
+        changed, all in the eave strip, the six feet and the pier,
+        bar 21 px of 1–2 level resample ringing beside them.
+        `capitol.json`, the frame file and the swing sheet came out
+        byte-identical.
     - **THE LITTLE ALCOVE** (`alcove_at`) — a shallow, full-height
       dark pocket beside the corner column, one per ʻEwa run. At
       every level the photograph carries a near-black zone about one
@@ -3388,6 +3494,17 @@ five passes because of these, not because of how it was drawn:**
       and now says so from its own bake instead of a second hardcoded
       number that could drift. This is what retires the documented
       "a 1440p monitor HITS the ceiling at 51% filled".
+    - **A painter that calls `round()` itself is still on the coarse
+      grid.** `court_column` and `wall_column` did, on every edge
+      point, and a taper is exactly what whole pixels cannot draw: a
+      straight batter came out as a vertical edge with a 1px jog every
+      ~30px (one shaft's left edge ran 642, 641, 640, 639 in four flat
+      runs), the facet lines jogging at different heights — read as
+      "inconsistent", dented columns (2026-09-22). Both go through
+      `snap()` now. At K = 1 `snap()` IS `round()`, and the K = 1
+      render came out byte-identical to the old one, so it is purely
+      a precision change. Anything new that places points itself
+      uses `snap()`.
     - **The swing sprite was missing `setScale(this.ss)`** and was
       only ever right by luck — every room with a swing happened to
       ship at scale 1. Its three exported numbers are in different
@@ -3488,7 +3605,8 @@ run of dark pickets, thin koa handrail — no fat posts; the well's far
 walls repeat the same banding per level. `CapitolScene` in main.js displays it
 fit-to-window; entered by tapping the overworld Capitol
 (`scene.switch` — the world SLEEPS, never rebuilds), exited via the
-stairs hotspot or Esc. Rules:
+stairs hotspot or Esc (both gone now — see `noExit` below; the stairs
+art itself was removed 2026-09-22). Rules:
 
 - **`CAP_V` in main.js is the ONE cache token for BOTH files** — they
   come out of one bake and the hotspot px are meaningless against a
@@ -3524,8 +3642,11 @@ stairs hotspot or Esc. Rules:
   - **The map is no longer player-reachable** (2026-08-26, `noExit` —
     see the HUD bullet below; before that the stairs/Esc led out).
     `exitTo: "world"` remains in the config and `parkOnCapitol` still
-    parks the camera on the Capitol at boot, so dropping `noExit` is
-    the one edit that restores the whole route.
+    parks the camera on the Capitol at boot, so dropping `noExit`
+    restores the route — but since 2026-09-22 it also needs a way down
+    DRAWN on the makai edge: the exit stairs were removed (they led
+    nowhere, and were the room's one head-on projection). The JSON's
+    noExit-skipped `exit` hotspot still sits where they stood.
   - **The boot pop for a week's NARRATIVE is suppressed while it is
     set** (`SessionPanel.init`): the point is to land on the ROOM, and
     in the hallway the legislator tap is what opens the week. **The
@@ -3562,8 +3683,10 @@ stairs hotspot or Esc. Rules:
     every turn (the tween clock sleeps with the scene).
   - **`ROOM_CAPITOL.noExit: true`** — no exit hotspot is built, Esc is
     not bound, `leave()` bails. The map is unreachable by the player
-    (still built and asleep underneath; drop `noExit` to restore the
-    stairs). The office's own exit back to the capitol is untouched —
+    (still built and asleep underneath; dropping `noExit` brings the
+    exit hotspot back, but the stairs art is gone since 2026-09-22 —
+    draw a way down first, in iso). The office's own exit back to the
+    capitol is untouched —
     `noExit` is per-room. The greet text lost its "stairs makai" line.
   - **`ROOM_CAPITOL.view: [x0,y0,x1,y1]`** (scene px) — `fit()` frames
     this rect instead of the whole canvas, with CONTINUOUS zoom capped
@@ -3613,8 +3736,11 @@ stairs hotspot or Esc. Rules:
     stations must land on `col_xs()`'s screen x or the loggia shaft
     and the flush wall strips above it split apart (the one-source
     column rule). The extension got ONE extra loggia-only station
-    (mid-extension) with no flush strip above it — survivable because
-    the strips are the subtlest element in the room.
+    with no flush strip above it. Since 2026-09-22 it is t = 1 of the
+    Diamond Head run, the next bay of the same rhythm (the old
+    square's E corner, mid-run now). It was mid-wing on the well
+    line, and slid back onto `COL_LINE` from there its foot sat
+    tangent to the east slab's edge.
   - **The drum glazing CONTINUES PAST ITS APEX** (court_glass's `ext`
     param): the assembly (corner wall, doors, pier, main arc) is
     still parameterised on the ORIGINAL run — paint_well passes
@@ -3624,12 +3750,24 @@ stairs hotspot or Esc. Rules:
     back up), starting AT the main arc's last mullion so the curtain
     is one sheet. Flat filler is exactly the "mullions then a dark
     slab" read the 2026-08-25 rework removed — don't regress to it.
-  - **The stairs KEEP their spot**: `iso(A_OUT, A_OUT)`, the old S
-    corner, now an ordinary point on the longer SW edge (a rectangle
-    has no bottom apex). spawn and the (noExit-skipped) exit hotspot
-    both still derive from `diamond(A_OUT)[2]` in render(), so
-    nothing moved — hotspot json stayed byte-identical through the
-    whole change.
+  - **The exit stairs are GONE** (2026-09-22, user's call: "remove
+    the stairs"). They kept the old S corner's spot on the longer SW
+    edge, hung off it into bare ink, were drawn head-on (level
+    treads, mirror-image cheeks under a 2:1 edge) and, under
+    `noExit`, led nowhere. The SW slab band is one unbroken run now.
+    spawn and the noExit-skipped exit hotspot still derive from
+    `diamond(A_OUT)[2]` in render(), so neither moved.
+  - **The Diamond Head corner planter RIDES OUT WITH THE WING**
+    (item `planter.dh`, centred in the derived `L2.corner.E` frame since
+    2026-09-22 — see "The room layout framework").
+    As the literal (10.25, -10.25) it stayed at the square plan's E
+    corner when the wing landed, and for a month stood mid-walkway on
+    the governor's lift threshold, 0.75 units off a railing that now
+    ran on past it — painted OVER that handrail (it is in the front
+    band, after the mauka railing, though the rail is nearer the
+    camera), with its walk disc sealing the whole Diamond Head
+    walkway. Anything placed at an E-side corner has to follow
+    WING_EXT, or it is stranded the same way.
   - The upper storeys' wall extensions (the wing blocks at the end of
     paint_walls and paint_upper_level) carry only UNNAMED filler (an
     office door and a bench each, on their own local span) —
@@ -4110,8 +4248,9 @@ U0/U1/VH/LU0/LU1/LV and the Capitol from A_OUT/A_IN/WING_EXT, and
 apart. Rules that must survive edits:
 
 - **A position may not exist twice.** Obstacle positions were literals
-  inside `render()`; they are module constants now (`PLANTS`,
-  `FIGURE_AT`, `PLANTERS`) read by BOTH the painters and the walkmask.
+  inside `render()`; the hallway's are module constants now (`PLANTS`,
+  `FIGURE_AT`) read by BOTH the painters and the walkmask, and the
+  Capitol's are items in its layout (see "The room layout framework").
   Likewise `SX, SY` are named in render_capitol.py and `iso()` reads
   them, so the exported basis cannot drift from the projection —
   `check()` asserts the two agree at four sample points.
@@ -4128,10 +4267,12 @@ apart. Rules that must survive edits:
   floor in two pieces with 78% reachable. `ok()` now requires the
   character's whole disc to fit inside the union.
 - **A POCKET IS NOT A SEVERED FLOOR.** The connectivity report ignores
-  components too small for the character to turn around in: the
-  Capitol's ʻEwa corner is a 0.4 x 0.5 unit scrap sealed behind its
-  planter, which is correct, empty and unreachable. Warning on it every
-  bake would train everyone to ignore the warning that matters.
+  components too small for the character to turn around in: each of
+  the Capitol's two side corners is a 0.4 x 0.5 unit scrap sealed
+  behind its planter (the bake reports 2 pockets since the Diamond
+  Head planter moved out to the wing's corner, 2026-09-22), which is
+  correct, empty and unreachable. Warning on them every bake would
+  train everyone to ignore the warning that matters.
 - **The view rect is repeated in the bake** (ROOM_*.view lives in
   main.js) so `check()` can assert the spawn is on screen — same
   pairing, and same reason, as the existing zone-fits-view assert.
@@ -4149,16 +4290,18 @@ way to check a render change by eye. It SAMPLES `ok()` rather than
 drawing the declared regions, so it shows the floor the character will
 really move through and not what was typed.
 
-**The Capitol's wall BENCHES are obstacles** (`bench_blocks()`), and the
-way they are extracted is the rule for anything else on a wall: the run
-geometry is NOT re-derived. `place_feats` is pure, so walk_plan calls
-the SAME function with the SAME arguments the wall painter does and
-gets the identical schedule back; each bench's screen point is then the
-painter's own `lerp(e0, e1, t)`, inverted through `Basis.plan()`.
-Writing out "run 0 is u = -A_OUT, v = a(1-2t)" would be a second copy
-of the run maths, free to disagree with `run_x` the next time a wall
-moves. `BENCH_OUT` / `BENCH_HW` / `WING_BENCH_T` are named constants
-read by `bench_at` AND by the walkmask. A bench is shallow — 0.375 plan
+**The Capitol's wall BENCHES are obstacles**, and the way they are
+extracted is the rule for anything else on a wall: the run geometry is
+NOT re-derived. The layout lays each schedule out ONCE (`place_feats`,
+in `build_layout`), the painters read it back from there, and each
+bench's footprint (`bench_foot`) comes from the painter's own
+`lerp(e0, e1, t)`, inverted through `Basis.plan()` at ITS level's dy.
+(It was `bench_blocks()`, a second `place_feats` call that had to agree
+with the painter's.) Writing out "run 0 is u = -A_OUT, v = a(1-2t)"
+would be a second copy of the run maths, free to disagree with `run_x`
+the next time a wall moves. `BENCH_OUT` / `BENCH_HW` are named constants
+read by `bench_at` AND by the walkmask; the wing bench's t is in the
+placement table (it was `WING_BENCH_T`). A bench is shallow — 0.375 plan
 units, a backless seat — but against a 2.5-unit balcony it still pushes
 the walking line out by 15%.
 
@@ -4311,7 +4454,7 @@ two plus five small ones.
     are in different bands — and the mauka run is therefore drawn
     after things it used to precede: the makai runs it caps at the two
     side corners, and a column's floor reflection under its handrail at
-    the apex. 1575 px, max 182. The gate asserts every one of them lies
+    the apex. About 1575 px, max 182. The gate asserts every one of them lies
     within 30 scene px of a mauka run, so an unrelated regression of
     any size still fails. In each case the railing is genuinely NEARER
     than what it now covers, so the new order is the more correct one
@@ -4343,12 +4486,20 @@ two plus five small ones.
   it THROUGH the layers rather than switching it between two states. A
   door swing sits at `BAND_BACK + 1` — it belongs with the wall it is
   cut into, and always under the character.
-- **The rail pots became walkmask obstacles in the same pass**
-  (`rail_pot_plan()`, from the same edges and t values
-  `paint_rail_pots` draws them at). Before this the character walked
-  straight through them, and it is also what makes their band
-  unambiguous: sealed floor behind them means they are always behind
-  the player.
+- **The rail pots became walkmask obstacles in the same pass** — but
+  through `rail_pot_plan()`, which read the painter's "+16 px" nudge as
+  16 DRAW px (4 scene), so every pot's disc sat ~1 m from its pot and
+  the player could stand on all four. Fixed 2026-09-22 by the layout:
+  one position per pot, the drawn one, with a footprint that includes
+  the strip to the rail (see "The room layout framework").
+- **Known gap, reported on every bake: the corner PLANTERS and the rail
+  POTS can be walked past on a side their band gets wrong.** The
+  planters sit in the FRONT band but can be passed on their inner side
+  — seen live at (−9.2, 10.25), the ʻEwa planter covering the
+  character's legs — and the pots sit in BACK but can be passed behind,
+  along the rail. The layout's band check (Layout.check) names each one
+  with the spot and the overlap. They need their own depth bands, like
+  the hallway's pots.
 
 Verified live in both rooms: the hallway's casing post, at ONE screen
 position with the character a unit either side of it, occludes and then
@@ -4435,6 +4586,104 @@ approach point, and opens it on arrival (4.55 s); arrow keys mid-walk
 drop both the path and the pending action; the Capitol routes from the
 makai spawn round the well to the ʻEwa senate door with **0 legs
 crossing the floor**.
+
+## The room layout framework (2026-09-22)
+
+`tools/roomframe.py`, from "figure out framework so we can more easily
+adjust the layout of places like this capitol and have a reference frame
+or something". A room's layout was spread over five coordinate systems —
+plan (u, v), screen offsets like `CX - 64`, a run's `t`, wall-local
+(w, y), heights in `dy` — with some positions written twice, and every
+bug of the kind had one shape: the structure moved and a literal did not
+(the Diamond Head planter stranded on the governor's lift; the rail pots'
+collision a metre off the pots). The framework is three things:
+
+- **ONE REFERENCE FRAME PER ROOM.** Plan (u, v) in plan units (~1 m) —
+  the space `roomplan.Basis` projects — plus named LEVELS at a height
+  `dy`. The Capitol: origin at the rotunda centre, +u → Diamond Head,
+  +v → makai; levels `court` (dy −DROP, seen only through the well: its
+  `window`), `L2` (the gallery, dy 0) and `L3` (dy LVL2_Y).
+- **NAMED FRAMES, DERIVED FROM THE STRUCTURE, NEVER TYPED.** `Run`s — a
+  wall's foot, a rail, the colonnade; a position is t (0..1 from its t0
+  end) or s (plan units along it), plus n (into the room) — and
+  `Region`s: floor polygons such as `L2.corner.E`, `L2.walk.makai`,
+  `court`. Change A_OUT or WING_EXT and every frame follows, and so does
+  everything placed in one.
+- **ITEMS, DECLARED ONCE**: id + kind + frame + position in it. Painters,
+  the walkmask, the depth bands, the frame JSON and both overlays all
+  read the resolved item. DERIVED items (the schedules' doors and
+  benches, the bronze posts, the columns) are recorded too, so the
+  overlay and the checks see them — but they are MOVED where they are
+  computed (GALLERY_FEATS / UPPER_FEATS, COL_T), not in the table.
+
+In the Capitol it is `build_layout()` in render_capitol.py (THE LAYOUT
+section); the placement table is marked PLACEMENTS inside it. So three
+kinds of thing have three places to change: the structure constants at
+the top of the file, the wall schedules, and the placement table.
+
+**To move something**: find its id on the reference image, or hover it
+in the game at `?layout=1` (the readout names its frame and position),
+change its entry, re-bake, bump CAP_V. **To place something new**: hover
+the spot, read the level and (u, v) — or the wall run and t — and add an
+entry.
+
+**The reference frame, visible:**
+- `python3 tools/render_capitol.py --layout` writes
+  build/debug_layout_capitol.png: every level's floor grid (1 unit, bold
+  every 5, labelled), every run with its ticks and t0 end, every item
+  with its id. Same role as debug_walk_<room>.png.
+- `?layout=1` in the game draws the same frame over the live room
+  (`FrameOverlay` in main.js) with a CURSOR READOUT: the level and plan
+  (u, v) under the pointer — or the wall run, t, s and height on a wall
+  face — the nearest run's t/s/n, and the item under the pointer with
+  its frame and position. `L` toggles it, `C` copies the readout. A room
+  config's `frame` names its `<room>_frame.json`; a room without one (the
+  hallway, today) still gets its basis's grid over its walk floor and
+  the (u, v) readout, so every room with a basis has a frame to talk in.
+  The file is only fetched under the flag — players never download it.
+
+Rules that must survive edits:
+- **The painters take positions FROM the layout, never beside it.** The
+  migration was gated byte for byte: the Capitol bake came out 0 px
+  different, bands and swing sheet included — a refactor that moves a
+  pixel is not a refactor. Re-run that gate after any edit to how a
+  painter reads its items.
+- **A windowed level is clipped to its window everywhere** — grid, runs,
+  labels, markers — and a `tall` item (a column) is marked at the middle
+  of its VISIBLE span, in both overlays. Without the first the court's
+  lines ran out under the slab into the ink; without the second its
+  columns appeared to stand on the gallery floor.
+- **Item colours live in `KIND_COLORS`** and ship in the frame JSON, so
+  the reference image and the overlay agree.
+
+**THE CHECKS** (`Layout.check`, every bake). ERRORS fail the bake: an item
+outside its frame; two footprints overlapping on a level; a declared walk
+LOOP cut. The Capitol declares "the gallery ring": a planter sealing a
+walkway still leaves the floor "connected" to roomplan.check — one way
+round — which is exactly how the old Diamond Head planter hid for a
+month. WARNINGS print: a footprint inside a door's 0.8 m clearance, and a
+depth-band policy the walk mask contradicts ("front" item the character
+can stand in front of, "back" item they can stand behind), each with the
+spot and the overlap in px. An overlap has to be ≥ 4 px on both axes to
+count, or grazing bounding-box corners warn.
+
+**Found and fixed by the migration** (its one-source rule, applied):
+- The rail pots' collision sat ~1 m from the drawn pots — see Depth bands
+  above. Each pot is now one item at its drawn spot (s along the rail,
+  n 1 m in), and its footprint includes the strip to the rail: on screen
+  the pot stands against the pickets, so squeezing behind it would read
+  as walking through it.
+- A phantom column at the L2 apex corner. The corner column stands a
+  storey DOWN, in the court's wall corner; at L2 it is a flush strip.
+  The disc stopped the player ~0.4 m short of the corner.
+
+**Open, and reported on every Capitol bake:** the depth-band gap above
+(both planters and all four pots), and `planter.ewa` standing in the
+Senate Gallery door's clearance.
+
+**Next room**: the hallway already places most things in plan
+coordinates, but its office door is still written twice — drawn at
+u −9.9..−8.5 and its hotspot re-derived as −9.2.
 
 ## Vendored: rot.js + Phaser iso plugin (2026-08-26)
 
