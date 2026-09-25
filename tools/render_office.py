@@ -12,9 +12,20 @@ the banner's room is lit by lamps), deep warm shadow, and the
 banner's single cool accent (aloha blue) carried by the cubicle
 fabric and binder spines.
 
-Outputs (hand-versioned in JS via OFF_V when wired — bump together):
+Outputs (hand-versioned in JS via OFF_V — bump together):
   site/assets/map/office_finance.png
   site/map/office_finance.json     (spawn + hotspots, px in image space)
+
+ON THE ROOMS' MODERN PIPELINE since 2026-09-23 (the second aesthetic
+pass). This was the last bake on the old one: a 620x400 file (SS 2)
+snap-fitted to the WHOLE canvas at runtime, so the room filled about half
+the frame, and at the zoom that fit gave each file pixel became a 4x4
+block — chunky beside the smooth Capitol the player walks in from. It
+now does what the hallway does: SHIP/OVER (the AA baked once by a real
+filter, full resolution shipped), a `view` rect in main.js with
+continuous LINEAR zoom, the shared backdrop, and a `mark` per hotspot.
+The painters were not rewritten: SDraw scales at the draw call and
+iso()/lerp()/up() snap to the draw grid, exactly as in the other rooms.
 """
 
 from __future__ import annotations
@@ -24,28 +35,24 @@ import math
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
+
+import roomlight
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "office_finance.png"
 OUT_JSON = ROOT / "site" / "map" / "office_finance.json"
 
 W, H = 1240, 800
-# SUPERSAMPLE. Everything below is drawn in the FULL scene space
-# above, but the room is only ever SEEN at half of it: fit() snaps to
-# zoom 0.5 on any window shorter than the scene, and the renderer
-# point-samples, so every other row and column was thrown away on the
-# way to the screen. Measured 2026-08-24 on a rail crop: 83 unique
-# colours reached the canvas where the source has 87 and a resample
-# gives 376. That decimation is what read as jagged railings — the
-# picket run is 1px lines on a 2px pitch, so WHICH half survived
-# drifted as the diagonal advanced, and no redrawing can fix detail
-# sampled below its own pitch. Resolving here means the AA is baked
-# once by a real filter; the sprite then carries scale=SS, so zoom
-# 0.5 x scale 2 is an exact 1:1 blit with no runtime filtering.
-# The JSON keeps SCENE coordinates (w/h/spawn/hotspots) — only the
-# PNG shrinks — so nothing downstream has to move.
-SS = 2
+# SHIP / OVER, as in render_capitol.py and render_hallway.py (the long
+# form of the argument is there): SHIP is file px per SCENE px, OVER a
+# supersample on top, LANCZOS-resized away once at the end. The JSON
+# keeps SCENE coordinates; meta.scale is 1/SHIP and the runtime scales
+# the sprite back. (This was SS 2 — the old "draw full, ship HALF" trade
+# for a room snap-fitted at zoom 0.5 — until 2026-09-23.)
+SHIP = 2
+OVER = 2
+K = SHIP * OVER
 CX, CY = 620, 420
 U, V = 12, 7               # room half-extents in iso units
 WH = 64                    # full wall height
@@ -85,17 +92,73 @@ KEY = hx("#f2c14e")
 CHAIRC = hx("#3a3a44")
 
 
+def snap(v):
+    """Round to 1/K of a scene px — the grid the room is DRAWN on (see
+    render_capitol.snap). At K = 1 this is round(), which is what it
+    used to be."""
+    return round(v * K) / K
+
+
 def iso(u, v, dy=0.0):
-    return (round(CX + 16.0 * (u - v)), round(CY + 8.0 * (u + v) - dy))
+    return (snap(CX + 16.0 * (u - v)), snap(CY + 8.0 * (u + v) - dy))
 
 
 def lerp(p, q, t):
-    return (round(p[0] + (q[0] - p[0]) * t),
-            round(p[1] + (q[1] - p[1]) * t))
+    return (snap(p[0] + (q[0] - p[0]) * t),
+            snap(p[1] + (q[1] - p[1]) * t))
 
 
 def up(p, dy):
-    return (p[0], round(p[1] - dy))
+    return (p[0], snap(p[1] - dy))
+
+
+class SDraw:
+    """ImageDraw taking SCENE px onto a canvas K times bigger — the same
+    class as render_capitol.py's and render_hallway.py's, with the same
+    three rules: PIL boxes are inclusive, `width` is a scene distance,
+    and `point` is a K x K block. Polygons take the plain corner mapping
+    so shared edges stay shared."""
+
+    _BOX = ("rectangle", "ellipse", "arc", "chord", "pieslice")
+    _SEQ = ("polygon", "line")
+
+    def __init__(self, im):
+        self._d = ImageDraw.Draw(im)
+
+    @staticmethod
+    def _pts(xy):
+        if xy and isinstance(xy[0], (list, tuple)):
+            return [(q[0] * K, q[1] * K) for q in xy]
+        return [v * K for v in xy]
+
+    @staticmethod
+    def _kw(kw):
+        if kw.get("width"):
+            kw = dict(kw, width=max(1, int(round(kw["width"] * K))))
+        return kw
+
+    def __getattr__(self, name):
+        fn = getattr(self._d, name)
+        if name in self._BOX:
+            def box(xy, *a, **kw):
+                x0, y0, x1, y1 = xy
+                return fn([x0 * K, y0 * K, (x1 + 1) * K - 1,
+                           (y1 + 1) * K - 1], *a, **self._kw(kw))
+            return box
+        if name in self._SEQ:
+            def seq(xy, *a, **kw):
+                return fn(self._pts(xy), *a, **self._kw(kw))
+            return seq
+        if name == "point":
+            def point(xy, fill=None):
+                pts = xy if (xy and isinstance(xy[0], (list, tuple))) else \
+                    [(xy[i], xy[i + 1]) for i in range(0, len(xy), 2)]
+                for x, y in pts:
+                    self._d.rectangle([x * K, y * K,
+                                       x * K + K - 1, y * K + K - 1],
+                                      fill=fill)
+            return point
+        return fn
 
 
 def shade(c, f):
@@ -125,8 +188,8 @@ def paint_floor(d):
 
 def paint_glow(img):
     """warm lamp pools — the banner's room is LAMP-lit"""
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(lay)
+    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
+    d = SDraw(lay)
     def pool(u, v, r, alphas=(52, 30, 14), lift=0):
         x, y = iso(u, v)
         y -= lift
@@ -137,6 +200,14 @@ def paint_glow(img):
     pool(-11.0, 0.9, 96, lift=18)      # credenza lamp 2
     pool(5.4, 3.6, 80)                 # reception desk lamp
     pool(2.6, -5.2, 70, (24, 14, 7), lift=12)   # cubicle task spill
+    # CLIPPED TO THE ROOM (2026-09-23): the pools are ellipses up to 96px
+    # across, and the wall lamps' reached over the wall's top into the
+    # void — a halo hanging in the sky, which the new lit backdrop made
+    # plain. Light lands on the floor and the two far walls, nowhere else.
+    room = Image.new("L", lay.size, 0)
+    SDraw(room).polygon([iso(-U, V), up(iso(-U, V), WH), up(iso(-U, -V), WH),
+                         up(iso(U, -V), WH), iso(U, -V), iso(U, V)], fill=255)
+    lay.putalpha(ImageChops.multiply(lay.getchannel("A"), room))
     img.alpha_composite(lay)
 
 
@@ -198,7 +269,11 @@ def lamp(d, u, v, dy=0.0):
     d.polygon([(x - 6, y - 14), (x + 6, y - 14),
                (x + 4, y - 22), (x - 4, y - 22)], fill=SHADE)
     d.line([(x - 6, y - 14), (x + 6, y - 14)], fill=hx("#c9b88f"))
-    d.ellipse([x - 8, y - 13, x + 8, y - 7], fill=GLOW + (0,))
+    # the lit underside of the shade. It was `fill=GLOW + (0,)` — a
+    # TRANSPARENT fill that replaced pixels and only showed as this
+    # light ellipse because convert("RGB") kept the colour; on an RGBA
+    # ground it would punch a hole. Said outright now.
+    d.ellipse([x - 8, y - 13, x + 8, y - 7], fill=GLOW)
     # glow halo
     return
 
@@ -266,9 +341,30 @@ def standing_door(d, u, vc, hw_v=1.1):
 
 
 # ------------------------------------------------------------- main
+# ---- THE BACKDROP (tools/roomlight.py): the rooms' shared ground, in
+# this room's frame. The pool is centred on ROOM_OFFICE.view and reaches
+# exact INK inside the 1240x800 canvas; the shadow is the floor dropped
+# SHADOW_DROP and pushed the way the Capitol's is.
+BACKDROP_C = (620, 404)
+BACKDROP_R = (560, 380)
+BACKDROP_LIFT = (30, 39, 57)
+SHADOW_DROP = 40
+SHADOW_SUN = (-0.45, 0.12)
+SHADOW_BLUR = 16
+SHADOW_A = 0.60
+# ROOM_OFFICE.view lives in main.js; it is repeated here so the bake can
+# assert every hotspot lands inside it, as the other rooms do
+VIEW = (291, 179, 949, 597)
+
+
 def render():
-    img = Image.new("RGBA", (W, H), INK + (255,))
-    d = ImageDraw.Draw(img)
+    img = roomlight.backdrop(
+        W, H, SHIP, K, INK, BACKDROP_LIFT, BACKDROP_C, BACKDROP_R,
+        polys=[[iso(-U, -V, -SHADOW_DROP), iso(U, -V, -SHADOW_DROP),
+                iso(U, V, -SHADOW_DROP), iso(-U, V, -SHADOW_DROP)]],
+        sun=(SHADOW_SUN[0] * SHADOW_DROP, SHADOW_SUN[1] * SHADOW_DROP),
+        blur=SHADOW_BLUR, alpha=SHADOW_A)
+    d = SDraw(img)
 
     paint_floor(d)
     # rug in the chair's office
@@ -281,7 +377,7 @@ def render():
     koa_wall(d, iso(-U, V), iso(-U, -V), WH, 1.0)     # NW (mauka)
     koa_wall(d, iso(-U, -V), iso(U, -V), WH, 0.86)    # NE
     paint_glow(img)
-    d = ImageDraw.Draw(img)
+    d = SDraw(img)
     # framed photos on NE wall (reception side)
     for t in (0.62, 0.74):
         b = lerp(iso(-U, -V), iso(U, -V), t)
@@ -406,13 +502,17 @@ def render():
     plant(d, -2.8, 5.8)
 
     # ---- near walls, sliced, with the entry gap in the SW run
-    # SE wall (u = U)
-    cut_wall(d, iso(U, -V), iso(U, V), (9, -5), 0.9)
-    # SW wall (v = V) with entry gap at u 5.2..7.8
-    cut_wall(d, iso(-U, V), iso(5.2 - 0.0, V) if False else iso(5.2, V),
-             (-9, -5), 0.95) if False else None
-    cut_wall(d, iso(-U, V), iso(5.2, V), (-9, -5), 0.95)
-    cut_wall(d, iso(7.8, V), iso(U, V), (-9, -5), 0.95)
+    # SE wall (u = U) and SW wall (v = V), the SW with the entry gap at
+    # u 5.2..7.8. THE CUT FACE GOES ACROSS THE WALL, INTO THE ROOM
+    # (2026-09-23): the offsets were swapped — (9, -5) on the SE wall and
+    # (-9, -5) on the SW one each run ALONG that wall, so each "top face"
+    # was a zero-width sliver sheared past the wall's end, and it showed
+    # as a stray pale line hanging beyond both outer corners. Inward is
+    # -u for the SE wall, (-16, -8) per unit, and -v for the SW one,
+    # (16, -8) per unit.
+    cut_wall(d, iso(U, -V), iso(U, V), (-9, -5), 0.9)
+    cut_wall(d, iso(-U, V), iso(5.2, V), (9, -5), 0.95)
+    cut_wall(d, iso(7.8, V), iso(U, V), (9, -5), 0.95)
     # worn runner from the entry toward the chair's door
     run = [iso(6.9, 6.2), iso(7.6, 6.2), iso(-2.4, 4.6), iso(-3.1, 4.6)]
     d.polygon(run, fill=shade(CARPET, 1.12))
@@ -422,9 +522,13 @@ def render():
               fill=shade(CARPET, 1.25))
 
     img = img.convert("RGB")
-    img = img.resize((W // SS, H // SS), Image.LANCZOS)   # see SS
+    # down by OVER, not to scene size — the OVER/SHIP split
+    img = img.resize((W * SHIP, H * SHIP), Image.LANCZOS)
     img.save(OUT_PNG)
     bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
+
+    def sp(v):          # the JSON is SCENE space and integer: round here
+        return int(round(v))
 
     dpx = {
         "exit": iso(6.5, V),
@@ -433,39 +537,70 @@ def render():
         "door": door_px,
         "desk": iso(-8.0, -1.0),
     }
+    # `mark` — where the runtime hangs each hotspot's marker, just over
+    # the thing it marks: the reception desk's monitor (15 + ~14), the
+    # cubicle dividers (22), the standing door's head (56), the chair's
+    # desk and chair back (~26)
+    lift = {"reception": 34, "cubicles": 28, "door": 60, "desk": 32}
     meta = {
         "name": "House Finance — Chair's Office",
         "image": "office_finance.png",
-        "w": W, "h": H, "scale": SS, "bg": bg,
-        "spawn": [iso(6.5, V - 1.2)[0], iso(6.5, V - 1.2)[1]],
+        # w/h stay SCENE size; `scale` is scene px per FILE px
+        "w": W, "h": H, "scale": 1 / SHIP, "bg": bg,
+        "spawn": [sp(iso(6.5, V - 1.2)[0]), sp(iso(6.5, V - 1.2)[1])],
         "hotspots": [
             dict(id="reception", name="Reception", kind="poi",
-                 px=dpx["reception"][0], py=dpx["reception"][1] + 6,
+                 px=sp(dpx["reception"][0]), py=sp(dpx["reception"][1]) + 6,
                  text="Committee staff triage everything here — every "
                       "bill with a dollar figure in the House crosses "
                       "this desk on its way to the chair."),
             dict(id="cubicles", name="Committee Staff", kind="poi",
-                 px=dpx["cubicles"][0], py=dpx["cubicles"][1] + 6,
+                 px=sp(dpx["cubicles"][0]), py=sp(dpx["cubicles"][1]) + 6,
                  text="Analysts who read every fiscal note. The "
                       "binders hold the executive budget request, "
                       "line by line."),
             dict(id="door", name="The Chair", kind="door",
-                 px=dpx["door"][0], py=dpx["door"][1] + 6,
+                 px=sp(dpx["door"][0]), py=sp(dpx["door"][1]) + 6,
                  text="Beyond the koa doors: the member who decides "
                       "which revenue bills get a hearing at all."),
             dict(id="desk", name="Chair Kawaguchi", kind="poi",
-                 px=dpx["desk"][0], py=dpx["desk"][1] + 6,
+                 px=sp(dpx["desk"][0]), py=sp(dpx["desk"][1]) + 6,
                  text="A clean desk, two lamps, and the quiet power "
                       "of the schedule. Bills die politely here — "
                       "by never being heard."),
             dict(id="exit", name="Back to the gallery", kind="exit",
-                 px=dpx["exit"][0], py=dpx["exit"][1] + 20,
+                 px=sp(dpx["exit"][0]), py=sp(dpx["exit"][1]) + 20,
                  text=""),
         ],
     }
+    for h in meta["hotspots"]:
+        if h["id"] in lift:
+            h["mark"] = [sp(dpx[h["id"]][0]),
+                         sp(dpx[h["id"]][1] - lift[h["id"]])]
+    # every hotspot inside the view rect, or it is visible and unpressable
+    for h in meta["hotspots"]:
+        assert (VIEW[0] <= h["px"] <= VIEW[2] and
+                VIEW[1] <= h["py"] <= VIEW[3]), (
+            f"hotspot {h['id']} ({h['px']}, {h['py']}) falls outside "
+            f"view {VIEW} — keep ROOM_OFFICE.view and VIEW in step")
     OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
+    # the content bbox against the backdrop's own ground — what the
+    # `view` rect is measured from (plus breathing room)
+    ref = np.asarray(roomlight.backdrop(
+        W, H, SHIP, SHIP, INK, BACKDROP_LIFT, BACKDROP_C, BACKDROP_R,
+        polys=[[iso(-U, -V, -SHADOW_DROP), iso(U, -V, -SHADOW_DROP),
+                iso(U, V, -SHADOW_DROP), iso(-U, V, -SHADOW_DROP)]],
+        sun=(SHADOW_SUN[0] * SHADOW_DROP, SHADOW_SUN[1] * SHADOW_DROP),
+        blur=SHADOW_BLUR, alpha=SHADOW_A).convert("RGB"), np.int16)
+    arr = np.asarray(img, np.int16)
+    ys, xs = np.where(np.abs(arr - ref).max(axis=-1) > 10)
+    bbox = (int(xs.min()) // SHIP, int(ys.min()) // SHIP,
+            int(xs.max()) // SHIP, int(ys.max()) // SHIP)
     print("wrote", OUT_PNG.name, f"{img.width}x{img.height}"
-          f" (scene {W}x{H} @ {SS}x)", "and", OUT_JSON.name)
+          f" (scene {W}x{H} @ ship {SHIP}x, over {OVER}x)", "and",
+          OUT_JSON.name)
+    print("content bbox:", bbox, "-> suggested view:",
+          [bbox[0] - 24, bbox[1] - 24, bbox[2] + 24, bbox[3] + 24])
 
 
 if __name__ == "__main__":

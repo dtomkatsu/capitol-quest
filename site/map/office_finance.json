@@ -3,7 +3,7 @@
  "image": "office_finance.png",
  "w": 1240,
  "h": 800,
- "scale": 2,
+ "scale": 0.5,
  "bg": "#0a0e18",
  "spawn": [
   631,
@@ -16,7 +16,11 @@
    "kind": "poi",
    "px": 646,
    "py": 496,
-   "text": "Committee staff triage everything here — every bill with a dollar figure in the House crosses this desk on its way to the chair."
+   "text": "Committee staff triage everything here — every bill with a dollar figure in the House crosses this desk on its way to the chair.",
+   "mark": [
+    646,
+    456
+   ]
   },
   {
    "id": "cubicles",
@@ -24,7 +28,11 @@
    "kind": "poi",
    "px": 748,
    "py": 407,
-   "text": "Analysts who read every fiscal note. The binders hold the executive budget request, line by line."
+   "text": "Analysts who read every fiscal note. The binders hold the executive budget request, line by line.",
+   "mark": [
+    748,
+    373
+   ]
   },
   {
    "id": "door",
@@ -32,7 +40,11 @@
    "kind": "door",
    "px": 502,
    "py": 421,
-   "text": "Beyond the koa doors: the member who decides which revenue bills get a hearing at all."
+   "text": "Beyond the koa doors: the member who decides which revenue bills get a hearing at all.",
+   "mark": [
+    502,
+    355
+   ]
   },
   {
    "id": "desk",
@@ -40,7 +52,11 @@
    "kind": "poi",
    "px": 508,
    "py": 354,
-   "text": "A clean desk, two lamps, and the quiet power of the schedule. Bills die politely here — by never being heard."
+   "text": "A clean desk, two lamps, and the quiet power of the schedule. Bills die politely here — by never being heard.",
+   "mark": [
+    508,
+    316
+   ]
   },
   {
    "id": "exit",

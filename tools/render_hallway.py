@@ -30,10 +30,11 @@ import math
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 import roomplan
 import roombands
+import roomlight
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "hallway.png"
@@ -126,6 +127,18 @@ WALK = roomplan.Walk(
 )
 
 rng = np.random.default_rng(23)
+
+# ---- THE BACKDROP (tools/roomlight.py), in this room's own frame: the
+# pool is centred on ROOM_HALLWAY.view and reaches exact INK inside the
+# 1500x1000 canvas; the shadow is the floor dropped and pushed the way
+# the Capitol's is, so the three rooms sit on one ground.
+BACKDROP_C = (690, 466)
+BACKDROP_R = (640, 420)
+BACKDROP_LIFT = (30, 39, 57)
+SHADOW_DROP = 60
+SHADOW_SUN = (-0.45, 0.12)
+SHADOW_BLUR = 20
+SHADOW_A = 0.60
 
 
 def hx(s):
@@ -581,7 +594,19 @@ def render(layers=True, walk_png=False):
     flat bake — render() asserts that so the split cannot silently
     drift from the shipped room."""
     DW, DH = W * K, H * K              # draw space; SCENE space is W, H
-    img = Image.new("RGBA", (DW, DH), INK + (255,))
+    # THE SAME GROUND AS THE CAPITOL (tools/roomlight.py, 2026-09-23): a
+    # lit pool behind the corridor and the floor's shadow falling into
+    # it. On flat ink this room read as a different game beside the one
+    # the player walks into next. The footprint is the floor itself —
+    # the corridor and the alcove — dropped SHADOW_DROP under it.
+    img = roomlight.backdrop(
+        W, H, SHIP, K, INK, BACKDROP_LIFT, BACKDROP_C, BACKDROP_R,
+        polys=[[iso(u0, v0, -SHADOW_DROP), iso(u1, v0, -SHADOW_DROP),
+                iso(u1, v1, -SHADOW_DROP), iso(u0, v1, -SHADOW_DROP)]
+               for u0, u1, v0, v1 in ((U0, U1, -VH, VH),
+                                      (LU0, LU1, LV, -VH))],
+        sun=(SHADOW_SUN[0] * SHADOW_DROP, SHADOW_SUN[1] * SHADOW_DROP),
+        blur=SHADOW_BLUR, alpha=SHADOW_A)
     # ---- DEPTH BANDS (tools/roombands.py). Declaration order IS
     # composite order, and must stay in DEPTH order for the things the
     # character can walk both ways around: the two pots, the two casing
@@ -591,6 +616,7 @@ def render(layers=True, walk_png=False):
     POT0, POT1 = [u + v for u, v in PLANTS]
     FIG_D = FIGURE_AT[0] + FIGURE_AT[1]
     POST0, POST1 = LU0 + -VH, LU1 + -VH
+    ground = img.copy()
     bands = roombands.Bands((DW, DH), img, layers)
     bands.add("back", roombands.BACK)
     bands.add("pot0", POT0)
@@ -787,8 +813,10 @@ def render(layers=True, walk_png=False):
     # OVER/SHIP split. The AA is baked here, once, by a real filter;
     # the resolution SHIP bought is kept.
     img.save(OUT_PNG)
-    band_meta = bands.emit(OUT_PNG.parent, "hallway", SHIP, OVER) \
-        if bands.on else []
+    # the ground (the backdrop) rides in the back band now, as the
+    # Capitol's does — without `base` the lit pool would never ship
+    band_meta = bands.emit(OUT_PNG.parent, "hallway", SHIP, OVER,
+                           base=ground) if bands.on else []
     bg = "#%02x%02x%02x" % img.getpixel((2, img.height // 2))
 
     # content bbox against the ink — the JS `view` rect is measured
@@ -799,11 +827,17 @@ def render(layers=True, walk_png=False):
     # the bbox outward on every re-bake. 6/255 is under the ring and far
     # under any drawn value. Divided back into SCENE px, because the
     # `view` rect this feeds is scene-space.
-    arr = np.asarray(img, np.int16)
-    mask = np.abs(arr - np.array(INK, np.int16)).max(axis=-1) > 6
-    ys, xs = np.where(mask)
-    bbox = (int(xs.min()) // SHIP, int(ys.min()) // SHIP,
-            int(xs.max()) // SHIP, int(ys.max()) // SHIP)
+    # MEASURED FROM THE BANDS since the backdrop (2026-09-23): the lit
+    # pool is not ink, so the old "differs from INK" test called the
+    # whole pool content. The room is what the bands carry.
+    if bands.on:
+        union = Image.new("L", (DW, DH), 0)
+        for _, _, L in bands.order:
+            union = ImageChops.lighter(union, L.getchannel("A"))
+        x0_, y0_, x1_, y1_ = union.getbbox()
+        bbox = (x0_ // K, y0_ // K, x1_ // K, y1_ // K)
+    else:
+        bbox = (0, 0, W, H)
 
     def zone(cx, cy, w, h):
         return [int(round(cx)), int(round(cy)), int(w), int(h)]
@@ -827,8 +861,13 @@ def render(layers=True, walk_png=False):
         return list(a)
 
     hotspots = [
+        # `mark` — where the runtime hangs this hotspot's marker, just
+        # over the thing it marks (2026-09-23): the legislator's head,
+        # a door's frame (94 px: koa_door's architrave), the
+        # directory's frame (69). It used to hang at a fixed offset from
+        # py, which put pins on the leaves of the doors.
         dict(id="legislator", name="Your Introducer", kind="door",
-             px=sp(ffx), py=sp(ffy - 60),
+             px=sp(ffx), py=sp(ffy - 60), mark=[sp(ffx), sp(ffy - 98)],
              zone=zone(ffx, ffy - 44, 66, 100), at=at(ffx, ffy),
              text="Rep. Christina Silva — the member who agreed to carry your "
                   "bills, waiting off to the side between the morning "
@@ -836,6 +875,7 @@ def render(layers=True, walk_png=False):
                   "the one morning everyone is reachable."),
         dict(id="caucus", name="Caucus Room", kind="poi",
              px=sp(caucus_c[0]), py=sp(caucus_c[1] - 40),
+             mark=[sp(caucus_c[0]), sp(caucus_c[1] - 98)],
              zone=zone(caucus_c[0], caucus_c[1] - 50, 92, 108),
              at=at(*caucus_c),
              text="Koa doors and a taped agenda: the majority caucus "
@@ -843,6 +883,7 @@ def render(layers=True, walk_png=False):
                   "The floor ratifies; rooms like this decide."),
         dict(id="office", name="Member's Office", kind="poi",
              px=sp(office_c[0]), py=sp(office_c[1] - 40),
+             mark=[sp(office_c[0]), sp(office_c[1] - 98)],
              zone=zone(office_c[0], office_c[1] - 50, 88, 106),
              at=at(*office_c),
              text="Your introducer's office — nameplate polished, a "
@@ -851,6 +892,7 @@ def render(layers=True, walk_png=False):
                   "what gets a number and a hearing."),
         dict(id="directory", name="Directory", kind="poi",
              px=sp(dirx_c[0]), py=sp(dirx_c[1] - 36),
+             mark=[sp(dirx_c[0]), sp(dirx_c[1] - 73)],
              zone=zone(dirx_c[0], dirx_c[1] - 50, 80, 58),
              at=at(*dirx_c),
              text="The building directory behind glass. Committee "

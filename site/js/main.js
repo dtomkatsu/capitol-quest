@@ -143,7 +143,17 @@ const MAP_V = 8;
    map/capitol.json come out of ONE run of tools/render_capitol.py and
    are only valid as a set (hotspot px are baked against the image).
    Hand-bumped, same rule as MAP_V. */
-const CAP_V = 50;   // 50 = the glass doors end at the first column, and
+const CAP_V = 52;   // 52 = the second aesthetic pass: the slabs turn
+                    // the corner and the crown has a top, reflections
+                    // fade, doors on the 1/K grid, the court tree and the
+                    // planters, the planters and rail pots in their own
+                    // depth bands, cool shade, rounded flutes, and a
+                    // `mark` per hotspot (2026-09-23);
+                    // 51 = the slick pass: a lit backdrop with the
+                    // building's shadow in it, smooth walkway light,
+                    // wall-foot occlusion, the slab edge lit by face,
+                    // the glass reflecting the court (2026-09-22);
+                    // 50 = the glass doors end at the first column, and
                     // their own pier is gone (2026-09-22);
                     // 49 = the loggia shafts' ends: a V foot on the
                     // floor, the gallery slab's shade on everything
@@ -187,14 +197,19 @@ const CAP_V = 50;   // 50 = the glass doors end at the first column, and
 const START_ROOM = "capitol";
 /* Same rule for the House Finance office bake (tools/render_office.py:
    office_finance.png + map/office_finance.json). */
-const OFF_V = 2;
+const OFF_V = 3;   // 3 = the modern pipeline: SHIP/OVER at full
+                   // resolution, a view rect, the shared backdrop, the
+                   // near walls' cut faces turned the right way, and a
+                   // `mark` per hotspot (2026-09-23)
 /* Same rule for the opening-week hallway bake (tools/render_hallway.py:
    hallway.png + map/hallway.json). 3 = the OVER/SHIP re-bake
    (2026-08-28): the PNG is 3000x2000 for an unchanged 1500x1000 scene,
    so meta.scale is 0.5 and every hotspot px in the JSON is byte-
    identical to v2. 4 = the legislator figure() redesign, same day —
    art only, hotspot px unchanged again. */
-const HALL_V = 9;   // 8 = hotspot approach points for tap-to-walk;
+const HALL_V = 9;   // 9 = the rooms' shared backdrop, and a `mark` per
+                    // hotspot (2026-09-23);
+                    // 8 = hotspot approach points for tap-to-walk;
                     // 7 = depth bands, per-object for the pots, the
                     // posts and the legislator (2026-09-17)
 /* THE PLAYER CHARACTER. One bake shared by every room
@@ -7449,24 +7464,155 @@ class FrameOverlay {
   }
 }
 
+/* ---- ROOM SPRITES THAT ARE NOT THE BAKE (2026-09-23, the second
+   aesthetic pass). The rooms are LINEAR-filtered paintings at a
+   continuous zoom; everything drawn over them at runtime was pixel art
+   under the game's pixelArt/NEAREST default, and read as a sticker from
+   another game — the marker at ~2x, the character at 0.47x (every other
+   pixel dropped) in the Capitol and 1.54x (uneven doubling) in the
+   hallway. These build what those sprites draw with. */
+
+/* The device px at the top of the canvas the HUD's toolbar covers, or 0.
+   Read off the toolbar's own box, so it follows every breakpoint (the
+   600-900px row under the title chip, the phone's icon row). Hidden —
+   booting, or no toolbar — measures 0; enterRoom re-fits once the HUD
+   is up. A toolbar that is not a TOP strip reserves nothing. */
+function hudTopPx() {
+  const tb = document.getElementById("toolbar");
+  if (!tb) return 0;
+  const r = tb.getBoundingClientRect();
+  if (!r.height || r.bottom > window.innerHeight * 0.35) return 0;
+  return (r.bottom + 8) * DPR;
+}
+
+/* THE ROOM MARKER: a gold gem on a short stem, drawn with canvas paths
+   at DEVICE resolution, one texture per DPR (a browser zoom re-draws it
+   through fitSprites; the old one stays for any room still asleep).
+   Same language as the overworld's pin — gem over a stem — but vector,
+   with a dark keyline so it holds against the white slab bands it hangs
+   in front of, and a soft glow. The map keeps its pixel pin. */
+const MARKER_CSS = [16, 22];            // its box, CSS px
+const MARKER_TIP = 21.5 / 22;           // where the stem ends, in that box
+function roomMarkerTexture(scene) {
+  const key = "room_marker@" + DPR;
+  if (scene.textures.exists(key)) return key;
+  const [W, H] = MARKER_CSS;
+  const cv = document.createElement("canvas");
+  cv.width = Math.ceil(W * DPR);
+  cv.height = Math.ceil(H * DPR);
+  const g = cv.getContext("2d");
+  g.scale(DPR, DPR);
+  const glow = g.createRadialGradient(8, 8, 0, 8, 8, 8);
+  glow.addColorStop(0, "rgba(255, 214, 120, 0.42)");
+  glow.addColorStop(1, "rgba(255, 214, 120, 0)");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, 16, 16);
+  g.lineJoin = "round";
+  g.beginPath();                                      // the stem
+  g.moveTo(6.7, 13); g.lineTo(9.3, 13); g.lineTo(8, 21.5); g.closePath();
+  g.fillStyle = "#c9922c";
+  g.fill();
+  g.lineWidth = 1;
+  g.strokeStyle = "rgba(38, 25, 8, 0.9)";
+  g.stroke();
+  g.beginPath();                                      // the gem
+  g.moveTo(8, 1.6); g.lineTo(14, 8); g.lineTo(8, 14.4); g.lineTo(2, 8);
+  g.closePath();
+  const gem = g.createLinearGradient(3, 3, 13, 13);
+  gem.addColorStop(0, "#ffe7a3");
+  gem.addColorStop(0.5, "#f2c14e");
+  gem.addColorStop(1, "#b98524");
+  g.fillStyle = gem;
+  g.fill();
+  g.lineWidth = 1.1;
+  g.strokeStyle = "rgba(38, 25, 8, 0.95)";
+  g.stroke();
+  g.beginPath();                                      // its lit facet
+  g.moveTo(8, 3.3); g.lineTo(12, 8); g.lineTo(8, 8); g.closePath();
+  g.fillStyle = "rgba(255, 248, 220, 0.55)";
+  g.fill();
+  scene.textures.addCanvas(key, cv)
+    .setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
+/* hover and focus: the name takes the marker's place, and gives it back */
+function showName(lab, mk, on) {
+  lab.setVisible(on);
+  if (mk) mk.setVisible(!on);
+}
+
+/* THE CHARACTER'S CONTACT SHADOW. The pots and planters beside it all
+   stand in one, and a figure without one floats on the floor. A soft
+   radial falloff, squashed by setDisplaySize into the room's own 2:1
+   footprint ellipse — the plan disc CHAR_SHADOW_R round the feet. */
+const CHAR_SHADOW_R = 0.36;             // plan units, ~ the feet
+function charShadowTexture(scene) {
+  const key = "char_shadow";
+  if (scene.textures.exists(key)) return key;
+  const n = 64;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = n;
+  const g = cv.getContext("2d");
+  const grd = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+  grd.addColorStop(0, "rgba(14, 10, 6, 0.50)");
+  grd.addColorStop(0.55, "rgba(14, 10, 6, 0.28)");
+  grd.addColorStop(1, "rgba(14, 10, 6, 0)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, n, n);
+  scene.textures.addCanvas(key, cv)
+    .setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
+/* A PRE-FILTERED COPY OF THE CHARACTER SHEET at `f` of its size. A
+   canvas resampling a sprite by less than ~0.75 per step skips source
+   pixels whatever the filter, so the Capitol (0.47 at 1280x800) drew
+   the figure with every other pixel dropped. Downscaled ONCE with the
+   browser's high-quality filter and then drawn at ~1:1, it is clean.
+   The bake stays the ONE source (one sheet, every room — see CLAUDE.md,
+   "The player character"); this is only its mip. Frames are repacked
+   into whole-pixel boxes, the drawn frame at each box's top-left. */
+const CHAR_MIP_BELOW = 0.8;             // device px per sheet px
+function charMip(scene, meta, f) {
+  const key = "char_sheet@" + f.toFixed(3);
+  if (scene.textures.exists(key)) return key;
+  const src = scene.textures.get("char_sheet").getSourceImage();
+  if (!src || !src.width) return null;
+  const cols = Math.round(src.width / meta.fw);
+  const rows = Math.round(src.height / meta.fh);
+  const FW = Math.ceil(meta.fw * f), FH = Math.ceil(meta.fh * f);
+  const cv = document.createElement("canvas");
+  cv.width = cols * FW;
+  cv.height = rows * FH;
+  const g = cv.getContext("2d");
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "high";
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      g.drawImage(src, c * meta.fw, r * meta.fh, meta.fw, meta.fh,
+                  c * FW, r * FH, meta.fw * f, meta.fh * f);
+  const tex = scene.textures.addCanvas(key, cv);
+  let i = 0;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) tex.add(i++, 0, c * FW, r * FH, FW, FH);
+  tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
 class Actor {
   constructor(scene, meta) {
     this.s = scene;
     this.m = meta;
     const P = scene.plan;
-    for (let i = 0; i < meta.dirs.length; i++) {
-      const key = "walk_" + meta.dirs[i];
-      if (scene.anims.exists(key)) continue;
-      const base = i * (meta.walk + 1);
-      scene.anims.create({
-        key,
-        frames: scene.anims.generateFrameNumbers("char_sheet",
-          { start: base + 1, end: base + meta.walk }),
-        frameRate: Math.max(6, Math.round(CHAR_SPEED / CHAR_STRIDE
-                                          * meta.walk)),
-        repeat: -1,
-      });
-    }
+    // the sheet it draws with: the bake, or a mip of it (retex)
+    this.tex = "char_sheet";
+    this.f = 1;
+    this.makeAnims(this.tex);
+    // the bake is drawn FILTERED: it is magnified 1.54x in the hallway,
+    // where nearest-neighbour doubled some pixels and not others
+    scene.textures.get("char_sheet")
+      .setFilter(Phaser.Textures.FilterMode.LINEAR);
     // meta.scale puts the FILE back into scene px; k is the room's own
     // plan scale against the one the sheet was authored at
     this.k = P.basis.sx / meta.sx;
@@ -7474,6 +7620,11 @@ class Actor {
     this.sp = scene.add.sprite(0, 0, "char_sheet", 0)
       .setOrigin(meta.anchor[0] / fwS, meta.anchor[1] / fhS)
       .setScale(meta.scale * this.k);
+    // the contact shadow — see charShadowTexture
+    const b = P.basis;
+    this.sh = scene.add.image(0, 0, charShadowTexture(scene))
+      .setDisplaySize(2 * CHAR_SHADOW_R * b.sx * Math.SQRT2,
+                      2 * CHAR_SHADOW_R * b.sy * Math.SQRT2);
     this.u = P.spawn[0];
     this.v = P.spawn[1];
     this.dir = 0;
@@ -7488,10 +7639,65 @@ class Actor {
   sync() {
     const q = this.s.plan.px(this.u, this.v);
     this.sp.setPosition(q.x, q.y);
+    this.sh.setPosition(q.x, q.y);
     /* DEPTH IS THE CHARACTER'S OWN PLAN DEPTH — the same u+v the room's
        bands carry, so walking up the ring genuinely moves them through
-       the layers rather than switching them between two states. */
+       the layers rather than switching them between two states. The
+       shadow sits a hair under the figure, over every band behind it. */
     this.sp.setDepth(this.u + this.v);
+    this.sh.setDepth(this.u + this.v - 0.001);
+  }
+
+  /* one walk animation per facing, per SHEET — a mip is its own
+     texture, and an animation names its frames by texture */
+  animKey(i) {
+    return "walk_" + this.m.dirs[i]
+      + (this.tex === "char_sheet" ? "" : "@" + this.tex);
+  }
+
+  makeAnims(tex) {
+    const meta = this.m, sc = this.s;
+    const was = this.tex;
+    this.tex = tex;
+    for (let i = 0; i < meta.dirs.length; i++) {
+      const key = this.animKey(i);
+      if (sc.anims.exists(key)) continue;
+      const base = i * (meta.walk + 1);
+      sc.anims.create({
+        key,
+        frames: sc.anims.generateFrameNumbers(tex,
+          { start: base + 1, end: base + meta.walk }),
+        frameRate: Math.max(6, Math.round(CHAR_SPEED / CHAR_STRIDE
+                                          * meta.walk)),
+        repeat: -1,
+      });
+    }
+    this.tex = was;
+  }
+
+  /* PICK THE SHEET FOR THIS ZOOM (from RoomScene.fitSprites). Drawn at
+     r device px per sheet px: at r >= CHAR_MIP_BELOW the bake itself,
+     filtered; below it a mip at f = r, so the figure lands ~1:1. f is
+     quantised to 1/40 so a resize does not build a new sheet per px. */
+  retex(zoom) {
+    const m = this.m;
+    const r = zoom * m.scale * this.k;
+    const f = r < CHAR_MIP_BELOW ? Math.max(0.1, Math.round(r * 40) / 40)
+                                 : 1;
+    if (f === this.f) return;
+    const tex = f === 1 ? "char_sheet" : charMip(this.s, m, f);
+    if (!tex) return;
+    this.makeAnims(tex);
+    const frame = Number(this.sp.frame.name) || 0;
+    this.f = f;
+    this.tex = tex;
+    const FW = f === 1 ? m.fw : Math.ceil(m.fw * f);
+    const FH = f === 1 ? m.fh : Math.ceil(m.fh * f);
+    this.sp.setTexture(tex, frame)
+      .setScale(m.scale * this.k / f)
+      .setOrigin(m.anchor[0] / m.scale * f / FW,
+                 m.anchor[1] / m.scale * f / FH);
+    if (this.moving) this.sp.anims.play(this.animKey(this.dir), true);
   }
 
   /* Nearest of the eight baked facings to a plan heading. The sheet's
@@ -7505,7 +7711,7 @@ class Actor {
   face(i) {
     if (i === this.dir && this.sp.anims.isPlaying === this.moving) return;
     this.dir = i;
-    const key = "walk_" + this.m.dirs[i];
+    const key = this.animKey(i);
     if (this.moving) this.sp.anims.play(key, true);
     else { this.sp.anims.stop(); this.sp.setFrame(i * (this.m.walk + 1)); }
   }
@@ -7795,10 +8001,25 @@ class RoomScene extends Phaser.Scene {
       // noExit: this room is the game's home — it has no way out and
       // draws no exit affordance (the Capitol, since 2026-08-26).
       if (h.kind === "exit" && this.cfg.noExit) continue;
+      /* THE ROOM MARKER (2026-09-23). It was the overworld's 16x20
+         pixel-art pin, drawn NEAREST at ~2x in a smooth painted room,
+         and it hung at py - 30 — mid-leaf on a 53px door, right over the
+         brass pull, so pin and pull fused into one gold key and read as
+         door hardware (an open item since 2026-08-27). Now:
+         - a vector gem drawn at DEVICE resolution (roomMarkerTexture),
+           so it is as crisp as the type;
+         - its TIP at `h.mark`, which the bake computes from the drawn
+           frame: just above the door's head, never on the leaf;
+         - a smaller, slower bob — it is a flag, not an alarm;
+         - and on hover or focus the NAME takes its place (see below),
+           so the label belongs to the door and not to the walkway. */
+      let mk = null;
+      const mkAt = h.mark || [h.px, h.py - 20];
       if (h.kind === "door") {
-        const mk = this.add.image(h.px, h.py - 30, "marker");
-        if (!still) this.tweens.add({ targets: mk, y: mk.y - 7,
-          duration: 550, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+        mk = this.add.image(mkAt[0], mkAt[1], roomMarkerTexture(this))
+          .setOrigin(0.5, MARKER_TIP);
+        if (!still) this.tweens.add({ targets: mk, y: mk.y - 3,
+          duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
         this.markers.push(mk);
       } else if (h.kind === "poi") {
         /* A POINT OF INTEREST gets a marker too (2026-09-22) — a
@@ -7808,16 +8029,21 @@ class RoomScene extends Phaser.Scene {
            their names only appeared on hover, so a touch player had no
            way to know they were there. The bounce stays the door's:
            "this goes somewhere" is a different promise from "look". */
-        const mk = this.add.image(h.px, h.py - 22, "marker")
-          .setAlpha(0.75);
+        mk = this.add.image(mkAt[0], mkAt[1], roomMarkerTexture(this))
+          .setOrigin(0.5, MARKER_TIP).setAlpha(0.75);
         mk._small = true;
         if (!still) this.tweens.add({ targets: mk, alpha: 0.35,
           duration: 1400, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
         this.markers.push(mk);
       }
       const st = styles[h.kind] || styles.poi;
-      // DPR x rasterisation, divided back out in fit() — see makeLabel
-      const lab = this.add.text(h.px, h.py + 8,
+      // DPR x rasterisation, divided back out in fit() — see makeLabel.
+      // A marked hotspot's name stands where its marker does, ABOVE the
+      // thing it names; it used to sit below, on the walkway and over
+      // the railing, where it labelled the floor.
+      const onMark = !!(h.mark && h.kind !== "exit");
+      const lab = this.add.text(onMark ? h.mark[0] : h.px,
+                                onMark ? h.mark[1] - 1 : h.py + 8,
         h.kind === "exit" ? "⟵ " + h.name : h.name, {
           fontFamily: '"Avenir Next", "Trebuchet MS", Verdana, sans-serif',
           fontSize: st.size * DPR + "px",
@@ -7826,7 +8052,7 @@ class RoomScene extends Phaser.Scene {
           stroke: "#0b0e14",           // --plate-deep
           strokeThickness: 3 * DPR,
           letterSpacing: 0.4 * DPR,
-        }).setOrigin(0.5, 0).setDepth(10000);
+        }).setOrigin(0.5, onMark ? 1 : 0).setDepth(10000);
       lab._cssSize = st.size;      // authored CSS px — see relabelForDpr
       lab._cssStroke = 3;
       this.labels.push(lab);
@@ -7855,14 +8081,15 @@ class RoomScene extends Phaser.Scene {
               z ? z[2] : 120, z ? z[3] : 84)
         .setInteractive({ useHandCursor: true });
       if (h.kind !== "exit") {
-        zone.on("pointerover", () => lab.setVisible(true));
-        zone.on("pointerout", () => lab.setVisible(false));
+        // the name takes the marker's place, and gives it back
+        zone.on("pointerover", () => showName(lab, mk, true));
+        zone.on("pointerout", () => showName(lab, mk, false));
       }
       zone.on("pointerup", (pointer) => {
         if (pointer.getDistance() > 8 * DPR) return;   // 8 CSS px
         this.useHotspot(h);
       });
-      this.hot.push({ h, lab, zone });
+      this.hot.push({ h, lab, zone, mk });
     }
     this.buildHotLayer();
 
@@ -8110,9 +8337,9 @@ class RoomScene extends Phaser.Scene {
         e.stopPropagation();
         this.useHotspot(rec.h);
       });
-      b.addEventListener("focus", () => rec.lab.setVisible(true));
+      b.addEventListener("focus", () => showName(rec.lab, rec.mk, true));
       b.addEventListener("blur", () => {
-        if (rec.h.kind !== "exit") rec.lab.setVisible(false);
+        if (rec.h.kind !== "exit") showName(rec.lab, rec.mk, false);
       });
       rec.btn = b;
       layer.appendChild(b);
@@ -8229,17 +8456,19 @@ class RoomScene extends Phaser.Scene {
          art: with the canvas at device resolution the same physical
          magnification is DPR times the CSS-space one. */
       const cap = 1.6 * DPR / this.ss;
-      const z = Math.min(cap, w / (vx1 - vx0), h / (vy1 - vy0));
+      /* THE TOOLBAR'S STRIP IS NOT THE ROOM'S (2026-09-23). Framed on
+         the whole canvas, the Capitol's crown sat UNDER the glass
+         toolbar at every 16:9 and 16:10 desktop size — 39 CSS px at
+         1280x720, 33 at 1440x900, 27 at 1920x1080; only 4:3 cleared it.
+         The rect is framed in the canvas BELOW the toolbar instead, and
+         centred there. The cost is ~8-10% of the building's size at
+         16:9; a width-bound frame (4:3, phones) keeps its zoom and just
+         moves down out from under the strip. */
+      const top = hudTopPx();
+      const z = Math.min(cap, w / (vx1 - vx0), (h - top) / (vy1 - vy0));
       cam.setZoom(z);
-      cam.centerOn((vx0 + vx1) / 2, (vy0 + vy1) / 2);
-      const zc = zCss(z);
-      // labels divide the DPR back out (their font is DPR x); the
-      // marker is a fixed-resolution SPRITE, so its scale is the
-      // CSS-space one unchanged or it would come out half size
-      for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
-      for (const m of this.markers)
-        m.setScale(Math.min(1 / zc, 1.6) * (m._small ? 0.72 : 1));
-      this.placeHot();
+      cam.centerOn((vx0 + vx1) / 2, (vy0 + vy1) / 2 - top / (2 * z));
+      this.fitSprites(z);
       return;
     }
     // SNAP the zoom so one baked pixel covers a WHOLE number of device
@@ -8266,10 +8495,25 @@ class RoomScene extends Phaser.Scene {
     const z = Math.max(step, Math.floor(fitZ / step) * step);
     cam.setZoom(z);
     cam.centerOn(this.meta.w / 2, this.meta.h / 2);
+    this.fitSprites(z);
+  }
+
+  /* Everything that holds a steady size ON SCREEN, after the zoom moved:
+     labels divide the DPR back out (their font is DPR x); the room
+     marker is drawn at DEVICE resolution, so it takes 1/zoom to land
+     1:1 — and it shrinks with the room below zoom 1/1.6, as the old pin
+     did, so a phone's small room does not wear full-size flags; the
+     character picks the sheet that suits this zoom (Actor.retex). */
+  fitSprites(z) {
     const zc = zCss(z);
     for (const t of this.labels) t.setScale(Math.min(1 / zc, 1.7) / DPR);
-    for (const m of this.markers)
-      m.setScale(Math.min(1 / zc, 1.6) * (m._small ? 0.72 : 1));
+    const key = roomMarkerTexture(this);
+    const s = Math.min(1, 1.6 * zc) / z;
+    for (const m of this.markers) {
+      if (m.texture.key !== key) m.setTexture(key);
+      m.setScale(s * (m._small ? 0.72 : 1));
+    }
+    if (this.actor) this.actor.retex(z);
     this.placeHot();
   }
 
@@ -8359,6 +8603,12 @@ const ROOM_OFFICE = {
   json: "map/office_finance.json", img: "assets/map/office_finance.png",
   exitTo: "capitol",
   enter: null,
+  // Framed like the other two rooms since 2026-09-23 (continuous zoom,
+  // LINEAR — see fit()). It was snap-fitted to the whole 1240x800 canvas
+  // and filled about half the frame. This is the bake's content bbox
+  // plus 24px, printed by render_office.py, which also asserts every
+  // hotspot lands inside it: keep the two in step.
+  view: [291, 179, 949, 597],
   greet: ["House Finance",
     "The Finance chair's suite — koa panels and lamplight. " +
     "Committee staff read every fiscal note in the cubicles; the " +

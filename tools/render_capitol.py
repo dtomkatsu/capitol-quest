@@ -67,11 +67,12 @@ import math
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 import roomplan
 import roombands
 import roomframe
+import roomlight
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_PNG = ROOT / "site" / "assets" / "map" / "capitol_scene.png"
@@ -772,14 +773,21 @@ class SDraw:
     _BOX = ("rectangle", "ellipse", "arc", "chord", "pieslice")
     _SEQ = ("polygon", "line")
 
-    def __init__(self, im):
+    def __init__(self, im, origin=(0, 0)):
         self._d = ImageDraw.Draw(im)
+        # the canvas itself, for the LIGHT passes (relight), which work
+        # on pixels rather than primitives
+        self.im = im
+        # a WHOLE-scene-px corner this canvas was cut from, for layers
+        # cropped to their content (fade_layer). At (0, 0) nothing moves,
+        # which is what keeps every full-canvas caller byte-identical.
+        self._ox, self._oy = origin
 
-    @staticmethod
-    def _pts(xy):
+    def _pts(self, xy):
+        ox, oy = self._ox, self._oy
         if xy and isinstance(xy[0], (list, tuple)):
-            return [(q[0] * K, q[1] * K) for q in xy]
-        return [v * K for v in xy]
+            return [((q[0] - ox) * K, (q[1] - oy) * K) for q in xy]
+        return [(v - (oy if i % 2 else ox)) * K for i, v in enumerate(xy)]
 
     @staticmethod
     def _kw(kw):
@@ -792,8 +800,10 @@ class SDraw:
         if name in self._BOX:
             def box(xy, *a, **kw):
                 x0, y0, x1, y1 = xy
-                return fn([x0 * K, y0 * K, (x1 + 1) * K - 1,
-                           (y1 + 1) * K - 1], *a, **self._kw(kw))
+                ox, oy = self._ox, self._oy
+                return fn([(x0 - ox) * K, (y0 - oy) * K,
+                           (x1 - ox + 1) * K - 1, (y1 - oy + 1) * K - 1],
+                          *a, **self._kw(kw))
             return box
         if name in self._SEQ:
             def seq(xy, *a, **kw):
@@ -804,6 +814,7 @@ class SDraw:
                 pts = xy if (xy and isinstance(xy[0], (list, tuple))) else \
                     [(xy[i], xy[i + 1]) for i in range(0, len(xy), 2)]
                 for x, y in pts:
+                    x, y = x - self._ox, y - self._oy
                     self._d.rectangle([x * K, y * K,
                                        x * K + K - 1, y * K + K - 1],
                                       fill=fill)
@@ -811,24 +822,196 @@ class SDraw:
         return fn
 
 
-# ------------------------------------------------------------ ground
-def paint_ground(d):
-    d.rectangle([0, 0, W, H], fill=INK)
+# ------------------------------------------------------ light passes
+# THE SLICK PASS (2026-09-22, user: "continue improving the capitol
+# interior. more slick"). What read as cheap was never the drawing — it
+# was LIGHT: a void of 88px mottle squares, walkway light in three hard
+# steps, walls meeting floors with nothing at the joint, and a building
+# that floated with no shadow under it. Everything below is a PIXEL
+# pass rather than a primitive, so it works in plan space: a pixel's
+# (u, v) at a known height comes straight out of the inverse iso, and a
+# falloff written in PLAN units follows the building when a constant
+# moves, the same one-source rule as the layout.
+#
+# Two rules for any pass added here:
+#   - A pass MULTIPLIES what is already painted inside a polygon it
+#     is given — it never paints a flat colour. That is what keeps
+#     every measured ratio in this file (the column strip against its
+#     wall, the bench shadow against its deck) exactly where it was.
+#   - It runs on the canvas the thing was painted into (SDraw.im), at
+#     the moment it was painted, over a region that thing covers
+#     OPAQUELY. In banded mode that canvas is a transparent band and in
+#     flat mode it is the whole room; over an opaque region the two
+#     are the same operation, which is what keeps the band gate exact.
 
 
-def mottle_ink(img):
-    """Faint cool drift in the surround so the void isn't a dead flat."""
-    arr = np.asarray(img, np.float32)
-    # 44 IS A SCENE-PX GRAIN, so the block scales with the canvas —
-    # left at 44 it would be a K times finer speckle that the OVER
-    # downsample then averages most of the way to nothing.
+def smoothstep(a, b, x):
+    t = np.clip((x - a) / (b - a), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+# ---- WARM SUN, COOL SHADE (2026-09-23, the second aesthetic pass). Every
+# darkening in the light passes was a NEUTRAL multiply, so shade was the
+# lit colour made greyer. Out of the sun a surface is lit by the sky —
+# blue — so the shadows here lean cool against the warm spill; it is the
+# "coloured bounce" of the banners' lighting logic (CLAUDE.md, event
+# art), and it is what makes the light read as light and not as dirt.
+# `cool()` turns a multiplier into per-channel ones: where it darkens,
+# the darker it gets the further it leans to SHADE_TINT; where it
+# brightens it stays neutral. Tuned by eye to stay under a colour cast —
+# a shadow should read as shade, never as blue paint.
+SHADE_TINT = (0.93, 0.975, 1.08)
+
+
+def cool(mul):
+    m = np.asarray(mul, np.float32)
+    dark = np.clip(1.0 - m, 0.0, 1.0)[..., None]
+    t = np.array(SHADE_TINT, np.float32)
+    return m[..., None] * (1.0 + dark * (t - 1.0))
+
+
+def _cbox(pts):
+    """CANVAS-px bbox (x0, y0, x1, y1) of scene-px points, clipped."""
+    xs = [q[0] * K for q in pts]
+    ys = [q[1] * K for q in pts]
+    return (max(0, int(math.floor(min(xs)))), max(0, int(math.floor(min(ys)))),
+            min(W * K, int(math.ceil(max(xs))) + 1),
+            min(H * K, int(math.ceil(max(ys))) + 1))
+
+
+def plan_uv(X, Y, dy=0.0):
+    """Scene px -> plan (u, v) on the plane at height `dy` — iso()
+    inverted, vectorised. Same maths as roomplan.Basis.plan(), which
+    is the dy = 0 case."""
+    du = (X - CX) / SX
+    dv = (Y + dy - CY) / SY
+    return (dv + du) / 2.0, (dv - du) / 2.0
+
+
+def relight(im, poly, fn):
+    """Multiply the pixels of `im` inside `poly` (scene px) by
+    fn(X, Y) — X, Y the scene-px centres of those pixels. `fn` returns
+    a multiplier array, or (mul, colour, amount) to first pull the
+    pixels `amount` of the way toward `colour`. The polygon is
+    rasterised exactly as SDraw fills it (same corners, shifted by a
+    whole-pixel offset), so a pass never leaks a pixel past the shape
+    it is lighting."""
+    box = _cbox(poly)
+    x0, y0, x1, y1 = box
+    if x1 <= x0 or y1 <= y0:
+        return
+    mask = Image.new("L", (x1 - x0, y1 - y0), 0)
+    ImageDraw.Draw(mask).polygon([(q[0] * K - x0, q[1] * K - y0)
+                                  for q in poly], fill=255)
+    m = np.asarray(mask) > 0
+    if not m.any():
+        return
+    ys, xs = np.nonzero(m)
+    X = (xs + x0 + 0.5) / K
+    Y = (ys + y0 + 0.5) / K
+    arr = np.asarray(im.crop(box)).copy()
+    rgb = arr[ys, xs, :3].astype(np.float32)
+    got = fn(X, Y)
+    if isinstance(got, tuple):
+        mul, col, amt = got
+        rgb += (np.array(col, np.float32) - rgb) * amt[:, None]
+    else:
+        mul = got
+    rgb *= mul[:, None] if mul.ndim == 1 else mul
+    arr[ys, xs, :3] = np.clip(np.rint(rgb), 0, 255).astype(np.uint8)
+    im.paste(Image.fromarray(arr, im.mode), box[:2])
+
+
+# ---- REFLECTIONS FADE (2026-09-23, the second aesthetic pass). Every
+# reflection in the room was a FIXED colour stamped on the floor: the
+# makai rail's pickets as dashes at 0.55 of the tile round them, so the
+# walkway grew a second, lower fence; each door and portal as a flat
+# trapezoid; each bronze post as a dark stub. A reflection is the floor
+# showing what stands on it, dimmer with distance, so they are painted
+# now as a translucent layer whose alpha falls off away from the thing
+# reflected, and composited onto whatever canvas they belong to — which
+# also makes them RELATIVE to the lit floor under them, where a fixed
+# colour went darker against the sun spill than against the shade.
+def fade_layer(im, pts, paint, alpha):
+    """Run `paint(d)` on a transparent layer cropped to the bbox of `pts`
+    (scene px), scale its alpha by alpha(X, Y) — scene-px arrays, values
+    0..1 — and composite it onto `im`. Over a band's transparent pixels
+    and over the flat room this is the same "over", so the band gate
+    holds (to its alpha-arithmetic floor)."""
+    x0, y0, x1, y1 = _cbox(pts)
+    x0, y0 = (x0 // K) * K, (y0 // K) * K      # a whole scene px corner
+    x1, y1 = min(W * K, x1 + K), min(H * K, y1 + K)
+    if x1 <= x0 or y1 <= y0:
+        return
+    lay = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+    paint(SDraw(lay, origin=(x0 // K, y0 // K)))
+    a = np.asarray(lay.getchannel("A"), np.float32)
+    ys, xs = np.mgrid[y0:y1, x0:x1]
+    a = a * np.clip(alpha((xs + 0.5) / K, (ys + 0.5) / K), 0.0, 1.0)
+    lay.putalpha(Image.fromarray(np.clip(np.rint(a), 0, 255)
+                                 .astype(np.uint8)))
+    im.alpha_composite(lay, (x0, y0))
+
+
+def below_line(p, slope):
+    """Scene px BELOW the line through `p` at `slope` (a wall's or a
+    rail's foot line), as a function of (X, Y)."""
+    return lambda X, Y: Y - (p[1] + (X - p[0]) * slope)
+
+
+REFL_A = (0.36, 0.10)       # a reflection's opacity at its root, at its end
+
+
+# ---- THE BACKDROP. It was INK under 88px squares of noise (mottle_ink,
+# a 44-scene-px grain), and on a dpr-2 screen those squares were the
+# most visible texture in the frame — a low-res checkerboard around the
+# one thing that was supposed to look finished. Now: a smooth pool of
+# cool light behind the building, and the building's own shadow falling
+# into it, so the cutaway sits in space like a model on a lit table.
+#   - The pool reaches EXACTLY INK well inside the canvas (the canvas
+#     edge is what the runtime letterboxes with `bg`, sampled off the
+#     finished bake — the two must never disagree, or a wide window
+#     shows the picture's rectangle).
+#   - The shadow is the slab's PLAN footprint dropped SHADOW_DROP below
+#     the gallery floor and pushed along the SAME sun the court's
+#     oculus patch uses (that patch lands up-and-left of the oculus, so
+#     the light comes from the upper right and shadows fall lower
+#     left). A silhouette-shift shadow would drag the walls' height
+#     into it; a footprint is what a roof-less cut actually casts.
+#   - It is computed at SHIP resolution, where it ships, and held
+#     through the OVER downsample by a NEAREST upscale.
+#   - NO DITHER, and that is measured, not forgotten. The pool steps
+#     one 8-bit level at a time (43 levels of blue across it), which a
+#     6x contrast stretch shows as rings and an unstretched screen does
+#     not — a 1-level step this dark is under a just-noticeable
+#     difference. Dithering it costs the whole backdrop's compression,
+#     and capitol_back.png is the home view's biggest download: the
+#     backdrop alone is 272 KB plain, 731 KB with a 2x2 Bayer, 1.26 MB
+#     with a 4x4 Bayer and 4.2 MB with triangular noise (the first bake
+#     of this shipped that, and took the back band 742 KB -> 3.4 MB).
+BACKDROP_C = (904, 632)          # the view rect's centre, scene px
+BACKDROP_R = (740, 520)          # reaches INK inside the 1680x1240 canvas
+BACKDROP_LIFT = hx("#1e2739")    # the pool at its centre
+SHADOW_DROP = 64                 # scene px below the gallery floor
+SHADOW_SUN = (-0.45, 0.12)       # screen shift per px of drop (the oculus)
+SHADOW_BLUR = 22                 # scene px
+SHADOW_A = 0.62
+
+
+def paint_backdrop():
+    # the old mottle drew from the SHARED rng, and the ring tiles and
+    # both walls' form mottle draw from it after. Burn the same draw so
+    # none of that reshuffles — a backdrop change must not repaint the
+    # floor.
     g = 44 * K
-    dh, dw = arr.shape[0], arr.shape[1]
-    small = rng.normal(0, 1, (dh // g + 2, dw // g + 2))
-    noise = np.kron(small, np.ones((g, g), np.float32))[:dh, :dw]
-    mask = np.all(np.abs(arr - np.array(INK, np.float32)) < 12, axis=-1)
-    arr[mask] += (noise[mask, None] * 2.4)
-    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    rng.normal(0, 1, ((H * K) // g + 2, (W * K) // g + 2))
+    # ONE implementation for every room (tools/roomlight.py) — the
+    # hallway and the office sit on the same ground since 2026-09-23
+    return roomlight.backdrop(
+        W, H, SHIP, K, INK, BACKDROP_LIFT, BACKDROP_C, BACKDROP_R,
+        polys=[rdiamond(A_OUT, -SHADOW_DROP)],
+        sun=(SHADOW_SUN[0] * SHADOW_DROP, SHADOW_SUN[1] * SHADOW_DROP),
+        blur=SHADOW_BLUR, alpha=SHADOW_A)
 
 
 # --------------------------------------------------- ring floor + sun
@@ -859,29 +1042,123 @@ def paint_ring_floor(d):
                fill=shade(FLOOR, 1.14), width=1)
 
 
-def paint_ring_shade(img):
-    """Light falls off away from the well — the sky is the key light,
-    so the walkway darkens toward the outer walls (atrium photo's
-    value structure: dark frame, glowing centre). Stepped bands, not
-    a radial vignette; walls repaint their own ground after."""
-    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
-    ld = SDraw(lay)
-    ld.polygon(rdiamond(A_OUT + 0.2), fill=(8, 10, 16, 26))
-    ld.polygon(rdiamond(A_OUT - 0.9), fill=(8, 10, 16, 14))
-    ld.polygon(rdiamond(A_OUT - 1.8), fill=(0, 0, 0, 0))
-    img.alpha_composite(lay)
+# ---- THE WALKWAY'S LIGHT, as one continuous function of plan position.
+# It was two sets of STEPPED translucent diamonds — sun spill out of the
+# well in three bands, falloff toward the walls in two — and at 1:1 the
+# steps read as contour lines drawn round the ring. The intent is the
+# same and so is the budget (the spill integrates to the old three
+# steps' total within a few percent; the falloff tops out at the old
+# outer band's ~10%): the sky is the key light, so the walkway glows at
+# the rail and darkens toward the walls (atrium photo: dark frame,
+# glowing centre).
+# Plus the one thing the old pass never had: AMBIENT OCCLUSION where the
+# floor meets a mauka wall. It is short on purpose — WALL_AO_LEN plan
+# units, ~4 px of screen — so it lives under the benches and at the door
+# thresholds and never reaches the bench's own contact shadow (0.375 to
+# 0.675 units out), whose 0.62-of-the-deck contrast is measured.
+SUN_C = (255, 244, 214)
+SUN_AMT, SUN_REACH, SUN_POW = 0.30, 2.2, 1.4
+FALL_AMT, FALL_A, FALL_B = 0.11, 0.4, 2.5
+WALL_AO, WALL_AO_LEN = 0.24, 0.25
 
 
-def paint_sun(img):
-    """Daylight spills out of the open well onto the inner ring."""
-    lay = Image.new("RGBA", (W * K, H * K), (0, 0, 0, 0))
-    ld = SDraw(lay)
-    for a, al in ((A_IN + 1.8, 22), (A_IN + 1.0, 24), (A_IN + 0.4, 28)):
-        ld.polygon(rdiamond(a), fill=(255, 244, 214, al))
-    img.alpha_composite(lay)
+def wall_ao(dist):
+    """Floor occlusion at `dist` plan units out from a wall's foot."""
+    return 1.0 - WALL_AO * np.exp(-np.clip(dist, 0, None) / WALL_AO_LEN)
+
+
+def light_ring_floor(img):
+    def fn(X, Y):
+        u, v = plan_uv(X, Y)
+        dw = np.clip(np.maximum.reduce([-A_IN - u, u - A_IN - WING_EXT,
+                                        -A_IN - v, v - A_IN]), 0, None)
+        sun = SUN_AMT * np.clip(1.0 - dw / SUN_REACH, 0, 1) ** SUN_POW
+        mul = ((1.0 - FALL_AMT * smoothstep(FALL_A, FALL_B, dw))
+               * wall_ao(u + A_OUT) * wall_ao(v + A_OUT))
+        return cool(mul), SUN_C, sun
+    relight(img, rdiamond(A_OUT), fn)
+
+
+# ---- THE WALLS' LIGHT. A wall face used to be one flat CONC fill with
+# pour joints on it. Lit from the open sky it is brighter at the head
+# than at the foot, and the foot sits in the floor's occlusion: WALL_RAMP
+# rises 0.95 -> 1.03 foot to head, and the last few px darken into the
+# joint. Applied AFTER the doors, portals and flush columns (they are on
+# the same plane and see the same sky — multiplying all of them keeps
+# the column strip's measured ratio to its wall) and BEFORE the benches,
+# whose seat bites into the wall foot and would otherwise be lit twice.
+WALL_RAMP = (0.95, 1.03)
+WALL_FOOT_AO, WALL_FOOT_LEN = 0.12, 4.5     # scene px up the face
+
+
+def light_wall(im, e0, e1, h=58):
+    slope = (e1[1] - e0[1]) / (e1[0] - e0[0])
+
+    def fn(X, Y):
+        ht = np.clip(e0[1] + (X - e0[0]) * slope - Y, 0, h)
+        return cool(WALL_RAMP[0] + (WALL_RAMP[1] - WALL_RAMP[0]) * ht / h
+                    - WALL_FOOT_AO * np.exp(-ht / WALL_FOOT_LEN))
+    relight(im, [e0, e1, up(e1, h), up(e0, h)], fn)
+
+
+# ---- THE LIT TRANSOMS GLOW. A grand door's transom is the one warm
+# light source on a grey wall, and it was drawn as a flat gold bar —
+# a sticker. A faint warm bloom round it on the concrete is what says
+# "lit" at the distance this room is seen from. Bloom, not lighting:
+# it is a screen-space ellipse, kept to the wall face it sits on, and
+# applied AFTER light_wall so the sky ramp does not dim it.
+GLOW = (KEY, 0.15, 26, 11)          # colour, peak pull, rx, ry (scene px)
+GLOW_AT = 51                        # the transom's height over the foot
+
+
+def transom_glow(im, e0, e1, ts, h=58):
+    col, amt, rx, ry = GLOW
+    cs = [lerp(e0, e1, t) for t in ts]
+    if not cs:
+        return
+
+    def fn(X, Y):
+        a = np.zeros_like(X)
+        for cx, cy in cs:
+            a = np.maximum(a, np.exp(-(((X - cx) / rx) ** 2
+                                      + ((Y - (cy - GLOW_AT)) / ry) ** 2)))
+        return np.ones_like(X), col, amt * a
+    relight(im, [e0, e1, up(e1, h), up(e0, h)], fn)
+
+
+# |grad u| in scene px — the distance from a pixel to the line u = c is
+# |u - c| / TILE_GRAD, which is what lets a joint be drawn per pixel
+TILE_GRAD = math.hypot(1 / (2 * SX), 1 / (2 * SY))
+L3_GROUT = 1.10             # the gallery's joints are 1.14 of the tile
+
+
+def light_upper_walk(im, poly):
+    """The third level's walkway: the same wall-foot occlusion as the
+    gallery's, on the plane LVL2_Y up. No sun term — the well's spill
+    is a storey below, and this deck is lit evenly by open sky."""
+    def fn(X, Y):
+        u, v = plan_uv(X, Y, LVL2_Y)
+        # THE SAME QUARRY TILE AS THE GALLERY (2026-09-23): the deck was
+        # one flat brown, so the two walkways read as two materials. The
+        # gallery's module (1 u, joints on the half-units, as its grid
+        # runs from -A_OUT) in grout a shade softer — it is the most
+        # distant floor in the room — and a per-tile tone from the tile's
+        # own index, NOT the shared rng: this level stays off it so a
+        # storey can never reshuffle the one below.
+        gu = np.abs(u - 0.5 - np.round(u - 0.5)) / TILE_GRAD
+        gv = np.abs(v - 0.5 - np.round(v - 0.5)) / TILE_GRAD
+        grout = np.clip(1.0 - np.minimum(gu, gv) / 0.55, 0.0, 1.0)
+        iu, iv = np.floor(u - 0.5), np.floor(v - 0.5)
+        tone = 1.0 + 0.035 * np.sin(iu * 12.9898 + iv * 78.233)
+        tile = tone * (1.0 + (L3_GROUT - 1.0) * grout)
+        return cool(tile * wall_ao(u + LVL2_OUT) * wall_ao(v + LVL2_OUT))
+    relight(im, poly, fn)
 
 
 # ------------------------------------------------------ the well
+LOGGIA_SHADE = (0.58, 0.86)      # back wall -> eave line
+
+
 def court_paving(img):
     """The courtyard's stone paving: LARGE slabs, each its own tone,
     under a broad low-frequency drift.
@@ -983,9 +1260,15 @@ def court_paving(img):
     # away and not as a recess. The gallery slab covers it, so it is
     # the one part of the floor that never sees the oculus — hence
     # LAST, after every light region.
+    # It is a GRADIENT since 2026-09-22, not one flat 0.72: a recess
+    # is darkest at its back wall and lightens toward the opening, and
+    # the flat band read as a painted stripe rather than a space. Same
+    # mean (LOGGIA_SHADE averages ~0.72 across the set-back), so the
+    # set-back reads exactly as deep as it did.
     hd, gd = rdiamond(A_IN, -DROP), rdiamond(GND_OUT, -DROP)
-    for i, j in ((3, 0), (0, 1)):
-        regions.append(([hd[i], hd[j], gd[j], gd[i]], shade(COURT, 0.72)))
+    loggia = [[hd[i], hd[j], gd[j], gd[i]] for i, j in ((3, 0), (0, 1))]
+    for poly in loggia:
+        regions.append((poly, COURT))
 
     lay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     slabs(SDraw(lay), COURT)
@@ -995,7 +1278,57 @@ def court_paving(img):
         mask = Image.new("L", img.size, 0)
         SDraw(mask).polygon(poly, fill=255)
         lay.paste(tint, (0, 0), mask)
+
+    def recess(X, Y):
+        u, v = plan_uv(X, Y, -DROP)
+        k = np.clip(np.minimum(u, v) + GND_OUT, 0, GND_BACK) / GND_BACK
+        return cool(LOGGIA_SHADE[0] + (LOGGIA_SHADE[1] - LOGGIA_SHADE[0]) * k)
+    for poly in loggia:
+        relight(lay, poly, recess)
     img.alpha_composite(lay)
+
+
+# THE COURT'S TREE (2026-09-23). It was two flat ellipses on a 2px stick
+# — a patio umbrella, and at game scale a street lamp, which is the exact
+# failure the breezeway's palms were redrawn to avoid. A canopy is
+# CLUSTERS, lit from the sun's side: a dark underside mass, mid clusters
+# round it, lit clusters on the upper right, a few specks of highlight
+# and a notch or two of shadow — the same layering that makes the rail
+# pots read as plants at 20 px. It throws its shadow to the lower left.
+TREE_MID = ((-9, -2, 6.5), (-4, -6, 6.5), (3, -7, 6.5), (9, -3, 6.0),
+            (-6, 3, 6.0), (1, 2, 6.5), (8, 3, 5.5))
+TREE_LIT = ((-1, -8, 5.0), (5, -8, 5.0), (9, -5, 4.5), (3, -3, 4.0))
+TREE_GAP = ((-8, 4, 3.0), (-2, 5, 2.5), (5, 6, 2.2))
+TREE_SPECK = ((4, -10), (8, -7), (0, -9), (10, -4), (6, -5), (-3, -7))
+
+
+def court_tree(d, x, y, w):
+    ty = y - 8 - w // 2
+    cx, cy = x + 1, ty - 3
+    # the canopy's shadow, on the bench top and the paving beyond it
+    soft_shadow(d.im, cx - 12, y + 2, w * 0.5, w * 0.24, 0.24, blur=3)
+    # trunk: a dark side and a lit side
+    d.line([(x, y - 8), (cx, cy + 5)], fill=hx("#5a4430"), width=2)
+    d.line([(x + 0.75, y - 8), (cx + 0.75, cy + 5)], fill=hx("#7d6246"),
+           width=1)
+
+    def blob(ox, oy, r, col):
+        d.ellipse([snap(cx + ox - r), snap(cy + oy - r * 0.8),
+                   snap(cx + ox + r), snap(cy + oy + r * 0.8)], fill=col)
+
+    d.ellipse([snap(cx - 15), snap(cy - 8), snap(cx + 15), snap(cy + 7)],
+              fill=hx("#2f4a2b"))
+    # the gaps go in BEFORE the clusters, so the dark interior shows only
+    # where the foliage parts — drawn after, they hung under the canopy
+    # as dark balls
+    for ox, oy, r in TREE_GAP:
+        blob(ox, oy, r, hx("#273f24"))
+    for ox, oy, r in TREE_MID:
+        blob(ox, oy, r, hx("#466b3e"))
+    for ox, oy, r in TREE_LIT:
+        blob(ox, oy, r, hx("#6a9160"))
+    for ox, oy in TREE_SPECK:
+        d.point((snap(cx + ox), snap(cy + oy)), fill=hx("#a7c98f"))
 
 
 def paint_well(img):
@@ -1189,6 +1522,12 @@ def paint_well(img):
     def planter_bench(x, y, w, treed):
         h = w // 2                          # iso: 2:1
         stone, soil = hx("#c9b88f"), hx("#3a2e22")
+        # GROUNDED (2026-09-23): nothing in the court cast a shadow, so
+        # the benches sat on the paving like cut-outs. A soft contact
+        # shadow round the base, and the sun's throw to the lower left —
+        # the same direction the oculus patch lands.
+        soft_shadow(d.im, x, y + 5, w * 1.05, w * 0.5, 0.28, blur=2.5)
+        soft_shadow(d.im, x - 7, y + 7, w * 0.95, w * 0.42, 0.16, blur=4)
 
         def dia(cx_, cy_, ww):
             hh = ww // 2
@@ -1214,16 +1553,7 @@ def paint_well(img):
         d.polygon(dia(x, y - 8, round(w * 0.56)),
                   outline=shade(soil, 1.35))
         if treed:
-            st = round(w * 0.16)
-            d.line([(x, y - 8), (x + 1, y - 8 - w // 2)],
-                   fill=hx("#6b5236"), width=2)
-            ty = y - 8 - w // 2
-            d.ellipse([x - w * 0.52, ty - w * 0.30,
-                       x + w * 0.52, ty + w * 0.18],
-                      fill=hx("#567a4c"))
-            d.ellipse([x - w * 0.30, ty - w * 0.22,
-                       x + w * 0.24, ty + w * 0.02],
-                      fill=hx("#6f9660"))
+            court_tree(d, x, y, w)
         else:
             # a few dry stalks — the photo's planters are not clean
             for sx, sh in ((-8, 7), (-2, 10), (5, 6), (9, 9)):
@@ -1362,12 +1692,7 @@ def court_glass(d, e0, e1, f, top, bot, ext=None, door_x=None):
         b = face_pt(t, 1.0)
         sills.append((b[0], b[1] + round(bow_s * bow)))
     d.polygon(tops + sills[::-1], fill=shade(hx("#171d1f"), f))
-    # sky reflection following the bow, upper third
-    refl = [lerp(pt, pb, 0.34) for pt, pb in zip(tops, sills)]
-    d.polygon(tops + refl[::-1], fill=shade(hx("#2e3839"), f))
-    d.polygon(tops + [lerp(pt, pb, 0.15) for pt, pb
-                      in zip(tops, sills)][::-1],
-              fill=shade(hx("#414d4b"), f))
+    glass_light(d.im, tops, sills, f)
     # 2px, not 1 — the picket rule again (PICKET_W): at SS 2 a 1px
     # bar is half a display pixel and LANCZOS renders the whole run
     # as a bluish haze instead of glazing. 20 bays at 2px gives the
@@ -1427,11 +1752,7 @@ def court_glass(d, e0, e1, f, top, bot, ext=None, door_x=None):
             b = ext_pt(t2, 1.0)
             sills2.append((b[0], b[1] + round(bow_s * bow)))
         d.polygon(tops2 + sills2[::-1], fill=shade(hx("#171d1f"), f))
-        refl2 = [lerp(pt, pb, 0.34) for pt, pb in zip(tops2, sills2)]
-        d.polygon(tops2 + refl2[::-1], fill=shade(hx("#2e3839"), f))
-        d.polygon(tops2 + [lerp(pt, pb, 0.15) for pt, pb
-                           in zip(tops2, sills2)][::-1],
-                  fill=shade(hx("#414d4b"), f))
+        glass_light(d.im, tops2, sills2, f)
         for i in range(1, n2 + 1):
             d.line([tops2[i], sills2[i]], fill=shade(hx("#a7ad9f"), f),
                    width=2)
@@ -1439,6 +1760,49 @@ def court_glass(d, e0, e1, f, top, bot, ext=None, door_x=None):
         d.line([(x, y + 2) for x, y in tops2],
                fill=shade(hx("#8f8874"), f), width=1)
         d.line(sills2, fill=shade(hx("#3a352c"), f), width=2)
+
+
+# ---- WHAT THE GLASS REFLECTS (2026-09-22). The curtain was near-black
+# with the sky's reflection in two flat bands at its head — and the slab
+# hides most of the head, so on screen it read as a row of black slots.
+# Glass seen this obliquely is a mirror, and what stands in front of it
+# is the sunlit court: so the SILL picks up the paving (a warm grey,
+# fading out a third of the way up) and the HEAD keeps the sky, now as
+# one smooth ramp instead of two steps. Both pulls are toward colours,
+# never a tint — the glazing stays NEUTRAL (a teal pass once read as
+# water, and that rule stands).
+GLASS_SKY = (hx("#46524f"), 0.40)        # colour, reach down from head
+GLASS_FLOOR = (hx("#6d685d"), 0.40, 0.50)  # colour, reach up, strength
+
+
+def glass_light(im, tops, sills, f):
+    xs = np.array([q[0] for q in tops], np.float32)
+    ty = np.array([q[1] for q in tops], np.float32)
+    sy = np.array([q[1] for q in sills], np.float32)
+    order = np.argsort(xs)
+    xs, ty, sy = xs[order], ty[order], sy[order]
+
+    def frac(X, Y):
+        t0 = np.interp(X, xs, ty)
+        return np.clip((Y - t0) / np.maximum(np.interp(X, xs, sy) - t0, 1),
+                       0, 1)
+
+    poly = list(tops) + list(sills)[::-1]
+    sky, reach = GLASS_SKY
+    relight(im, poly, lambda X, Y: (
+        np.ones_like(X), shade(sky, f),
+        1.0 - smoothstep(0.0, reach, frac(X, Y))))
+    col, reach, amt = GLASS_FLOOR
+    relight(im, poly, lambda X, Y: (
+        np.ones_like(X), shade(col, f),
+        amt * smoothstep(1.0 - reach, 1.0, frac(X, Y))))
+
+
+# the terraces' edges, far to near, as fractions of the court's height
+# (the top of the view out is 0, the floor 1): each step 1.45x the one
+# beyond it, so the near one is ~2x the far one
+TERRACE = (0.68, 0.750, 0.852, 1.0)
+RISER = 0.30                # of each step, the shaded face under its lip
 
 
 def court_opening(d, e0, e1, t0, t1, f, top, bot):
@@ -1481,16 +1845,26 @@ def court_opening(d, e0, e1, t0, t1, f, top, bot):
     band(0.00, 0.11, "#514f47")                       # deep under-slab
     band(0.11, 0.17, "#c6c1ac")                       # the sunshade run
     band(0.17, 0.55, "#8b8879")                       # walk, in shade
-    band(0.55, 0.74, "#ece6ce")                       # plaza, full sun
+    band(0.55, TERRACE[0], "#ece6ce")                 # plaza, full sun
     d.line([(q0[0], q0[1] + dy * 0.55), (q1[0], q1[1] + dy * 0.55)],
            fill=shade(hx("#8b8878"), f), width=2)     # the shade line
-    # the STEPPED LEVELS, marching toward us
-    for frac, lit, dark in ((0.74, "#e4dec6", "#8f8b7c"),
-                            (0.83, "#dcd6be", "#87836f"),
-                            (0.92, "#d3ccb4", "#7e7a68")):
-        band(frac, min(frac + 0.09, 1.0), lit)
-        d.line([(q0[0], q0[1] + dy * frac), (q1[0], q1[1] + dy * frac)],
-               fill=shade(hx(dark), f), width=2)
+    # the STEPPED LEVELS, marching toward us.
+    # FORESHORTENED, WITH SOFT RISERS (2026-09-23). Three equal 0.09
+    # bands, each a bright tread under a hard 2px dark line, read at game
+    # scale as horizontal SLATS — the very thing taken off this side of
+    # the court on 2026-08-24. Ground that recedes gets thinner with
+    # distance, so the steps grow toward us (TERRACE), and a riser is a
+    # face in shade, not a drawn line: each fades down from its lip into
+    # its tread.
+    for k in range(len(TERRACE) - 1):
+        a, b = TERRACE[k], TERRACE[k + 1]
+        lit = mix(hx("#ece6ce"), hx("#cfc8b0"), (k + 1) / (len(TERRACE) - 1))
+        band(a, b, "#%02x%02x%02x" % lit)
+        rh = (b - a) * RISER
+        for j, tone in enumerate((0.64, 0.74, 0.86)):
+            y0 = a + rh * j / 3
+            band(y0, y0 + rh / 3,
+                 "#%02x%02x%02x" % shade(lit, tone))
     span = q1[0] - q0[0]
     # the OUTER pier rows, standing in the shaded walk — offset from
     # the near row's 0.18/0.5/0.82 or the two rows read as one pier
@@ -1749,7 +2123,7 @@ def eave_shade(lay):
     ys, xs = np.mgrid[box[1]:box[3], box[0]:box[2]]
     s = (ys + 0.5) / K - fascia_foot_y((xs + 0.5) / K)
     g = g_top + (1.0 - g_top) * np.clip(s / ramp, 0.0, 1.0)
-    a[..., :3] *= g[..., None]
+    a[..., :3] *= cool(g)
     lay.paste(Image.fromarray(np.clip(a + 0.5, 0, 255).astype(np.uint8),
                               "RGBA"), box[:2])
 
@@ -1927,11 +2301,66 @@ def paint_mosaic(d, lay, cx, cy):
             r = rng.uniform(2.0, 3.4)
             d.ellipse([x - r, y - r / 2, x + r, y + r / 2],
                       fill=hx(cols[rng.integers(len(cols))]))
+    # GLAZED, not printed (2026-09-22): a disc of flat dots read as a
+    # sticker on the paving. Glass tile under open sky carries a broad
+    # soft reflection of it, and the rim sits a hair below its stone
+    # kerb. Both are light over the same dots — no rng draw moves, so
+    # the scatter (and everything downstream on the shared rng) is
+    # unchanged.
+    ring = [(cx + (rx - 1) * math.cos(a), cy + (ry - 1) * math.sin(a))
+            for a in np.linspace(0, 2 * math.pi, 72, endpoint=False)]
+
+    def glaze(X, Y):
+        r = np.hypot((X - cx) / rx, (Y - cy) / ry)
+        hi = np.exp(-(((X - cx - rx * 0.28) / (rx * 0.62)) ** 2
+                      + ((Y - cy + ry * 0.30) / (ry * 0.42)) ** 2))
+        return 1.0 - 0.20 * smoothstep(0.72, 1.0, r), MOON, 0.24 * hi
+    relight(lay, ring, glaze)
     d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry],
               outline=hx("#e8e4d4"), width=2)
 
 
 # ---------------------------------------------------------- railings
+# ---- THE FLUTES ARE ROUNDED (2026-09-23, the second aesthetic pass).
+# A fluted band was a flat white field with dark grooves on a 6px
+# pitch — a barcode — and the room carries five of them. Each fin between
+# two grooves now takes the room's own light: a shaded flank against the
+# groove on its left, a lit flank against the groove on its right (the
+# sun is upper right — see the court's oculus patch), so the band reads
+# as relief. THE GROOVES ARE UNTOUCHED: they are the shadow gaps the
+# user asked to see (2026-08-27, "dont you see it"), and the relief is
+# drawn only on the fins between them. FLUTE_RELIEF turns it off.
+FLUTE_RELIEF = True
+FLUTE_LIT = hx("#fcf9ef")        # the fin's lit flank
+FLUTE_SHADE = 0.86               # its shaded flank, against the field
+
+
+def flute_relief(d, e0, e1, y0, y1, f, phase0=None, hang=False):
+    """Shade the fins of a band whose grooves `even_run(phase0 or e0, e1)`
+    placed. Heights y0..y1 are ABOVE the edge line (a wall's slab band),
+    or, with `hang`, BELOW it (a fascia hanging from a slab edge)."""
+    if not FLUTE_RELIEF:
+        return
+    sl = (e1[1] - e0[1]) / (e1[0] - e0[0])
+    x_lo, x_hi = sorted((e0[0], e1[0]))
+    lit = shade(FLUTE_LIT, white_f(f))
+    dark = shade(hx(FLUTE_FIELD), white_f(f) * FLUTE_SHADE)
+    for b in even_run(phase0 or e0, e1, FLUTE_PITCH):
+        # the groove at b covers b-1..b+1, so the fin runs b+1..b+5: its
+        # left flank is the px at 1.5, its right flank the px at 4.5
+        for dx, col in ((FLUTE_W / 2 + 0.5, dark),
+                        (FLUTE_PITCH - FLUTE_W / 2 - 0.5, lit)):
+            x = b[0] + dx
+            if not x_lo + 1 <= x <= x_hi - 1:
+                continue
+            q = (x, b[1] + dx * sl)
+            if hang:
+                d.line([(q[0], q[1] + y0 + 1), (q[0], q[1] + y1 - 1)],
+                       fill=col, width=1)
+            else:
+                d.line([up(q, y0 + 1), up(q, y1 - 1)], fill=col, width=1)
+
+
 def fluted_band(d, e0, e1, y_top, depth, f=1.0, flutes=True):
     """The precast fin fascia: CHUNKY alternating white panels with
     real shadow gaps — the photo's most distinctive element. 5px fin,
@@ -1948,6 +2377,7 @@ def fluted_band(d, e0, e1, y_top, depth, f=1.0, flutes=True):
             d.line([(b[0], b[1] + 2), (b[0], b[1] + depth - 1)],
                    fill=shade(hx(FLUTE_GROOVE), white_f(f)),
                    width=FLUTE_W)
+        flute_relief(d, p0, p1, 2, depth - 1, f, hang=True)
     d.line([p0, p1], fill=shade(hx("#f7f3e6"), f), width=2)
     d.line([(p0[0], p0[1] + depth), (p1[0], p1[1] + depth)],
            fill=shade(hx("#8a8474"), f), width=1)
@@ -2008,24 +2438,34 @@ def paint_railings(d_makai, d_mauka):
                fill=hx("#c79a5c"), width=2)          # lit top
         d.line([up(e0, RAIL_H + 6), up(e1, RAIL_H + 6)],
                fill=hx("#ecd0a1"), width=1)          # gloss glint
-        # contact shadow on the floor
-        d.line([(e0[0], e0[1] + 2), (e1[0], e1[1] + 2)],
-               fill=shade(FLOOR, 0.8), width=2)
-        if near:
-            # the polished tile throws the rail back at us — pickets
-            # as faint verticals, the koa cap as a warm smear
-            rf = mix(FLOOR, pk, 0.45)
-            # the SAME run — a reflection that drifts off its own
-            # pickets is worse than no reflection
-            for b in even_run(e0, e1, PICKET_PITCH):
-                d.line([(b[0], b[1] + 4), (b[0], b[1] + RAIL_H - 3)],
-                       fill=rf, width=PICKET_W)
-            d.line([(e0[0], e0[1] + RAIL_H + 2),
-                    (e1[0], e1[1] + RAIL_H + 2)],
-                   fill=mix(FLOOR, hx("#9a6a38"), 0.38), width=2)
-            d.line([(e0[0], e0[1] + RAIL_H + 4),
-                    (e1[0], e1[1] + RAIL_H + 4)],
-                   fill=mix(FLOOR, hx("#ecd0a1"), 0.16), width=1)
+        if not near:
+            # contact shadow on the floor
+            d.line([(e0[0], e0[1] + 2), (e1[0], e1[1] + 2)],
+                   fill=shade(FLOOR, 0.8), width=2)
+        else:
+            # the polished tile throws the rail back at us — the kerb's
+            # contact shadow, the pickets as faint verticals, the koa cap
+            # as a warm smear — as ONE translucent layer fading away
+            # from the kerb (fade_layer). The SAME picket run: a
+            # reflection that drifts off its own pickets is worse than
+            # no reflection.
+            def refl(dd, e0=e0, e1=e1, pk=pk):
+                dd.line([(e0[0], e0[1] + 2), (e1[0], e1[1] + 2)],
+                        fill=hx("#120c08"), width=2)
+                for b in even_run(e0, e1, PICKET_PITCH):
+                    dd.line([(b[0], b[1] + 4), (b[0], b[1] + RAIL_H - 3)],
+                            fill=pk, width=PICKET_W)
+                dd.line([(e0[0], e0[1] + RAIL_H + 2),
+                         (e1[0], e1[1] + RAIL_H + 2)],
+                        fill=hx("#9a6a38"), width=2)
+                dd.line([(e0[0], e0[1] + RAIL_H + 4),
+                         (e1[0], e1[1] + RAIL_H + 4)],
+                        fill=hx("#ecd0a1"), width=1)
+            fall = below_line(e0, (e1[1] - e0[1]) / (e1[0] - e0[0]))
+            fade_layer(d.im, [e0, e1, (e0[0], e0[1] + RAIL_H + 8),
+                              (e1[0], e1[1] + RAIL_H + 8)], refl,
+                       lambda X, Y: REFL_A[0] + (REFL_A[1] - REFL_A[0])
+                       * np.clip((fall(X, Y) - 2) / RAIL_H, 0, 1))
     # corner posts where the rail runs meet — bronze, not white
     for c in hole:
         d.rectangle([c[0] - 2, c[1] - RAIL_H - 6, c[0] + 2, c[1]],
@@ -2038,7 +2478,7 @@ def paint_railings(d_makai, d_mauka):
                 (c[0] + 2, c[1] - RAIL_H - 6)], fill=KOA_LT, width=1)
 
 
-def paint_rail_pots(d):
+def paint_rail_pots(bands):
     """Potted plants set against the well railing on the walkway —
     the small life the gallery-corner photo shows at intervals.
     Terracotta pot lit from the well side (left), soil line, then
@@ -2058,9 +2498,11 @@ def paint_rail_pots(d):
               (7, -10, "#8fb37c"), (-10, -4, "#567a4c"),
               (10, -5, "#3f5f3a"))
     for it in layout().items("pot"):
+        # its OWN depth band, shadow included (see paint_planters)
+        d = SDraw(bands[it.id])
         x, y = iso(it.u, it.v, it.level.dy)
-        d.ellipse([x - 7, y + 1, x + 7, y + 6],
-                  fill=shade(FLOOR, 0.72))              # cast shadow
+        soft_shadow(d.im, x, y + 3.5, 8, 3.2, 0.42, blur=1.5)   # contact
+        soft_shadow(d.im, x - 4, y + 4.5, 7, 2.6, 0.18, blur=2.5)  # sun
         # flared terracotta body, foot, lit rim
         d.polygon([(x - 5, y - 5), (x + 5, y - 5),
                    (x + 3, y + 2), (x - 3, y + 2)],
@@ -2191,7 +2633,10 @@ def door_at(d, e0, e1, t, kind, hw=17):
     ux, uy = ex[0] / ln, ex[1] / ln
 
     def pt(w, y=0):
-        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+        # snap(), not round(): the 1/K grid the walls are drawn on. A
+        # whole-scene-px round put every door's diagonals on a staircase
+        # K times coarser than the room around it (2026-09-23)
+        return (snap(p[0] + ux * w), snap(p[1] + uy * w - y))
 
     def quad(w0, w1, y0, y1, colq):
         d.polygon([pt(w0, y0), pt(w1, y0), pt(w1, y1), pt(w0, y1)],
@@ -2278,10 +2723,12 @@ def door_at(d, e0, e1, t, kind, hw=17):
         d.line([pt(0, 49), pt(0, 53)], fill=hx("#b3a97f"), width=1)
     # threshold
     quad(-hw - 4, hw + 4, -3, -7, shade(FLOOR, 0.9))
-    # faint reflection in the polished walkway tile
-    d.polygon([pt(-hw + 2, -8), pt(hw - 2, -8),
-               pt(hw - 4, -16), pt(-hw + 4, -16)],
-              fill=mix(FLOOR, col, 0.20))
+    # faint reflection in the polished walkway tile — translucent and
+    # fading away from the threshold (see fade_layer)
+    rq = [pt(-hw + 2, -8), pt(hw - 2, -8), pt(hw - 4, -16), pt(-hw + 4, -16)]
+    fall = below_line(p, uy / ux)
+    fade_layer(d.im, rq, lambda dd: dd.polygon(rq, fill=col),
+               lambda X, Y: 0.55 * (1 - np.clip((fall(X, Y) - 8) / 8, 0, 1)))
     return p
 
 
@@ -2330,8 +2777,8 @@ def bench_at(d, e0, e1, t, f):
     hw, ht = BENCH_HW, 9
 
     def pt(w, y, out=0):
-        return (round(p[0] + ux * w + dx * out),
-                round(p[1] + uy * w + dy * out - y))
+        return (snap(p[0] + ux * w + dx * out),               # see door_at
+                snap(p[1] + uy * w + dy * out - y))
 
     def quad(w0, w1, a, b, col):
         d.polygon([pt(w0, *a), pt(w1, *a), pt(w1, *b), pt(w0, *b)],
@@ -2357,6 +2804,11 @@ def bench_at(d, e0, e1, t, f):
     d.line([pt(-hw, ht, 0), pt(hw, ht, 0)],
            fill=shade(hx("#1b1814"), f), width=1)
     return p
+
+
+ALCOVE_LIGHT = (0.72, 1.90)   # foot of the pocket -> its head: lum ~19
+                              # at the back of its floor (the photo's
+                              # 13-20), ~51 under the soffit
 
 
 def alcove_at(d, e0, e1, t, f):
@@ -2387,18 +2839,29 @@ def alcove_at(d, e0, e1, t, f):
     hw = FEAT_HW["alcove"] - 3
 
     def pt(w, y):
-        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+        return (snap(p[0] + ux * w), snap(p[1] + uy * w - y))  # see door_at
 
     def quad(w0, w1, y0, y1, col):
         d.polygon([pt(w0, y0), pt(w1, y0), pt(w1, y1), pt(w0, y1)],
                   fill=col)
 
     quad(-hw, hw, 0, 56, shade(hx("#1c1b18"), f))          # the pocket
+    # THE LIGHT THAT GETS IN (2026-09-23). One flat near-black fill read
+    # as a black door-shaped panel, not a recess. A pocket is lit from its
+    # mouth: brightest at the head, where the sky reaches in, down to the
+    # measured dark (13-20) at the back of its floor — and its floor
+    # catches a sliver of the walkway's light.
+    foot = below_line(p, uy / ux)
+    relight(d.im, [pt(-hw, 0), pt(hw, 0), pt(hw, 56), pt(-hw, 56)],
+            lambda X, Y: cool(ALCOVE_LIGHT[0] + (ALCOVE_LIGHT[1]
+                              - ALCOVE_LIGHT[0])
+                              * np.clip(-foot(X, Y) / 56, 0, 1) ** 0.8))
     quad(-hw, -hw + 3, 0, 56, shade(hx("#2c2a26"), f))     # near cheek
     d.line([pt(-hw, 56), pt(hw, 56)],
            fill=shade(hx("#131210"), f), width=2)          # soffit
-    d.line([pt(-hw, 1), pt(hw, 1)],
-           fill=shade(hx("#26241f"), f), width=1)          # its floor
+    quad(-hw + 3, hw, 0, 2.5, shade(FLOOR, f * 0.74))      # its floor, lit
+    d.line([pt(-hw + 3, 2.5), pt(hw, 2.5)],
+           fill=shade(hx("#161412"), f), width=1)          # its back wall's foot
     return p
 
 
@@ -2420,14 +2883,14 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
     hw, ht = 16, 48
     # the corridor really runs perpendicular-INTO this iso wall, so
     # its far end sits offset along that direction, not dead centre
-    ox, oy = round(uy * 5), round(-ux * 5)
+    ox, oy = uy * 5, -ux * 5
 
     def pt(w, y=0.0):
-        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+        return (snap(p[0] + ux * w), snap(p[1] + uy * w - y))  # see door_at
 
     def fpt(w, y=0.0, k=1.0):
         q = pt(w, y)
-        return (q[0] + round(ox * k), q[1] + round(oy * k))
+        return (snap(q[0] + ox * k), snap(q[1] + oy * k))
 
     # architrave, same language as the doors, with a lit header
     d.polygon([pt(-hw - 3), pt(hw + 3), pt(hw + 3, ht + 4),
@@ -2478,8 +2941,10 @@ def corridor_at(d, e0, e1, t, f, elevator=False):
     # threshold + a dark smear of the opening in the polished tile
     d.polygon([pt(-hw - 4, -3), pt(hw + 4, -3), pt(hw + 4, -7),
                pt(-hw - 4, -7)], fill=shade(FLOOR, 0.9))
-    d.polygon([pt(-hw + 2, -8), pt(hw - 2, -8), pt(hw - 4, -16),
-               pt(-hw + 4, -16)], fill=mix(FLOOR, hx("#120e0b"), 0.18))
+    rq = [pt(-hw + 2, -8), pt(hw - 2, -8), pt(hw - 4, -16), pt(-hw + 4, -16)]
+    fall = below_line(p, uy / ux)
+    fade_layer(d.im, rq, lambda dd: dd.polygon(rq, fill=hx("#120e0b")),
+               lambda X, Y: 0.32 * (1 - np.clip((fall(X, Y) - 8) / 8, 0, 1)))
     return p
 
 
@@ -2520,6 +2985,7 @@ FEAT_BOX = {"door": (21, -7, 53), "office": (15, -7, 53),
 # is only ~38 screen px across and the box wants to forgive a near
 # miss. It is a CEILING, not a flat amount — see zones_for.
 ZONE_PAD = 9
+MARK_GAP = 4                # a door marker's tip, px above its frame
 
 
 def feat_rect(e0, e1, t, kind):
@@ -2932,8 +3398,12 @@ def bay_columns(d, run, e0, e1, f, reflect=False):
             # off the foot line — it started 3px below the post when a
             # base strip stood between them, and a gap between a post
             # and its own reflection floats it all over again
-            d.polygon([pt(-1, 0), pt(1, 0), pt(1, -8), pt(-1, -8)],
-                      fill=mix(FLOOR, hx("#241c15"), 0.45))
+            rq = [pt(-1, 0), pt(1, 0), pt(1, -8), pt(-1, -8)]
+            fall = below_line(b, sl)
+            fade_layer(d.im, rq,
+                       lambda dd, rq=rq: dd.polygon(rq, fill=hx("#241c15")),
+                       lambda X, Y, fall=fall: 0.5 * (1 - np.clip(
+                           fall(X, Y) / 8, 0, 1)))
 
 
 def upper_parapet(d, a0, a1, f, phase0=None):
@@ -3001,6 +3471,67 @@ def upper_parapet(d, a0, a1, f, phase0=None):
            fill=shade(hx("#ecd0a1"), f), width=1)
 
 
+# ---- THE SECTION, AS STOREYS (2026-09-23, the second aesthetic pass —
+# see sliced_end). Every slab the dollhouse cut passes through, as
+# (bottom, top) heights above the gallery floor: the gallery slab under
+# the walkway (the front edge's own depth), the third level's floor slab
+# (the fluted band over the gallery doors), and the slab over the third
+# level (the crown's fluted band).
+SLABS = ((-FASCIA_D, 0), (58, LVL2_Y), (LVL2_Y + 58, LVL2_Y + 72))
+SEC_X = 9                   # the outer wall's thickness, as sections show it
+CROWN_TOP = shade(hx(FLUTE_FIELD), 0.82)   # a sawn slab top, under the band
+CROWN_OFF = ((-9, -5), (9, -5))   # ʻEwa run, Diamond Head run: outward
+                            # and up — the same offsets paint_cut_ends'
+                            # wall faces use, so every cut is one depth
+
+
+def section_slab(d, a, b, depth):
+    """A slab where the cut passes through it: a cream band from the
+    points a..b (its underside) up `depth` px — the same cream and the
+    same lip-to-underside ramp as the front edge it continues, with that
+    edge's two lines, so the slab reads as ONE member turning the
+    corner."""
+    poly = [a, b, up(b, depth), up(a, depth)]
+    d.polygon(poly, fill=shade(hx(FLUTE_FIELD), white_f(FASCIA_F * 0.94)))
+    top = min(a[1], b[1]) - depth
+
+    def fn(X, Y):
+        k = np.clip((Y - top) / depth, 0, 1)
+        return FASCIA_RAMP[0] + (FASCIA_RAMP[1] - FASCIA_RAMP[0]) * k
+    relight(d.im, poly, fn)
+    d.line([up(a, depth), up(b, depth)], fill=hx("#f7f3e6"), width=1)
+    d.line([a, b], fill=hx("#8a8474"), width=1)
+
+
+def crown_top(d, e0, e1, off, end0=None, end1=None):
+    """THE CROWN HAS A TOP (2026-09-23). The third level's slab band ran
+    straight into the sky with nothing behind it, so the whole building
+    read paper-thin at its highest edge — the one place a cutaway most
+    needs to show it is solid. This is the sawn top of the slab over the
+    run: a strip from the band's top edge back to the wall's outer face,
+    a shade under the band so the two separate, with a dark outer arris
+    against the sky. `end0`/`end1` replace a strip's outer corner with
+    the section's horizontal cut where the run meets a sawn end."""
+    a0, a1 = up(e0, 72), up(e1, 72)
+    b0 = end0 or (a0[0] + off[0], a0[1] + off[1])
+    b1 = end1 or (a1[0] + off[0], a1[1] + off[1])
+    d.polygon([a0, a1, b1, b0], fill=CROWN_TOP)
+    d.line([b0, b1], fill=hx("#5f5a4b"), width=1)
+
+
+def crown_apex(d, n):
+    """The N corner where the two runs' top strips meet: the outer
+    corner of the slab, which neither strip covers."""
+    a = up(n, 72)
+    (lx, ly), (rx, ry) = CROWN_OFF
+    # each strip's outer edge is its inner edge shifted by CROWN_OFF, so
+    # at the apex's x they meet |lx| px along a 2:1 line above ly
+    pts = [a, (a[0] + lx, a[1] + ly), (a[0], a[1] + ly - abs(lx) / 2),
+           (a[0] + rx, a[1] + ry)]
+    d.polygon(pts, fill=CROWN_TOP)
+    d.line([pts[1], pts[2], pts[3]], fill=hx("#5f5a4b"), width=1)
+
+
 def paint_upper_level(d):
     """The third level — the HOUSE's floor — stepped BACK a full bay.
 
@@ -3036,29 +3567,41 @@ def paint_upper_level(d):
     g_out[1] = iso(LVL2_OUT + WING_EXT, -LVL2_OUT)
     top = LVL2_Y + 72
 
-    def sliced_end(i, lo, hi, plates):
-        """The core between heights `lo..hi` above the corner's floor
-        datum (negative = below it, into the slab)."""
-        c0, c1 = g_in[i], g_out[i]
-        d.polygon([up(c0, lo), up(c1, lo), up(c1, hi), up(c0, hi)],
-                  fill=hx(CUT_CORE))
-        for k, c in ((1, "#8e866f"), (2, "#a89f88")):    # aggregate
-            t = k / 3.0
-            d.line([lerp(up(c0, lo), up(c1, lo), t),
-                    lerp(up(c0, hi), up(c1, hi), t)],
-                   fill=hx(c), width=1)
-        # the floor PLATE, so the section reads as storeys stacked and
-        # not as one solid pier
-        for y in plates:
-            d.line([up(c0, y), up(c1, y)], fill=hx("#b9b096"), width=1)
-        if LVL2_Y - 6 in plates:
-            d.line([up(c0, LVL2_Y - 6), up(c1, LVL2_Y - 6)],
-                   fill=hx("#6f6957"), width=1)
+    def sliced_end(i, lo, hi):
+        """The section between heights `lo..hi` above the corner's floor
+        datum (negative = below it, into the slab).
+
+        THE SLABS TURN THE CORNER (2026-09-23). The block was one greige
+        core from the slab's underside to the roof, so the makai slab
+        edge — cream all along the front — turned greige the moment it
+        reached the cut, and each end read as a solid box stood beside
+        the building. The section is storeys now: every floor slab the
+        cut passes through is a cream band at its own height (SLABS),
+        the same material and the same ramp as the front edge it
+        continues, with the core between them.
+
+        AND IT REACHES THE OUTER FACE. The block stopped at LVL2_OUT, the
+        third level's wall LINE, so the wall's own thickness — and the
+        crown's top strip above it — hung off the block's outer edge
+        over the sky. SEC_X carries the section out to the wall's back.
+        """
+        c0 = g_in[i]
+        c1 = (g_out[i][0] + (SEC_X if i == 1 else -SEC_X), g_out[i][1])
+        poly = [up(c0, lo), up(c1, lo), up(c1, hi), up(c0, hi)]
+        d.polygon(poly, fill=hx(CUT_CORE))
+        # NO aggregate lines (2026-09-22): two hairlines at a third and
+        # two-thirds of the depth read as PANEL SEAMS. The slab bands are
+        # what divide the section now, and they divide it by storey.
+        relight(d.im, poly, cut_ramp(c0[1]))
+        for y0, y1 in SLABS:
+            a, b = max(lo, y0), min(hi, y1)
+            if b > a:
+                section_slab(d, up(c0, a), up(c1, a), b - a)
         d.line([up(c0, lo), up(c0, hi)], fill=hx("#fffdf5"), width=2)
         d.line([up(c1, lo), up(c1, hi)], fill=hx("#6f6957"), width=1)
 
     for i in (3, 1):
-        sliced_end(i, 0, top, (LVL2_Y, LVL2_Y - 5, LVL2_Y - 6))
+        sliced_end(i, 0, top)
     doors = {}
     for r, (i0, i1, f) in enumerate((
         # Both HALLWAY MOUTHS sit on the Diamond Head run (user,
@@ -3115,14 +3658,22 @@ def paint_upper_level(d):
                 # (e0, e1, t, f) that drew it, one-source rule
                 doors[did] = (pos, feat_rect(e0, e1, t, kind),
                               (e0, e1, t, kind, f))
+        light_wall(d.im, e0, e1)
+        transom_glow(d.im, e0, e1, [t for _, t, k in feats if k == "door"])
         q(58, 72, shade(hx(FLUTE_FIELD), white_f(f)))
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
                    fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
+        flute_relief(d, e0, e1, 58, 72, f)
+        # the sawn top of the slab over this run. The ʻEwa run starts at
+        # the W cut, where its end is the section's horizontal line
+        crown_top(d, e0, e1, CROWN_OFF[r],
+                  end0=(r == 0 and (up(e0, 72)[0] - SEC_X, up(e0, 72)[1])))
 
         # ---- the walkway, standing in front of the wall
         d.polygon([a0, a1, e1, e0], fill=shade(FLOOR, f * 0.94))
         d.line([a0, a1], fill=shade(FLOOR_SH, f), width=1)
+        light_upper_walk(d.im, [a0, a1, e1, e0])
         # THE BENCHES GO HERE, not in the feature loop: up on this
         # level the walkway is painted AFTER the wall, so a bench
         # drawn with the doors would end up underneath its own floor —
@@ -3152,6 +3703,7 @@ def paint_upper_level(d):
         d.line([up(w0, y), up(w1, y)],
                fill=shade(CONC, fdh * 0.90), width=1)
     door_at(d, w0, w1, layout()["L3.wing.office"].t, "office", hw=11)
+    light_wall(d.im, w0, w1)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
               fill=shade(hx(FLUTE_FIELD), white_f(fdh)))
     for b in even_run(out[0], w1, FLUTE_PITCH):
@@ -3159,8 +3711,13 @@ def paint_upper_level(d):
             continue
         d.line([up(b, 59), up(b, 71)],
                fill=shade(hx(FLUTE_GROOVE), white_f(fdh)), width=FLUTE_W)
+    flute_relief(d, w0, w1, 58, 72, fdh, phase0=out[0])
+    crown_top(d, w0, w1, CROWN_OFF[1],
+              end1=(up(w1, 72)[0] + SEC_X, up(w1, 72)[1]))
+    crown_apex(d, out[0])
     d.polygon([aw0, aw1, w1, w0], fill=shade(FLOOR, fdh * 0.94))
     d.line([aw0, aw1], fill=shade(FLOOR_SH, fdh), width=1)
+    light_upper_walk(d.im, [aw0, aw1, w1, w0])
     bench_at(d, w0, w1, layout()["L3.wing.bench"].t, fdh)
     upper_parapet(d, aw0, aw1, fdh, phase0=inn[0])
     # ---- the LOWER STOREY of the sliced ends goes again, LAST.
@@ -3176,7 +3733,7 @@ def paint_upper_level(d):
     # foot to the level-3 plate, nothing above it: the level-3 wall
     # and floor legitimately own the upper half of the block.
     for i in (3, 1):
-        sliced_end(i, -FASCIA_D, LVL2_Y, (LVL2_Y, 0))
+        sliced_end(i, -FASCIA_D, LVL2_Y)
     return doors
 
 
@@ -3263,6 +3820,8 @@ def paint_walls(d):
                 # (e0, e1, t, f) that drew it, one-source rule
                 doors[did] = (pos, feat_rect(e0, e1, t, kind),
                               (e0, e1, t, kind, f))
+        light_wall(d.im, e0, e1)
+        transom_glow(d.im, e0, e1, [t for _, t, k in feats if k == "door"])
         for bt in benches:
             bench_at(d, e0, e1, bt, f)
         # the slab above, fluted. NO white top-face strip on it any
@@ -3280,6 +3839,7 @@ def paint_walls(d):
         for b in even_run(e0, e1, FLUTE_PITCH):
             d.line([up(b, 59), up(b, 71)],
                    fill=shade(hx(FLUTE_GROOVE), white_f(f)), width=FLUTE_W)
+        flute_relief(d, e0, e1, 58, 72, f)
         # NO benches: drawn floating mid-walkway they read as brown
         # bars sitting on the railing (user-caught, removed 2026-08-22)
 
@@ -3310,6 +3870,7 @@ def paint_walls(d):
                      b[0] + mw // 2, b[1] - my0],
                     fill=shade(CONC, fw * wrng.uniform(0.94, 1.06)))
     door_at(d, w0, w1, layout()["L2.wing.office"].t, "office", hw=11)
+    light_wall(d.im, w0, w1)
     bench_at(d, w0, w1, layout()["L2.wing.bench"].t, fw)
     d.polygon([up(w0, 58), up(w1, 58), up(w1, 72), up(w0, 72)],
               fill=shade(hx(FLUTE_FIELD), white_f(fw)))
@@ -3318,6 +3879,7 @@ def paint_walls(d):
             continue
         d.line([up(b, 59), up(b, 71)],
                fill=shade(hx(FLUTE_GROOVE), white_f(fw)), width=FLUTE_W)
+    flute_relief(d, w0, w1, 58, 72, fw, phase0=out_g[0])
     return doors
 
 
@@ -3330,13 +3892,32 @@ def cut_face(d, a0, a1, off, arris=True):
     b0 = (a0[0] + off[0], a0[1] + off[1])
     b1 = (a1[0] + off[0], a1[1] + off[1])
     d.polygon([a0, a1, b1, b0], fill=hx(CUT_CORE))
-    for k, c in ((1, "#8e866f"), (2, "#a89f88")):     # aggregate grain
-        o = (off[0] * k / 3.0, off[1] * k / 3.0)
-        d.line([(a0[0] + o[0], a0[1] + o[1]), (a1[0] + o[0], a1[1] + o[1])],
-               fill=hx(c), width=1)
+    # (no aggregate hairlines — see sliced_end: they read as seams)
     if arris:
         d.line([a0, a1], fill=hx("#fffdf5"), width=2)
     d.line([b0, b1], fill=hx("#6f6957"), width=1)
+    relight(d.im, [a0, a1, b1, b0], cut_ramp(max(a0[1], a1[1])))
+
+
+# ---- A CUT FACE IS LIT FROM ABOVE, like everything else here. The
+# section blocks were one flat CUT_CORE fill 170px tall and read as a
+# card stood beside the building. The ramp is a function of height above
+# the corner's FLOOR DATUM, not of the polygon it is lighting, so the
+# block's two halves (sliced_end draws the lower storey twice) and the
+# wall's own sawn face (cut_face, in the front band) all agree where
+# they meet. CUT_CORE stays the MID value — the rule that the core
+# must clear the white flutes is about the average, and the ramp swings
+# either side of it.
+CUT_RAMP = (0.90, 1.05)                 # slab foot -> top of level 3
+
+
+def cut_ramp(datum_y):
+    lo, hi = -FASCIA_D, LVL2_Y + 72
+
+    def fn(X, Y):
+        k = np.clip((datum_y - Y - lo) / (hi - lo), 0, 1)
+        return CUT_RAMP[0] + (CUT_RAMP[1] - CUT_RAMP[0]) * k
+    return fn
 
 
 def paint_cut_ends(d):
@@ -3351,6 +3932,11 @@ def paint_cut_ends(d):
     for c, moff in ((out[3], (-9, -5)),
                     (iso(A_OUT + WING_EXT, -A_OUT), (9, -5))):
         cut_face(d, c, up(c, 72), moff, arris=False)
+        # the third level's floor slab crosses this face too — it is the
+        # band over the gallery doors, and the section beside it carries
+        # it (SLABS), so a greige face here would cut the band in two
+        a = up(c, 58)
+        section_slab(d, a, (a[0] + moff[0], a[1] + moff[1]), 72 - 58)
         d.line([up(c, 72), (c[0] + moff[0], c[1] + moff[1] - 72)],
                fill=hx("#fffdf5"), width=2)
 
@@ -3374,19 +3960,99 @@ def paint_front_edge(d):
     # SE edge — the wing's far side — and SW edge, each one unbroken
     # band. PLAIN, no flutes: this is the sawn dollhouse cut (see
     # fluted_band)
-    fluted_band(d, out[1], out[2], 0, FASCIA_D, 0.92, flutes=False)
-    fluted_band(d, out[2], out[3], 0, FASCIA_D, 0.92, flutes=False)
+    # THE TWO FACES TAKE THE ROOM'S OWN LIGHT (2026-09-22). Both were
+    # 0.92, so the slab's S corner — the nearest edge of the whole
+    # building — was a fold with the same value on both sides, which
+    # is how a PAPER model reads. Every other surface here is lit by
+    # which way it faces: +u faces (the ʻEwa run's walls, this SE
+    # edge) at 1.0, +v faces (the Diamond Head run, this SW edge) at
+    # 0.88 — the same sun the court's oculus patch shows, from the
+    # upper right. FASCIA_F keeps their mean where it was.
+    for a, b, face in ((out[1], out[2], 1.0), (out[2], out[3], 0.88)):
+        fluted_band(d, a, b, 0, FASCIA_D, FASCIA_F * face, flutes=False)
+        # and a sky ramp down the face: the lip catches the light, the
+        # underside edge meets the shadow under the building
+        slope = (b[1] - a[1]) / (b[0] - a[0])
+
+        def fn(X, Y, a=a, slope=slope):
+            k = np.clip((Y - (a[1] + (X - a[0]) * slope)) / FASCIA_D, 0, 1)
+            return FASCIA_RAMP[0] + (FASCIA_RAMP[1] - FASCIA_RAMP[0]) * k
+        relight(d.im, [a, b, (b[0], b[1] + FASCIA_D),
+                       (a[0], a[1] + FASCIA_D)], fn)
 
 
-def paint_planters(d):
-    """Raised TAN STONE planter boxes at the ʻEwa and Diamond Head
-    corners of the walkway. The third one at the N apex was removed
-    (user: "the central potted plant should be removed") — wedged at
-    the corner between the two walls it read as clutter. WHERE: the
-    layout's "planter" items, centred in the walkway's corner squares."""
+FASCIA_F = 0.975                        # (1.0 + 0.88) / 2 x this = 0.92
+FASCIA_RAMP = (1.03, 0.88)              # lip -> underside
+
+
+def soft_shadow(im, cx, cy, rx, ry, alpha, blur=2.0, col=(18, 12, 8)):
+    """A contact or cast shadow as a SOFT translucent ellipse, composited
+    onto `im`. The shadows here were hard fixed-colour ellipses; a fixed
+    colour is darker against the sun spill than against the shade, and a
+    hard rim reads as a painted disc rather than as light going missing.
+    Blurred on its own small layer, so it stays cheap and local."""
+    pad = blur * 3 + 2
+    x0, y0 = (int((cx - rx - pad) * K) // K) * K, (int((cy - ry - pad) * K) // K) * K
+    x1, y1 = int(math.ceil((cx + rx + pad) * K)), int(math.ceil((cy + ry + pad) * K))
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(W * K, x1), min(H * K, y1)
+    m = Image.new("L", (x1 - x0, y1 - y0), 0)
+    ImageDraw.Draw(m).ellipse([(cx - rx) * K - x0, (cy - ry) * K - y0,
+                               (cx + rx) * K - x0, (cy + ry) * K - y0],
+                              fill=int(255 * alpha))
+    m = m.filter(ImageFilter.GaussianBlur(blur * K))
+    lay = Image.new("RGBA", m.size, col + (0,))
+    lay.putalpha(m)
+    im.alpha_composite(lay, (x0, y0))
+
+
+# the ti clump in each corner planter: (tip dx, tip dy, half-width at
+# the base, colour), BACK leaves first. Strap leaves fanning up out of
+# one crown — height is the point: the old planter was a flat diamond of
+# green inside its rim and read as a tray of lettuce (2026-09-23).
+TI_LEAVES = (
+    (-13, -15, 1.6, "#3a5a36"), (-6, -23, 1.8, "#3f5f3a"),
+    (4, -24, 1.8, "#3f5f3a"), (12, -17, 1.6, "#3a5a36"),
+    (-10, -11, 1.8, "#4d7243"), (-2, -21, 2.0, "#567a4c"),
+    (8, -14, 1.8, "#567a4c"), (15, -9, 1.5, "#4d7243"),
+    (-5, -12, 2.0, "#6f9660"), (3, -15, 2.0, "#6f9660"),
+    (10, -8, 1.8, "#7fa86c"),
+)
+
+
+def leaf(d, x0, y0, tx, ty, hw, col):
+    """One strap leaf from a crown at (x0, y0) to its tip: a lance, bowed
+    a little toward the sun side, with a lit midrib on its upper half."""
+    mx, my = x0 + tx * 0.5, y0 + ty * 0.58
+    nx, ny = -(ty), tx                         # normal to the leaf
+    nl = math.hypot(nx, ny) or 1.0
+    nx, ny = nx / nl * hw, ny / nl * hw
+    d.polygon([(snap(x0 - nx * 0.6), snap(y0 - ny * 0.6)),
+               (snap(mx - nx), snap(my - ny)),
+               (snap(x0 + tx), snap(y0 + ty)),
+               (snap(mx + nx), snap(my + ny)),
+               (snap(x0 + nx * 0.6), snap(y0 + ny * 0.6))], fill=hx(col))
+    d.line([(snap(mx), snap(my)), (snap(x0 + tx * 0.92), snap(y0 + ty * 0.92))],
+           fill=shade(hx(col), 1.25), width=1)
+
+
+def paint_planters(bands):
+    """Raised TAN STONE planter boxes on the walkway — the Diamond Head
+    corner and the makai walkway's ʻEwa end (see the placement table for
+    why that one left its corner). The third one at the N apex was
+    removed (user: "the central potted plant should be removed") —
+    wedged at the corner between the two walls it read as clutter.
+
+    Each is painted into its OWN depth band with its shadow (a shadow
+    left on the floor band stays behind when the object is sorted
+    round the character). WHERE: the layout's "planter" items."""
     stone = hx("#c9b88f")
     for it in layout().items("planter"):
+        d = SDraw(bands[it.id])
         x, y = iso(it.u, it.v, it.level.dy)
+        # contact shadow, and the sun's (upper right) throw to the left
+        soft_shadow(d.im, x, y + 7, 19, 8, 0.34, blur=2.5)
+        soft_shadow(d.im, x - 8, y + 9, 16, 6, 0.20, blur=3.5)
         d.polygon([(x - PLANTER_HW_PX, y), (x, y - PLANTER_HW_PX / 2),
                    (x + PLANTER_HW_PX, y), (x, y + PLANTER_HW_PX / 2)],
                   fill=stone)
@@ -3394,18 +4060,20 @@ def paint_planters(d):
                   fill=shade(stone, 0.78))
         d.polygon([(x + 16, y), (x, y + 8), (x, y + 13), (x + 16, y + 5)],
                   fill=shade(stone, 0.62))
-        d.polygon([(x - 10, y), (x, y - 5), (x + 10, y), (x, y + 5)],
-                  fill=hx("#567a4c"))
-        d.polygon([(x - 6, y - 1), (x, y - 4), (x + 5, y - 1), (x, y + 2)],
-                  fill=hx("#6f9660"))
-        # broken canopy: shade pocket + leaf ticks, so it reads as
-        # foliage instead of two flat diamonds
-        d.polygon([(x - 8, y + 1), (x - 3, y - 1), (x - 1, y + 3),
-                   (x - 6, y + 4)], fill=hx("#4a6a42"))
-        for lx, ly in ((-7, -1), (-2, -3), (3, -2), (6, 1), (0, 2),
-                       (-4, 3)):
-            d.line([(x + lx, y + ly), (x + lx + 2, y + ly - 2)],
-                   fill=hx("#8fb37c"), width=1)
+        # the rim's lit lip, then the soil sunk inside it
+        d.line([(x - 16, y), (x, y - 8), (x + 16, y)],
+               fill=shade(stone, 1.12), width=1)
+        d.polygon([(x - 12, y), (x, y - 6), (x + 12, y), (x, y + 6)],
+                  fill=hx("#3a2e22"))
+        # the clump: a dark heart for the leaves to rise out of, then
+        # the leaves back to front, then a few lit tips
+        d.ellipse([x - 7, y - 5, x + 7, y + 2], fill=hx("#2f4a2b"))
+        cx, cy = x, y - 1
+        for tx, ty, hw, col in TI_LEAVES:
+            leaf(d, cx, cy, tx, ty, hw, col)
+        for tx, ty, _, _ in TI_LEAVES[4:]:
+            d.point((snap(cx + tx * 0.97), snap(cy + ty * 0.97)),
+                    fill=hx("#a7c98f"))
 
 
 # ============================================================ THE LAYOUT
@@ -3448,7 +4116,12 @@ PLANTER_HW_PX = 16         # == the top face paint_planters draws; the
                            # obstacle radius follows the art from it
 # what the depth-band check overlaps the character against: each kind's
 # drawn box in scene px around its floor point (read off its painter)
-EXTENT = {"planter": (-16, -8, 16, 13), "pot": (-7, -24, 7, 6)}
+EXTENT = {"planter": (-16, -30, 16, 13), "pot": (-7, -24, 7, 6)}
+# the planter's WALK footprint: its stone box is one plan unit square
+# (±0.5), so a disc of ~0.6 u covers it. It was the 16 px top-face
+# half-width read as a radius (0.9 u), which would have left the makai
+# walkway 0.6 u wide beside the ʻEwa planter's new spot.
+PLANTER_FOOT_PX = 11
 CHAR_BOX = (-7, -39, 7, 0)  # the walking character at this room's scale
 MAIN_RUNS = {"L2": ("L2.ewa", "L2.dh"), "L3": ("L3.ewa", "L3.dh")}
 # ROOM_CAPITOL.view in main.js — repeated here because the bake asserts
@@ -3567,12 +4240,21 @@ def build_layout():
     # n (plan units into the room); a region takes u, v — or nothing,
     # for its centre. Read positions off `?layout=1` in the game.
     # ================================================================
-    # the corner planters, centred in their corner squares — so the
-    # Diamond Head one follows the wing wherever WING_EXT puts it
-    for iid, corner in (("planter.dh", "L2.corner.E"),
-                        ("planter.ewa", "L2.corner.W")):
-        L.place(iid, "planter", corner, foot=disc_px(PLANTER_HW_PX),
-                blocks=True, band="front", extent=EXTENT["planter"])
+    # the corner planters. The Diamond Head one is centred in its corner
+    # square, so it follows the wing wherever WING_EXT puts it.
+    # THE ʻEWA ONE LEFT ITS CORNER (2026-09-23). Centred in L2.corner.W it
+    # stood in the Senate Gallery's doorway — inside the door's 0.8 m
+    # clearance, and on screen square in front of the leaf — and the
+    # corner square is too small to hold it clear of a door at t 0.08.
+    # It stands on the makai walkway now, against the slab edge, 4 m from
+    # the door. Both are depth-SORTED (their own bands): the character
+    # walks round either, and a planter parked in the front band was
+    # drawn over the legs of anyone passing on its inner side.
+    for iid, frame, at in (("planter.dh", "L2.corner.E", {}),
+                           ("planter.ewa", "L2.walk.makai",
+                            dict(u=-6.8, v=10.5))):
+        L.place(iid, "planter", frame, **at, foot=disc_px(PLANTER_FOOT_PX),
+                blocks=True, band="sort", extent=EXTENT["planter"])
     # the rail pots, 1 m in from the rail. They were placed at t along the
     # rail plus a "+16 px" screen nudge — and the walkmask read that nudge
     # as 16 DRAW px (4 scene), so every pot's collision sat ~1 m from the
@@ -3583,7 +4265,7 @@ def build_layout():
                         ("pot.makai1", "rail.makai", 7.84),
                         ("pot.makai2", "rail.makai", 17.72)):
         L.place(iid, "pot", run, s=s, n=1.0, foot=pot_foot(run, s, 1.0),
-                blocks=True, band="back", extent=EXTENT["pot"])
+                blocks=True, band="sort", extent=EXTENT["pot"])
     # the wing runs carry unnamed filler only — an office door and a bench
     # each. Never a hotspot: place_feats does not see the wing.
     for lv in ("L2", "L3"):
@@ -3724,10 +4406,10 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
     side = SWING_DIR.get(name, 1)
 
     def pt(w, y=0.0):
-        # ROUNDED, exactly as door_at rounds: frame 0 has to rasterise
+        # SNAPPED, exactly as door_at snaps: frame 0 has to rasterise
         # onto the same pixel grid as the leaf it covers, or it differs
         # from the bake by a half-pixel everywhere and shimmers
-        return (round(p[0] + ux * w), round(p[1] + uy * w - y))
+        return (snap(p[0] + ux * w), snap(p[1] + uy * w - y))
 
     hinge = pt(hw * -side)                  # the stile it turns on
     leaf = 2.0 * hw                         # leaf width, screen px
@@ -3745,8 +4427,8 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
         sight. (Both were baked; the outward one is unusable.)"""
         r = s / plan_l                      # plan units from the hinge
         cs, sn = math.cos(th), math.sin(th)
-        return (round(hinge[0] + ux * side * s * cs - nx * r * sn),
-                round(hinge[1] + uy * side * s * cs - ny * r * sn - y))
+        return (snap(hinge[0] + ux * side * s * cs - nx * r * sn),
+                snap(hinge[1] + uy * side * s * cs - ny * r * sn - y))
 
     frames = []
     for k in range(SWING_N):
@@ -3870,6 +4552,17 @@ def swing_sheet(name, e0, e1, t, kind, f, hw=17):
             dl.polygon([pt(-hw - 3, 49), pt(hw + 3, 49), pt(hw + 3, 53),
                         pt(-hw - 3, 53)], fill=mix(KEY, FASCIA, 0.4))
             dl.line([pt(0, 49), pt(0, 53)], fill=hx("#b3a97f"), width=1)
+        # ---- THE WALL'S LIGHT, the same passes in the same order as the
+        # bake under it (paint_upper_level: light_wall, then the grand
+        # doors' transom_glow). The sheet covers the door, so it has to
+        # carry the door's lighting or frame 0 pops the moment the
+        # sprite appears — measured: skipping this took frame 0 from
+        # 16.7% of its solid px off the bake to 38.1%. Both passes are
+        # kept to the wall face, so the light wedge on the walkway
+        # below the foot line is untouched.
+        light_wall(lay, e0, e1)
+        if kind != "office":
+            transom_glow(lay, e0, e1, [t])
         frames.append(lay)
 
     # ---- ONE bbox for every frame, from the alpha they actually wrote
@@ -3935,22 +4628,16 @@ def painterly(img):
 
 # ---------------------------------------------------------------- main
 def render(raw=False, walk_png=False, banded=True, layout_png=False):
-    img = Image.new("RGBA", (W * K, H * K), INK + (255,))
-    d = SDraw(img)
-
-    paint_ground(d)
-    img = mottle_ink(img.convert("RGB")).convert("RGBA")
+    img = paint_backdrop()
     d = SDraw(img)
 
     paint_ring_floor(d)
-    paint_sun(img)
-    paint_ring_shade(img)
-    d = SDraw(img)
+    light_ring_floor(img)
     paint_well(img)
 
     # ---- DEPTH BANDS (tools/roombands.py) START HERE AND NOT EARLIER.
     # Everything above reads and regrades pixels already on the canvas
-    # — mottle_ink, paint_sun, paint_ring_shade, and paint_well's own
+    # — the backdrop, light_ring_floor, and paint_well's own
     # clipped composite — and a whole-image pass over a transparent
     # layer is simply not the same operation. So the ground stays ONE
     # canvas and becomes the back band's base.
@@ -3965,11 +4652,19 @@ def render(raw=False, walk_png=False, banded=True, layout_png=False):
     ground = img
     bands = roombands.Bands((W * K, H * K), img, banded)
     bands.add("back", roombands.BACK)
+    # THE THINGS THE CHARACTER WALKS ROUND, each in its own band at its
+    # own plan depth (2026-09-23): the corner planters and the rail pots.
+    # They sat in FRONT and BACK and the layout's band check reported all
+    # six drawn on the wrong side of the character from some standable
+    # spot. Declared in depth order — declaration order IS composite
+    # order — between the always-behind and always-in-front bands.
+    for it in sorted((i for i in layout().items() if i.band == "sort"),
+                     key=lambda i: (i.u + i.v, i.id)):
+        bands.add(it.id, it.u + it.v)
     bands.add("front", roombands.FRONT)
     db, df = SDraw(bands["back"]), SDraw(bands["front"])
 
     paint_railings(db, df)
-    paint_rail_pots(db)
     upper = paint_upper_level(db)         # furthest: before the walls
     doors = paint_walls(db)
     gallery = set(doors)                  # LEVEL 2 — the walkway the
@@ -3983,9 +4678,10 @@ def render(raw=False, walk_png=False, banded=True, layout_png=False):
     # poles in front of both balconies (user, 2026-08-25: "you're
     # misreading the columns. they should be flush with the walls on
     # the second and third floors").
-    # planters AFTER walls: the W/E corner planters sit in front of
-    # the corner-most doors' floor reflections and must occlude them
-    paint_planters(df)
+    # planters and pots AFTER the walls, in their own bands: they sit in
+    # front of the doors' floor reflections and must occlude them
+    paint_planters(bands)
+    paint_rail_pots(bands)
     paint_front_edge(df)
     paint_cut_ends(df)
 
@@ -4241,6 +4937,21 @@ def render(raw=False, walk_png=False, banded=True, layout_png=False):
     # 39% of a zone under the old fixed 120x84 boxes, and the lift won.
     # This is the gate on ZONE_PAD: grow the padding past what the bay
     # layout leaves clear and the build fails here instead of shipping.
+    # ---- WHERE THE MARKER HANGS (2026-09-23). The runtime hung every
+    # door's marker at py - 30, which on a 53px leaf is MID-LEAF — right
+    # over the brass pull, so the two fused into one gold key and read as
+    # door hardware. The bake knows how tall each feature is drawn, so it
+    # says where "just above it" is: the tip sits MARK_GAP px over the
+    # top of the frame (FEAT_BOX). The mosaic keeps its old spot, in the
+    # middle of the medallion it marks.
+    for h in meta["hotspots"]:
+        if h["id"] in doors:
+            (fx, fy), _, geo = doors[h["id"]]
+            h["mark"] = [int(round(fx)),
+                         int(round(fy - FEAT_BOX[geo[3] if geo[3] in FEAT_BOX
+                                                  else "door"][2] - MARK_GAP))]
+        elif h["id"] == "mosaic":
+            h["mark"] = [int(round(mx)), int(round(my)) - 4]
     for h in meta["hotspots"]:
         if h.get("at") is None:
             h.pop("at", None)

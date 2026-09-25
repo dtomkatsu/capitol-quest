@@ -124,11 +124,12 @@ bug in draft:
   stroke and tracking are authored in CSS px and set at `DPR x` that;
   `applyLabelScale` / `fit` divide the DPR back out of the world-space
   scale, so physical size is unchanged and only resolution moves.
-- **The MARKER is the opposite** and must NOT get the `/ DPR`. It is a
-  fixed-resolution sprite (16x20), not rasterised type, so its scale is
-  the CSS-space one unchanged or it comes out half size. (Making the
-  marker itself sharper means re-baking it bigger in make_sprites.py —
-  not done.)
+- **The MAP's marker is the opposite** and must NOT get the `/ DPR`. It
+  is a fixed-resolution sprite (16x20), not rasterised type, so its
+  scale is the CSS-space one unchanged or it comes out half size. The
+  ROOMS no longer use it: since 2026-09-23 a room marker is a vector gem
+  drawn at DEVICE resolution, one texture per DPR, and takes `1/zoom`
+  (see "The second aesthetic pass").
 - **A Phaser pointer written into a DOM style needs `/ DPR`.** Exactly
   one place does that: the flow tooltip in `updateHover`, which
   compares `ptr.x` against `window.innerWidth`. Without it the tip
@@ -3011,9 +3012,17 @@ user's call).
       entrance side. that's also open"). The koa slats, the arcade
       arch and the stone plinth are all DELETED — they were dressing
       on a wall that is not there. What shows through the whole run
-      is the HABS/breezeway view out: sky GLARE, far towers on a
-      shaded tree line, sunlit plaza, palms drawn as trunk + FAN
-      (a disc on a stick is a street lamp). TWO rows of piers make
+      is the view OUT, and since 2026-08-24 it is the building's own
+      CONCRETE — the outer piers, the slatted sunshade and the stepped
+      plaza terraces (user: "instead of showing a fake, made up
+      background for the outside (beyond the pillars), show the
+      concrete stepped levels"). The sky, towers and palms this note
+      used to describe are gone from the code. Since 2026-09-23 the
+      terraces are FORESHORTENED (`TERRACE`: each step ~1.45x the one
+      beyond it) with SOFT risers (`RISER`, graded, no hard line) —
+      three equal bands under 2px dark lines read at game scale as
+      horizontal slats, the look this side had removed. TWO rows of
+      piers make
       the depth: the near pale row at 0.18/0.5/0.82 (drawn by the
       wall loop) and an outer silhouette row at 0.33/0.67 inside the
       view — offset from each other on purpose, or they read as one
@@ -3625,9 +3634,11 @@ five passes because of these, not because of how it was drawn:**
       blit of half-res art. Verified at 375px: no aliasing, no moire
       on the pickets, framing identical (mobile is width-constrained,
       so the ceiling was never what bound it there).
-    - **`render_office.py` still supersamples** (office_finance.json
-      is `scale: 2`) and should, because that room is still snap-fit.
-      SS is per-bake, and the rule is the FRAMING, not the file.
+    - `render_office.py` kept supersampling (office_finance.json at
+      `scale: 2`) for as long as that room was snap-fit — SS is
+      per-bake, and the rule is the FRAMING, not the file. It was
+      ported to SHIP/OVER with a `view` rect on 2026-09-23 (see "The
+      second aesthetic pass"), so every room now ships this way.
   - *2026-08-28* — **`SS` IS GONE, SPLIT INTO `OVER` AND `SHIP`, AND
     THAT ENDS THE SEE-SAW THE THREE ENTRIES ABOVE DESCRIBE.** Every
     one of them is the same trade made in a different direction,
@@ -3703,9 +3714,12 @@ five passes because of these, not because of how it was drawn:**
     - **`int()` at the JSON boundary now TRUNCATES a fractional
       coordinate** where whole-pixel iso had already rounded — a
       systematic -1 on every door px. `int(round(...))`.
-    - **`mottle_ink`'s 44px grain is in SCENE px** and scales with the
-      canvas; left at 44 it becomes a K-times-finer speckle the
-      downsample averages away to nothing.
+    - **`mottle_ink`'s 44px grain was in SCENE px** and scaled with
+      the canvas; left at 44 it would have become a K-times-finer
+      speckle the downsample averaged away to nothing. (The mottle is
+      gone since 2026-09-22, replaced by a lit backdrop, see "The slick
+      pass". The rule it taught stands for any texture: a grain is a
+      scene-px size.)
     - **The swing sheet is premultiplied before its downsample.** PIL
       resizes RGBA channels independently, so the leaf's edge gets its
       colour averaged with the transparent ground beside it and comes
@@ -4034,10 +4048,13 @@ art itself was removed 2026-09-22). Rules:
     too big and in the wrong place. Verified in the pane: all nine
     doors plus the medallion each resolve to exactly one label, and
     the old house/gov overlap midpoint now belongs to neither.
-  - **Not changed, and still worth fixing**: the bouncing marker still
-    hangs at `py - 30`, which is MID-LEAF on a 53px door, so it reads
-    as door hardware rather than a "this is live" flag. Moving it above
-    the transom needs a check against the storey above.
+  - **The marker hangs ABOVE the door (2026-09-23).** It hung at
+    `py - 30`, MID-LEAF on a 53px door, right over the brass pull, so
+    the two fused into one gold key and read as hardware. The bake now
+    emits a `mark` per hotspot — the tip MARK_GAP px over the drawn
+    frame (FEAT_BOX) — and the runtime hangs the gem there. On a gallery
+    door that is on the white slab band above it, which is what the
+    gem's dark keyline is for. See "The second aesthetic pass".
 - **THE FINANCE DOOR SWINGS OPEN (2026-08-27, user's call: "light 3d
   effects … making the doors appear 3d when they open").** The bake
   emits a spritesheet per swinging door (`swing_sheet` in
@@ -4456,11 +4473,11 @@ apart. Rules that must survive edits:
   character's whole disc to fit inside the union.
 - **A POCKET IS NOT A SEVERED FLOOR.** The connectivity report ignores
   components too small for the character to turn around in: each of
-  the Capitol's two side corners is a 0.4 x 0.5 unit scrap sealed
-  behind its planter (the bake reports 2 pockets since the Diamond
-  Head planter moved out to the wing's corner, 2026-09-22), which is
-  correct, empty and unreachable. Warning on them every bake would
-  train everyone to ignore the warning that matters.
+  the Capitol's two side corners used to be a 0.4 x 0.5 unit scrap
+  sealed behind its planter, which is correct, empty and unreachable.
+  (Since 2026-09-23 there are none: the planter footprint shrank to its
+  real box and the ʻEwa planter left its corner.) Warning on them every
+  bake would train everyone to ignore the warning that matters.
 - **The view rect is repeated in the bake** (ROOM_*.view lives in
   main.js) so `check()` can assert the spawn is on screen — same
   pairing, and same reason, as the existing zone-fits-view assert.
@@ -4654,8 +4671,8 @@ two plus five small ones.
   bake's 122.8 KB, and its two casing posts are 0.5 KB each.
 - **THE CAPITOL'S BANDS START AFTER `paint_well`, NOT AT THE TOP.**
   Everything above it reads and regrades pixels already on the canvas
-  (`mottle_ink`, `paint_sun`, `paint_ring_shade`, `paint_well`'s
-  clipped composite), and a whole-image pass over a transparent layer
+  (`paint_backdrop`, `light_ring_floor`, `paint_well`'s clipped
+  composite), and a whole-image pass over a transparent layer
   is not the same operation. The ground stays ONE canvas and becomes
   the back band's base. Same reason `--painterly` cannot be banded:
   the flag is a comparison path, not a shipping one, and band emission
@@ -4680,14 +4697,14 @@ two plus five small ones.
   the player could stand on all four. Fixed 2026-09-22 by the layout:
   one position per pot, the drawn one, with a footprint that includes
   the strip to the rail (see "The room layout framework").
-- **Known gap, reported on every bake: the corner PLANTERS and the rail
-  POTS can be walked past on a side their band gets wrong.** The
-  planters sit in the FRONT band but can be passed on their inner side
-  — seen live at (−9.2, 10.25), the ʻEwa planter covering the
-  character's legs — and the pots sit in BACK but can be passed behind,
-  along the rail. The layout's band check (Layout.check) names each one
-  with the spot and the overlap. They need their own depth bands, like
-  the hallway's pots.
+- **The corner PLANTERS and the rail POTS have their own bands now
+  (2026-09-23).** They sat in FRONT and BACK and could be walked past on
+  the side their band got wrong — the ʻEwa planter drew over the legs of
+  anyone on its inner side, the pots under anyone behind them. Items with
+  `band="sort"` get a band at their own plan depth, declared in depth
+  order between BACK and FRONT, each carrying its own contact shadow
+  (a shadow left on the floor band stays behind when the object sorts
+  round the character). The layout's band check is clean on every bake.
 
 Verified live in both rooms: the hallway's casing post, at ONE screen
 position with the character a unit either side of it, occludes and then
@@ -4865,13 +4882,287 @@ count, or grazing bounding-box corners warn.
   storey DOWN, in the court's wall corner; at L2 it is a flush strip.
   The disc stopped the player ~0.4 m short of the corner.
 
-**Open, and reported on every Capitol bake:** the depth-band gap above
-(both planters and all four pots), and `planter.ewa` standing in the
-Senate Gallery door's clearance.
+**Closed 2026-09-23:** the depth-band gap (the planters and all four
+pots are depth-sorted now) and `planter.ewa` in the Senate Gallery
+door's clearance (it moved to the makai walkway). Every Capitol bake
+reports 0 errors and 0 warnings.
 
 **Next room**: the hallway already places most things in plan
 coordinates, but its office door is still written twice — drawn at
 u −9.9..−8.5 and its hotspot re-derived as −9.2.
+
+## The slick pass: light, not drawing (2026-09-22)
+
+From "continue improving the capitol interior. more slick". **What read
+as cheap was never the drawing. It was LIGHT**, in five places:
+
+- a void of 88px mottle squares around the building (`mottle_ink`),
+- walkway light in three hard steps, which at 1:1 read as contour
+  lines round the ring,
+- walls meeting floors with nothing at the joint,
+- both faces of the makai slab edge at one value, so the building's
+  nearest corner folded like paper,
+- no shadow under the building, so it floated.
+
+All the fixes are PIXEL passes in render_capitol.py ("light passes",
+just after SDraw). They work in PLAN space: a pixel's (u, v) at a known
+height is iso() inverted (`plan_uv`), so a falloff written in plan units
+follows the building when a structure constant moves. That is the
+layout's one-source rule, applied to light. Rules:
+
+- **A pass MULTIPLIES what is already painted inside a polygon it is
+  given (`relight`). It never paints a flat colour.** That keeps every
+  measured ratio in the file where it was: the flush column strip
+  against its wall, the bench's contact shadow at 0.62 of its deck, the
+  white band against the court floor. An optional pull toward a colour
+  (sun spill, glass reflections, the transom bloom) goes before the
+  multiply.
+- **A pass runs on the canvas the thing was painted into (`SDraw.im`),
+  at the moment it was painted, over a region that thing covers
+  OPAQUELY.** In banded mode that canvas is a transparent band and in
+  flat mode it is the whole room. Over an opaque region they are the
+  same operation, and that is why the band gate still passes: only the
+  documented ~1,600 px on the mauka railing differ (1,579 at the slick
+  pass, 1,603 after the second aesthetic pass).
+- **To re-bake after an intentional change, run `--flat` first, then
+  the default.** The gate compares the banded recomposite against the
+  PNG on disk, so an art change has to land as the new reference before
+  the bands can be checked against it.
+
+What each pass is, and the numbers that bind it:
+
+- **The backdrop (`paint_backdrop`).** A smooth pool of cool light
+  (`BACKDROP_LIFT` at the view centre) that reaches EXACTLY INK inside
+  the canvas, so `bg` (sampled off the finished bake) still matches the
+  letterbox. Verified: the canvas corner reads `#0a0e18`, and a 375px
+  phone shows no seam. The building's shadow falls into the pool:
+  - It is the slab's PLAN footprint, dropped `SHADOW_DROP` and blurred.
+    It is not a silhouette shift, which would drag the walls' height
+    into the shadow.
+  - It is pushed along the same sun the court's oculus patch uses. That
+    patch lands up and left of the oculus, so the light is from the
+    upper right and shadows fall lower left.
+  - `paint_backdrop` still BURNS the old mottle's draw from the shared
+    `rng`. Without that, the ring tiles and both walls' form mottle
+    reshuffle on a change that had nothing to do with them.
+- **THE BACKDROP IS NOT DITHERED, AND THAT IS MEASURED.** The pool steps
+  one 8-bit level at a time. A 6x contrast stretch shows rings; an
+  unstretched screen does not. The backdrop alone is 272 KB plain,
+  731 KB with a 2x2 Bayer and 4.2 MB with triangular noise. The first
+  bake shipped the noise and took `capitol_back.png` from 742 KB to
+  3.4 MB, on the home view's biggest download. Shipped plain, the back
+  band is 1.08 MB. The +336 KB is the gradient, plus smooth light
+  breaking up flat runs the PNG used to compress.
+- **The walkway (`light_ring_floor`, replacing `paint_sun` and
+  `paint_ring_shade`).** One continuous function of `dw`, the plan
+  distance out from the well rectangle:
+  - The sun spill integrates to the old three steps' total within 1%
+    (0.275 against 0.277). Keep that if it is retuned.
+  - The falloff tops out at the old outer band's ~10%.
+  - It adds AMBIENT OCCLUSION at the mauka walls' feet (`wall_ao`). It
+    is deliberately short: `WALL_AO_LEN` is 0.25 plan units, ~4 px.
+    Anything longer reaches the bench's contact shadow (0.375 to 0.675
+    units out) and flattens its measured contrast.
+- **The walls (`light_wall`).** A sky ramp up the face, 0.95 at the
+  foot to 1.03 at the head, plus a few px of occlusion into the joint.
+  Both storeys and both wings get it. Order matters:
+  - It goes AFTER the doors, portals and flush columns. They are on the
+    same plane and see the same sky, so multiplying all of them keeps
+    the strip-to-wall ratios.
+  - It goes BEFORE the benches, whose seat bites into the wall foot and
+    would otherwise be lit twice.
+  - The third level's walkway gets the same foot occlusion
+    (`light_upper_walk`), with no sun term.
+- **The slab edge is lit by which way it faces.** The SE face (+u) is
+  at 1.0 and the SW face (+v) at 0.88, the same split as the ʻEwa and
+  Diamond Head walls. `FASCIA_F` holds their mean at the old 0.92. A
+  lip-to-underside ramp (`FASCIA_RAMP`) runs down each face.
+- **The cut faces (`cut_ramp`)** are ramped by height above the corner's
+  FLOOR DATUM, not by the polygon being lit. So the block's two halves
+  (sliced_end draws the lower storey twice) and the wall's own sawn
+  face agree where they meet.
+  - The two "aggregate" hairlines at 1/3 and 2/3 of the depth are GONE.
+    They read as panel seams, and the section as three cards.
+  - CUT_CORE stays the mid value. The ramp swings either side of it,
+    so the must-clear-the-flutes rule still holds on average.
+- **The loggia floor is a gradient** (`LOGGIA_SHADE`, 0.58 at the back
+  wall to 0.86 at the eave line), not one flat 0.72. Same mean, so the
+  set-back reads exactly as deep; the flat band read as a painted
+  stripe.
+- **The court glass reflects the court** (`glass_light`). The sill
+  pulls toward the paving's warm grey and fades out 40% of the way up.
+  The head keeps the sky as one smooth ramp instead of two flat bands.
+  Both pulls are toward NEUTRAL colours: the no-teal rule stands.
+- **The lit transoms glow** (`transom_glow`): a faint warm screen-space
+  ellipse on the concrete round each grand door's transom.
+  - It is kept to the wall face, and applied after `light_wall` so the
+    sky ramp does not dim it.
+  - It is bloom, not lighting. Keep it faint (`GLOW` 0.15). Stronger
+    and every grand door wears a lamp.
+- **THE FINANCE DOOR'S SWING SHEET CARRIES THE SAME LIGHT.** The sheet
+  is drawn over the baked door, so `swing_sheet` runs `light_wall` and
+  then `transom_glow` on every frame, in the bake's order. Skipping them
+  took frame 0 from 16.7% of its solid px off the bake to 38.1%.
+  With them it is 16.3%, mean delta 4.37, against the committed
+  control's 16.7% / 4.46. Any new pass on a wall with a swinging door
+  goes in both places. Re-run that frame-0 diff (committed assets as
+  the control) after touching either.
+- **The medallion is glazed.** A broad soft reflection toward its upper
+  right, and a rim a hair below its kerb. It is light over the same
+  dots, and no `rng` draw moved, so the scatter and everything
+  downstream is unchanged. It is still the generic design the Aquarius
+  rule demands.
+
+## The second aesthetic pass (2026-09-23)
+
+From "scope more aesthetic fixes", then "do all those fixes". Fifteen
+items, audited on the live canvas at 1024x768 to 1920x1080 and on an
+offline copy of the runtime resample (bands composited, bilinear at the
+device-px-per-file-px the camera uses; it matches the canvas to within a
+couple of levels). What must survive:
+
+**The frame and the runtime sprites (main.js)**
+
+- **THE TOOLBAR'S STRIP IS NOT THE ROOM'S.** `fit()` frames a room's
+  `view` in the canvas BELOW `hudTopPx()` — the toolbar's own bottom
+  edge + 8 CSS px — and centres it there. Before, the Capitol's crown sat
+  under the glass toolbar at every 16:9 and 16:10 desktop size (39 CSS px
+  at 1280x720, 33 at 1440x900, 27 at 1920x1080; only 4:3 cleared it). At
+  1280x720 it now clears by 23, at ~10% less zoom (2.09 -> 1.88 device px
+  per scene px). A width-bound frame (4:3, phones) keeps its zoom and only
+  moves down. The strip is read off `#toolbar`'s box, so it follows every
+  breakpoint; while booting it measures 0, and `enterRoom()` re-fits right
+  after `Boot.done()` shows the HUD.
+- **`fitSprites(z)` is the ONE place on-screen sizes are set after a
+  zoom**: labels, markers, and the character's sheet. Both fit()
+  branches call it.
+- **THE ROOM MARKER** (`roomMarkerTexture`): a gold gem on a stem, drawn
+  with canvas paths at DEVICE resolution, one texture per DPR
+  (`room_marker@<dpr>`, so a sleeping room's markers never point at a
+  destroyed texture). Its world scale is `min(1, 1.6 * zCss) / zoom`,
+  1:1 on screen and shrinking with the room on a phone as the old pin
+  did. Its TIP (`MARKER_TIP`) hangs at the hotspot's `mark`, bobbing 3 px
+  over 900 ms (it was 7 px / 550 ms: a flag, not an alarm). The map keeps
+  its pixel pin (`marker`).
+  - **`mark` comes from the BAKE**, like zones: the Capitol's is the
+    drawn frame's top (FEAT_BOX) + MARK_GAP; the hallway's the koa
+    frame (94), the directory's frame (69) and the legislator's head;
+    the office's a lift per hotspot. No `mark` falls back to
+    (px, py - 20).
+  - **The name takes the marker's place** on hover and on keyboard focus
+    (`showName`): origin (0.5, 1) at the mark, so it names the door from
+    above instead of sitting on the walkway over the railing.
+- **THE CHARACTER HAS A CONTACT SHADOW** (`charShadowTexture`, a radial
+  falloff squashed by `setDisplaySize` into the room's 2:1 footprint of
+  the plan disc `CHAR_SHADOW_R`), at depth u+v - 0.001 so it sorts with
+  the figure through every band.
+- **THE CHARACTER IS DRAWN FROM A SHEET THAT SUITS THE ZOOM** (`retex`).
+  The bake is magnified 1.54x in the hallway and shrunk 0.465x in the
+  Capitol at 1280x800 (0.375 at 1280x720, 0.15 on a phone), under the
+  game's NEAREST default — uneven doubling in one, every other pixel
+  dropped in the other. The bake is LINEAR now, and below
+  `CHAR_MIP_BELOW` (0.8 device px per sheet px) the figure draws from a
+  mip at f = r (quantised to 1/40), downscaled ONCE with the browser's
+  high-quality filter and repacked into whole-pixel frames, so it lands
+  ~1:1. Walk animations are per sheet (`animKey`). **LINEAR alone was
+  tried live and changed nothing visible at 0.47x** — bilinear sampling
+  skips source pixels below ~0.75 whatever the filter; only a
+  pre-filtered copy fixes it. The bake stays the one source.
+
+**The Capitol bake (render_capitol.py)**
+
+- **door_at / bench_at / alcove_at / corridor_at and swing_sheet go
+  through `snap()`.** They rounded to whole scene px, 4x coarser than
+  the grid the walls are drawn on, and every grand door's transom had a
+  ragged underside at 8x. The swing's frame 0 improved with them (15.6% of
+  solid px off the bake, mean 3.98, from 16.3% / 4.37). The JSON did not
+  move: positions come from lerp(), already snapped.
+- **The planters and rail pots are depth-SORTED** — see "Depth bands".
+  `planter.ewa` stands on the makai walkway (u −6.8, v 10.5), out of the
+  Senate Gallery's doorway; the corner square is too small to hold it
+  clear of a door at t 0.08. The planter's walk footprint is
+  `PLANTER_FOOT_PX` 11 (its box is ±0.5 u) — the old 16 px read as a
+  radius would have left the makai walkway 0.6 u wide beside it.
+- **REFLECTIONS FADE** (`fade_layer`, `below_line`): painted on a cropped
+  transparent layer whose alpha falls off away from the thing reflected,
+  and composited onto its canvas — so they are RELATIVE to the lit floor
+  under them. The makai rail's pickets sat at 0.55 of the floor round
+  them, a second, lower fence; they run `REFL_A` 0.36 -> 0.10 now, and
+  the kerb's contact line rides the same layer. Doors (0.55 fading over
+  8 px), portals (0.32) and bronze posts (0.5) likewise. `SDraw` takes an
+  `origin` for these cropped layers; at (0, 0) it is byte-identical.
+- **THE SECTION IS STOREYS** (`SLABS`, `section_slab`, `SEC_X`). Every
+  slab the dollhouse cut passes through is a cream band at its own
+  height — the gallery slab (the front edge's depth), the third level's
+  floor (the band over the gallery doors), the slab over the third level
+  — in the front edge's cream with its ramp, so the makai slab edge turns
+  the corner instead of going greige at it. The core between is
+  CUT_CORE. The section reaches the outer wall's back (`SEC_X` 9 px past
+  LVL2_OUT); the L2 wall's own sawn face carries its slab band too.
+- **THE CROWN HAS A TOP** (`crown_top`, `crown_apex`, `CROWN_TOP`,
+  `CROWN_OFF`): the sawn top of the slab over the third level, a strip
+  from the band's top back to the wall's outer face with a dark arris
+  against the sky; horizontal cuts where it meets the sawn ends. Not to
+  be confused with the white top-face strip removed from the GALLERY
+  wall on 2026-08-24 — that wall has the third level standing on it; this
+  one has sky behind it.
+- **The court's tree is a canopy** (`court_tree`: a dark underside, mid
+  clusters, lit clusters upper right, highlight specks; the gaps drawn
+  UNDER the clusters, or they hang as dark balls), and it, both
+  planter-benches, the corner planters and the pots cast **soft shadows**
+  (`soft_shadow`: a blurred translucent ellipse on its own small layer)
+  to the lower left, the way the oculus patch lands. The corner planters
+  carry a ti clump (`TI_LEAVES`, back leaves first) with height; the old
+  flat diamond read as a tray of lettuce. `EXTENT["planter"]` grew with it.
+- **The alcoves are lit from their mouths** (`ALCOVE_LIGHT` 0.72 -> 1.90
+  foot to head, lum ~19 at the back of the floor — the photo's measured
+  13-20 — to ~51 under the soffit, plus a lit sliver of floor). A flat
+  fill read as a black door-shaped panel; 0.74 -> 1.32 was tried and was
+  still too faint to register at game scale.
+- **The third level's walkway has the gallery's tile** — joints on the
+  same half-unit module (`TILE_GRAD` turns a plan distance into px),
+  grout `L3_GROUT` 1.10 against the gallery's 1.14, a per-tile tone from
+  the tile's own index. NOT the shared rng: that level stays off it.
+- **WARM SUN, COOL SHADE** (`cool()`, `SHADE_TINT` (0.93, 0.975, 1.08)):
+  where a light pass darkens, the darker it gets the further it leans
+  cool; where it brightens it stays neutral. On the walkway falloff and
+  wall occlusion, the wall ramp, the third level's walkway, the loggia,
+  the eave and the alcoves. `relight` accepts (N, 3) multipliers for it.
+  Keep it under a colour cast — shade, never blue paint.
+- **THE FLUTES ARE ROUNDED** (`flute_relief`, `FLUTE_RELIEF`): each fin
+  between two grooves gets a shaded flank against the groove on its left
+  and a lit flank against the one on its right (the sun is upper right),
+  on every fluted band — both slab bands, both crowns, the wings, the
+  well's far fascia. THE GROOVES ARE UNTOUCHED: they are the shadow gaps
+  the user asked to see (2026-08-27). `FLUTE_RELIEF = False` restores
+  the flat fins exactly.
+
+**The other two rooms**
+
+- **`tools/roomlight.py` is the ONE backdrop.** The Capitol's
+  paint_backdrop calls it (verified byte-identical, 0 px), and so do the
+  hallway and the office, each with its own view-rect centre and its
+  floor as the footprint. The hallway's backdrop rides in its BACK band
+  (`emit(..., base=ground)`); without `base` the pool would never ship.
+  Its content bbox is measured from the bands' union now, since the
+  pool is not ink. `hallway_back.png` went 76 KB -> 258 KB.
+- **THE FINANCE OFFICE IS ON THE MODERN PIPELINE** (render_office.py):
+  SHIP/OVER with SDraw and snap(), a `view` rect in `ROOM_OFFICE`
+  (continuous zoom, LINEAR — the bake asserts every hotspot is inside
+  it), the shared backdrop, marks. It was a 620x400 file snap-fitted to
+  the whole canvas: the room filled about half the frame and each file
+  pixel drew as a 4x4 block. Three bugs found on the way:
+  - **The near walls' cut faces pointed ALONG their walls.** (9, -5) on
+    the SE wall and (-9, -5) on the SW one each run along that wall, so
+    the "top face" was a sliver sheared past the wall's end — the stray
+    pale line past both outer corners. Inward is (-16, -8) per unit for
+    the SE wall and (16, -8) for the SW one; they are swapped back.
+  - **The lamp's glow halo was a TRANSPARENT fill** (`GLOW + (0,)`) that
+    replaced pixels and only showed because convert("RGB") kept the
+    colour; on an RGBA ground it would punch a hole. Opaque now.
+  - **The lamp pools reached over the wall's top into the void**, which
+    the lit backdrop made plain. The glow layer is clipped to the floor
+    and the two far walls.
 
 ## Vendored: rot.js + Phaser iso plugin (2026-08-26)
 

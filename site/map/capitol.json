@@ -6,15 +6,15 @@
    "sheet": "swing_finance.png",
    "frames": 7,
    "fw": 140,
-   "fh": 174,
+   "fh": 176,
    "px": 1074,
-   "py": 464
+   "py": 463
   }
  },
  "w": 1680,
  "h": 1240,
  "scale": 0.5,
- "bg": "#080c16",
+ "bg": "#0a0e18",
  "spawn": [
   840,
   804
@@ -47,13 +47,13 @@
     "t": "disc",
     "u": 18.25,
     "v": -10.25,
-    "r": 0.7071
+    "r": 0.4861
    },
    {
     "t": "disc",
-    "u": -10.25,
-    "v": 10.25,
-    "r": 0.7071
+    "u": -6.8,
+    "v": 10.5,
+    "r": 0.4861
    },
    {
     "t": "rect",
@@ -143,6 +143,42 @@
    "d": -1000.0
   },
   {
+   "f": "capitol_planter.ewa.png",
+   "x": 532,
+   "y": 684,
+   "d": 3.7
+  },
+  {
+   "f": "capitol_planter.dh.png",
+   "x": 1265,
+   "y": 719,
+   "d": 8.0
+  },
+  {
+   "f": "capitol_pot.makai2.png",
+   "x": 652,
+   "y": 731,
+   "d": 9.28
+  },
+  {
+   "f": "capitol_pot.east1.png",
+   "x": 1142,
+   "y": 785,
+   "d": 16.12
+  },
+  {
+   "f": "capitol_pot.makai1.png",
+   "x": 810,
+   "y": 810,
+   "d": 19.16
+  },
+  {
+   "f": "capitol_pot.east2.png",
+   "x": 1033,
+   "y": 840,
+   "d": 22.96
+  },
+  {
    "f": "capitol_front.png",
    "x": 462,
    "y": 514,
@@ -166,7 +202,11 @@
     -11.197,
     9.605
    ],
-   "text": "Second level, and this floor is the Senate's. The ʻEwa cone below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail."
+   "text": "Second level, and this floor is the Senate's. The ʻEwa cone below this door: Hawaiʻi's 25 senators under the Moon — a chandelier of 620 chambered nautilus shells. The public watches from up here, at the rail.",
+   "mark": [
+    503,
+    608
+   ]
   },
   {
    "id": "wam",
@@ -184,7 +224,11 @@
     -11.2,
     3.156
    ],
-   "text": "The Senate's money committee, on the Senate's own floor. A revenue bill that cannot clear Ways & Means goes no further."
+   "text": "The Senate's money committee, on the Senate's own floor. A revenue bill that cannot clear Ways & Means goes no further.",
+   "mark": [
+    606,
+    556
+   ]
   },
   {
    "id": "senpres",
@@ -202,7 +246,11 @@
     -2.66,
     -11.189
    ],
-   "text": "Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die."
+   "text": "Referrals are settled behind this door — which committees a measure must clear before it can reach the floor, and so how many ways it can quietly die.",
+   "mark": [
+    984,
+    511
+   ]
   },
   {
    "id": "senclerk",
@@ -220,7 +268,11 @@
     6.309,
     -11.189
    ],
-   "text": "Every Senate measure is journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote."
+   "text": "Every Senate measure is journaled here. What the chamber did is whatever this office wrote down — the journal is the record, not anyone's memory of the vote.",
+   "mark": [
+    1128,
+    583
+   ]
   },
   {
    "id": "gov",
@@ -238,7 +290,11 @@
     9.767,
     -11.195
    ],
-   "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. It belongs to neither chamber, which is why it opens off the floor you are standing on. The veto pen lives up there."
+   "text": "The elevator to Level 5, where the Governor and Lieutenant Governor look down into the rotunda. It belongs to neither chamber, which is why it opens off the floor you are standing on. The veto pen lives up there.",
+   "mark": [
+    1181,
+    608
+   ]
   },
   {
    "id": "house",
@@ -252,7 +308,11 @@
     53,
     94
    ],
-   "text": "Third level, and this floor is the House's. The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below."
+   "text": "Third level, and this floor is the House's. The Diamond Head cone: the 51 representatives under the Sun, a chandelier of gold-plated globes. Every state law begins as a bill read in one of the two cones below.",
+   "mark": [
+    1214,
+    514
+   ]
   },
   {
    "id": "finance",
@@ -266,7 +326,11 @@
     56,
     97
    ],
-   "text": "The House's money committee, on the House's own floor — every appropriation in the state budget passes across these tables."
+   "text": "The House's money committee, on the House's own floor — every appropriation in the state budget passes across these tables.",
+   "mark": [
+    1124,
+    469
+   ]
   },
   {
    "id": "speaker",
@@ -280,7 +344,11 @@
     56,
     97
    ],
-   "text": "The Speaker refers every House bill to committee and decides what reaches the floor calendar. A measure nobody schedules is not voted down; it simply never comes up."
+   "text": "The Speaker refers every House bill to committee and decides what reaches the floor calendar. A measure nobody schedules is not voted down; it simply never comes up.",
+   "mark": [
+    427,
+    534
+   ]
   },
   {
    "id": "houseclerk",
@@ -294,7 +362,11 @@
     56,
     97
    ],
-   "text": "Bills are filed, numbered and time-stamped here. A measure that misses a filing deadline by an hour is as dead as one voted down, and this counter is where the hour is decided."
+   "text": "Bills are filed, numbered and time-stamped here. A measure that misses a filing deadline by an hour is as dead as one voted down, and this counter is where the hour is decided.",
+   "mark": [
+    600,
+    447
+   ]
   },
   {
    "id": "mosaic",
@@ -312,7 +384,11 @@
     0.0,
     9.6
    ],
-   "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside."
+   "text": "The floor medallion below marks where Tadashi Sato's sea-stone mosaic lies. Look up instead: no dome — the rotunda opens to the sky. The sky is Hawaiʻi's capitol dome, and rain and rainbows come inside.",
+   "mark": [
+    840,
+    764
+   ]
   },
   {
    "id": "exit",
