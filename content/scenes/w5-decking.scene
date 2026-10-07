@@ -34,10 +34,12 @@ TALK STORY: "Hasn't returned a call since November" isn't a complaint, it's an o
 * "Then tell me what Ways and Means needs to hear."
   {+3 influence}
   He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. "Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so."
+  -> friday
 
 * "Hear one of ours early, chair. I'll fill your room."
   {+3 support, -1 influence}
   "Everybody fills my room." But he writes something down, which is more than he did in January.
+  -> friday
 
 * [TALK STORY 13 red] "Call him. From this office, while I'm sitting here."
   mods: influence/25, flag kawaguchi-date +2 "the date he gave you", PROCEDURE/3
@@ -47,6 +49,7 @@ TALK STORY: "Hasn't returned a call since November" isn't a complaint, it's an o
   fail:
     {-4 influence}
     "In my own office?" He puts one hand flat on the desk, which is as close as this man comes to raising his voice. "When I want the Senate to know what I'm doing, I'll tell them myself."
+  -> friday
 
 --- friday
 Four o'clock. You're back in the hallway outside Finance with everyone else who doesn't have a chair's ear, watching the same door you just walked out of. Whatever he decided in there, the notice makes it official in twenty minutes — the same way it does for the forty other measures that got fifteen minutes and a closed door instead of an open one.

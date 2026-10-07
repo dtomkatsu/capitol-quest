@@ -1529,7 +1529,8 @@
       "effects": {
        "influence": 3
       },
-      "reply": "He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. \"Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so.\""
+      "reply": "He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. \"Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so.\"",
+      "goto": "friday"
      },
      {
       "label": "\"Hear one of ours early, chair. I'll fill your room.\"",
@@ -1537,7 +1538,8 @@
        "support": 3,
        "influence": -1
       },
-      "reply": "\"Everybody fills my room.\" But he writes something down, which is more than he did in January."
+      "reply": "\"Everybody fills my room.\" But he writes something down, which is more than he did in January.",
+      "goto": "friday"
      },
      {
       "label": "\"Call him. From this office, while I'm sitting here.\"",
@@ -1575,7 +1577,8 @@
        "effects": {
         "influence": -4
        }
-      }
+      },
+      "goto": "friday"
      }
     ]
    },
