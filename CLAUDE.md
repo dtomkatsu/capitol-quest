@@ -234,10 +234,13 @@ the `dialogues` block of session.json (and bumps its `?v=` in main.js);
 nothing else in that file is touched. Format + skill-voice guide:
 `content/scenes/README.md`. `check` runs the lint (bad gotos, unknown
 skills/speakers/actions, unreachable nodes, flags read but never set,
-silent Souza, ignored gotos on checked choices); `tree <id>` draws a
+silent Souza); `tree <id>` draws a
 scene's decision tree as SVG; `stats` prints voice balance and the flag
 ledger. **Never hand-edit `dialogues` in session.json** — the next build
-overwrites it. The export was proven lossless (every scene round-trips
+overwrites it. A `goto` on a CHECKED choice is the shared next node for
+both outcomes (`out.goto || c.goto` in the runner, 2026-10-06 — it was
+silently ignored before, so five scenes ended on their checks instead
+of continuing); a goto inside success/failure overrides it. The export was proven lossless (every scene round-trips
 to the identical dict) before the JSON stopped being the source.
 Rules that must survive edits:
 - **The player is THE ADVOCATE — one identity, leading a campaign from

@@ -98,8 +98,9 @@ each vs. ~20 for the others — run `stats`); reach for them first.
   (`flag name +2 "label"`). There is no "show this choice if" — write for
   that. `stats` prints every flag's setters and readers; mind the week
   order (a flag read before it can be set is a bug).
-- **Checked choices branch on `pass:`/`fail:`.** A `->` directly under a
-  checked choice is ignored by the engine — put it inside each outcome.
+- **Checked choices:** a `->` directly under the choice is where BOTH
+  outcomes go. Put one inside `pass:` or `fail:` only when that outcome
+  goes somewhere else — it overrides the shared one.
 - **White** checks can be retried when the bonus improves; **red** checks
   are one shot. Both outcomes need real content.
 - An event's `talks:`/`actions:` decide what the player can do that week;

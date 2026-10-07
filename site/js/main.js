@@ -3105,8 +3105,12 @@ const SessionPanel = {
               append((out.reply ? '<div class="sd-narr">' +
                 esc(out.reply) + "</div>" : "") +
                 voiceHtml(out.voices) + anteHtml + fxHtml);
+              /* a `goto` on a CHECKED choice is the shared next node for
+                 both outcomes; one inside success/failure overrides it.
+                 (Unchecked: out === c, so this is just c.goto.) */
+              const next = out.goto || c.goto;
               play.innerHTML = '<button class="sd-done"' +
-                (out.goto ? ' data-goto="' + out.goto + '"' : "") +
+                (next ? ' data-goto="' + next + '"' : "") +
                 ' type="button">Continue ▸</button>';
               settle();
               const done = play.querySelector(".sd-done");

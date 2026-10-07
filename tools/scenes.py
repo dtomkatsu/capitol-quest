@@ -561,9 +561,6 @@ def lint(data, dialogues, V):
                     errs.append(f"{where}: check on unknown skill {ck['skill']!r}")
                 if ck.get("type") not in ("red", "white"):
                     errs.append(f"{where}: check type must be red or white")
-                if c.get("goto"):
-                    warns.append(f"{where}: '-> {c['goto']}' sits on a CHECKED choice — the engine only "
-                                 "follows pass:/fail: gotos, so this one is ignored")
                 for m in ck.get("mods", []):
                     if m["from"] == "flag":
                         flags_read[m["id"]].append(where)
@@ -689,8 +686,8 @@ def tree_svg(did, dlg, V, chars):
             if c.get("check"):
                 ck = c["check"]
                 tag = f"{V.skills[ck['skill']]['name']} {ck['dc']}{' RED' if ck['type'] == 'red' else ''}"
-                p = (c["success"] or {}).get("goto") or "end"
-                f = (c["failure"] or {}).get("goto") or "end"
+                p = (c["success"] or {}).get("goto") or c.get("goto") or "end"
+                f = (c["failure"] or {}).get("goto") or c.get("goto") or "end"
                 fl = [o.get("effects", {}).get("flag") for o in (c["success"], c["failure"])]
                 fl = "".join(f"  ⚑{x}" for x in fl if x)
                 rows.append((f"{i + 1}. {lab}", f"CHECK {tag}   pass → {p}   fail → {f}{fl}",
