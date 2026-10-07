@@ -678,7 +678,7 @@ def screens(letter, title, S, marks):
               for i in range(len(marks) - 1) if marks[i + 1][0] > marks[i][0]]
     pages, cur, top = [], [], 0
     for b in blocks:
-        head = 0 if not pages and not cur else 72
+        head = 0 if not pages else 72
         used = (cur[-1][3] - cur[0][2]) if cur else 0
         if cur and head + used + (b[3] - b[2]) > SCREEN_H - 30:
             pages.append(cur)
