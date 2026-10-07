@@ -9,7 +9,8 @@ session.json is left alone. Format reference: content/scenes/README.md.
     python3 tools/scenes.py build            # scenes -> session.json (lints first)
     python3 tools/scenes.py check            # lint only
     python3 tools/scenes.py stats            # skill-voice balance, flag ledger
-    python3 tools/scenes.py tree <id> [-o f] # decision-tree SVG for one scene
+    python3 tools/scenes.py tree <id> [-o f] # decision tree to mark up with a pen
+    python3 tools/scenes.py map [-o f]       # whole session: weeks, scenes, flag lines
     python3 tools/scenes.py new <id>         # scaffold a scene with every skill's slot
     python3 tools/scenes.py export           # session.json -> scenes (one-time / recovery)
 """
@@ -636,137 +637,6 @@ def report(errs, warns):
     print(f"{len(errs)} error(s), {len(warns)} warning(s)")
 
 
-# ------------------------------------------------------------- tree svg
-def esc(s):
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
-
-
-def wrap(s, n):
-    words, lines, cur = s.split(), [], ""
-    for w in words:
-        if len(cur) + len(w) + 1 > n and cur:
-            lines.append(cur)
-            cur = w
-        else:
-            cur = (cur + " " + w).strip()
-    if cur:
-        lines.append(cur)
-    return lines
-
-
-def tree_svg(did, dlg, V, chars):
-    nodes = [k for k, v in dlg.items() if isinstance(v, dict) and "choices" in v]
-    # depth by BFS from start
-    depth, q = {"start": 0}, ["start"]
-    while q:
-        x = q.pop(0)
-        for _, _, c in [(x, i, c) for i, c in enumerate(dlg[x]["choices"])]:
-            for g in [c.get("goto")] + [(c.get(k) or {}).get("goto") for k in ("success", "failure")]:
-                if g in dlg and g not in depth:
-                    depth[g] = depth[x] + 1
-                    q.append(g)
-    reach = set(depth)
-    for n in nodes:
-        depth.setdefault(n, max(depth.values()) + 1)
-    W, PAD, LH, CW = 520, 14, 19, 64
-    UNREACH = '<tspan dx="10" font-size="12">UNREACHABLE</tspan>'
-    boxes = {}
-    for nid in nodes:
-        n = dlg[nid]
-        who = chars.get(n.get("speaker"), {}).get("name") if n.get("speaker") else "narration"
-        txt = wrap(n["text"].replace("\n\n", " ¶ "), CW)
-        if len(txt) > 4:
-            txt = txt[:4]
-            txt[-1] += " …"
-        vs = " · ".join(V.skills[v["t"]]["name"] for v in n.get("voices", []))
-        rows = []
-        for i, c in enumerate(n["choices"]):
-            lab = c["label"]
-            lab = lab if len(lab) <= 52 else lab[:50] + "…"
-            if c.get("check"):
-                ck = c["check"]
-                tag = f"{V.skills[ck['skill']]['name']} {ck['dc']}{' RED' if ck['type'] == 'red' else ''}"
-                p = (c["success"] or {}).get("goto") or c.get("goto") or "end"
-                f = (c["failure"] or {}).get("goto") or c.get("goto") or "end"
-                fl = [o.get("effects", {}).get("flag") for o in (c["success"], c["failure"])]
-                fl = "".join(f"  ⚑{x}" for x in fl if x)
-                rows.append((f"{i + 1}. {lab}", f"CHECK {tag}   pass → {p}   fail → {f}{fl}",
-                             [g for g in {p, f} if g != "end"]))
-            else:
-                g = c.get("goto") or "end"
-                fx = fmt_effects(c["effects"], V) if c.get("effects") else ""
-                rows.append((f"{i + 1}. {lab}", f"→ {g}  {fx if fx != '{}' else ''}",
-                             [g] if g != "end" else []))
-        h = PAD + 22 + LH * len(txt) + (LH if vs else 0) + 8 + len(rows) * (LH * 2 + 4) + PAD
-        boxes[nid] = dict(who=who, txt=txt, vs=vs, rows=rows, h=h)
-    layers = defaultdict(list)
-    for nid in nodes:
-        layers[depth[nid]].append(nid)
-    GX, GY, M = 40, 70, 30
-    width = max(len(v) for v in layers.values()) * (W + GX) - GX + 2 * M + 60 + 12 * len(nodes)
-    y, pos = M + 40, {}
-    for d in sorted(layers):
-        row = layers[d]
-        rw = len(row) * (W + GX) - GX
-        x = M
-        for nid in row:
-            pos[nid] = (x, y)
-            x += W + GX
-        y += max(boxes[n]["h"] for n in row) + GY
-    height = y - GY + M
-    S = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {height:.0f}" '
-         f'font-family="Georgia, serif" font-size="14">',
-         f'<rect width="100%" height="100%" fill="#fff"/>',
-         '<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
-         'orient="auto"><path d="M0,0L10,5L0,10z" fill="#000"/></marker></defs>',
-         f'<text x="{M}" y="{M + 10}" font-size="22" font-weight="bold">{esc(did)}</text>']
-    arrows = []
-    for nid in nodes:
-        x, y0 = pos[nid]
-        b = boxes[nid]
-        dash = ' stroke-dasharray="8 6"' if nid not in reach else ""
-        S.append(f'<rect x="{x}" y="{y0}" width="{W}" height="{b["h"]}" fill="#fff" stroke="#000" '
-                 f'stroke-width="{3 if nid == "start" else 1.5}" rx="6"{dash}/>')
-        yy = y0 + PAD + 14
-        S.append(f'<text x="{x + PAD}" y="{yy}" font-weight="bold" font-size="16">{esc(nid)}'
-                 f'<tspan font-weight="normal" font-style="italic" dx="10">{esc(b["who"])}</tspan>'
-                 f'{UNREACH if nid not in reach else ""}</text>')
-        yy += 8
-        for t in b["txt"]:
-            yy += LH
-            S.append(f'<text x="{x + PAD}" y="{yy}">{esc(t)}</text>')
-        if b["vs"]:
-            yy += LH
-            S.append(f'<text x="{x + PAD}" y="{yy}" font-size="12" font-family="Helvetica, sans-serif">'
-                     f'VOICES: {esc(b["vs"].upper())}</text>')
-        yy += 8
-        S.append(f'<line x1="{x}" x2="{x + W}" y1="{yy}" y2="{yy}" stroke="#000" stroke-width=".7"/>')
-        for lab, meta, tg in b["rows"]:
-            yy += LH
-            S.append(f'<text x="{x + PAD}" y="{yy}" font-weight="bold">{esc(lab)}</text>')
-            yy += LH - 2
-            S.append(f'<text x="{x + PAD + 16}" y="{yy}" font-size="12" '
-                     f'font-family="Helvetica, sans-serif">{esc(meta)}</text>')
-            for g in tg:
-                arrows.append((x + W, yy - 6, g))
-            yy += 4
-    by_target = defaultdict(list)
-    for x1, y1, g in arrows:
-        if g in pos:
-            by_target[g].append((x1, y1))
-    lane = 0
-    for g, srcs in by_target.items():
-        tx, ty = pos[g]
-        gx = tx + W + 18 + lane * 12      # one right-hand lane per target
-        lane += 1
-        ey = ty + 24
-        for x1, y1 in srcs:
-            S.append(f'<path d="M{x1},{y1} H{gx} V{ey} H{tx + W + 2}" fill="none" stroke="#000" '
-                     f'stroke-width="1.3" marker-end="url(#a)"/>')
-    S.append("</svg>")
-    return "\n".join(S)
-
-
 NEW_TEMPLATE = """=== {id}
 // Scene stub. Lines starting with // are notes to yourself and never ship.
 // Schedule it: calendar event/pre or genericEvents in session.json, or a talk slot.
@@ -812,6 +682,8 @@ def main():
     e.add_argument("--force", action="store_true", help="overwrite existing .scene files")
     nw = sub.add_parser("new")
     nw.add_argument("id")
+    mp = sub.add_parser("map")
+    mp.add_argument("-o", "--out")
     t = sub.add_parser("tree")
     t.add_argument("id")
     t.add_argument("-o", "--out")
@@ -842,15 +714,25 @@ def main():
             print(f.relative_to(ROOT))
             return
         scenes = read_scenes(V)
-        if a.cmd == "tree":
-            if a.id not in scenes:
-                sys.exit(f"no scene {a.id!r}")
-            out = Path(a.out) if a.out else ROOT / "build" / f"tree-{a.id}.svg"
+        errs, warns, refs, fset, fread = lint(data, scenes, V)
+        if a.cmd in ("tree", "map"):
+            import scenes_viz as viz
+            skills = list(V.skills)
+            if a.cmd == "tree":
+                if a.id not in scenes:
+                    sys.exit(f"no scene {a.id!r}")
+                f = viz.scene_facts(scenes[a.id])
+                svg = viz.tree_svg(a.id, scenes[a.id], skills, data["characters"],
+                                   sched=sorted(set(refs.get(a.id, []))),
+                                   flags_here={"set": sorted(f["sets"]), "read": sorted(f["reads"])})
+                out = Path(a.out) if a.out else ROOT / "build" / f"tree-{a.id}.svg"
+            else:
+                svg = viz.map_svg(data, scenes, skills)
+                out = Path(a.out) if a.out else ROOT / "build" / "session-map.svg"
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(tree_svg(a.id, scenes[a.id], V, data["characters"]))
+            out.write_text(svg)
             print(out)
             return
-        errs, warns, refs, fset, fread = lint(data, scenes, V)
         if a.cmd == "stats":
             print("skill voice lines (nodes + outcomes):")
             per = Counter()

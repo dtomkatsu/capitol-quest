@@ -235,8 +235,12 @@ nothing else in that file is touched. Format + skill-voice guide:
 `content/scenes/README.md`. `check` runs the lint (bad gotos, unknown
 skills/speakers/actions, unreachable nodes, flags read but never set,
 silent Souza); `tree <id>` draws a
-scene's decision tree as SVG; `stats` prints voice balance and the flag
-ledger. **Never hand-edit `dialogues` in session.json** — the next build
+scene's decision tree as a page to MARK UP with a pen (handles A/A1, skill
+chips, notes margins, a printed legend — the user edits from an e-ink
+tablet by drawing on it), `map` draws the whole session with flag lines
+(both in `tools/scenes_viz.py`; `map`'s week schedule mirrors `calFor()`
+in main.js, so keep the two in step); `stats` prints voice balance and the
+flag ledger. **Never hand-edit `dialogues` in session.json** — the next build
 overwrites it. A `goto` on a CHECKED choice is the shared next node for
 both outcomes (`out.goto || c.goto` in the runner, 2026-10-06 — it was
 silently ignored before, so five scenes ended on their checks instead

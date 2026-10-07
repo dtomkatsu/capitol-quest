@@ -9,7 +9,8 @@ file is touched. **Edit these, never the JSON.**
 python3 tools/scenes.py new w9-thing        # scaffold, with every skill's slot
 python3 tools/scenes.py check               # lint everything
 python3 tools/scenes.py build               # lint, then write session.json (+ bump its ?v=)
-python3 tools/scenes.py tree w9-thing       # decision tree -> build/tree-w9-thing.svg
+python3 tools/scenes.py tree w9-thing       # decision tree to mark up -> build/tree-w9-thing.svg
+python3 tools/scenes.py map                 # whole session + flag lines -> build/session-map.svg
 python3 tools/scenes.py stats               # voice balance, checks per skill, flag ledger
 ```
 
@@ -106,3 +107,20 @@ each vs. ~20 for the others — run `stats`); reach for them first.
 - An event's `talks:`/`actions:` decide what the player can do that week;
   a choice can open more with `unlock`. A generic event that opens
   nothing is a dead week.
+
+## Editing by pen (the tablet loop)
+
+`tree` draws a scene as a page to mark up: every node has a letter (A, B…)
+and every choice a handle (A1, B3), each node shows its six skill chips
+(filled = speaks) and has a blank notes box. Mark it and send it back:
+an arrow from a choice to a node = go there; circle a hollow chip and
+scribble = add that skill's line; strike = cut; margin writing = rewrite or
+new choice; a box drawn below = new node. The legend is printed on the page.
+Handles are breadth-first from `start`, so the same scene always draws the
+same letters.
+
+`map` is the session on one page: a row per week, each scene where it first
+plays (talks it opens underneath, repeats listed as "again"), six voice dots
+per scene, and every flag as a line from where it is set (●) to where it is
+read (▶). A flag nobody reads ends in ○ — a free hook. Draw a line from a
+scene to a later week to say "this should matter here".
