@@ -573,6 +573,7 @@ def node_pages(did, dlg, skills, chars, where=""):
             y += 28
         y += 16
 
+        marks = [(0, 0), (len(S), y)]      # page breaks may fall at a mark
         # instincts
         t(X, y, "YOUR INSTINCTS", 14, True, True, ls=1.5)
         y += 12
@@ -598,6 +599,7 @@ def node_pages(did, dlg, skills, chars, where=""):
             y += 40
         y += 22
 
+        marks.append((len(S), y))
         # choices
         t(X, y, "YOU SAY", 14, True, True, ls=1.5)
         y += 12
@@ -650,6 +652,7 @@ def node_pages(did, dlg, skills, chars, where=""):
                 t(X + 56, yy, fx_words(c.get("effects")) or "no change", 14, True, True)
                 pill(R - 120, yy - 16, 108, ("then " + go(p)) if p in dlg else "ends")
             y += h + 12
+            marks.append((len(S), y))
 
         # a new choice
         S.append(f'<rect x="{X}" y="{y}" width="{R - X}" height="74" rx="10" fill="{PAPER}" stroke="{INK}" '
@@ -659,5 +662,46 @@ def node_pages(did, dlg, skills, chars, where=""):
         t(X + 28, y + 44, str(len(n["choices"]) + 1), 19, True, anchor="middle")
         t(X + 56, y + 43, "write a new choice here", 16, italic=True, fill="#777")
         y += 74 + 20
-        pages.append((H[nid], "\n".join(svg_open(W, y) + S + ["</svg>"])))
+        marks.append((len(S), y))
+        pages += screens(H[nid], f"{did} · {H[nid]} {nid}", S, marks)
     return pages
+
+
+SCREEN_W, SCREEN_H = 600, 755      # the tablet panel's shape (642 x 808)
+
+
+def screens(letter, title, S, marks):
+    """Pack a node's blocks onto pages the shape of the screen, so the app
+    never has to shrink a page to fit. A block never splits; a later page
+    gets a one-line header saying where it is."""
+    blocks = [(marks[i][0], marks[i + 1][0], marks[i][1], marks[i + 1][1])
+              for i in range(len(marks) - 1) if marks[i + 1][0] > marks[i][0]]
+    pages, cur, top = [], [], 0
+    for b in blocks:
+        head = 0 if not pages and not cur else 72
+        used = (cur[-1][3] - cur[0][2]) if cur else 0
+        if cur and head + used + (b[3] - b[2]) > SCREEN_H - 30:
+            pages.append(cur)
+            cur = []
+        cur.append(b)
+    if cur:
+        pages.append(cur)
+    out = []
+    for k, pg in enumerate(pages):
+        head = 0 if k == 0 else 72
+        dy = head - pg[0][2]
+        body = [ln for b in pg for ln in S[b[0]:b[1]]]
+        h = max(SCREEN_H, head + pg[-1][3] - pg[0][2] + 30)
+        P = svg_open(SCREEN_W, h)
+        if k:
+            P.append(f'<text x="20" y="30" font-size="14" font-family="{SANS}" fill="#555">'
+                     f'{esc(title.upper())} · {k + 1}/{len(pages)}</text>')
+        P.append(f'<g transform="translate(0,{dy})">')
+        P += body
+        P.append("</g>")
+        if k < len(pages) - 1:
+            P.append(f'<text x="580" y="{h - 12}" text-anchor="end" font-size="14" font-family="{SANS}" '
+                     f'fill="#555">continues {k + 2}/{len(pages)} →</text>')
+        P.append("</svg>")
+        out.append((f"{letter}{k + 1}" if len(pages) > 1 else letter, "\n".join(P)))
+    return out
