@@ -110,7 +110,7 @@ each vs. ~20 for the others — run `stats`); reach for them first.
 
 ## Editing by pen (the tablet loop)
 
-`tree <id> --pages` also writes one big page per node (`tree-<id>-A.svg`…), sized for the e-ink panel — that is the one to mark up. `tree` draws a scene as a page to mark up: every node has a letter (A, B…)
+`tree <id> --pages` also writes one page per node (`tree-<id>-A.svg`…) laid out like the game's reader — who speaks, how the beat opens and lands, each instinct's line (silent ones as a dashed slot: write on it to add one), each choice as a numbered card with its reply, ▲/▼ effects and next node, checks drawn as a pass/fail fork, and an empty card to write a new choice in. That is the one to mark up on the tablet; it needs no legend. `tree` draws a scene as a page to mark up: every node has a letter (A, B…)
 and every choice a handle (A1, B3), each node shows its six skill chips
 (filled = speaks) and has a blank notes box. Mark it and send it back:
 an arrow from a choice to a node = go there; circle a hollow chip and

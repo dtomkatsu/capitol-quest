@@ -460,85 +460,204 @@ def map_svg(data, dialogues, skills):
 
 
 # --------------------------------------------------------------- big pages
-def node_pages(did, dlg, skills, chars):
-    """One page per node, sized for a small e-ink panel: big type, the
-    node's full text, chips you can circle, each choice in its own box with
-    where it goes, and a notes area at the bottom. Returns [(letter, svg)]."""
+import re as _re
+
+LONG = {"fiscal": "BRAIN", "procedure": "PROCEDURE", "educator": "EDUCATOR",
+        "talkstory": "TALK STORY", "mobilizing": "MOBILIZING", "basebuilding": "BASE BUILD"}
+
+
+def sentences(text):
+    return [x.strip() for x in _re.split(r'(?<=[.!?…"”])\s+(?=["“A-Z])', text.replace("\n\n", " ")) if x.strip()]
+
+
+def first_sentence(text, n):
+    ss = sentences(text)
+    return clip(ss[0] if ss else text, n)
+
+
+def passage(text, width, head=3, tail=3):
+    """A long passage as its first and last lines with an ellipsis between,
+    so the page always shows how the beat opens AND how it lands."""
+    lines = wrap(text.replace("\n\n", " "), width)
+    if len(lines) <= head + tail + 1:
+        return lines
+    return lines[:head - 1] + [lines[head - 1] + " …"] + ["… " + lines[-tail]] + lines[-tail + 1:]
+
+
+def fx_words(fx):
+    """Effects as ▲/▼ words for a card: '▲ 3 support  ▼ 1 influence'."""
+    out = []
+    for k, v in (fx or {}).items():
+        if k in ("support", "influence"):
+            out.append(f"{'▲' if v > 0 else '▼'} {abs(v)} {k}")
+        elif k == "rapport":
+            out += [f"{'▲' if n > 0 else '▼'} {abs(n)} {who} introducer" for who, n in v.items()]
+        elif k == "revenueK":
+            a = abs(v)
+            amt = f"${a // 1000}M" if a % 1000 == 0 else f"${a}K"
+            out.append(f"{'▲' if v > 0 else '▼'} {amt} revenue")
+        elif k == "flag":
+            out.append(f"⚑ {v}")
+        elif k == "skill":
+            out.append(f"▲ {LONG.get(v, v)} pip")
+        elif k == "unlock":
+            out += [f"opens talk {c}" for c in v.get("talks", {})]
+            out += [f"opens {a}" for a in v.get("actions", [])]
+    return "   ".join(out)
+
+
+def node_pages(did, dlg, skills, chars, where=""):
+    """One page per node, laid out like the game's own reader so it needs
+    no legend: who is talking, what happens, each instinct's line (silent
+    ones as a dashed slot to write in), each choice as a numbered card with
+    its reply, effects and next node, checks as a fork, and an empty card
+    for a new choice. Returns [(letter, svg)]."""
     H, reach = handles(dlg)
     order = sorted(H, key=lambda n: (len(H[n]), H[n]))
-    W, X = 600, 20
-    out = []
+    W, X, R = 600, 20, 580
+    pages = []
     for nid in order:
         n = dlg[nid]
-        S, y = [], 0
+        S = []
 
-        def t(x, yy, s, size=22, bold=False, sans=False, fill=INK, anchor=None, italic=False):
-            S.append(f'<text x="{x}" y="{yy}" font-size="{size}"'
+        def t(x, y, s, size=18, bold=False, sans=False, italic=False, fill=INK, anchor=None, ls=None):
+            S.append(f'<text x="{x}" y="{y}" font-size="{size}"'
                      + (' font-weight="bold"' if bold else "")
                      + (' font-style="italic"' if italic else "")
                      + (f' font-family="{SANS}"' if sans else "")
                      + (f' text-anchor="{anchor}"' if anchor else "")
+                     + (f' letter-spacing="{ls}"' if ls else "")
                      + (f' fill="{fill}"' if fill != INK else "") + f'>{esc(s)}</text>')
-        # header: big handle, node id, who
-        S.append(f'<circle cx="{X + 28}" cy="40" r="26" fill="{INK}"/>')
-        t(X + 28, 50, H[nid], 30, True, anchor="middle", fill=PAPER)
-        who = (chars.get(n["speaker"], {}).get("name", n["speaker"])
-               if n.get("speaker") else "narration")
-        t(X + 66, 36, nid + ("  (unreachable)" if nid not in reach else ""), 26, True)
-        t(X + 66, 62, f"{did} · {who}", 17, sans=True, italic=False)
-        y = 104
-        for para in n["text"].split("\n\n"):
-            for line in wrap(para, 44):
-                t(X, y, line, 22)
-                y += 30
-            y += 8
-        # chips, 3 x 2, big enough to circle
-        y += 6
-        voiced = {v["t"] for v in n.get("voices", [])}
-        cw, chh = 178, 42
-        for i, sid in enumerate(skills):
-            cx = X + (i % 3) * (cw + 12)
-            cy = y + (i // 3) * (chh + 12)
-            on = sid in voiced
-            S.append(f'<rect x="{cx}" y="{cy}" width="{cw}" height="{chh}" rx="21" '
-                     f'fill="{INK if on else PAPER}" stroke="{INK}" stroke-width="2"/>')
-            t(cx + cw / 2, cy + 28, SHORT.get(sid, sid), 19, True, True,
-              PAPER if on else INK, "middle")
-        y += 2 * (chh + 12) + 14
+
+        def pill(x, y, w, label, dark=True):
+            S.append(f'<rect x="{x}" y="{y}" width="{w}" height="24" rx="12" fill="{INK if dark else PAPER}"'
+                     + ("" if dark else f' stroke="{INK}" stroke-width="2"') + "/>")
+            t(x + w / 2, y + 17, label, 13, True, True, fill=PAPER if dark else INK, anchor="middle")
+
+        def go(target):
+            return f"→ {H[target]}" if target and target in dlg else "ends"
+
+        # where am I: scene line + the node strip
+        t(X, 30, clip(where or did, 52), 14, sans=True, fill="#555")
+        k = len(order)
+        step = min(54, 240 / max(k - 1, 1))
+        x0 = R - 12 - step * (k - 1)
+        for j in range(k - 1):
+            S.append(f'<line x1="{x0 + j * step + 12}" y1="24" x2="{x0 + (j + 1) * step - 14}" y2="24" '
+                     f'stroke="{INK}" stroke-width="2" marker-end="url(#a)"/>')
+        for j, m in enumerate(order):
+            on = m == nid
+            S.append(f'<circle cx="{x0 + j * step}" cy="24" r="12" fill="{INK if on else PAPER}" '
+                     f'stroke="{INK}" stroke-width="2"/>')
+            t(x0 + j * step, 30, H[m], 14, True, True, fill=PAPER if on else INK, anchor="middle")
+
+        # who is talking
+        y = 52
+        sp = n.get("speaker")
+        if sp:
+            ch = chars.get(sp, {})
+            S.append(f'<rect x="{X}" y="{y}" width="64" height="72" rx="6" fill="#e8e8e8"/>')
+            S.append(f'<circle cx="{X + 32}" cy="{y + 26}" r="13" fill="#333"/>')
+            S.append(f'<path d="M{X + 8},{y + 72} C{X + 10},{y + 48} {X + 54},{y + 48} {X + 56},{y + 72} Z" fill="#333"/>')
+            t(X + 80, y + 32, ch.get("name", sp), 26, True)
+            t(X + 80, y + 58, f'{ch.get("role", "")} · node {H[nid]} {nid}', 15, sans=True)
+        else:
+            t(X, y + 32, "Narration", 26, True, italic=True)
+            t(X, y + 58, f"no one speaking · node {H[nid]} {nid}"
+              + ("  (unreachable)" if nid not in reach else ""), 15, sans=True)
+        y += 108
+
+        # what happens
+        for line in passage(n["text"], 46):
+            t(X, y, line, 20)
+            y += 28
+        y += 16
+
+        # instincts
+        t(X, y, "YOUR INSTINCTS", 14, True, True, ls=1.5)
+        y += 12
+        lines = {v["t"]: v["text"] for v in n.get("voices", [])}
+        for sid in skills:
+            on = sid in lines
+            S.append(f'<rect x="{X}" y="{y}" width="96" height="30" rx="15" fill="{INK if on else PAPER}"'
+                     + ("" if on else f' stroke="{INK}" stroke-width="2" stroke-dasharray="5 4"') + "/>")
+            t(X + 48, y + 20, LONG.get(sid, sid.upper()), 13 if len(LONG.get(sid, "")) < 11 else 12,
+              True, True, fill=PAPER if on else INK, anchor="middle")
+            if on:
+                vl = wrap(lines[sid], 54)
+                if len(vl) > 2:
+                    vl = vl[:2]
+                    vl[1] = clip(vl[1] + " …", 56)
+                for j, ln in enumerate(vl):
+                    t(X + 108, y + 20 + 22 * j, ln, 16, italic=True)
+                y += 22 * (len(vl) - 1)
+            else:
+                S.append(f'<line x1="{X + 108}" y1="{y + 22}" x2="{R}" y2="{y + 22}" stroke="{INK}" '
+                         f'stroke-dasharray="2 5" stroke-width="1.5"/>')
+                t(X + 110, y + 16, "silent — write a line here to add it", 12, sans=True, fill="#777")
+            y += 40
+        y += 22
+
         # choices
+        t(X, y, "YOU SAY", 14, True, True, ls=1.5)
+        y += 12
         for i, c in enumerate(n["choices"]):
-            hd = f"{H[nid]}{i + 1}"
-            lab = wrap(c["label"], 38)
+            lab = wrap(c["label"], 46)[:2]
             p, f = targets(c)
-            go = lambda x: f"→ {H[x]} {x}" if x and x in dlg else "■ ends"
-            lines = []
+            if c.get("check"):
+                rows = []
+                for word, o, tg in (("✓ PASS", c.get("success") or {}, p), ("✗ FAIL", c.get("failure") or {}, f)):
+                    rows.append((word, first_sentence(o.get("reply", ""), 44), fx_words(o.get("effects")), tg))
+                h = 36 + 26 * len(lab) + 30 + (22 if c.get("effects") else 0) + 2 * 44 + 8
+            else:
+                h = 36 + 26 * len(lab) + (26 if c.get("reply") else 0) + 28
+            S.append(f'<rect x="{X}" y="{y}" width="{R - X}" height="{h}" rx="10" fill="{PAPER}" '
+                     f'stroke="{INK}" stroke-width="{3 if c.get("check") else 2}"/>')
+            S.append(f'<circle cx="{X + 28}" cy="{y + 30}" r="17" fill="{INK}"/>')
+            t(X + 28, y + 37, str(i + 1), 19, True, fill=PAPER, anchor="middle")
+            yy = y + 37
+            for ln in lab:
+                t(X + 56, yy, ln, 19)
+                yy += 26
             if c.get("check"):
                 ck = c["check"]
-                lines.append(f'CHECK {SHORT.get(ck["skill"], ck["skill"])} {ck["dc"]}'
-                             + (" RED" if ck.get("type") == "red" else "")
-                             + (f'  stake {fx_short(c.get("effects"))}' if c.get("effects") else ""))
-                lines.append(f'✓ {go(p)}  {fx_short(c["success"].get("effects"))}')
-                lines.append(f'✗ {go(f)}  {fx_short(c["failure"].get("effects"))}')
+                S.append(f'<rect x="{X + 56}" y="{yy - 12}" width="22" height="22" rx="4" fill="{PAPER}" '
+                         f'stroke="{INK}" stroke-width="2"/>')
+                for dx, dy in ((6, 6), (16, 16), (11, 11)):
+                    S.append(f'<circle cx="{X + 56 + dx}" cy="{yy - 12 + dy}" r="2"/>')
+                t(X + 86, yy + 5, f'ROLL {LONG.get(ck["skill"], ck["skill"])} vs {ck["dc"]} · '
+                  + ("one shot" if ck.get("type") == "red" else "can retry"), 14, True, True)
+                yy += 30
+                if c.get("effects"):
+                    t(X + 86, yy, "stake, win or lose:  " + fx_words(c["effects"]), 13, sans=True)
+                    yy += 22
+                top = yy - 8
+                for word, rep, fx, tg in rows:
+                    S.append(f'<path d="M{X + 40},{yy - 5} H{X + 56}" stroke="{INK}" stroke-width="2"/>')
+                    t(X + 62, yy, word, 14, True, True)
+                    t(X + 126, yy, rep, 15, italic=True, fill="#333")
+                    t(X + 126, yy + 20, fx or "no change", 13, sans=True)
+                    if p != f:
+                        pill(R - 96, yy - 16, 84, go(tg))
+                    yy += 44
+                S.append(f'<path d="M{X + 40},{top} V{yy - 49}" stroke="{INK}" stroke-width="2"/>')
+                if p == f:
+                    pill(R - 120, y + h - 34, 108, "both " + go(p) if p in dlg else "ends")
             else:
-                lines.append(f'{go(p)}  {fx_short(c.get("effects"))}')
-            bh = 20 + 28 * len(lab) + 26 * len(lines) + 8
-            S.append(f'<rect x="{X}" y="{y}" width="{W - 2 * X}" height="{bh}" rx="8" '
-                     f'fill="{PAPER}" stroke="{INK}" stroke-width="2"/>')
-            t(X + 14, y + 36, hd, 26, True)
-            ly = y + 34
-            for ln in lab:
-                t(X + 76, ly, ln, 21)
-                ly += 28
-            for ln in lines:
-                t(X + 76, ly, ln, 17, True if ln.startswith("CHECK") else False, True)
-                ly += 26
-            y += bh + 12
-        # notes area
-        y += 8
-        S.append(f'<rect x="{X}" y="{y}" width="{W - 2 * X}" height="170" rx="8" fill="none" '
-                 f'stroke="{INK}" stroke-dasharray="4 6"/>')
-        t(X + 12, y + 24, f"notes for {H[nid]}: rewrite, new choice, arrows to a letter", 15,
-          sans=True, fill=GREY)
-        y += 170 + 20
-        out.append((H[nid], "\n".join(svg_open(W, y) + S + ["</svg>"])))
-    return out
+                if c.get("reply"):
+                    t(X + 56, yy, first_sentence(c["reply"], 58), 15, italic=True, fill="#333")
+                    yy += 26
+                t(X + 56, yy, fx_words(c.get("effects")) or "no change", 14, True, True)
+                pill(R - 120, yy - 16, 108, ("then " + go(p)) if p in dlg else "ends")
+            y += h + 12
+
+        # a new choice
+        S.append(f'<rect x="{X}" y="{y}" width="{R - X}" height="74" rx="10" fill="{PAPER}" stroke="{INK}" '
+                 f'stroke-width="2" stroke-dasharray="6 5"/>')
+        S.append(f'<circle cx="{X + 28}" cy="{y + 37}" r="17" fill="{PAPER}" stroke="{INK}" stroke-width="2" '
+                 f'stroke-dasharray="4 3"/>')
+        t(X + 28, y + 44, str(len(n["choices"]) + 1), 19, True, anchor="middle")
+        t(X + 56, y + 43, "write a new choice here", 16, italic=True, fill="#777")
+        y += 74 + 20
+        pages.append((H[nid], "\n".join(svg_open(W, y) + S + ["</svg>"])))
+    return pages

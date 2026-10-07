@@ -730,7 +730,12 @@ def main():
                 if a.pages:
                     base = ROOT / "build"
                     base.mkdir(parents=True, exist_ok=True)
-                    for letter, page in viz.node_pages(a.id, scenes[a.id], skills, data["characters"]):
+                    cal = {c["week"]: c for c in data.get("calendar", [])}
+                    wk = next((w for w, _, row in viz.schedule(data, scenes)[0]
+                               if any(d == a.id for d, _ in row)), None)
+                    where = (f'WEEK {wk} · {(cal.get(wk) or {}).get("title") or data["weekTitles"][wk]}'
+                             f' · {a.id}' if wk else a.id).upper()
+                    for letter, page in viz.node_pages(a.id, scenes[a.id], skills, data["characters"], where):
                         pf = base / f"tree-{a.id}-{letter}.svg"
                         pf.write_text(page)
                         print(pf)
