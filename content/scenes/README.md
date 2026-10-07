@@ -110,7 +110,7 @@ each vs. ~20 for the others — run `stats`); reach for them first.
 
 ## Editing by pen (the tablet loop)
 
-`tree` draws a scene as a page to mark up: every node has a letter (A, B…)
+`tree <id> --pages` also writes one big page per node (`tree-<id>-A.svg`…), sized for the e-ink panel — that is the one to mark up. `tree` draws a scene as a page to mark up: every node has a letter (A, B…)
 and every choice a handle (A1, B3), each node shows its six skill chips
 (filled = speaks) and has a blank notes box. Mark it and send it back:
 an arrow from a choice to a node = go there; circle a hollow chip and

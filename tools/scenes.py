@@ -687,6 +687,7 @@ def main():
     t = sub.add_parser("tree")
     t.add_argument("id")
     t.add_argument("-o", "--out")
+    t.add_argument("--pages", action="store_true", help="also one big page per node")
     a = ap.parse_args()
 
     raw, data = load()
@@ -726,6 +727,13 @@ def main():
                                    sched=sorted(set(refs.get(a.id, []))),
                                    flags_here={"set": sorted(f["sets"]), "read": sorted(f["reads"])})
                 out = Path(a.out) if a.out else ROOT / "build" / f"tree-{a.id}.svg"
+                if a.pages:
+                    base = ROOT / "build"
+                    base.mkdir(parents=True, exist_ok=True)
+                    for letter, page in viz.node_pages(a.id, scenes[a.id], skills, data["characters"]):
+                        pf = base / f"tree-{a.id}-{letter}.svg"
+                        pf.write_text(page)
+                        print(pf)
             else:
                 svg = viz.map_svg(data, scenes, skills)
                 out = Path(a.out) if a.out else ROOT / "build" / "session-map.svg"

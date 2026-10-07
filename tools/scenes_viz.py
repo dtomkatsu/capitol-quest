@@ -457,3 +457,88 @@ def map_svg(data, dialogues, skills):
                  f'font-weight="bold">⚑ {esc(label)}</text>')
     S.append("</svg>")
     return "\n".join(S)
+
+
+# --------------------------------------------------------------- big pages
+def node_pages(did, dlg, skills, chars):
+    """One page per node, sized for a small e-ink panel: big type, the
+    node's full text, chips you can circle, each choice in its own box with
+    where it goes, and a notes area at the bottom. Returns [(letter, svg)]."""
+    H, reach = handles(dlg)
+    order = sorted(H, key=lambda n: (len(H[n]), H[n]))
+    W, X = 600, 20
+    out = []
+    for nid in order:
+        n = dlg[nid]
+        S, y = [], 0
+
+        def t(x, yy, s, size=22, bold=False, sans=False, fill=INK, anchor=None, italic=False):
+            S.append(f'<text x="{x}" y="{yy}" font-size="{size}"'
+                     + (' font-weight="bold"' if bold else "")
+                     + (' font-style="italic"' if italic else "")
+                     + (f' font-family="{SANS}"' if sans else "")
+                     + (f' text-anchor="{anchor}"' if anchor else "")
+                     + (f' fill="{fill}"' if fill != INK else "") + f'>{esc(s)}</text>')
+        # header: big handle, node id, who
+        S.append(f'<circle cx="{X + 28}" cy="40" r="26" fill="{INK}"/>')
+        t(X + 28, 50, H[nid], 30, True, anchor="middle", fill=PAPER)
+        who = (chars.get(n["speaker"], {}).get("name", n["speaker"])
+               if n.get("speaker") else "narration")
+        t(X + 66, 36, nid + ("  (unreachable)" if nid not in reach else ""), 26, True)
+        t(X + 66, 62, f"{did} · {who}", 17, sans=True, italic=False)
+        y = 104
+        for para in n["text"].split("\n\n"):
+            for line in wrap(para, 44):
+                t(X, y, line, 22)
+                y += 30
+            y += 8
+        # chips, 3 x 2, big enough to circle
+        y += 6
+        voiced = {v["t"] for v in n.get("voices", [])}
+        cw, chh = 178, 42
+        for i, sid in enumerate(skills):
+            cx = X + (i % 3) * (cw + 12)
+            cy = y + (i // 3) * (chh + 12)
+            on = sid in voiced
+            S.append(f'<rect x="{cx}" y="{cy}" width="{cw}" height="{chh}" rx="21" '
+                     f'fill="{INK if on else PAPER}" stroke="{INK}" stroke-width="2"/>')
+            t(cx + cw / 2, cy + 28, SHORT.get(sid, sid), 19, True, True,
+              PAPER if on else INK, "middle")
+        y += 2 * (chh + 12) + 14
+        # choices
+        for i, c in enumerate(n["choices"]):
+            hd = f"{H[nid]}{i + 1}"
+            lab = wrap(c["label"], 38)
+            p, f = targets(c)
+            go = lambda x: f"→ {H[x]} {x}" if x and x in dlg else "■ ends"
+            lines = []
+            if c.get("check"):
+                ck = c["check"]
+                lines.append(f'CHECK {SHORT.get(ck["skill"], ck["skill"])} {ck["dc"]}'
+                             + (" RED" if ck.get("type") == "red" else "")
+                             + (f'  stake {fx_short(c.get("effects"))}' if c.get("effects") else ""))
+                lines.append(f'✓ {go(p)}  {fx_short(c["success"].get("effects"))}')
+                lines.append(f'✗ {go(f)}  {fx_short(c["failure"].get("effects"))}')
+            else:
+                lines.append(f'{go(p)}  {fx_short(c.get("effects"))}')
+            bh = 20 + 28 * len(lab) + 26 * len(lines) + 8
+            S.append(f'<rect x="{X}" y="{y}" width="{W - 2 * X}" height="{bh}" rx="8" '
+                     f'fill="{PAPER}" stroke="{INK}" stroke-width="2"/>')
+            t(X + 14, y + 36, hd, 26, True)
+            ly = y + 34
+            for ln in lab:
+                t(X + 76, ly, ln, 21)
+                ly += 28
+            for ln in lines:
+                t(X + 76, ly, ln, 17, True if ln.startswith("CHECK") else False, True)
+                ly += 26
+            y += bh + 12
+        # notes area
+        y += 8
+        S.append(f'<rect x="{X}" y="{y}" width="{W - 2 * X}" height="170" rx="8" fill="none" '
+                 f'stroke="{INK}" stroke-dasharray="4 6"/>')
+        t(X + 12, y + 24, f"notes for {H[nid]}: rewrite, new choice, arrows to a letter", 15,
+          sans=True, fill=GREY)
+        y += 170 + 20
+        out.append((H[nid], "\n".join(svg_open(W, y) + S + ["</svg>"])))
+    return out
