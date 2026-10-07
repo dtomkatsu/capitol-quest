@@ -228,6 +228,17 @@ revenue.json tax names exactly (fallback: first word, no icon).
 `SessionPanel` in main.js + `site/map/session.json` (ALL content is
 data: characters, calendar, dialogues, actions — write content there,
 not in JS). One turn = one week; state in localStorage `cq-session`.
+**Dialogues are AUTHORED in `content/scenes/*.scene`, not in the JSON**
+(2026-10-06): `python3 tools/scenes.py build` lints them and compiles
+the `dialogues` block of session.json (and bumps its `?v=` in main.js);
+nothing else in that file is touched. Format + skill-voice guide:
+`content/scenes/README.md`. `check` runs the lint (bad gotos, unknown
+skills/speakers/actions, unreachable nodes, flags read but never set,
+silent Souza, ignored gotos on checked choices); `tree <id>` draws a
+scene's decision tree as SVG; `stats` prints voice balance and the flag
+ledger. **Never hand-edit `dialogues` in session.json** — the next build
+overwrites it. The export was proven lossless (every scene round-trips
+to the identical dict) before the JSON stopped being the source.
 Rules that must survive edits:
 - **The player is THE ADVOCATE — one identity, leading a campaign from
   OUTSIDE the building.** No seat, no vote, no floor minute, no
