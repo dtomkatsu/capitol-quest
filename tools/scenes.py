@@ -245,13 +245,15 @@ def export_dialogue(did, dlg, V):
     for nid, n in nodes:
         L += ["", f"--- {nid}"]
         for k in n:
-            if k not in ("speaker", "text", "voices", "choices"):
+            if k not in ("speaker", "text", "voices", "choices", "goto"):
                 L.append(f"{k}: {fmt_scalar(n[k])}")
         paras = n["text"].split("\n\n")
         if n.get("speaker"):
             paras[0] = f"{n['speaker'].upper()}: {paras[0]}"
         L += paras
         L += [f"{V.skill_label(v['t'])}: {v['text']}" for v in n.get("voices", [])]
+        if not n["choices"]:
+            L.append(f"-> {n['goto']}" if n.get("goto") else "-> end")
         for c in n["choices"]:
             L.append("")
             L += export_choice(c, V)
@@ -369,11 +371,17 @@ def order_dialogue(dlg):
 def parse_node(lines, V, fname, nid):
     at = lambda ln: f"{fname}:{ln.no}"
     node, paras, voices, choices = {}, [], [], []
+    node_goto = None
     i = 0
     while i < len(lines) and not lines[i].s.startswith("* "):
         ln = lines[i]
         if ln.indent:
             raise SceneError(f"{at(ln)}: indented line outside a choice")
+        if ln.s.startswith("->"):
+            # a node with no choices: the reader shows only Continue
+            node_goto = ln.s[2:].strip()
+            i += 1
+            continue
         m = NAME_RE.match(ln.s)
         f = FIELD_RE.match(ln.s)
         if f and not paras and f.group(1) not in ("talks", "actions", "mods"):
@@ -409,8 +417,11 @@ def parse_node(lines, V, fname, nid):
             j += 1
         choices.append(parse_choice(head, lines[i + 1:j], V, fname))
         i = j
-    if not choices:
-        raise SceneError(f"{fname}: node {nid!r} has no choices (the engine needs at least one)")
+    if choices and node_goto:
+        raise SceneError(f"{fname}: node {nid!r} has both choices and a '->' of its own — "
+                         "put the arrow under a choice, or drop the choices for a plain Continue")
+    if node_goto and node_goto != "end":
+        out["goto"] = node_goto
     out["choices"] = choices
     return out
 
@@ -543,7 +554,7 @@ def lint(data, dialogues, V):
                 errs.append(f"{did}/{nid}: unknown speaker {sp!r}")
             if sp in SILENT:
                 errs.append(f"{did}/{nid}: {sp} never speaks (CLAUDE.md)")
-            if not n.get("voices"):
+            if not n.get("voices") and n["choices"]:
                 warns.append(f"{did}/{nid}: no skill voices (every node should carry some)")
             for v in n.get("voices", []):
                 if v["t"] not in V.skills:
@@ -573,6 +584,12 @@ def lint(data, dialogues, V):
                 if fx.get("skill") and fx["skill"] not in V.skills:
                     errs.append(f"{where}: unknown skill {fx['skill']!r}")
         edges = defaultdict(set)
+        for nid in nodes:
+            g = dlg[nid].get("goto")
+            if g:
+                edges[nid].add(g)
+                if g not in nodes:
+                    errs.append(f"{did}/{nid}: -> {g!r} is not a node in this scene")
         for nid, i, c in walk_choices(dlg):
             for g in [c.get("goto")] + [(c.get(k) or {}).get("goto") for k in ("success", "failure")]:
                 if g:

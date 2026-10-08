@@ -74,6 +74,11 @@ def fx_short(fx):
     return " ".join(out)
 
 
+def choices_of(n):
+    """A node's choices — or, for a no-choice node, its lone Continue."""
+    return n["choices"] or [{"label": "Continue ▸", "goto": n.get("goto"), "_continue": True}]
+
+
 def nodes_of(dlg):
     return [k for k, v in dlg.items() if isinstance(v, dict) and "choices" in v]
 
@@ -97,7 +102,7 @@ def handles(dlg):
             continue
         seen.add(x)
         order.append(x)
-        for c in dlg[x]["choices"]:
+        for c in choices_of(dlg[x]):
             q += [t for t in targets(c) if t]
     reach = set(order)
     order += [n for n in nodes_of(dlg) if n not in reach]
@@ -155,7 +160,7 @@ def tree_svg(did, dlg, skills, chars, sched=None, flags_here=None):
     # one lane per target node, in order of first use
     lanes = {}
     for nid in order:
-        for c in dlg[nid]["choices"]:
+        for c in choices_of(dlg[nid]):
             for t in targets(c):
                 if t and t in dlg and t not in lanes:
                     lanes[t] = len(lanes)
@@ -172,7 +177,7 @@ def tree_svg(did, dlg, skills, chars, sched=None, flags_here=None):
             txt = txt[:3]
             txt[-1] = clip(txt[-1] + " …", 56)
         rows = []
-        for i, c in enumerate(n["choices"]):
+        for i, c in enumerate(choices_of(n)):
             rows.append((i, c, 50 if c.get("check") else 32))
         h = PAD + 26 + 20 * len(txt) + 34 + 10 + sum(r[2] for r in rows) + 6
         y += TOP_GAP
@@ -601,9 +606,9 @@ def node_pages(did, dlg, skills, chars, where=""):
 
         marks.append((len(S), y))
         # choices
-        t(X, y, "YOU SAY", 14, True, True, ls=1.5)
+        t(X, y, "YOU SAY" if n["choices"] else "THEN", 14, True, True, ls=1.5)
         y += 12
-        for i, c in enumerate(n["choices"]):
+        for i, c in enumerate(choices_of(n)):
             lab = wrap(c["label"], 46)[:2]
             p, f = targets(c)
             if c.get("check"):
@@ -649,7 +654,8 @@ def node_pages(did, dlg, skills, chars, where=""):
                 if c.get("reply"):
                     t(X + 56, yy, first_sentence(c["reply"], 58), 15, italic=True, fill="#333")
                     yy += 26
-                t(X + 56, yy, fx_words(c.get("effects")) or "no change", 14, True, True)
+                if not c.get("_continue"):
+                    t(X + 56, yy, fx_words(c.get("effects")) or "no change", 14, True, True)
                 pill(R - 120, yy - 16, 108, ("then " + go(p)) if p in dlg else "ends")
             y += h + 12
             marks.append((len(S), y))

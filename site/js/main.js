@@ -3052,6 +3052,25 @@ const SessionPanel = {
         append((who ? saidHtml(who, n.text, "", n.speaker) :
           '<div class="sd-narr">' + esc(n.text) + "</div>") +
           voiceHtml(n.voices));
+        /* A node with NO choices is a beat that just moves on (2026-10-07,
+           user's call: "no instincts or responses, just continue"). The
+           reader shows only Continue, to n.goto or out of the scene —
+           never a one-option menu, which would echo "Continue" back as
+           the player's own line and then ask for Continue again. */
+        if (!n.choices || !n.choices.length) {
+          play.innerHTML = '<button class="sd-done"' +
+            (n.goto ? ' data-goto="' + n.goto + '"' : "") +
+            ' type="button">Continue ▸</button>';
+          settle(artEl);
+          const done = play.querySelector(".sd-done");
+          done.addEventListener("pointerdown", (ev) => {
+            ev.stopPropagation();
+            SFX.choice();
+            if (done.dataset.goto) renderNode(done.dataset.goto);
+            else onDone();
+          });
+          return;
+        }
         play.innerHTML = '<div class="sd-choices">' +
           n.choices.map(btnHtml).join("") + "</div>";
         settle(artEl);
@@ -5645,7 +5664,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=13");
+    this.load.json("session", "map/session.json?v=15");
     this.load.json("chairs", "map/chairs.json?v=2");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

@@ -395,40 +395,16 @@
    "art": "w1-opening",
    "start": {
     "text": "Session opens today. Lei on every railing, the koa doors propped wide, somebody's grandmother already asleep in the gallery — and under all of it the arithmetic that will run this building until May. The Council on Revenues says $9.8 billion in general-fund taxes next year against a $10.6 billion budget. Everyone in the rotunda knows that number. Nobody has said out loud yet whose year it comes out of.",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "Eight hundred million is not a rounding error and it is not a crisis either — it is a choice, and it gets made in about nine weeks."
-     },
-     {
-      "t": "talkstory",
-      "text": "Read the room today, not the spreadsheet. Half these people have already decided how this session goes and are waiting to see if you noticed."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"We lead with who pays for it. Frame the gap as a choice, not weather.\"",
-      "effects": {
-       "support": 4
-      },
-      "reply": "The choice sets the terms. A gap is an accident; a choice has an author — and authors can be asked questions in public.",
-      "goto": "presser"
-     },
-     {
-      "label": "\"We lead with the math. Nothing moves unless it balances.\"",
-      "effects": {
-       "influence": 4
-      },
-      "reply": "The money chairs will love this. The coalition will want to know the math includes people.",
-      "goto": "presser"
-     },
-     {
-      "label": "Say nothing. Watch who talks to whom.",
-      "effects": {},
-      "reply": "Two committee chairs and a lobbyist, in that order, in under a minute. The numbers do not improve under observation, but the room tells you things.",
-      "goto": "presser"
-     }
-    ]
+    "voices": [],
+    "goto": "sponsor",
+    "choices": []
+   },
+   "sponsor": {
+    "speaker": "rep-x",
+    "text": "They're waiting in the alcove off the House corridor, folder under one arm, still wearing the lei from the floor. \"There you are. The clerk wants bill forms by Friday, and before my name goes on them I want to hear it from you: what am I carrying, and who's standing behind me when I carry it?\"",
+    "voices": [],
+    "goto": "presser",
+    "choices": []
    },
    "presser": {
     "text": "Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?",
