@@ -1,0 +1,53 @@
+---
+_note: DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w4-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w5-decking) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.
+talks: office, sen-x=talk-sen, coalition
+actions: push, lobby
+---
+
+# w11-wam
+
+## A · start
+Ways and Means decks Friday, and after Ways and Means there is no more committee. Whatever is on that notice goes to conference. Whatever is not is finished, in a chamber that never held a hearing on it, having crossed the rotunda for nothing.
+
+Room 211 is the same closed koa door it was in February. But the anteroom is different now: there are eleven people in it and every one of them is carrying a measure that already passed the other chamber. This is the bottleneck the whole building funnels into, and it is one man's calendar.
+
+- **Procedure:** Last gate. After this the only thing left is conference, and conference does not add bills — it only cuts the ones already in it.
+- **Policy Brain:** 876 referrals to Finance, 936 to Ways and Means. He is the busiest gate in the building and he is the last one. Both facts are working against you at once.
+- **Talk Story:** Eleven people in an anteroom, all of whom got further than most. Being here is not an achievement any more. It is a queue.
+
+### 1. [Talk Story 13 red] Spend the whole relationship. Everything you have built, now.
+- mods: influence/25, flag souza-intro +3 "Kawaguchi's phone call", flag recess-draft +2 "the amendment you drafted in recess", PROCEDURE/4
+- then: B
+Pass:
+Twenty minutes, and not with him — with his analyst and his vice-chair, in a room with the door open, which is how you can tell it is real. They do not promise you the notice. They ask you three questions about the fiscal note, and the third one is a question you can only ask about a bill you are planning to post.
+
+- effect: +5 influence
+Fail:
+You get the scheduler, who is warm and remembers your name and has nothing, exactly as she had nothing in February. Nine months of work and the same sentence. You do not get to be angry at her; she is the only person in this building who has never once lied to you.
+
+- effect: -3 influence, -1 support
+
+### 2. Forget the chair. Twelve other members sit on that committee.
+Four offices in a day and two of them freshmen nobody has asked for anything all session. On Wednesday a WAM member asks a question in a hearing that came straight out of your one-pager, and the chair looks up.
+
+- effect: +4 support, +1 influence
+- then: B
+
+### 3. Go public. Name the committee, name the number, name the week.
+It runs Thursday: the bill, the deadline, the room number and the six hundred million reasons the state suddenly needs the money. Your coalition has never been louder. Room 211 has never been more closed.
+
+- effect: +6 support, -5 influence
+- then: B
+
+## B · twelve
+Friday at four the Ways and Means notice posts, the same way Finance's did in February, to the same hallway full of the same people.
+
+This is the last one of these. After Friday there is nothing left to be posted to.
+
+- **Procedure:** Count what is left: conference in week fifteen, final reading in week sixteen. Two beats. Everything still alive after tonight is in the endgame.
+
+### 1. Wait for four o'clock.
+You wait for four o'clock.
+
+- effect: 
+- then: end

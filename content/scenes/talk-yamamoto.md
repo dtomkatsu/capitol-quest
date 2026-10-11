@@ -1,0 +1,13 @@
+# talk-yamamoto
+
+## A · start
+**Rep. Jennifer Yamamoto:** "Everybody wants Jon's pen. Nobody wants my folders." She taps the stack anyway. "The folder is where a bill actually lives, before it's a headline."
+
+- **Policy Brain:** The folder is the fiscal note, the referral history, every amendment offered and withdrawn. The headline is none of that.
+- **Procedure:** She is telling you, gently, to read the paperwork before you ask anyone for a miracle.
+
+### 1. "Noted, co-chair."
+She almost smiles — the same economical almost her chair uses. Maybe it's a Finance thing.
+
+- effect: 
+- then: end

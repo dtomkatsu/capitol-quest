@@ -1,9 +1,11 @@
 # Scene scripts
 
 Every dialogue in the game — weekly events, generic events, talks — is a
-`.scene` file here, one per dialogue, named for its id. They compile into
-the `dialogues` block of `site/map/session.json`; nothing else in that
-file is touched. **Edit these, never the JSON.**
+Markdown file here, one per dialogue, named for its id (`w2-yamamoto.md`).
+They compile into the `dialogues` block of `site/map/session.json`; nothing
+else in that file is touched. **Edit these, never the JSON.** They are plain
+text so they can be typed into from the tablet (Paper › Library ›
+Documents › Edit).
 
 ```
 python3 tools/scenes.py new w9-thing        # scaffold, with every skill's slot
@@ -12,56 +14,69 @@ python3 tools/scenes.py build               # lint, then write session.json (+ b
 python3 tools/scenes.py tree w9-thing       # decision tree to mark up -> build/tree-w9-thing.svg
 python3 tools/scenes.py map                 # whole session + flag lines -> build/session-map.svg
 python3 tools/scenes.py stats               # voice balance, checks per skill, flag ledger
+python3 tools/scenes.py show w9-thing       # what it compiles to (debugging)
 ```
+
+`content/drafts/` holds drafts that are NOT in the game; move one in here
+to ship it.
 
 ## The format
 
 ```
-=== w5-decking                       dialogue id = file name
+---                                   header: scene-level fields
 _note: Free text that ships as _note (any _key: does).
-art: w2-finance                      banner, site/assets/events/<art>.png
-at: {"island": "hawaii"}             week-beat camera target (JSON)
-talks: grange, office, rep-x=talk-rep   doors this scene opens (bare id = talk-<id>)
-actions: bench, lobby                   ("push" = the work-the-chair rows)
+art: w2-finance                       banner, site/assets/events/<art>.png
+at: {"island": "hawaii"}              week-beat camera target (JSON)
+talks: grange, office, rep-x=talk-rep doors this scene opens (bare id = talk-<id>)
+actions: bench, lobby                 ("push" = the work-the-chair rows)
+---
 
---- start                            a node; the first one must be start
-art: w2-finance-office               node fields go before the text
-KAWAGUCHI: "Sit." He doesn't stand.  SPEAKER: on the FIRST line = whole node is theirs
-Second paragraph — one paragraph per line.
-PROCEDURE: A skill voice. Voices come after the text.
-TALK STORY: Another one.
+# w5-decking                          title (ignored)
 
-* Bring the fiscal note.             a plain choice
-  {+1 influence}                     its effects
-  You walk in with one page.         its reply (one paragraph per line)
-  POLICY BRAIN: voices can chime in on a reply too
-  -> office                          go to a node (no arrow = scene ends)
+## A · start                          a beat: letter, then id (first = start)
+- art: w2-finance-office              beat fields go first
+Kawaguchi: "Sit." He doesn't stand.   Name: on the FIRST line = whole beat is theirs
+A blank line starts a new paragraph.
+- Procedure: A skill voice.           instincts are bullets
+- Talk Story: Another one.
 
-* [TALK STORY 13 red] "Call him."    a checked choice: skill, DC, red|white
-  mods: influence/25, flag kawaguchi-date +2 "the date he gave you", PROCEDURE/3
-  {-1 support}                       ANTE: paid on commit, win or lose
-  pass:
-    He picks up the phone.
-    {-2 influence, flag souza-intro}
-    -> office
-  fail:
-    "In my own office?"
-    {-4 influence}
+### 1. Bring the fiscal note.         a choice
+You walk in with one page.            its reply
+- Policy Brain: voices can chime in on a reply too
+- effect: +1 influence
+- then: B                             a beat's letter or id; "end" or blank = scene ends
+
+### 2. [Talk Story 13 red] "Call him."   a dice check: skill, DC, red|white
+- mods: influence/25, flag kawaguchi-date +2 "the date he gave you"
+- effect: -1 support                  ANTE: paid on commit, win or lose
+Pass:
+He picks up the phone.
+- effect: -2 influence, flag souza-intro
+- then: B
+Fail:
+"In my own office?"
+- effect: -4 influence
+
+### 3. [Brain 4+] Lead with the platform.   forced at Policy Brain 4+ (see below)
+
+## B · office
+-> C                                  a beat with no choices: Continue to C
 ```
 
-`//` starts a note to yourself; it never ships.
+`// …` lines are notes to yourself; they never ship. Bold is optional
+(`**Kawaguchi:**` = `Kawaguchi:`).
 
-**Names.** Skills by display name, id, or short alias — `POLICY BRAIN` /
-`BRAIN`, `PROCEDURE` / `PROC`, `EDUCATOR` / `EDU`, `TALK STORY` / `TALK`,
-`MOBILIZING` / `MOB`, `BASE BUILDING` / `BASE`. Speakers by character id in
-caps: `KAWAGUCHI`, `GRANGE`, `YAMAMOTO`, `REP-X`, `SEN-X`. A node with no
-speaker is narration — that is how the player's own campaign talks
-(faceless, per CLAUDE.md). Souza never speaks.
+**Names.** Skills by display name or short alias — `Policy Brain` /
+`Brain`, `Procedure` / `Proc`, `Educator` / `Edu`, `Talk Story` / `Talk`,
+`Mobilizing` / `Mob`, `Base Building` / `Base`. Speakers by name or last
+name (`Yamamoto`, `Rep. X`, `Grange`) or id. A beat with no speaker is
+narration — that is how the player's own campaign talks (faceless, per
+CLAUDE.md). Souza never speaks.
 
-**Effects**, comma-separated in braces: `+2 support`, `-1 influence`,
+**Effects**, comma-separated after `effect:`: `+2 support`, `-1 influence`,
 `+6 house` / `-3 senate` (introducer rapport), `-$600M revenue` (also `$K`,
 `$B`), `flag some-flag`, `+1 TALK STORY` (a skill pip), `unlock talk
-grange=talk-grange`, `unlock action bench`. `{}` = nothing happens.
+grange=talk-grange`, `unlock action bench`. Blank = nothing happens.
 
 **Mods** on a check: `support/25` (+1 per 25 support), `influence/25`,
 `PROCEDURE/3` (+1 per 3 skill), `flag id +2 "label"` (bonus if the flag is
@@ -92,15 +107,15 @@ each vs. ~20 for the others — run `stats`); reach for them first.
 
 ## Decision trees
 
-- **Inside a scene**: nodes plus `->`. Branches can rejoin (three choices
-  all `-> office`). Run `tree` to see it.
+- **Inside a scene**: beats plus `then:`. Branches can rejoin (three choices
+  all `then: B`). Run `tree` to see it.
 - **Across scenes, flags are the only memory.** Set one with
-  `{flag name}`; a later scene reads it ONLY as a check mod
+  `effect: flag name`; a later scene reads it ONLY as a check mod
   (`flag name +2 "label"`). There is no "show this choice if" — write for
   that. `stats` prints every flag's setters and readers; mind the week
   order (a flag read before it can be set is a bug).
-- **Checked choices:** a `->` directly under the choice is where BOTH
-  outcomes go. Put one inside `pass:` or `fail:` only when that outcome
+- **Checked choices:** a `then:` directly under the choice heading is where
+  BOTH outcomes go. Put one under `Pass:` or `Fail:` only when that outcome
   goes somewhere else — it overrides the shared one.
 - **White** checks can be retried when the bonus improves; **red** checks
   are one shot. Both outcomes need real content.
@@ -127,26 +142,11 @@ scene to a later week to say "this should matter here".
 
 ## Forced choices (an instinct taking over)
 
-`* [BRAIN 4+] "Don't be scared — lead with your policy platform."` marks a
+`### 1. [Brain 4+] Don't be scared — lead with your policy platform.` marks a
 choice that a skill at that level (here Policy Brain 4, "Good") takes out of
 the player's hands. No dice. At or above the threshold, that choice is the
 only live one: the others stay on screen greyed out and struck through, each
 labelled "Policy Brain won't let you", and the forced one reads "your
 instinct takes over". Below the threshold it is an ordinary choice. Put the
-reply, effects and `->` under it as usual. At most one forced choice per
+reply, `effect:` and `then:` under it as usual. At most one forced choice per
 node (if two are met, the first in the list wins).
-
-## Typing drafts in Markdown
-
-`content/drafts/<id>.md` is the same scene as a Markdown page you can type
-into: `## A · start` per beat, `**Name:**` for whoever speaks, `- **Skill:**`
-bullets for instincts, `### 1. …` per choice with `- effect:` and `- then:`
-(a beat letter, an id, or `end`). `[Brain 4+]` forces, `[Talk Story 12 red]`
-rolls (then `Pass:` / `Fail:`). Blank fields and `…` are ignored, so a half
-written draft still converts.
-
-    python3 tools/scenes.py md w2-yamamoto          # scene -> content/drafts/w2-yamamoto.md
-    python3 tools/scenes.py from-md content/drafts/w2-yamamoto.md          # preview
-    python3 tools/scenes.py from-md content/drafts/w2-yamamoto.md --apply  # -> .scene
-
-Every existing scene converts to Markdown and back with nothing lost.

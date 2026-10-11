@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Scene scripts <-> session.json dialogues.
 
-Dialogue content is written as plain-text `.scene` files in
-`content/scenes/` (one dialogue per file) and compiled into the
+Dialogue content is written as Markdown files in `content/scenes/`
+(`<id>.md`, one dialogue per file — typed straight into on the tablet) and compiled into the
 `dialogues` block of `site/map/session.json`. Every other key of
 session.json is left alone. Format reference: content/scenes/README.md.
 
@@ -13,6 +13,7 @@ session.json is left alone. Format reference: content/scenes/README.md.
     python3 tools/scenes.py map [-o f]       # whole session: weeks, scenes, flag lines
     python3 tools/scenes.py new <id>         # scaffold a scene with every skill's slot
     python3 tools/scenes.py export           # session.json -> scenes (one-time / recovery)
+    python3 tools/scenes.py show <id>        # the compiled .scene text (debugging)
 """
 import argparse
 import json
@@ -655,14 +656,25 @@ def dump(data):
     return json.dumps(data, indent=1, ensure_ascii=False) + "\n"
 
 
+def scene_files():
+    return [f for f in sorted(SCENES.glob("*.md")) if f.name != "README.md"]
+
+
+def compile_md(f, V):
+    """A scene's Markdown -> the .scene text parse_scene reads."""
+    import scene_md
+    try:
+        return scene_md.md_to_scene(f.read_text(), f.stem, V)
+    except ValueError as e:
+        raise SceneError(f"{f.name}: {e}")
+
+
 def read_scenes(V):
-    out, files = {}, sorted(SCENES.glob("*.scene"))
+    out, files = {}, scene_files()
     if not files:
-        raise SceneError(f"no .scene files in {SCENES.relative_to(ROOT)} — run export first")
+        raise SceneError(f"no scenes in {SCENES.relative_to(ROOT)} — run export first")
     for f in files:
-        did, dlg = parse_scene(f.read_text(), V, str(f.relative_to(ROOT)))
-        if did != f.stem:
-            raise SceneError(f"{f.name}: '=== {did}' must match the file name")
+        did, dlg = parse_scene(compile_md(f, V), V, str(f.relative_to(ROOT)))
         out[did] = dlg
     return out
 
@@ -684,37 +696,41 @@ def report(errs, warns):
     print(f"{len(errs)} error(s), {len(warns)} warning(s)")
 
 
-NEW_TEMPLATE = """=== {id}
+NEW_TEMPLATE = """---
 // Scene stub. Lines starting with // are notes to yourself and never ship.
 // Schedule it: calendar event/pre or genericEvents in session.json, or a talk slot.
 talks:
 actions:
+---
 
---- start
-Narration goes here — one paragraph per line.
-// Uncomment the instincts that would have something to say (2+ is the norm):
+# {id}
+
+## A · start
+Narration goes here. A blank line starts a new paragraph.
+
+// Instincts that would have something to say (2+ is the norm) — drop the //:
 {slots}
 
-* A plain choice.
-  {{+1 support}}
-  What happens.
-  -> next
+### 1. A plain choice.
+What happens.
+- effect: +1 support
+- then: B
 
-* [TALK STORY 10 white] A checked choice.
-  mods: influence/25
-  pass:
-    It works.
-    {{+2 influence}}
-  fail:
-    It doesn't.
-    {{-1 influence}}
+### 2. [Talk Story 10 white] A checked choice.
+- mods: influence/25
+Pass:
+It works.
+- effect: +2 influence
+Fail:
+It doesn't.
+- effect: -1 influence
 
---- next
-KAWAGUCHI: A speaker's line opens the node.
-PROCEDURE: A voice on it.
+## B · next
+Kawaguchi: A speaker's line opens the beat.
+- Procedure: A voice on it.
 
-* Leave.
-  {{}}
+### 1. Leave.
+- then: end
 """
 
 
@@ -726,13 +742,9 @@ def main():
     sub.add_parser("check")
     sub.add_parser("stats")
     e = sub.add_parser("export")
-    e.add_argument("--force", action="store_true", help="overwrite existing .scene files")
-    mx = sub.add_parser("md", help="write a scene as a Markdown draft to type into")
-    mx.add_argument("id")
-    mx.add_argument("-o", "--out")
-    fm = sub.add_parser("from-md", help="turn a Markdown draft back into a scene")
-    fm.add_argument("file")
-    fm.add_argument("--apply", action="store_true", help="write content/scenes/<id>.scene")
+    e.add_argument("--force", action="store_true", help="overwrite existing scene files")
+    sh = sub.add_parser("show", help="print a scene compiled to the internal .scene form")
+    sh.add_argument("id")
     nw = sub.add_parser("new")
     nw.add_argument("id")
     mp = sub.add_parser("map")
@@ -747,45 +759,28 @@ def main():
     V = Vocab(data)
     try:
         if a.cmd == "export":
+            import scene_md
             SCENES.mkdir(parents=True, exist_ok=True)
             for did, dlg in data["dialogues"].items():
-                f = SCENES / f"{did}.scene"
+                f = SCENES / f"{did}.md"
                 if f.exists() and not a.force:
                     sys.exit(f"{f.name} exists — refusing to overwrite (use --force)")
-                text = export_dialogue(did, dlg, V)
-                back = parse_scene(text, V, f.name)[1]
-                if back != dlg:
-                    sys.exit(f"{did}: round trip is not lossless — fix the exporter first")
-                f.write_text(text)
-            print(f"exported {len(data['dialogues'])} scenes to {SCENES.relative_to(ROOT)}")
-            return
-        if a.cmd in ("md", "from-md"):
-            import scene_md
-            if a.cmd == "md":
-                f = SCENES / f"{a.id}.scene"
-                did, dlg = parse_scene(f.read_text(), V, f.name)
                 md = scene_md.dlg_to_md(did, dlg, V, data["characters"],
                                         export_choice, fmt_effects, fmt_mods)
-                out = Path(a.out) if a.out else ROOT / "content/drafts" / f"{did}.md"
-                out.parent.mkdir(parents=True, exist_ok=True)
-                out.write_text(md)
-                print(out.relative_to(ROOT) if out.is_relative_to(ROOT) else out)
-                return
-            src = Path(a.file)
-            did = src.stem
-            text = scene_md.md_to_scene(src.read_text(), did, V)
-            parse_scene(text, V, src.name)           # raises on anything malformed
-            if not a.apply:
-                print(text)
-                return
-            (SCENES / f"{did}.scene").write_text(text)
-            print(f"wrote content/scenes/{did}.scene — run build to put it in the game")
+                f.write_text(md)
+                back = parse_scene(compile_md(f, V), V, f.name)[1]
+                if back != dlg:
+                    sys.exit(f"{did}: round trip is not lossless — fix the exporter first")
+            print(f"exported {len(data['dialogues'])} scenes to {SCENES.relative_to(ROOT)}")
+            return
+        if a.cmd == "show":
+            print(compile_md(SCENES / f"{a.id}.md", V), end="")
             return
         if a.cmd == "new":
-            f = SCENES / f"{a.id}.scene"
+            f = SCENES / f"{a.id}.md"
             if f.exists():
                 sys.exit(f"{f.name} exists")
-            slots = "\n".join(f"// {V.skill_label(k)}: ({s['desc']})" for k, s in V.skills.items())
+            slots = "\n".join(f"// - {s['name']}: ({s['desc']})" for k, s in V.skills.items())
             f.write_text(NEW_TEMPLATE.format(id=a.id, slots=slots))
             print(f.relative_to(ROOT))
             return

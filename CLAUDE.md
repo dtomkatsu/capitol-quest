@@ -228,8 +228,10 @@ revenue.json tax names exactly (fallback: first word, no icon).
 `SessionPanel` in main.js + `site/map/session.json` (ALL content is
 data: characters, calendar, dialogues, actions — write content there,
 not in JS). One turn = one week; state in localStorage `cq-session`.
-**Dialogues are AUTHORED in `content/scenes/*.scene`, not in the JSON**
-(2026-10-06): `python3 tools/scenes.py build` lints them and compiles
+**Dialogues are AUTHORED in `content/scenes/*.md`, not in the JSON**
+(2026-10-06 as `.scene`; Markdown since 2026-10-11 so Devin can type
+into them from the tablet — `tools/scene_md.py` compiles each to the
+`.scene` form `parse_scene` reads, `scenes.py show <id>` prints it): `python3 tools/scenes.py build` lints them and compiles
 the `dialogues` block of session.json (and bumps its `?v=` in main.js);
 nothing else in that file is touched. Format + skill-voice guide:
 `content/scenes/README.md`. `check` runs the lint (bad gotos, unknown
@@ -248,9 +250,9 @@ of continuing); a goto inside success/failure overrides it. A choice may carry `
 user's call): at or above `min` in that skill the reader disables every
 OTHER choice (greyed, struck through, "<Skill> won't let you") and marks
 the forced one "your instinct takes over" — no dice. Below `min` it is an
-ordinary choice. The check lives in renderNode's `forcer`/`btnHtml`. Drafts can also be TYPED as Markdown (`content/drafts/<id>.md`,
-`tools/scene_md.py`; `scenes.py md <id>` / `from-md <file> [--apply]`) —
-a draft is not in the game until `from-md --apply` + `build`. The export was proven lossless (every scene round-trips
+ordinary choice. The check lives in renderNode's `forcer`/`btnHtml`. `content/drafts/<id>.md` holds drafts NOT in the game (same format;
+move one into content/scenes to ship it). Converting the 28 scenes left
+session.json byte-identical. The export was proven lossless (every scene round-trips
 to the identical dict) before the JSON stopped being the source.
 Rules that must survive edits:
 - **The player is THE ADVOCATE — one identity, leading a campaign from

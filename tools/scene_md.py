@@ -32,16 +32,26 @@ scenes.parse_scene then reads); `dlg_to_md()` goes the other way.
     -> B                                 a beat with no choices: Continue to B
 
 Blank `- effect:` / `- then:` lines and lone placeholders (…, ?, TBD) are
-ignored, so a half-written draft still converts.
+ignored, so a half-written draft still converts. The bold is optional:
+`Yamamoto: …` and `- Talk Story: …` work too. `// …` lines are notes.
 """
 import re
 
 BEAT_RE = re.compile(r"^##\s+(?:([A-Z]{1,2})\s*[·.:\-]\s*)?([A-Za-z0-9_\-]+)\s*$")
 CHOICE_RE = re.compile(r"^###\s+\d+[.)]\s*(.*)$")
-SPEAKER_RE = re.compile(r"^\*\*([^*]+?):\*\*\s*(.*)$")
-VOICE_RE = re.compile(r"^[-*]\s+\*\*([^*]+?):\*\*\s*(.*)$")
+SPEAKER_RE = re.compile(r"^(?:\*\*([^*]+?):\*\*|([A-Z][A-Za-z.\- ]{1,24}):)\s*(.*)$")
+VOICE_RE = re.compile(r"^[-*]\s+(?:\*\*([^*]+?):\*\*|([A-Za-z][A-Za-z \-]{1,20}):)\s*(.*)$")
 FIELD_RE = re.compile(r"^[-*]\s+([A-Za-z_]+):\s*(.*)$")
 PLACEHOLDER = {"", "…", "...", "?", "tbd", "todo", "-", "—"}
+
+
+def _vm(s, V):
+    """An instinct line: '- **Talk Story:** …' or '- Talk Story: …'."""
+    m = VOICE_RE.match(s)
+    if not m:
+        return None
+    sid = V.skill(m.group(1) or m.group(2))
+    return (sid, m.group(3)) if sid else None
 
 
 def _blank(v):
@@ -61,7 +71,8 @@ def _paras(lines):
 
 
 def md_to_scene(text, did, V):
-    lines = text.splitlines()
+    # `// …` lines are notes to yourself: they stay in the file, never ship
+    lines = [ln for ln in text.splitlines() if not ln.lstrip().startswith("//")]
     i, header = 0, []
     # front matter
     if lines and lines[0].strip() == "---":
@@ -105,10 +116,10 @@ def md_to_scene(text, did, V):
                 cont = target(s[2:])
                 cont = cont or "end"
                 continue
-            vm = VOICE_RE.match(s)
-            if vm and V.skill(vm.group(1)):
-                if not _blank(vm.group(2)):
-                    voices.append(f"{V.skill_label(V.skill(vm.group(1)))}: {vm.group(2).strip()}")
+            vm = _vm(s, V)
+            if vm:
+                if not _blank(vm[1]):
+                    voices.append(f"{V.skill_label(vm[0])}: {vm[1].strip()}")
                 continue
             fm = FIELD_RE.match(s)
             if fm and fm.group(1) in ("art", "_note") or (fm and fm.group(1).startswith("_")):
@@ -118,13 +129,17 @@ def md_to_scene(text, did, V):
         paras = _paras(text_lines)
         if paras:
             sm = SPEAKER_RE.match(paras[0])
-            if sm and sm.group(1).strip().upper() in V.char_by_name:
-                paras[0] = f"{sm.group(1).strip().upper()}: {sm.group(2)}"
-            elif sm:
+            who = sm and (sm.group(1) or sm.group(2)).strip()
+            if who and who.upper() in V.char_by_name:
+                paras[0] = f"{who.upper()}: {sm.group(3)}"
+            elif who:
                 cid = next((c for c, name in V.char_names.items()
-                            if name.lower().endswith(sm.group(1).strip().lower())), None)
+                            if name.lower() == who.lower()
+                            or name.lower().endswith(" " + who.lower())), None)
                 if cid:
-                    paras[0] = f"{cid.upper()}: {sm.group(2)}"
+                    paras[0] = f"{cid.upper()}: {sm.group(3)}"
+                elif sm.group(1):
+                    raise ValueError(f"beat {nid}: no character called {who!r}")
         S += fields + paras + voices
         if cont:
             S.append(f"-> {cont}")
@@ -170,10 +185,10 @@ def _choice(label, body, V, target):
         res, text, voices, fx, then, extra = [], [], [], None, None, []
         for ln in lines:
             s = ln.strip()
-            vm = VOICE_RE.match(s)
-            if vm and V.skill(vm.group(1)):
-                if not _blank(vm.group(2)):
-                    voices.append(f"{V.skill_label(V.skill(vm.group(1)))}: {vm.group(2).strip()}")
+            vm = _vm(s, V)
+            if vm:
+                if not _blank(vm[1]):
+                    voices.append(f"{V.skill_label(vm[0])}: {vm[1].strip()}")
                 continue
             fm = FIELD_RE.match(s)
             if fm:
