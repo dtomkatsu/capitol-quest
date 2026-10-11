@@ -36,6 +36,7 @@ SILENT = {"souza"}
 DIALOGUE_FIELDS = ("_note", "art", "at")   # header order the builder emits
 NAME_RE = re.compile(r"^([A-Z][A-Z0-9 \-]*[A-Z0-9]):\s+(.*)$")
 FIELD_RE = re.compile(r"^(_[A-Za-z]+|art|at|talks|actions|mods|unlocks\._note):\s*(.*)$")
+FORCE_RE = re.compile(r"^\[([A-Za-z][A-Za-z \-]*?)\s+(\d+)\+\]\s*(.*)$")
 CHECK_RE = re.compile(r"^\[([A-Za-z][A-Za-z \-]*?)\s+(\d+)(?:\s+(red|white))?\]\s*(.*)$")
 
 
@@ -274,7 +275,7 @@ def export_body(o, V, ind):
 
 
 def export_choice(c, V):
-    known = {"label", "check", "effects", "reply", "voices", "goto", "success", "failure"}
+    known = {"label", "check", "effects", "reply", "voices", "goto", "success", "failure", "force"}
     if "check" in c:
         ck = c["check"]
         L = [f"* [{V.skill_label(ck['skill'])} {ck['dc']} {ck.get('type', 'white')}] {c['label']}"]
@@ -292,7 +293,10 @@ def export_choice(c, V):
         if "goto" in c:
             L.append(f"  -> {c['goto']}")
         return L
-    L = [f"* {c['label']}"]
+    pre = ""
+    if c.get("force"):
+        pre = f"[{V.skill_label(c['force']['skill'])} {c['force']['min']}+] "
+    L = [f"* {pre}{c['label']}"]
     for k in c:
         if k not in known:
             L.append(f"  {k}: {fmt_scalar(c[k])}")
@@ -470,10 +474,20 @@ def parse_body(lines, V, fname, allow_outcomes=False):
 
 def parse_choice(head, lines, V, fname):
     label = head.s[2:].strip()
+    fm = FORCE_RE.match(label)
+    force = None
+    if fm:
+        sid = V.skill(fm.group(1))
+        if not sid:
+            raise SceneError(f"{fname}:{head.no}: unknown skill {fm.group(1)!r} in [SKILL N+]")
+        force = {"skill": sid, "min": int(fm.group(2))}
+        label = fm.group(3)
     m = CHECK_RE.match(label)
     if not m:
         body, extra, _ = parse_body(lines, V, fname)
         c = {"label": label}
+        if force:
+            c["force"] = force
         c.update(extra)
         for k in ("effects", "reply", "voices", "goto"):
             if k in body:
@@ -567,6 +581,14 @@ def lint(data, dialogues, V):
             for g in gotos:
                 if g and g not in nodes:
                     errs.append(f"{where}: -> {g!r} is not a node in this scene")
+            if c.get("force"):
+                fc = c["force"]
+                if fc["skill"] not in V.skills:
+                    errs.append(f"{where}: force on unknown skill {fc['skill']!r}")
+                if not 1 <= fc["min"] <= 6:
+                    errs.append(f"{where}: force threshold {fc['min']} is outside the 1-6 skill ladder")
+                if c.get("check"):
+                    errs.append(f"{where}: a choice can't be both forced and checked")
             if c.get("check"):
                 ck = c["check"]
                 if ck["skill"] not in V.skills:
@@ -583,6 +605,13 @@ def lint(data, dialogues, V):
                     check_unlock(did, fx["unlock"], where)
                 if fx.get("skill") and fx["skill"] not in V.skills:
                     errs.append(f"{where}: unknown skill {fx['skill']!r}")
+        for nid in nodes:
+            fs = [c for c in dlg[nid]["choices"] if c.get("force")]
+            if len(fs) > 1:
+                warns.append(f"{did}/{nid}: {len(fs)} forced choices — when more than one is met, "
+                             "the first in the list wins")
+            if fs and len(dlg[nid]["choices"]) < 2:
+                warns.append(f"{did}/{nid}: a forced choice with nothing to override")
         edges = defaultdict(set)
         for nid in nodes:
             g = dlg[nid].get("goto")

@@ -655,7 +655,9 @@ def node_pages(did, dlg, skills, chars, where=""):
                     t(X + 56, yy, first_sentence(c["reply"], 58), 15, italic=True, fill="#333")
                     yy += 26
                 if not c.get("_continue"):
-                    t(X + 56, yy, fx_words(c.get("effects")) or "no change", 14, True, True)
+                    ft = (f"FORCED at {LONG.get(c['force']['skill'], c['force']['skill'])} "
+                          f"{c['force']['min']}+ · ") if c.get("force") else ""
+                    t(X + 56, yy, ft + (fx_words(c.get("effects")) or "no change"), 14, True, True)
                 pill(R - 120, yy - 16, 108, ("then " + go(p)) if p in dlg else "ends")
             y += h + 12
             marks.append((len(S), y))

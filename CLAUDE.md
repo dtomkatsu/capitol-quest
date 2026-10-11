@@ -244,7 +244,11 @@ flag ledger. **Never hand-edit `dialogues` in session.json** — the next build
 overwrites it. A `goto` on a CHECKED choice is the shared next node for
 both outcomes (`out.goto || c.goto` in the runner, 2026-10-06 — it was
 silently ignored before, so five scenes ended on their checks instead
-of continuing); a goto inside success/failure overrides it. The export was proven lossless (every scene round-trips
+of continuing); a goto inside success/failure overrides it. A choice may carry `force: {skill, min}` (scene syntax `[BRAIN 4+]`, 2026-10-10,
+user's call): at or above `min` in that skill the reader disables every
+OTHER choice (greyed, struck through, "<Skill> won't let you") and marks
+the forced one "your instinct takes over" — no dice. Below `min` it is an
+ordinary choice. The check lives in renderNode's `forcer`/`btnHtml`. The export was proven lossless (every scene round-trips
 to the identical dict) before the JSON stopped being the source.
 Rules that must survive edits:
 - **The player is THE ADVOCATE — one identity, leading a campaign from

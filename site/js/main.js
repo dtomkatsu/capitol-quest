@@ -2971,8 +2971,32 @@ const SessionPanel = {
         const who = n.speaker ? data.characters[n.speaker] : null;
         showCard(n.speaker);
         // choices with no `check` behave exactly as they always have
+        /* A FORCED choice (`force: {skill, min}`, 2026-10-10, user's call:
+           "above 3 in the skill forces you to choose that option"): at or
+           above `min` in that skill the instinct takes the line out of the
+           player's hands. Every other choice stays on screen, greyed and
+           disabled with the reason, so the player SEES what they gave up.
+           Below `min` it is an ordinary choice. */
+        const forcer = (n.choices || []).find((c) => c.force &&
+          (S.skills[c.force.skill] || 0) >= c.force.min);
+        const forceName = (c) => (data.skills[c.force.skill] || {}).name ||
+          c.force.skill;
         const btnHtml = (c, i) => {
           const num = '<span class="sd-num">' + (i + 1) + ".</span>";
+          if (forcer && c !== forcer) {
+            return '<button type="button" data-i="' + i +
+              '" class="forced-out" disabled>' + num +
+              '<span class="sd-lbl">' + esc(c.label) +
+              '<small class="cmeta">' + esc(forceName(forcer)) +
+              " won't let you</small></span></button>";
+          }
+          if (forcer && c === forcer) {
+            return '<button type="button" data-i="' + i +
+              '" class="forced-in">' + num + '<span class="sd-lbl">' +
+              esc(c.label) + '<small class="cmeta">' +
+              esc(forceName(c)) + " " + (S.skills[c.force.skill] || 0) +
+              " — your instinct takes over</small></span></button>";
+          }
           if (!c.check) {
             return '<button type="button" data-i="' + i + '">' + num +
               '<span class="sd-lbl">' + esc(c.label) + "</span></button>";

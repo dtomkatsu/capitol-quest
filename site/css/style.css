@@ -2382,6 +2382,23 @@ body.booting #hud { visibility: hidden; }
 .sd-scene.hush .sd-log > .sd-beat {
   transition: opacity .35s ease, filter .35s ease;
 }
+/* a choice the player's own instinct has taken away (see `force`) */
+.sd-choices button.forced-out,
+.sd-choices button.forced-out:hover {
+  color: var(--paper-5);
+  opacity: .5;
+  cursor: default;
+  background: none;
+  border-left-color: transparent;
+  transform: none;
+}
+.sd-choices button.forced-out:hover .sd-num { color: var(--paper-5); }
+.sd-choices button.forced-out .sd-lbl { text-decoration: line-through;
+  text-decoration-thickness: 1px; }
+.sd-choices button.forced-out .cmeta { display: block; text-decoration: none;
+  font-size: 12.5px; font-style: italic; }
+.sd-choices button.forced-in .cmeta { display: block; font-size: 12.5px;
+  font-style: italic; color: var(--gold-lt, var(--paper-4)); }
 .sd-choices button.chk.spent {
   opacity: .45;
   cursor: default;

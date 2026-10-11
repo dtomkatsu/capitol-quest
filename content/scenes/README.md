@@ -124,3 +124,14 @@ plays (talks it opens underneath, repeats listed as "again"), six voice dots
 per scene, and every flag as a line from where it is set (●) to where it is
 read (▶). A flag nobody reads ends in ○ — a free hook. Draw a line from a
 scene to a later week to say "this should matter here".
+
+## Forced choices (an instinct taking over)
+
+`* [BRAIN 4+] "Don't be scared — lead with your policy platform."` marks a
+choice that a skill at that level (here Policy Brain 4, "Good") takes out of
+the player's hands. No dice. At or above the threshold, that choice is the
+only live one: the others stay on screen greyed out and struck through, each
+labelled "Policy Brain won't let you", and the forced one reads "your
+instinct takes over". Below the threshold it is an ordinary choice. Put the
+reply, effects and `->` under it as usual. At most one forced choice per
+node (if two are met, the first in the list wins).
