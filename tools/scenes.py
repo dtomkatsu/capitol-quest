@@ -59,6 +59,7 @@ class Vocab:
             if sid in self.skills:
                 self.skill_by_name[a] = sid
         self.char_by_name = {c.upper(): c for c in self.chars}
+        self.char_names = {c: data["characters"][c].get("name", c) for c in self.chars}
 
     def skill(self, name):
         return self.skill_by_name.get(name.strip().upper())
@@ -726,6 +727,12 @@ def main():
     sub.add_parser("stats")
     e = sub.add_parser("export")
     e.add_argument("--force", action="store_true", help="overwrite existing .scene files")
+    mx = sub.add_parser("md", help="write a scene as a Markdown draft to type into")
+    mx.add_argument("id")
+    mx.add_argument("-o", "--out")
+    fm = sub.add_parser("from-md", help="turn a Markdown draft back into a scene")
+    fm.add_argument("file")
+    fm.add_argument("--apply", action="store_true", help="write content/scenes/<id>.scene")
     nw = sub.add_parser("new")
     nw.add_argument("id")
     mp = sub.add_parser("map")
@@ -751,6 +758,28 @@ def main():
                     sys.exit(f"{did}: round trip is not lossless — fix the exporter first")
                 f.write_text(text)
             print(f"exported {len(data['dialogues'])} scenes to {SCENES.relative_to(ROOT)}")
+            return
+        if a.cmd in ("md", "from-md"):
+            import scene_md
+            if a.cmd == "md":
+                f = SCENES / f"{a.id}.scene"
+                did, dlg = parse_scene(f.read_text(), V, f.name)
+                md = scene_md.dlg_to_md(did, dlg, V, data["characters"],
+                                        export_choice, fmt_effects, fmt_mods)
+                out = Path(a.out) if a.out else ROOT / "content/drafts" / f"{did}.md"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(md)
+                print(out.relative_to(ROOT) if out.is_relative_to(ROOT) else out)
+                return
+            src = Path(a.file)
+            did = src.stem
+            text = scene_md.md_to_scene(src.read_text(), did, V)
+            parse_scene(text, V, src.name)           # raises on anything malformed
+            if not a.apply:
+                print(text)
+                return
+            (SCENES / f"{did}.scene").write_text(text)
+            print(f"wrote content/scenes/{did}.scene — run build to put it in the game")
             return
         if a.cmd == "new":
             f = SCENES / f"{a.id}.scene"

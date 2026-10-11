@@ -135,3 +135,18 @@ labelled "Policy Brain won't let you", and the forced one reads "your
 instinct takes over". Below the threshold it is an ordinary choice. Put the
 reply, effects and `->` under it as usual. At most one forced choice per
 node (if two are met, the first in the list wins).
+
+## Typing drafts in Markdown
+
+`content/drafts/<id>.md` is the same scene as a Markdown page you can type
+into: `## A · start` per beat, `**Name:**` for whoever speaks, `- **Skill:**`
+bullets for instincts, `### 1. …` per choice with `- effect:` and `- then:`
+(a beat letter, an id, or `end`). `[Brain 4+]` forces, `[Talk Story 12 red]`
+rolls (then `Pass:` / `Fail:`). Blank fields and `…` are ignored, so a half
+written draft still converts.
+
+    python3 tools/scenes.py md w2-yamamoto          # scene -> content/drafts/w2-yamamoto.md
+    python3 tools/scenes.py from-md content/drafts/w2-yamamoto.md          # preview
+    python3 tools/scenes.py from-md content/drafts/w2-yamamoto.md --apply  # -> .scene
+
+Every existing scene converts to Markdown and back with nothing lost.

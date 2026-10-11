@@ -248,7 +248,9 @@ of continuing); a goto inside success/failure overrides it. A choice may carry `
 user's call): at or above `min` in that skill the reader disables every
 OTHER choice (greyed, struck through, "<Skill> won't let you") and marks
 the forced one "your instinct takes over" — no dice. Below `min` it is an
-ordinary choice. The check lives in renderNode's `forcer`/`btnHtml`. The export was proven lossless (every scene round-trips
+ordinary choice. The check lives in renderNode's `forcer`/`btnHtml`. Drafts can also be TYPED as Markdown (`content/drafts/<id>.md`,
+`tools/scene_md.py`; `scenes.py md <id>` / `from-md <file> [--apply]`) —
+a draft is not in the game until `from-md --apply` + `build`. The export was proven lossless (every scene round-trips
 to the identical dict) before the JSON stopped being the source.
 Rules that must survive edits:
 - **The player is THE ADVOCATE — one identity, leading a campaign from
