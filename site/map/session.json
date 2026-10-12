@@ -261,6 +261,7 @@
    "week": 1,
    "title": "Opening Day",
    "phase": "Session",
+   "pre": "w1-intro",
    "event": "w1-opening",
    "agenda": true
   },
@@ -392,14 +393,7 @@
   },
   "w1-opening": {
    "_note": "Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.",
-   "art": "w1-opening",
    "start": {
-    "text": "Session opens today. Lei on every railing, the koa doors propped wide, somebody's grandmother already asleep in the gallery — and under all of it the arithmetic that will run this building until May. The Council on Revenues says $9.8 billion in general-fund taxes next year against a $10.6 billion budget. Everyone in the rotunda knows that number. Nobody has said out loud yet whose year it comes out of.",
-    "voices": [],
-    "goto": "sponsor",
-    "choices": []
-   },
-   "sponsor": {
     "speaker": "rep-x",
     "text": "They're waiting in the alcove off the House corridor, folder under one arm, still wearing the lei from the floor. \"There you are. The clerk wants bill forms by Friday, and before my name goes on them I want to hear it from you: what am I carrying, and who's standing behind me when I carry it?\"",
     "voices": [],
@@ -2408,6 +2402,15 @@
       "reply": "She almost smiles — the same economical almost her chair uses. Maybe it's a Finance thing."
      }
     ]
+   }
+  },
+  "w1-intro": {
+   "_note": "Week 1's narration beat — the room, the number, before anyone speaks. It runs as week 1's `pre` (calendar), then w1-opening starts at the Rep. X talk. It used to be node A of w1-opening; moved out so it can be edited on its own (2026-10-12, Devin).",
+   "art": "w1-opening",
+   "start": {
+    "text": "Session opens today. Lei on every railing, the koa doors propped wide, somebody's grandmother already asleep in the gallery — and under all of it the arithmetic that will run this building until May. The Council on Revenues says $9.8 billion in general-fund taxes next year against a $10.6 billion budget. Everyone in the rotunda knows that number. Nobody has said out loud yet whose year it comes out of.",
+    "voices": [],
+    "choices": []
    }
   }
  },
