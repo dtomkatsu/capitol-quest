@@ -656,6 +656,27 @@ def dump(data):
     return json.dumps(data, indent=1, ensure_ascii=False) + "\n"
 
 
+def scene_id(f):
+    """File stem minus its sort prefix: 01-w1-opening.md -> w1-opening."""
+    return re.sub(r"^\d{2}-", "", f.stem)
+
+
+def scene_prefix(did):
+    """Which NN- a new scene gets: its week; generic events 20; talks 30."""
+    m = re.match(r"w(\d+)-", did)
+    if m:
+        return f"{int(m.group(1)):02d}"
+    return "30" if did.startswith("talk-") else "20"
+
+
+def scene_path(did):
+    """The file for an id, existing (any prefix) or the prefixed name it would get."""
+    for f in scene_files():
+        if scene_id(f) == did:
+            return f
+    return SCENES / f"{scene_prefix(did)}-{did}.md"
+
+
 def scene_files():
     return [f for f in sorted(SCENES.glob("*.md")) if f.name != "README.md"]
 
@@ -664,7 +685,7 @@ def compile_md(f, V):
     """A scene's Markdown -> the .scene text parse_scene reads."""
     import scene_md
     try:
-        return scene_md.md_to_scene(f.read_text(), f.stem, V)
+        return scene_md.md_to_scene(f.read_text(), scene_id(f), V)
     except ValueError as e:
         raise SceneError(f"{f.name}: {e}")
 
@@ -762,7 +783,7 @@ def main():
             import scene_md
             SCENES.mkdir(parents=True, exist_ok=True)
             for did, dlg in data["dialogues"].items():
-                f = SCENES / f"{did}.md"
+                f = scene_path(did)
                 if f.exists() and not a.force:
                     sys.exit(f"{f.name} exists — refusing to overwrite (use --force)")
                 md = scene_md.dlg_to_md(did, dlg, V, data["characters"],
@@ -774,10 +795,10 @@ def main():
             print(f"exported {len(data['dialogues'])} scenes to {SCENES.relative_to(ROOT)}")
             return
         if a.cmd == "show":
-            print(compile_md(SCENES / f"{a.id}.md", V), end="")
+            print(compile_md(scene_path(a.id), V), end="")
             return
         if a.cmd == "new":
-            f = SCENES / f"{a.id}.md"
+            f = scene_path(a.id)
             if f.exists():
                 sys.exit(f"{f.name} exists")
             slots = "\n".join(f"// - {s['name']}: ({s['desc']})" for k, s in V.skills.items())

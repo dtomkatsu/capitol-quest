@@ -228,7 +228,7 @@ revenue.json tax names exactly (fallback: first word, no icon).
 `SessionPanel` in main.js + `site/map/session.json` (ALL content is
 data: characters, calendar, dialogues, actions — write content there,
 not in JS). One turn = one week; state in localStorage `cq-session`.
-**Dialogues are AUTHORED in `content/scenes/*.md`, not in the JSON**
+**Dialogues are AUTHORED in `content/scenes/NN-<id>.md`, not in the JSON** (the `NN-` prefix — week, 20 events, 30 talks — only sorts the tablet's Documents list; the id is the name after it)
 (2026-10-06 as `.scene`; Markdown since 2026-10-11 so Devin can type
 into them from the tablet — `tools/scene_md.py` compiles each to the
 `.scene` form `parse_scene` reads, `scenes.py show <id>` prints it): `python3 tools/scenes.py build` lints them and compiles

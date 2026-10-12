@@ -1,7 +1,7 @@
 # Scene scripts
 
 Every dialogue in the game — weekly events, generic events, talks — is a
-Markdown file here, one per dialogue, named for its id (`w2-yamamoto.md`).
+Markdown file here, one per dialogue. The file is named `NN-<id>.md` (`02-w2-yamamoto.md`): the id is what the game uses, and the two-digit prefix only sorts them — the week for scripted scenes, 20 for generic events (`ev-`), 30 for talks (`talk-`). `scenes.py new` picks the prefix for you; renaming a file's prefix never changes the id.
 They compile into the `dialogues` block of `site/map/session.json`; nothing
 else in that file is touched. **Edit these, never the JSON.** They are plain
 text so they can be typed into from the tablet (Paper › Library ›
