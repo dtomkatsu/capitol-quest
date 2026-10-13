@@ -1265,6 +1265,18 @@ player failed). **Delete the `demo` block and the full 16-week game is
 back; no other file changed.** `scenes.py build` leaves the block alone.
 session.json edited by hand: bump `map/session.json?v=` in main.js.
 
+**The demo reshuffled the opening (2026-10-12, Devin: "move his convo from
+later to 2")**: week 2 is now **`w2-kawaguchi`, the Kawaguchi meeting**
+(was week 5's `w5-decking`, lines about decking day rewritten — nothing may
+imply a hearing or notice has happened). Week 2's Yamamoto courtesy call and
+`talk-yamamoto` are parked in `content/drafts/` (`02-w2-yamamoto-previous.md`,
+`30-talk-yamamoto.md`; ship them back to restore), and their `yamamoto-open`
+flag is gone — **w4-souza's +3 on the hallway roll now reads `souza-intro`**,
+which the Kawaguchi meeting sets at week 2 (so the "different clocks" caution
+below about `souza-intro` no longer holds: it exists from week 2 on). Week 5
+has no scripted event any more and takes the generic rotation (`ev-potluck`).
+The paragraph below describes the pre-demo chain.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:

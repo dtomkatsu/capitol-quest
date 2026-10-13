@@ -26,7 +26,7 @@ Four offices in a day, two of them freshmen nobody has ever asked for anything. 
 - then: end
 
 ### 3. [Talk Story 12 red] Catch him in the hallway when the notices post.
-- mods: flag yamamoto-open +3 "Yamamoto's tip", influence/25, PROCEDURE/4
+- mods: flag souza-intro +3 "Kawaguchi's phone call", influence/25, PROCEDURE/4
 Pass:
 Ninety seconds between the elevator and the stairwell, and he never once stops walking. But he answers. "Your problem isn't me. Your problem is the House sends me things in April and expects a miracle in May." The elevator takes him. You write the whole thing down on the back of the notice, standing up.
 
