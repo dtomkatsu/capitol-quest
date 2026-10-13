@@ -1286,6 +1286,17 @@ The old business-caucus Silva (ex-Grange) talk is parked in
 placeholder. The hallway legislator's tooltip says Silva too (HALL_V 9).
 Where this file says "Rep. X" it means her now.
 
+**Week 1 now ends its pre with a three-way choice (node D of `w1-intro`,
+2026-10-12):** after the handoff, 1 = work the rotunda (the old optional
+`w1-kawaguchi` talk, merged in as node E — deleted as its own file; it sets
+`kawaguchi-date`), 2 = the coalition table (`talk-coalition`'s text copied
+in as node F; `talk-coalition` itself still serves other weeks), 3 = leave
+the building for policy research (new node G: +1 Policy Brain / Educator /
+Procedure, -1 influence for being out of the room — the first thing that
+trains Policy Brain or Educator after week 1). Each ends the scene, then the
+presser (`w1-opening`) runs. Week 1's hub no longer carries the
+`kawaguchi`/`coalition` doors (`silva=talk-rep`, `sen-x=talk-sen` remain).
+
 **The handoff moved:** Week 1 runs `w1-intro` = A narration → Continue →
 B Silva's dialogue → C the HANDOFF (bills to Silva and Sen. X; it was
 `w1-opening` node D) and then `w1-opening` runs only the presser (its first
