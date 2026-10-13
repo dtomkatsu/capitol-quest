@@ -1277,6 +1277,20 @@ below about `souza-intro` no longer holds: it exists from week 2 on). Week 5
 has no scripted event any more and takes the generic rotation (`ev-potluck`).
 The paragraph below describes the pre-demo chain.
 
+**Rep. X is now Rep. Christina Silva (2026-10-12, Devin: "replace Rep. X
+with Silva … everywhere").** Character id `silva` is YOUR HOUSE INTRODUCER
+(`chairs.json` `introducers.house`, `char: silva`; `rep-x` is gone), she/her.
+The old business-caucus Silva (ex-Grange) talk is parked in
+`content/drafts/30-talk-silva-business-caucus.md`; her door is
+`silva=talk-rep` (the introducer talk). Sen. X is still the Senate
+placeholder. The hallway legislator's tooltip says Silva too (HALL_V 9).
+Where this file says "Rep. X" it means her now.
+
+**The handoff moved:** Week 1 runs `w1-intro` = A narration → Continue →
+B Silva's dialogue → C the HANDOFF (bills to Silva and Sen. X; it was
+`w1-opening` node D) and then `w1-opening` runs only the presser (its first
+node, `start`).
+
 **Week 1 is a two-parter (2026-10-12):** `w1-intro` (the week's `pre`) is
 node A, the narration beat (Devin edits it from the tablet), then CONTINUE
 into node B, the dialogue with Rep. Christina Silva (the old optional talk

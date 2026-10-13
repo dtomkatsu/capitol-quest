@@ -830,7 +830,7 @@ def render(layers=True, walk_png=False):
         dict(id="legislator", name="Your Introducer", kind="door",
              px=sp(ffx), py=sp(ffy - 60),
              zone=zone(ffx, ffy - 44, 66, 100), at=at(ffx, ffy),
-             text="Rep. X — the member who agreed to carry your "
+             text="Rep. Christina Silva — the member who agreed to carry your "
                   "bills, waiting off to the side between the morning "
                   "caucus and the first floor session. Opening Day is "
                   "the one morning everyone is reachable."),

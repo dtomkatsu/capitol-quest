@@ -172,12 +172,12 @@
   "ran out of clock": "The deadline passed while it was still waiting."
  },
  "introducers": {
-  "_note": "YOUR TWO MEMBERS — the people who actually introduce and carry the bills, because the player never can (The Advocate has no seat and no vote). One per chamber: the House introducer files the package and carries it through Finance and House floor; the Senate introducer picks it up at crossover and carries it through Ways and Means and Senate floor. Which one is 'on point' is derived from the STAGE's chamber (stages.*.chamber), never stored per bill — every bill in module 1 runs the same House-first route, so a per-bill introducer field would be duplicated state that can drift. NAMES ARE PLACEHOLDERS (Rep. X / Sen. X) pending the real fictional names; `char` links to session.json characters exactly the way chairs do, so renaming one means renaming both files. RAPPORT is 0-100 and starts at gate.introBaseline: the odds term is ZERO-CENTRED ((rapport - baseline) / div), so a player who never touches the relationship gets EXACTLY the pre-2026-08-15 numbers and the simulation-calibrated enact-rate bands still hold. Only the swing away from baseline is new. Keep it that way — a rapport term that pays out at baseline would silently re-tune every band in the design doc.",
+  "_note": "YOUR TWO MEMBERS — the people who actually introduce and carry the bills, because the player never can (The Advocate has no seat and no vote). One per chamber: the House introducer files the package and carries it through Finance and House floor; the Senate introducer picks it up at crossover and carries it through Ways and Means and Senate floor. Which one is 'on point' is derived from the STAGE's chamber (stages.*.chamber), never stored per bill — every bill in module 1 runs the same House-first route, so a per-bill introducer field would be duplicated state that can drift. THE HOUSE INTRODUCER IS REP. CHRISTINA SILVA (renamed from the Rep. X placeholder 2026-10-12, Devin); the Senate one is still the placeholder Sen. X; `char` links to session.json characters exactly the way chairs do, so renaming one means renaming both files. RAPPORT is 0-100 and starts at gate.introBaseline: the odds term is ZERO-CENTRED ((rapport - baseline) / div), so a player who never touches the relationship gets EXACTLY the pre-2026-08-15 numbers and the simulation-calibrated enact-rate bands still hold. Only the swing away from baseline is new. Keep it that way — a rapport term that pays out at baseline would silently re-tune every band in the design doc.",
   "house": {
-   "name": "Rep. X",
+   "name": "Rep. Christina Silva",
    "chamber": "house",
    "role": "your House introducer",
-   "char": "rep-x",
+   "char": "silva",
    "rapport": 50,
    "voice": "\"I'll file it. Filing it is the easy part.\""
   },

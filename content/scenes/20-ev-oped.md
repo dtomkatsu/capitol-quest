@@ -1,5 +1,5 @@
 ---
-talks: silva, coalition, rep-x=talk-rep
+talks: silva=talk-rep, coalition
 actions: rally, lobby
 ---
 

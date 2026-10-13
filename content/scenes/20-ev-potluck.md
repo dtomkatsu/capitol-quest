@@ -1,5 +1,5 @@
 ---
-talks: silva, office
+talks: silva=talk-rep, office
 actions: bench, lobby
 ---
 

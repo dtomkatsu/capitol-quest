@@ -194,7 +194,7 @@ const OFF_V = 2;
    so meta.scale is 0.5 and every hotspot px in the JSON is byte-
    identical to v2. 4 = the legislator figure() redesign, same day —
    art only, hotspot px unchanged again. */
-const HALL_V = 8;   // 8 = hotspot approach points for tap-to-walk;
+const HALL_V = 9;   // 8 = hotspot approach points for tap-to-walk;
                     // 7 = depth bands, per-object for the pots, the
                     // posts and the legislator (2026-09-17)
 /* THE PLAYER CHARACTER. One bake shared by every room
@@ -1557,8 +1557,7 @@ const SYM = (() => {
   };
   // aliases: characters and actions that share a drawing
   S.kawaguchi = S.souza = S.yamamoto = S.chamber;
-  S["rep-x"] = S["sen-x"] = S.introducer;
-  S.grange = S.briefcase;
+  S.silva = S["sen-x"] = S.introducer;
   S.office = S.clipboard;
   S.coalition = S.lei;
   S.lobby = S.building;
@@ -5719,7 +5718,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=21");
+    this.load.json("session", "map/session.json?v=23");
     this.load.json("chairs", "map/chairs.json?v=2");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

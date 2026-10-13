@@ -132,8 +132,8 @@
   },
   "silva": {
    "name": "Rep. Christina Silva",
-   "role": "House member, business caucus",
-   "icon": "💼"
+   "role": "your House introducer",
+   "icon": "🗳"
   },
   "_souzaNote": "Sen. Chris Souza is named in chairs.json (s-wam) and is the ONLY named character with no talk slot and no scene of his own. That is the point of w3-souza: House money you can walk up to, Senate money you cannot. He never speaks on screen — his scheduler, his committee members and a closed door speak for him. Do not add him to talkDefaults; a weekly 'talk to Souza' option would delete the whole premise.",
   "souza": {
@@ -151,12 +151,7 @@
    "role": "",
    "icon": "🌺"
   },
-  "_introducersNote": "rep-x / sen-x are YOUR TWO INTRODUCERS — the members who carry the package, since the player has no seat. They are the only named characters on the player's OWN side; the faceless-campaign rule (2026-08-14) covers staff and coalition, not legislators, because a bill has a member's name on it in the real world and pretending otherwise would teach the wrong thing. NAMES ARE PLACEHOLDERS. Their gameplay record (rapport, chamber, odds terms) lives in chairs.json `introducers`, linked by `char`, exactly the way chairs are.",
-  "rep-x": {
-   "name": "Rep. X",
-   "role": "your House introducer",
-   "icon": "🗳"
-  },
+  "_introducersNote": "silva (Rep. Christina Silva, renamed from the rep-x placeholder 2026-10-12) / sen-x are YOUR TWO INTRODUCERS — the members who carry the package, since the player has no seat. They are the only named characters on the player's OWN side; the faceless-campaign rule (2026-08-14) covers staff and coalition, not legislators, because a bill has a member's name on it in the real world and pretending otherwise would teach the wrong thing. NAMES ARE PLACEHOLDERS. Their gameplay record (rapport, chamber, odds terms) lives in chairs.json `introducers`, linked by `char`, exactly the way chairs are.",
   "sen-x": {
    "name": "Sen. X",
    "role": "your Senate introducer",
@@ -377,13 +372,6 @@
   "w1-opening": {
    "_note": "Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.",
    "start": {
-    "speaker": "rep-x",
-    "text": "They're waiting in the alcove off the House corridor, folder under one arm, still wearing the lei from the floor. \"There you are. The clerk wants bill forms by Friday, and before my name goes on them I want to hear it from you: what am I carrying, and who's standing behind me when I carry it?\"",
-    "voices": [],
-    "goto": "presser",
-    "choices": []
-   },
-   "presser": {
     "text": "Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?",
     "voices": [
      {
@@ -402,8 +390,7 @@
        "support": 5,
        "influence": -4
       },
-      "reply": "The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad.",
-      "goto": "carriers"
+      "reply": "The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad."
      },
      {
       "label": "\"Cost of living. Discipline. A budget that doesn't wobble.\"",
@@ -411,8 +398,7 @@
        "influence": 5,
        "support": -3
       },
-      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet.",
-      "goto": "carriers"
+      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet."
      },
      {
       "label": "Four minutes of pure aloha — thank everyone, promise nothing.",
@@ -420,85 +406,7 @@
        "support": 1,
        "influence": 1
       },
-      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'",
-      "goto": "carriers"
-     }
-    ]
-   },
-   "carriers": {
-    "_note": "The bills are already chosen when this plays (agenda lock -> runEvent), so this is the handoff, not a pitch. It exists to put two faces on the sentence 'members carry the bills' before the gauntlet starts.",
-    "text": "Room 312, after the cameras leave. Two members are waiting for you, and between them they are the only reason your package exists as paper rather than opinion. Rep. X will file in the House this week and walk it through Finance. Sen. X gets it in April, if it lives that long, and has read exactly none of it yet. \"So,\" Rep. X says, pulling the introduction forms over, \"whose name goes first, and what do we do when Finance asks us to cut it?\"",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "Introduction is the one step that cannot fail. Everything after it can. Use the free step to set the terms."
-     },
-     {
-      "t": "talkstory",
-      "text": "Two members, two chambers, one package — and they have not talked to each other about it once. That is your job now, not theirs."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"Both names on both bills. You two are a team before Finance is a problem.\"",
-      "effects": {
-       "rapport": {
-        "house": 6,
-        "senate": 6
-       },
-       "influence": -2
-      },
-      "reply": "Sen. X raises an eyebrow at being volunteered, then signs anyway. It costs you something upstairs — leadership notices members pairing off early — and buys you two people who now have to call each other."
-     },
-     {
-      "label": "\"Rep. X leads. Sen. X, stay clean until crossover.\"",
-      "effects": {
-       "rapport": {
-        "house": 10,
-        "senate": -4
-       },
-       "influence": 2
-      },
-      "reply": "A conventional, competent split. Rep. X takes the weight and the credit. Sen. X gets a package in April with somebody else's fingerprints on it, and remembers that."
-     },
-     {
-      "label": "\"We cut nothing. Tell Finance the number is the bill.\"",
-      "check": {
-       "skill": "basebuilding",
-       "dc": 12,
-       "type": "red",
-       "mods": [
-        {
-         "from": "support",
-         "per": 25
-        },
-        {
-         "from": "skill",
-         "id": "talkstory",
-         "per": 4
-        }
-       ]
-      },
-      "success": {
-       "reply": "Rep. X looks at the forms for a while. \"If I say that in Finance, I own it — and if you leave me out there alone, I don't get it back.\" You tell them who is standing behind them, by name and by number. They file it whole.",
-       "effects": {
-        "rapport": {
-         "house": 12,
-         "senate": 4
-        },
-        "support": 3,
-        "flag": "held-the-number"
-       }
-      },
-      "failure": {
-       "reply": "\"That's a great line for a rally,\" Rep. X says, not unkindly, \"and I'm the one who has to say it to a chair who signs my committee assignments.\" The forms get filed. A trim is already implied.",
-       "effects": {
-        "rapport": {
-         "house": -6
-        },
-        "support": -2
-       }
-      }
+      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'"
      }
     ]
    },
@@ -507,7 +415,7 @@
     "talks": {
      "kawaguchi": "w1-kawaguchi",
      "coalition": "talk-coalition",
-     "rep-x": "talk-rep",
+     "silva": "talk-rep",
      "sen-x": "talk-sen"
     },
     "actions": [
@@ -652,7 +560,7 @@
     "talks": {
      "office": "talk-office",
      "kawaguchi": "talk-kawaguchi",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep"
     },
     "actions": [
      "lobby",
@@ -699,7 +607,7 @@
    "unlocks": {
     "talks": {
      "coalition": "talk-coalition",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep"
     },
     "actions": [
      "rally",
@@ -768,9 +676,8 @@
    },
    "unlocks": {
     "talks": {
-     "silva": "talk-silva",
-     "coalition": "talk-coalition",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep",
+     "coalition": "talk-coalition"
     },
     "actions": [
      "rally",
@@ -883,7 +790,7 @@
    },
    "unlocks": {
     "talks": {
-     "silva": "talk-silva",
+     "silva": "talk-rep",
      "office": "talk-office"
     },
     "actions": [
@@ -1001,27 +908,27 @@
   },
   "talk-rep": {
    "start": {
-    "speaker": "rep-x",
-    "text": "\"Everyone thinks introducing a bill is the hard part.\" They gesture at a shelf of binders, none of them yours. \"Forty-one measures have my name on them this session. Three of them I'd take a bad meeting for. Tell me again why yours is one of the three.\"",
+    "speaker": "silva",
+    "text": "\"Everyone thinks introducing a bill is the hard part.\" She gestures at a shelf of binders, none of them yours. \"Forty-one measures have my name on them this session. Three of them I'd take a bad meeting for. Tell me again why yours is one of the three.\"",
     "voices": [
      {
       "t": "procedure",
-      "text": "Forty-one introductions, and a member's real currency is which ones they spend a chair's patience on. You are asking for that, not for a signature."
+      "text": "Forty-one introductions, and a member's real currency is which ones she spends a chair's patience on. You are asking for that, not for a signature."
      },
      {
       "t": "basebuilding",
-      "text": "They want to know the people behind it are real. Give them a district and a name, not a coalition letterhead."
+      "text": "She wants to know the people behind it are real. Give them a district and a name, not a coalition letterhead."
      }
     ],
     "choices": [
      {
-      "label": "Give them the district numbers. Their district.",
+      "label": "Give her the district numbers. Her district.",
       "effects": {
        "rapport": {
         "house": 4
        }
       },
-      "reply": "They read it twice. \"Eleven hundred households in my precincts alone?\" It goes in the top folder, which is a smaller folder than it sounds."
+      "reply": "She reads it twice. \"Eleven hundred households in my precincts alone?\" It goes in the top folder, which is a smaller folder than it sounds."
      },
      {
       "label": "\"Because you'll be the one who passed it.\"",
@@ -1075,16 +982,16 @@
   "ev-introducer": {
    "_note": "The introducer-relationship event. Reachable from week 4 on via genericEvents. Deliberately a squeeze rather than a favour: the member is carrying real risk and asking the player to absorb some of it, which is what rapport actually buys.",
    "start": {
-    "speaker": "rep-x",
-    "text": "They catch you before the elevator, holding a marked-up copy of your own bill. \"Leadership's office called. Not about your bill — about me.\" A committee assignment, a district project, a favour owed; the specifics don't matter and they don't offer them. \"They'd like to know if I'm carrying this all the way or just filing it. I have to give them an answer this week, and whatever I say, I have to live in this building afterward.\"",
+    "speaker": "silva",
+    "text": "She catches you before the elevator, holding a marked-up copy of your own bill. \"Leadership's office called. Not about your bill — about me.\" A committee assignment, a district project, a favour owed; the specifics don't matter and she doesn't offer them. \"They'd like to know if I'm carrying this all the way or just filing it. I have to give them an answer this week, and whatever I say, I have to live in this building afterward.\"",
     "voices": [
      {
       "t": "procedure",
-      "text": "This is the pressure that never appears in a journal entry. No vote, no record — just a member deciding how much of their own year to spend on you."
+      "text": "This is the pressure that never appears in a journal entry. No vote, no record — just a member deciding how much of her own year to spend on you."
      },
      {
       "t": "talkstory",
-      "text": "They came to you first. That is the whole tell. Somebody who had already folded would have sent an email on Friday."
+      "text": "She came to you first. That is the whole tell. Somebody who had already folded would have sent an email on Friday."
      },
      {
       "t": "basebuilding",
@@ -1101,7 +1008,7 @@
        "support": 2,
        "influence": -3
       },
-      "reply": "They exhale. \"Then I'll say yes.\" You have just promised turnout in a district you do not organize yet, which is a problem for a future week and a real one."
+      "reply": "She exhales. \"Then I'll say yes.\" You have just promised turnout in a district you do not organize yet, which is a problem for a future week and a real one."
      },
      {
       "label": "\"Say whatever keeps you safe. I'd rather have you in April.\"",
@@ -1111,7 +1018,7 @@
        },
        "influence": 2
       },
-      "reply": "\"...Thank you.\" Nobody in this hallway says that to a member, and it costs the bill something this week — but they will still be picking up the phone in April, which is more than most advocates can say."
+      "reply": "\"...Thank you.\" Nobody in this hallway says that to a member, and it costs the bill something this week — but she will still be picking up the phone in April, which is more than most advocates can say."
      },
      {
       "label": "\"Ask them to put that request in writing.\"",
@@ -1132,7 +1039,7 @@
        ]
       },
       "success": {
-       "reply": "Rep. X actually laughs. \"They will never do that.\" Which is the point, and they see it a beat later: a request nobody will write down is a request nobody can enforce. The call is not returned, and the bill keeps its number.",
+       "reply": "Silva actually laughs. \"They will never do that.\" Which is the point, and she sees it a beat later: a request nobody will write down is a request nobody can enforce. The call is not returned, and the bill keeps its number.",
        "effects": {
         "rapport": {
          "house": 8
@@ -1142,7 +1049,7 @@
        }
       },
       "failure": {
-       "reply": "\"That's how you talk to an agency, not to the people who set my committee.\" They put the marked-up copy back in their bag. \"I'll handle it my way.\" You do not learn what their way was.",
+       "reply": "\"That's how you talk to an agency, not to the people who set my committee.\" She puts the marked-up copy back in her bag. \"I'll handle it my way.\" You do not learn what their way was.",
        "effects": {
         "rapport": {
          "house": -8
@@ -1155,7 +1062,7 @@
    },
    "unlocks": {
     "talks": {
-     "rep-x": "talk-rep",
+     "silva": "talk-rep",
      "sen-x": "talk-sen",
      "office": "talk-office"
     },
@@ -1238,7 +1145,7 @@
     "talks": {
      "coalition": "talk-coalition",
      "office": "talk-office",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep"
     },
     "actions": [
      "bench",
@@ -1461,7 +1368,7 @@
    "unlocks": {
     "talks": {
      "coalition": "talk-coalition",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep"
     },
     "actions": [
      "rally",
@@ -2006,7 +1913,7 @@
    },
    "unlocks": {
     "talks": {
-     "silva": "talk-silva",
+     "silva": "talk-rep",
      "coalition": "talk-coalition",
      "office": "talk-office"
     },
@@ -2017,7 +1924,7 @@
    }
   },
   "w1-intro": {
-   "_note": "WEEK 1, PART ONE AND TWO. Node A is the narration beat; Continue leads to node B, the dialogue with Rep. Christina Silva (it was the optional talk w1-silva, merged in here 2026-10-12, Devin: \"the second dialogue is with that representative Silva\"). Then the week's own scene, w1-opening, picks up with Rep. X. Original note: Week 1's narration beat — the room, the number, before anyone speaks. It runs as week 1's `pre` (calendar), then w1-opening starts at the Rep. X talk. It used to be node A of w1-opening; moved out so it can be edited on its own (2026-10-12, Devin).",
+   "_note": "WEEK 1, PART ONE AND TWO. Node A is the narration beat; Continue leads to node B, the dialogue with Rep. Christina Silva (it was the optional talk w1-silva, merged in here 2026-10-12, Devin: \"the second dialogue is with that representative Silva\"). Then the HANDOFF (node C — the bills go to Silva and Sen. X; it used to close w1-opening), and then the week's own scene, w1-opening, runs the presser. Original note: Week 1's narration beat — the room, the number, before anyone speaks. It runs as week 1's `pre` (calendar), then w1-opening starts at the Rep. X talk. It used to be node A of w1-opening; moved out so it can be edited on its own (2026-10-12, Devin).",
    "art": "w1-opening",
    "start": {
     "text": "It's the first day of the session. Hundreds of people stream into the Capitol, filling the offices and balconies. Draped in leis, legislators and their staff welcome visitors with tables of plate lunches.\n\nYou work your way through the crowd and spot Representative Silva.",
@@ -2045,14 +1952,16 @@
        "support": 2,
        "influence": -2
       },
-      "reply": "The smile holds, one degree cooler. \"Then I will read the bill very... closely.\""
+      "reply": "The smile holds, one degree cooler. \"Then I will read the bill very... closely.\"",
+      "goto": "carriers"
      },
      {
       "label": "\"Send me your carve-out language. No promises.\"",
       "effects": {
        "influence": 3
       },
-      "reply": "\"That's all I ask.\" It is never all she asks."
+      "reply": "\"That's all I ask.\" It is never all she asks.",
+      "goto": "carriers"
      },
      {
       "label": "\"Say it on the record, then. At the hearing, under your own name.\"",
@@ -2079,6 +1988,83 @@
        "effects": {
         "influence": 2,
         "support": -4
+       }
+      }
+     }
+    ]
+   },
+   "carriers": {
+    "_note": "The bills are already chosen when this plays (agenda lock -> runEvent), so this is the handoff, not a pitch. It exists to put two faces on the sentence 'members carry the bills' before the gauntlet starts.",
+    "text": "Silva walks you down the corridor to Room 312, where Sen. X is already waiting. Between the two of them they are the only reason your package exists as paper rather than opinion. Silva will file in the House this week and walk it through Finance. Sen. X gets it in April, if it lives that long, and has read exactly none of it yet. \"So,\" Silva says, pulling the introduction forms over, \"whose name goes first, and what do we do when Finance asks us to cut it?\"",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Introduction is the one step that cannot fail. Everything after it can. Use the free step to set the terms."
+     },
+     {
+      "t": "talkstory",
+      "text": "Two members, two chambers, one package — and they have not talked to each other about it once. That is your job now, not theirs."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"Both names on both bills. You two are a team before Finance is a problem.\"",
+      "effects": {
+       "rapport": {
+        "house": 6,
+        "senate": 6
+       },
+       "influence": -2
+      },
+      "reply": "Sen. X raises an eyebrow at being volunteered, then signs anyway. It costs you something upstairs — leadership notices members pairing off early — and buys you two people who now have to call each other."
+     },
+     {
+      "label": "\"Rep. Silva leads. Sen. X, stay clean until crossover.\"",
+      "effects": {
+       "rapport": {
+        "house": 10,
+        "senate": -4
+       },
+       "influence": 2
+      },
+      "reply": "A conventional, competent split. Silva takes the weight and the credit. Sen. X gets a package in April with somebody else's fingerprints on it, and remembers that."
+     },
+     {
+      "label": "\"We cut nothing. Tell Finance the number is the bill.\"",
+      "check": {
+       "skill": "basebuilding",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "support",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "talkstory",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Silva looks at the forms for a while. \"If I say that in Finance, I own it — and if you leave me out there alone, I don't get it back.\" You tell them who is standing behind them, by name and by number. They file it whole.",
+       "effects": {
+        "rapport": {
+         "house": 12,
+         "senate": 4
+        },
+        "support": 3,
+        "flag": "held-the-number"
+       }
+      },
+      "failure": {
+       "reply": "\"That's a great line for a rally,\" Silva says, not unkindly, \"and I'm the one who has to say it to a chair who signs my committee assignments.\" The forms get filed. A trim is already implied.",
+       "effects": {
+        "rapport": {
+         "house": -6
+        },
+        "support": -2
        }
       }
      }
@@ -2222,34 +2208,11 @@
     "talks": {
      "kawaguchi": "talk-kawaguchi",
      "office": "talk-office",
-     "rep-x": "talk-rep"
+     "silva": "talk-rep"
     },
     "actions": [
      "lobby",
      "push"
-    ]
-   }
-  },
-  "talk-silva": {
-   "start": {
-    "speaker": "silva",
-    "text": "\"Nothing personal, ever — that's the first rule of this hallway.\" She offers macadamia candy from a tin. \"The business folks in my district just want predictability. Tax bills are weather. They sell umbrellas.\"",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "Predictability IS worth money. She's the most honest person on this floor, in the way a price tag is honest."
-     },
-     {
-      "t": "talkstory",
-      "text": "Take the candy. Audit the metaphor. Weather doesn't hire three lobbyists per raindrop."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Take the candy. Keep walking.",
-      "effects": {},
-      "reply": "It's good candy. It is always good candy."
-     }
     ]
    }
   }

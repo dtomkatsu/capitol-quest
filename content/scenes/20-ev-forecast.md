@@ -1,5 +1,5 @@
 ---
-talks: office, kawaguchi, rep-x=talk-rep
+talks: office, kawaguchi, silva=talk-rep
 actions: lobby, push
 ---
 

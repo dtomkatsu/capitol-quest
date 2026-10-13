@@ -1,6 +1,6 @@
 ---
 _note: DEADLINE WEEK: conference (chairs.json stages.conf, deadline 15). The conference roll in resolveBills is AUTOMATIC and halves a bill on a miss — the highest-stakes check in the game and the only one the player never opts into — so this scene exists to make the player feel it coming rather than discover it in a status word. Grange returns here because conference is where the business roundtable's access is worth the most and the coalition's is worth the least.
-talks: silva, coalition, office
+talks: silva=talk-rep, coalition, office
 actions: rally, lobby
 ---
 
