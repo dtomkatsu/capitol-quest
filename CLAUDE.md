@@ -1253,8 +1253,8 @@ Rules that must survive edits:
 
 ## Demo mode (2026-10-12)
 
-`session.json` `demo: {lastWeek: 6, title, text}` ends the game after that
-week — Devin's call, for a demo that goes through week 6 (the Recess).
+`session.json` `demo: {lastWeek: 7, title, text}` ends the game after that
+week — Devin's call (was 6, moved to 7 on 2026-10-13); the end card also shows `demoSummaryHtml()`, "What you did", read off S.log / meters / skills / bills.
 `SessionPanel.init` moves `data.sineDieWeek` to `lastWeek` IN MEMORY and
 cuts `data.calendar` to match (timeline, progress bar), because the
 adjournment machinery keys on `sineDieWeek` in ~20 places; only the words

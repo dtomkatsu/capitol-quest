@@ -5184,6 +5184,33 @@ const SessionPanel = {
        the money and funded none of it" — under a bar that said the
        priorities were funded. The gap bar rides here at sine die rather
        than in the ledger, so the card and the bar cannot disagree. */
+    /* DEMO ending: what the player did, read straight off the save —
+       S.log (every choice, roll and action), the meters and the skills. */
+    const demoSummaryHtml = () => {
+      const log = S.log || [];
+      const picks = log.filter((l) => l.choice);
+      const rolls = log.filter((l) => l.check);
+      const won = rolls.filter((l) => l.ok).length;
+      const acts = log.filter((l) => l.action).length;
+      const sk = Object.keys(data.skills || {}).filter((k) =>
+        !k.startsWith("_") && data.skills[k].name)
+        .map((k) => esc(data.skills[k].name) + " " + (S.skills[k] || 0));
+      const live = S.bills.filter((b) => b.status !== "dead" &&
+        b.status !== "enacted").length;
+      const row = (k, v) => '<div class="sh-row"><span class="shname">' +
+        k + "</span><span class=\"shtag\">" + v + "</span></div>";
+      return '<div class="sh-sec">What you did</div>' +
+        row("Weeks worked", Math.min(S.week, demo.lastWeek) + " of 16") +
+        row("Conversations and decisions", picks.length) +
+        row("Skill checks won", rolls.length ? won + " of " + rolls.length : "none") +
+        row("Moves in the field", acts) +
+        row("Public support / influence",
+          S.metrics.support + " / " + S.metrics.influence) +
+        row("Bills carried", S.bills.length + (S.bills.length ?
+          " (" + live + " still alive)" : "")) +
+        '<div class="sh-note">Your instincts: ' + sk.join(" · ") + "</div>";
+    };
+
     const sineDieHtml = () => {
       if (demo) {
         // the demo's ending: no verdict (the bills are mid-flight, so a
@@ -5192,7 +5219,7 @@ const SessionPanel = {
         return '<div class="sh-sec">The demo</div>' +
           '<div class="sess-score"><b>' + esc(demo.title) + "</b>" +
           "<small>" + esc(demo.text) + "</small></div>" +
-          billLedger(true) +
+          demoSummaryHtml() + billLedger(true) +
           '<button class="sh-week-end" id="sess-new" type="button">' +
           "Play again ▸</button>";
       }
@@ -5718,7 +5745,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=36");
+    this.load.json("session", "map/session.json?v=37");
     this.load.json("chairs", "map/chairs.json?v=2");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
