@@ -1277,6 +1277,13 @@ below about `souza-intro` no longer holds: it exists from week 2 on). Week 5
 has no scripted event any more and takes the generic rotation (`ev-potluck`).
 The paragraph below describes the pre-demo chain.
 
+**Week 1 is a two-parter (2026-10-12):** `w1-intro` (the week's `pre`) is
+node A, the narration beat (Devin edits it from the tablet), then CONTINUE
+into node B, the dialogue with Rep. Christina Silva (the old optional talk
+`w1-silva`, merged into that file; `silva` is no longer in w1-opening's
+`talks:`). After it, `w1-opening` runs as the week's own scene and starts
+at the Rep. X talk.
+
 **Also 2026-10-12 (Devin):** there is no week-0 briefing any more
 (`00-w0-briefing.md` is in `content/drafts/`; week 1 no longer opens the
 office door), and **Grange the lobbyist is now Rep. Christina Silva**, a House

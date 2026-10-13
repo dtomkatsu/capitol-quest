@@ -1,7 +1,7 @@
 ---
 _note: Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.
 unlocks._note: Opening Day opens the whole ground floor: the scripted week-1 talks (these used to live on the calendar entry) plus a first walk through the building.
-talks: kawaguchi=w1-kawaguchi, silva=w1-silva, coalition, rep-x=talk-rep, sen-x=talk-sen
+talks: kawaguchi=w1-kawaguchi, coalition, rep-x=talk-rep, sen-x=talk-sen
 actions: lobby
 ---
 
