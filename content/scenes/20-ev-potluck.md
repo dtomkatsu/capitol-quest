@@ -1,5 +1,5 @@
 ---
-talks: grange, office
+talks: silva, office
 actions: bench, lobby
 ---
 

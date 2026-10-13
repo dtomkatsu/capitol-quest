@@ -27,7 +27,7 @@ to ship it.
 _note: Free text that ships as _note (any _key: does).
 art: w2-finance                       banner, site/assets/events/<art>.png
 at: {"island": "hawaii"}              week-beat camera target (JSON)
-talks: grange, office, rep-x=talk-rep doors this scene opens (bare id = talk-<id>)
+talks: silva, office, rep-x=talk-rep doors this scene opens (bare id = talk-<id>)
 actions: bench, lobby                 ("push" = the work-the-chair rows)
 ---
 
@@ -69,14 +69,14 @@ Fail:
 **Names.** Skills by display name or short alias — `Policy Brain` /
 `Brain`, `Procedure` / `Proc`, `Educator` / `Edu`, `Talk Story` / `Talk`,
 `Mobilizing` / `Mob`, `Base Building` / `Base`. Speakers by name or last
-name (`Yamamoto`, `Rep. X`, `Grange`) or id. A beat with no speaker is
+name (`Yamamoto`, `Rep. X`, `Silva`) or id. A beat with no speaker is
 narration — that is how the player's own campaign talks (faceless, per
 CLAUDE.md). Souza never speaks.
 
 **Effects**, comma-separated after `effect:`: `+2 support`, `-1 influence`,
 `+6 house` / `-3 senate` (introducer rapport), `-$600M revenue` (also `$K`,
 `$B`), `flag some-flag`, `+1 TALK STORY` (a skill pip), `unlock talk
-grange=talk-grange`, `unlock action bench`. Blank = nothing happens.
+silva=talk-silva`, `unlock action bench`. Blank = nothing happens.
 
 **Mods** on a check: `support/25` (+1 per 25 support), `influence/25`,
 `PROCEDURE/3` (+1 per 3 skill), `flag id +2 "label"` (bonus if the flag is

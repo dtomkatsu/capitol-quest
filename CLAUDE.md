@@ -1277,6 +1277,15 @@ below about `souza-intro` no longer holds: it exists from week 2 on). Week 5
 has no scripted event any more and takes the generic rotation (`ev-potluck`).
 The paragraph below describes the pre-demo chain.
 
+**Also 2026-10-12 (Devin):** there is no week-0 briefing any more
+(`00-w0-briefing.md` is in `content/drafts/`; week 1 no longer opens the
+office door), and **Grange the lobbyist is now Rep. Christina Silva**, a House
+member on the business-friendly side — ids renamed `grange` → `silva`
+(`01-w1-silva.md`, `30-talk-silva.md`, `characters.silva`), she/her, the
+lobbyist-only lines (testifying, "our members", the roundtable) rewritten to a
+legislator's. She is an EXTERNAL actor like Kawaguchi, not one of the player's
+introducers. Older notes in this file that say "Grange" mean her.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:

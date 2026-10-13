@@ -130,9 +130,9 @@
    "role": "House Finance co-chair",
    "icon": "🏛"
   },
-  "grange": {
-   "name": "Curtis Grange",
-   "role": "business-roundtable lobbyist",
+  "silva": {
+   "name": "Rep. Christina Silva",
+   "role": "House member, business caucus",
    "icon": "💼"
   },
   "_souzaNote": "Sen. Chris Souza is named in chairs.json (s-wam) and is the ONLY named character with no talk slot and no scene of his own. That is the point of w3-souza: House money you can walk up to, Senate money you cannot. He never speaks on screen — his scheduler, his committee members and a closed door speak for him. Do not add him to talkDefaults; a weekly 'talk to Souza' option would delete the whole premise.",
@@ -374,28 +374,6 @@
   "text": "You've worked the first six weeks of a sixteen-week session: the opening, the first hearings, the money committees, the decking deadline, and the recess. Below is where your bills stand. What becomes of them — and the ten weeks after — is the rest of the game."
  },
  "dialogues": {
-  "w0-briefing": {
-   "start": {
-    "text": "Ground rules while it's quiet. Nothing in this building is owed to you — not a meeting, not a slot, not a microphone. Each week something happens, and the week is whatever that opens: a chair with fifteen minutes, a room worth packing, a door left ajar. When it opens, you get ONE real move — spend it or lose it. And what you spend your weeks doing, you get better at doing. Weeks disappear faster than you think. Lateral, crossover, conference, gone.",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "No standing appointments. Openings only — and openings expire Friday. Finally, a calendar as honest as the real one."
-     },
-     {
-      "t": "talkstory",
-      "text": "Then read every room fast. The week that opens a door rarely announces which one."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"Understood.\"",
-      "effects": {},
-      "reply": "Sleep this week. You won't later."
-     }
-    ]
-   }
-  },
   "w1-opening": {
    "_note": "Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.",
    "start": {
@@ -424,7 +402,7 @@
        "support": 5,
        "influence": -4
       },
-      "reply": "The crowd claps. Upstairs, two office doors close quietly. Grange, at the edge of the steps, writes one word on a legal pad.",
+      "reply": "The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad.",
       "goto": "carriers"
      },
      {
@@ -527,9 +505,8 @@
    "unlocks": {
     "_note": "Opening Day opens the whole ground floor: the scripted week-1 talks (these used to live on the calendar entry) plus a first walk through the building.",
     "talks": {
-     "office": "w0-briefing",
      "kawaguchi": "w1-kawaguchi",
-     "grange": "w1-grange",
+     "silva": "w1-silva",
      "coalition": "talk-coalition",
      "rep-x": "talk-rep",
      "sen-x": "talk-sen"
@@ -602,67 +579,6 @@
        "reply": "\"In front of staff?\" The sheet goes face-down. \"I'll find a week.\" He will not find a week.",
        "effects": {
         "influence": -5
-       }
-      }
-     }
-    ]
-   }
-  },
-  "w1-grange": {
-   "start": {
-    "speaker": "grange",
-    "text": "Grange finds you by the koa doors, all smiles. \"Big session, yeah? Our members can live with a lot — but the conveyance thing reads like a tax on selling your own house. Help me help you: carve out everything under three million, we stay neutral. Testify friendly, even.\"",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "The bill already exempts owner-occupied homes under the standard threshold — that's not spin, that's the bill text. Cite it and watch him improvise."
-     },
-     {
-      "t": "basebuilding",
-      "text": "Neutral-to-friendly from the roundtable is a real asset. Just don't pay for it with language the base will notice missing."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"It already exempts owner-occupied homes. Read the bill, Curtis.\"",
-      "effects": {
-       "support": 2,
-       "influence": -2
-      },
-      "reply": "The smile holds, one degree cooler. \"Then our testimony will read the bill very... closely.\""
-     },
-     {
-      "label": "\"Send me your carve-out language. No promises.\"",
-      "effects": {
-       "influence": 3
-      },
-      "reply": "\"That's all I ask.\" It is never all he asks."
-     },
-     {
-      "label": "\"Say it at the hearing, then. On the record, under your own name.\"",
-      "check": {
-       "skill": "basebuilding",
-       "dc": 12,
-       "type": "red",
-       "mods": [
-        {
-         "from": "support",
-         "per": 25
-        }
-       ]
-      },
-      "success": {
-       "reply": "The smile finally goes. \"We don't usually testify on the record this early.\" They don't testify at all. Your bill gets a hearing without a villain in the room.",
-       "effects": {
-        "support": 3,
-        "influence": -2
-       }
-      },
-      "failure": {
-       "reply": "\"Happy to!\" And he does — warmly, at length, in favor of a version of your bill that does not exist. The committee writes down HIS number.",
-       "effects": {
-        "influence": 2,
-        "support": -4
        }
       }
      }
@@ -853,7 +769,7 @@
    },
    "unlocks": {
     "talks": {
-     "grange": "talk-grange",
+     "silva": "talk-silva",
      "coalition": "talk-coalition",
      "rep-x": "talk-rep"
     },
@@ -968,7 +884,7 @@
    },
    "unlocks": {
     "talks": {
-     "grange": "talk-grange",
+     "silva": "talk-silva",
      "office": "talk-office"
     },
     "actions": [
@@ -1036,29 +952,6 @@
       "label": "\"Noted, chair.\"",
       "effects": {},
       "reply": "He almost smiles. Almost."
-     }
-    ]
-   }
-  },
-  "talk-grange": {
-   "start": {
-    "speaker": "grange",
-    "text": "\"Nothing personal, ever — that's the first rule of this hallway.\" He offers macadamia candy from a tin. \"Our members just want predictability. Tax bills are weather. We sell umbrellas.\"",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "Predictability IS worth money. He's the most honest person on this floor, in the way a price tag is honest."
-     },
-     {
-      "t": "talkstory",
-      "text": "Take the candy. Audit the metaphor. Weather doesn't hire three lobbyists per raindrop."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Take the candy. Keep walking.",
-      "effects": {},
-      "reply": "It's good candy. It is always good candy."
      }
     ]
    }
@@ -2022,7 +1915,7 @@
   "w15-crunch": {
    "_note": "DEADLINE WEEK: conference (chairs.json stages.conf, deadline 15). The conference roll in resolveBills is AUTOMATIC and halves a bill on a miss — the highest-stakes check in the game and the only one the player never opts into — so this scene exists to make the player feel it coming rather than discover it in a status word. Grange returns here because conference is where the business roundtable's access is worth the most and the coalition's is worth the least.",
    "start": {
-    "text": "Conference. Room 309, and you are not in it.\n\nSix people — three from each chamber, named Monday — sitting at a table with the House draft on one side and the Senate draft on the other, and a deadline Friday. There is no public testimony. There is no hearing. There is a clock and a stack, and at some point after ten at night somebody says a number and somebody else says a smaller number.\n\nGrange has been in that hallway since Tuesday morning. He is not in the room either. He does not have to be; he has been in it for thirty years.",
+    "text": "Conference. Room 309, and you are not in it.\n\nSix people — three from each chamber, named Monday — sitting at a table with the House draft on one side and the Senate draft on the other, and a deadline Friday. There is no public testimony. There is no hearing. There is a clock and a stack, and at some point after ten at night somebody says a number and somebody else says a smaller number.\n\nRep. Silva has been in that hallway since Tuesday morning. She is not in the room either. She does not have to be; she has been in this building for thirty years.",
     "voices": [
      {
       "t": "procedure",
@@ -2063,7 +1956,7 @@
       "goto": "friday"
      },
      {
-      "label": "Find Grange in the hallway and ask him what he is actually protecting.",
+      "label": "Find Rep. Silva in the hallway and ask her what she is actually protecting.",
       "check": {
        "skill": "talkstory",
        "dc": 13,
@@ -2081,13 +1974,13 @@
        ]
       },
       "success": {
-       "reply": "He tells you, because at this hour of this week it costs him nothing and he has always slightly enjoyed you. It is not your bill. It is one clause in it, worth a fraction of the total, and he has been spending a week of a thirty-year reputation on it. You have been defending the whole thing against a man who only ever wanted one paragraph.",
+       "reply": "She tells you, because at this hour of this week it costs her nothing and she has always slightly enjoyed you. It is not your bill. It is one clause in it, worth a fraction of the total, and she has been spending a week of a thirty-year reputation on it. You have been defending the whole thing against a woman who only ever wanted one paragraph.",
        "effects": {
         "influence": 5
        }
       },
       "failure": {
-       "reply": "\"Long week,\" he says, and means it, and asks after your family, and means that too, and tells you nothing at all. He is very good at this. It is genuinely a pleasure to watch, right up until you are back in the hallway with what you came with.",
+       "reply": "\"Long week,\" she says, and means it, and asks after your family, and means that too, and tells you nothing at all. She is very good at this. It is genuinely a pleasure to watch, right up until you are back in the hallway with what you came with.",
        "effects": {
         "influence": -2
        }
@@ -2114,7 +2007,7 @@
    },
    "unlocks": {
     "talks": {
-     "grange": "talk-grange",
+     "silva": "talk-silva",
      "coalition": "talk-coalition",
      "office": "talk-office"
     },
@@ -2275,6 +2168,90 @@
     "actions": [
      "lobby",
      "push"
+    ]
+   }
+  },
+  "w1-silva": {
+   "start": {
+    "speaker": "silva",
+    "text": "Rep. Silva finds you by the koa doors, all smiles. \"Big session, yeah? The business folks in my district can live with a lot — but the conveyance thing reads like a tax on selling your own house. Help me help you: carve out everything under three million, and I keep them neutral. Friendly, even.\"",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "The bill already exempts owner-occupied homes under the standard threshold — that's not spin, that's the bill text. Cite it and watch her improvise."
+     },
+     {
+      "t": "basebuilding",
+      "text": "Neutral-to-friendly from the business caucus is a real asset. Just don't pay for it with language the base will notice missing."
+     }
+    ],
+    "choices": [
+     {
+      "label": "\"It already exempts owner-occupied homes. Read the bill, Representative.\"",
+      "effects": {
+       "support": 2,
+       "influence": -2
+      },
+      "reply": "The smile holds, one degree cooler. \"Then I will read the bill very... closely.\""
+     },
+     {
+      "label": "\"Send me your carve-out language. No promises.\"",
+      "effects": {
+       "influence": 3
+      },
+      "reply": "\"That's all I ask.\" It is never all she asks."
+     },
+     {
+      "label": "\"Say it on the record, then. At the hearing, under your own name.\"",
+      "check": {
+       "skill": "basebuilding",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "support",
+         "per": 25
+        }
+       ]
+      },
+      "success": {
+       "reply": "The smile finally goes. \"I don't usually put things on the record this early.\" She doesn't put this one there at all. Your bill gets a hearing without a villain in the room.",
+       "effects": {
+        "support": 3,
+        "influence": -2
+       }
+      },
+      "failure": {
+       "reply": "\"Happy to!\" And she does — warmly, at length, in favor of a version of your bill that does not exist. The committee writes down HER number.",
+       "effects": {
+        "influence": 2,
+        "support": -4
+       }
+      }
+     }
+    ]
+   }
+  },
+  "talk-silva": {
+   "start": {
+    "speaker": "silva",
+    "text": "\"Nothing personal, ever — that's the first rule of this hallway.\" She offers macadamia candy from a tin. \"The business folks in my district just want predictability. Tax bills are weather. They sell umbrellas.\"",
+    "voices": [
+     {
+      "t": "fiscal",
+      "text": "Predictability IS worth money. She's the most honest person on this floor, in the way a price tag is honest."
+     },
+     {
+      "t": "talkstory",
+      "text": "Take the candy. Audit the metaphor. Weather doesn't hire three lobbyists per raindrop."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Take the candy. Keep walking.",
+      "effects": {},
+      "reply": "It's good candy. It is always good candy."
+     }
     ]
    }
   }
