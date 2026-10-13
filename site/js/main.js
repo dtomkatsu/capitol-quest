@@ -1603,6 +1603,18 @@ const SessionPanel = {
   init(budget, policies, data, chairData, rateData, scene) {
     if (this.built || !budget || !policies || !data) return;
     this.built = true;
+    /* DEMO MODE (session.json `demo`): the session ends after
+       demo.lastWeek. The adjournment machinery keys on sineDieWeek in
+       twenty places, so rather than fork each one the data is bent in
+       memory — sineDieWeek moves up to the last demo week and the
+       calendar is cut to match (timeline, progress bar) — and only the
+       WORDS differ (`demo` below). Remove the block from session.json
+       and the full game is back; the file's own numbers never change. */
+    const demo = data.demo && data.demo.lastWeek ? data.demo : null;
+    if (demo) {
+      data.sineDieWeek = demo.lastWeek;
+      data.calendar = data.calendar.filter((c) => c.week <= demo.lastWeek);
+    }
     const $ = (id) => document.getElementById(id);
     const overlay = $("session-overlay");
     const body = $("sess-body");
@@ -1794,7 +1806,7 @@ const SessionPanel = {
       return {
         week: w,
         title: hit.title || data.weekTitles[w] || "Interim",
-        phase: hit.phase || (w >= data.sineDieWeek ? "Adjournment" :
+        phase: hit.phase || (w >= data.sineDieWeek && !demo ? "Adjournment" :
           w >= 14 ? "Conference" : "Session"),
         event: hit.event !== undefined ? hit.event :
           (w >= 2 && w < data.sineDieWeek
@@ -2279,7 +2291,8 @@ const SessionPanel = {
     const renderHead = () => {
       const cal = calFor(S.week);
       const dateStr = dateRangeFor(S.week);
-      $("tb-week-badge").textContent = "W" + S.week;
+      $("tb-week-badge").textContent = "W" +
+        (demo ? Math.min(S.week, demo.lastWeek) : S.week);
       $("tb-week-badge").title = dateStr;
       /* ONE masthead, in the panel's top-left corner: the stamped week
          numeral, the week's name, its phase and real dates. This is the
@@ -2290,7 +2303,11 @@ const SessionPanel = {
       // own word for it — not "Week 17 · Interim", a week that isn't one
       const over = S.week > data.sineDieWeek;
       const endDate = over ? dateRangeFor(data.sineDieWeek) : dateStr;
-      $("session-title").innerHTML = over
+      $("session-title").innerHTML = over && demo
+        ? '<span class="mast-no"><small>End of</small><b>demo</b></span>' +
+          '<span class="mast-t"><b>Thanks for playing</b><small>Weeks 1–' +
+          demo.lastWeek + "</small></span>"
+        : over
         ? '<span class="mast-no"><small>Sine</small><b>die</b></span>' +
           '<span class="mast-t"><b>The session has adjourned</b><small>' +
           "Adjournment" + (endDate ? " · " + esc(endDate) : "") +
@@ -2328,12 +2345,14 @@ const SessionPanel = {
           (!cal.noAction && weekOpen().acts.length &&
             S.actionWeek !== S.week));
       btn.disabled = interim;
-      btn.querySelector(".tc-label").textContent = interim ? "Sine die" :
+      btn.querySelector(".tc-label").textContent = interim ?
+        (demo ? "Demo" : "Sine die") :
         "Week " + S.week + " · " + cal.title;
       btn.querySelector(".tc-act").innerHTML =
-        (interim ? "Session over" :
+        (interim ? (demo ? "Demo complete" : "Session over") :
           needAgenda ? "Set agenda ▸" :
-          S.week === data.sineDieWeek ? "Leave the building ▸" :
+          S.week === data.sineDieWeek ?
+            (demo ? "Finish the demo ▸" : "Leave the building ▸") :
           "End Turn ▸") +
         (pending ? '<span class="tc-dot" data-tip="This week still has ' +
           'something unspent"></span>' : "");
@@ -3988,7 +4007,8 @@ const SessionPanel = {
         const skipping = !cal.noAction && S.actionWeek !== S.week &&
           (canPush || actIds.length);
         html += '<button class="sh-week-end" id="sess-next" type="button">' +
-          (S.week === data.sineDieWeek ? "Leave the building ▸" :
+          (S.week === data.sineDieWeek ?
+            (demo ? "Finish the demo ▸" : "Leave the building ▸") :
             "End Week " + S.week + " ▸") + "</button>" +
           (skipping ? '<div class="sh-note">An opening is ' +
             "unused — ending the week lets it close.</div>" : "");
@@ -5166,6 +5186,17 @@ const SessionPanel = {
        priorities were funded. The gap bar rides here at sine die rather
        than in the ledger, so the card and the bar cannot disagree. */
     const sineDieHtml = () => {
+      if (demo) {
+        // the demo's ending: no verdict (the bills are mid-flight, so a
+        // gap reading "nothing enacted" would say the player failed) —
+        // a thank-you, where the bills stand, and the one gold verb
+        return '<div class="sh-sec">The demo</div>' +
+          '<div class="sess-score"><b>' + esc(demo.title) + "</b>" +
+          "<small>" + esc(demo.text) + "</small></div>" +
+          billLedger(true) +
+          '<button class="sh-week-end" id="sess-new" type="button">' +
+          "Play again ▸</button>";
+      }
       const want = targetK(), got = raisedK();
       const enacted = S.bills.some((b) => b.status === "enacted");
       const unheard = S.bills.filter(
@@ -5688,7 +5719,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=16");
+    this.load.json("session", "map/session.json?v=18");
     this.load.json("chairs", "map/chairs.json?v=2");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

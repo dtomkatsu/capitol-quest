@@ -1251,6 +1251,20 @@ Rules that must survive edits:
   `failure` content — a failure that says nothing wastes the mechanic.
   Choices with no `check` key must keep working unchanged.
 
+## Demo mode (2026-10-12)
+
+`session.json` `demo: {lastWeek: 6, title, text}` ends the game after that
+week — Devin's call, for a demo that goes through week 6 (the Recess).
+`SessionPanel.init` moves `data.sineDieWeek` to `lastWeek` IN MEMORY and
+cuts `data.calendar` to match (timeline, progress bar), because the
+adjournment machinery keys on `sineDieWeek` in ~20 places; only the words
+change (`demo` const: masthead "End of demo", End Turn "Finish the demo ▸",
+and `sineDieHtml` shows the card + where the bills stand instead of the
+gap verdict — a mid-flight gap reading "nothing enacted" would say the
+player failed). **Delete the `demo` block and the full 16-week game is
+back; no other file changed.** `scenes.py build` leaves the block alone.
+session.json edited by hand: bump `map/session.json?v=` in main.js.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:
