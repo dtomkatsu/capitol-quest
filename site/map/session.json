@@ -994,56 +994,7 @@
       "text": "Nobody in this room disputes the numbers. What they don't have is a sentence that connects a missed recertification form to a tax bill. That sentence is the entire job."
      }
     ],
-    "choices": [
-     {
-      "label": "\"Then our bills are the answer to this. Say it that way, every time.\"",
-      "effects": {
-       "support": 4,
-       "influence": -1
-      },
-      "reply": "You watch it land. By afternoon two other organizations have picked up the framing, and one of them is a group that has never testified on a tax bill in its life."
-     },
-     {
-      "label": "\"Get me the recertification data. How many were actually still eligible?\"",
-      "check": {
-       "skill": "fiscal",
-       "dc": 11,
-       "type": "white",
-       "mods": [
-        {
-         "from": "skill",
-         "id": "educator",
-         "per": 4
-        },
-        {
-         "from": "influence",
-         "per": 30
-        }
-       ]
-      },
-      "success": {
-       "reply": "It takes three calls and a very patient analyst, but the answer comes back: the overwhelming majority of the people dropped were still eligible when they were dropped. That is not a caseload decline. That is a paperwork failure with a body count, and now you can say so with a citation.",
-       "effects": {
-        "support": 3,
-        "influence": 3,
-        "flag": "recert-data"
-       }
-      },
-      "failure": {
-       "reply": "What comes back is a summary table with the eligibility field aggregated away — technically responsive, practically useless. You can say 'many were still eligible.' You cannot say how many, and in this building the difference between those two sentences is everything.",
-       "effects": {
-        "influence": -1
-       }
-      }
-     },
-     {
-      "label": "Sit with it. Take the room's temperature before saying anything.",
-      "effects": {
-       "influence": 2
-      },
-      "reply": "Three department staff, two providers and a health-center director, and not one of them says the word 'taxes.' They have been told not to. It is useful to know exactly who is not allowed to make your argument for you."
-     }
-    ]
+    "choices": []
    },
    "unlocks": {
     "talks": {
