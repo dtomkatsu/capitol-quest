@@ -297,7 +297,6 @@
    "week": 7,
    "title": "Floor Votes",
    "phase": "Session",
-   "pre": "w7-storm",
    "milestone": false
   },
   {
@@ -1207,120 +1206,6 @@
     }
    }
   },
-  "w7-storm": {
-   "_note": "PRE-EVENT: pinned to week 7 by calendar `pre`, so it runs BEFORE the week's own event and is tracked in S.preDone, not S.eventDone. A -600000 revenueK hit ($600M) lands on the SAME FY2027 scoreboard as everything else (PolicyPanel.external via syncScore) — it does not kill any bill, it re-prices the whole session by moving the number the campaign has to cover. Sized deliberately: it is roughly fifteen times ev-emergency's $40M clinic rescue and is meant to be the moment the player's revenue arithmetic stops being comfortable. The state share is the teaching point — a federal declaration reimburses most of a disaster and the state carries the rest, immediately, out of a budget that was already short.",
-   "start": {
-    "text": "The Kona low sat over the chain for three days.\n\nBy the time it moved off, Kauaʻi had lost two highway bridges, Maui had six hundred homes with water through them, and the Kāneʻohe side of Oʻahu was a slow brown river with cars in it. Nobody died, which everyone keeps saying out loud, in the tone people use when they are not yet sure they believe it.\n\nThe Governor declares an emergency Sunday night. The federal declaration follows on Tuesday, which covers a large share of it eventually, on a reimbursement schedule measured in years. What it does not cover, and what cannot wait for years, is the state's own share: emergency housing, the two bridges, debris removal, the water systems on three islands, and the harbor.\n\nBudget and Finance puts a working number on it Wednesday morning. Six hundred million dollars.",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "Six hundred million against a budget that was already eight hundred million short. That is not a line item — it is the whole argument of your session, restated at gunpoint."
-     },
-     {
-      "t": "procedure",
-      "text": "This will move as an emergency appropriation and it will move FAST, ahead of everything, because it has to. Every hour Finance spends on it is an hour not spent on your notice."
-     },
-     {
-      "t": "basebuilding",
-      "text": "Six hundred families in shelters in Wailuku tonight. Whatever this does to the arithmetic, that is what the arithmetic is about."
-     },
-     {
-      "t": "talkstory",
-      "text": "Watch what happens to the phrase 'we can't afford it' this week. It is about to get very cheap, and it is about to get very expensive."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Say the obvious thing: this is what revenue is FOR.",
-      "effects": {
-       "support": 5,
-       "influence": -3
-      },
-      "reply": "You say it Wednesday, in front of a camera, while the water is still in people's houses. Half the building thinks you are the only honest person in it and the other half thinks you just used a disaster as a talking point, and both halves say so.",
-      "goto": "cost"
-     },
-     {
-      "label": "Say nothing this week. Send the coalition's vans to Wailuku.",
-      "effects": {
-       "support": 3,
-       "influence": 2
-      },
-      "reply": "Eleven vans, four days, no press release. On Friday a member you have never gotten a meeting with texts your organizer directly to ask where to send her church's donations.",
-      "goto": "cost"
-     },
-     {
-      "label": "Get in front of the appropriation: draft the pay-for and hand it over.",
-      "check": {
-       "skill": "fiscal",
-       "dc": 13,
-       "type": "red",
-       "mods": [
-        {
-         "from": "skill",
-         "id": "procedure",
-         "per": 3
-        },
-        {
-         "from": "flag",
-         "id": "recess-draft",
-         "add": 2,
-         "label": "the week you spent drafting"
-        },
-        {
-         "from": "influence",
-         "per": 30
-        }
-       ]
-      },
-      "success": {
-       "reply": "You are in Finance's anteroom Thursday at seven in the morning with three pages: what the state share actually is, what the rainy-day fund can carry without a downgrade, and what the gap is after both. It is the first document anyone has handed them that ends in a number instead of a request. The gap does not go away. But it is now YOUR framing of the gap that the committee is arguing inside of.",
-       "effects": {
-        "influence": 6
-       }
-      },
-      "failure": {
-       "reply": "You are in the anteroom at seven with three pages nobody asked you for, on the one morning of the year when the Finance staff have a genuine emergency and a chair standing over them. The analyst takes it politely. You watch her put it face-down on a stack.",
-       "effects": {
-        "influence": -3
-       }
-      },
-      "goto": "cost"
-     }
-    ]
-   },
-   "cost": {
-    "text": "The emergency appropriation passes both chambers inside nine days, which is the fastest anything will move all session. Nobody votes against it. Nobody would.\n\nAnd on Friday the FY2027 sheet is reissued with the state share in it, and everything you have been carrying since January is now being weighed against a number six hundred million dollars worse than the one you started from.\n\nNothing in your package changed. The floor under it did.",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "Nine days, unanimous, no hearing worth the name. Money moves at exactly the speed the building agrees it has to — remember that the next time somebody tells you the process is why your bill is slow."
-     },
-     {
-      "t": "procedure",
-      "text": "Your bills are all still alive and all still exactly where they were. What moved is the standard they will be judged against in conference."
-     },
-     {
-      "t": "educator",
-      "text": "This is the lesson nobody teaches in a civics class: a budget is not a document, it is a running argument, and the weather gets a vote."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Take the number.",
-      "effects": {
-       "revenueK": -600000
-      },
-      "reply": "Six hundred million dollars, on your scoreboard, in a column you did not put it in. It is going to sit there for the rest of the session."
-     }
-    ]
-   },
-   "unlocks": {
-    "talks": {
-     "office": "talk-office",
-     "coalition": "talk-coalition"
-    }
-   }
-  },
   "w8-crossover": {
    "_note": "DEADLINE WEEK: third reading in the originating chamber (chairs.json stages.h-floor, deadline 8). Crossover is the session's hardest wall and its most misunderstood one — a bill that crosses is not halfway home, it is starting over in a chamber that owes it nothing. Runs before the week's floor roll; never state the outcome. The 48-hour decking rule is real: a bill must be printed and on members' desks 48 hours before final reading.",
    "start": {
@@ -2139,9 +2024,9 @@
    }
   },
   "w5-disaster": {
-   "_note": "WEEK 5 EVENT (2026-10-13, Devin: \"the event for week five will be that there is a disaster\"). Pure event like w3-federal — narration only, no choices. THE TEXT IS A PLACEHOLDER DRAFT until Devin writes it. Week 5 had no scripted event (it was the generic rotation); this replaces that. Not the same as w7-storm, which is week 7 and outside the demo.",
+   "_note": "WEEK 5 EVENT (2026-10-13, Devin: \"the event for week five will be that there is a disaster\"). Pure event like w3-federal — narration only, no choices. THE TEXT IS A PLACEHOLDER DRAFT until Devin writes it. Week 5 had no scripted event (it was the generic rotation); this replaces that. The week-7 Kona-low storm (w7-storm, -$600M) was REMOVED the same day and parked in content/drafts — this hurricane is the session's one disaster. The disaster is a LOW-CATEGORY HURRICANE (Devin).",
    "start": {
-    "text": "A disaster has struck the islands. Roads are closed, families are displaced, and the governor has declared an emergency. Every agency is asking the Legislature for relief money this week, and none of it was in the budget.",
+    "text": "A low-category hurricane passes over the islands. The damage is real but not catastrophic: downed power lines, flooded roads, a few hundred families out of their homes and a string of closed schools. The governor has declared an emergency, and every agency is asking the Legislature for relief money that was not in the budget.",
     "voices": [],
     "choices": []
    },
