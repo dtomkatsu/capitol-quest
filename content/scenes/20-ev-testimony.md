@@ -1,6 +1,5 @@
 ---
 talks: coalition, kawaguchi, sen-x=talk-sen
-actions: rally, push
 ---
 
 # ev-testimony

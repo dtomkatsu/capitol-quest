@@ -2,7 +2,6 @@
 at: {"island": "hawaii"}
 _atNote: `at` (map job B): the week-beat camera flies here before the event opens — rural clinic network, so the beat crosses to Hawaiʻi island. Spec: {island} frames the island; {island, px:[x,y]} targets a point in that island's BAKE pixels (anchor+scale transform, same as landmarks — never world px directly); absent = the Capitol. Most events correctly stay at the Capitol — the campaign happens there; give an event an address only when its scene genuinely is somewhere else.
 talks: coalition, silva=talk-rep
-actions: rally, bench
 ---
 
 # ev-emergency

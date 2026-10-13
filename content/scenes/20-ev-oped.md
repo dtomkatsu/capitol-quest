@@ -1,6 +1,5 @@
 ---
 talks: silva=talk-rep, coalition
-actions: rally, lobby
 ---
 
 # ev-oped

@@ -1,7 +1,6 @@
 ---
 _note: DEADLINE WEEK: third reading in the originating chamber (chairs.json stages.h-floor, deadline 8). Crossover is the session's hardest wall and its most misunderstood one — a bill that crosses is not halfway home, it is starting over in a chamber that owes it nothing. Runs before the week's floor roll; never state the outcome. The 48-hour decking rule is real: a bill must be printed and on members' desks 48 hours before final reading.
 talks: sen-x=talk-sen, office, coalition
-actions: push, lobby
 ---
 
 # w8-crossover

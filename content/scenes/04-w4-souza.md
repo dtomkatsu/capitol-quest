@@ -1,7 +1,6 @@
 ---
 _note: NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3). The red check reads `yamamoto-open` (2026-08-19, user's call moved the Kawaguchi meeting to week 5 — its `souza-intro` flag no longer exists this early, so this now reads the co-chair's tip from w2-yamamoto instead): a player who spent Yamamoto's favor gets +3 here, and a player who never got in her office is rolling this cold. `souza-intro` still exists — it is set THREE WEEKS LATER, in w5-decking, and is spent in w8-crossover and w11-wam.
 talks: office, coalition, sen-x=talk-sen
-actions: lobby, push
 ---
 
 # w4-souza

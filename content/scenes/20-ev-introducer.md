@@ -1,7 +1,6 @@
 ---
 _note: The introducer-relationship event. Reachable from week 4 on via genericEvents. Deliberately a squeeze rather than a favour: the member is carrying real risk and asking the player to absorb some of it, which is what rapport actually buys.
 talks: silva=talk-rep, sen-x=talk-sen, office
-actions: lobby, push
 ---
 
 # ev-introducer

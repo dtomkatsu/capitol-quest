@@ -1,6 +1,5 @@
 ---
 talks: office, kawaguchi, silva=talk-rep
-actions: lobby, push
 ---
 
 # ev-forecast

@@ -1,7 +1,6 @@
 ---
 _note: DEADLINE WEEK: second crossover, third reading in the second chamber (chairs.json stages.s-floor, deadline 13). Teaching point is CARRYOVER: Hawaii runs a two-year biennium, so a bill that dies in the first year is not gone — it sits in the chamber it died in and can be revived in the second. That is both a genuine consolation and the most effective way ever invented to make an advocate accept a loss quietly, and the scene should let both readings stand.
 talks: coalition, office, sen-x=talk-sen
-actions: rally, bench
 ---
 
 # w13-crossover2

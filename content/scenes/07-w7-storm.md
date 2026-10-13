@@ -1,7 +1,6 @@
 ---
 _note: PRE-EVENT: pinned to week 7 by calendar `pre`, so it runs BEFORE the week's own event and is tracked in S.preDone, not S.eventDone. A -600000 revenueK hit ($600M) lands on the SAME FY2027 scoreboard as everything else (PolicyPanel.external via syncScore) — it does not kill any bill, it re-prices the whole session by moving the number the campaign has to cover. Sized deliberately: it is roughly fifteen times ev-emergency's $40M clinic rescue and is meant to be the moment the player's revenue arithmetic stops being comfortable. The state share is the teaching point — a federal declaration reimburses most of a disaster and the state carries the rest, immediately, out of a budget that was already short.
 talks: office, coalition
-actions: bench
 ---
 
 # w7-storm

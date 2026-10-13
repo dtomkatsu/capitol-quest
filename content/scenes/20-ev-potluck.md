@@ -1,6 +1,5 @@
 ---
 talks: silva=talk-rep, office
-actions: bench, lobby
 ---
 
 # ev-potluck

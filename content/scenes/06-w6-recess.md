@@ -1,7 +1,6 @@
 ---
 _note: THE MANDATORY RECESS. Const. art. III, sec. 10 requires a recess of at least five days somewhere between the 20th and 40th legislative day of every regular session; the dates themselves are set by concurrent resolution, not the constitution, and weekends, holidays and the recess days do not count toward the sixty. Anchored to real practice: the 2025 session opened Jan 15 and recessed Feb 20-26, which against sessionStart 2027-01-20 is exactly this week. NOT `noAction` — the CAPITOL is shut, the district is not, which is the entire scene. Grants rally/bench and deliberately withholds `push`: there is no chair in the building to work. The bite is mechanical, not textual: calendar `recess: true` makes resolveBills skip the week's chair rolls while every deadline stays where it was.
 talks: coalition, silva=talk-rep
-actions: rally, bench
 ---
 
 # w6-recess
