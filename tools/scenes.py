@@ -280,7 +280,9 @@ def export_choice(c, V):
     known = {"label", "check", "effects", "reply", "voices", "goto", "success", "failure", "force"}
     if "check" in c:
         ck = c["check"]
-        L = [f"* [{V.skill_label(ck['skill'])} {ck['dc']} {ck.get('type', 'white')}] {c['label']}"]
+        fpre = (f"[{V.skill_label(c['force']['skill'])} {c['force']['min']}+] "
+                if c.get("force") else "")
+        L = [f"* {fpre}[{V.skill_label(ck['skill'])} {ck['dc']} {ck.get('type', 'white')}] {c['label']}"]
         if ck.get("mods"):
             L.append("  mods: " + fmt_mods(ck["mods"], V))
         for k in c:
@@ -502,7 +504,10 @@ def parse_choice(head, lines, V, fname):
     body, extra, outcomes = parse_body(lines, V, fname, allow_outcomes=True)
     check = {"skill": sid, "dc": int(dc), "type": typ or "white",
              "mods": parse_mods(extra.pop("mods", ""), V, f"{fname}:{head.no}")}
-    c = {"label": label, "check": check}
+    c = {"label": label}
+    if force:
+        c["force"] = force
+    c["check"] = check
     c.update({k: v for k, v in extra.items()})
     if "effects" in body:
         c["effects"] = body["effects"]
@@ -589,8 +594,6 @@ def lint(data, dialogues, V):
                     errs.append(f"{where}: force on unknown skill {fc['skill']!r}")
                 if not 1 <= fc["min"] <= 6:
                     errs.append(f"{where}: force threshold {fc['min']} is outside the 1-6 skill ladder")
-                if c.get("check"):
-                    errs.append(f"{where}: a choice can't be both forced and checked")
             if c.get("check"):
                 ck = c["check"]
                 if ck["skill"] not in V.skills:

@@ -150,3 +150,8 @@ labelled "Policy Brain won't let you", and the forced one reads "your
 instinct takes over". Below the threshold it is an ordinary choice. Put the
 reply, `effect:` and `then:` under it as usual. At most one forced choice per
 node (if two are met, the first in the list wins).
+
+A forced choice may ALSO be a dice check (2026-10-13): write both tags,
+`### 1. [Educator 3+] [Educator 12 red] Hand him a fact sheet…`. The skill
+forces the ATTEMPT, not the result: the others are greyed out, but the roll
+still happens and its odds stay printed on the button.

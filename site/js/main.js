@@ -3013,7 +3013,13 @@ const SessionPanel = {
               '" class="forced-in">' + num + '<span class="sd-lbl">' +
               esc(c.label) + '<small class="cmeta">' +
               esc(forceName(c)) + " " + (S.skills[c.force.skill] || 0) +
-              " — your instinct takes over</small></span></button>";
+              " — your instinct takes over" +
+              // a forced choice may still carry dice (2026-10-13, Devin:
+              // the instinct forces the ATTEMPT, not the result), so the
+              // odds stay printed on it
+              (c.check ? " · " + dcName(c.check.dc) + " · " +
+                checkMath(c.check).odds.toFixed(0) + "%" : "") +
+              "</small></span></button>";
           }
           if (!c.check) {
             return '<button type="button" data-i="' + i + '">' + num +
@@ -5773,7 +5779,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=59");
+    this.load.json("session", "map/session.json?v=60");
     this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

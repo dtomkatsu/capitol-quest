@@ -156,8 +156,18 @@ def md_to_scene(text, did, V):
 
 
 def _choice(label, body, V, target):
-    tag = re.match(r"^\[([A-Za-z][A-Za-z \-]*?)\s+(\d+)(\+|\s+(?:red|white))?\]\s*(.*)$", label)
+    TAG = r"^\[([A-Za-z][A-Za-z \-]*?)\s+(\d+)(\+|\s+(?:red|white))?\]\s*(.*)$"
+    tag = re.match(TAG, label)
     checked = False
+    force_pre = ""
+    # [Skill N+] [Skill DC red] label: a forced choice that still rolls
+    if tag and tag.group(3) == "+" and re.match(TAG, tag.group(4)):
+        sid0 = V.skill(tag.group(1))
+        if not sid0:
+            raise ValueError(f"unknown skill {tag.group(1)!r} in choice {label!r}")
+        force_pre = f"[{V.skill_label(sid0)} {tag.group(2)}+] "
+        label = tag.group(4)
+        tag = re.match(TAG, label)
     if tag:
         sid = V.skill(tag.group(1))
         if not sid:
@@ -169,7 +179,7 @@ def _choice(label, body, V, target):
             checked = True
             typ = (tag.group(3) or " white").strip()
             label = f"[{name} {tag.group(2)} {typ}] {tag.group(4)}"
-    out = [f"* {label}"]
+    out = [f"* {force_pre}{label}"]
     # split into the choice's own part and pass/fail parts
     parts, cur = {"own": []}, "own"
     for ln in body:
@@ -260,11 +270,11 @@ def dlg_to_md(did, dlg, V, chars, export_choice, fmt_effects, fmt_mods):
             L += [f"-> {go(n.get('goto'))}", ""]
         for i, c in enumerate(n["choices"]):
             lab = c["label"]
-            if c.get("force"):
-                lab = f"[{V.skills[c['force']['skill']]['name']} {c['force']['min']}+] {lab}"
             if c.get("check"):
                 ck = c["check"]
                 lab = f"[{V.skills[ck['skill']]['name']} {ck['dc']} {ck.get('type', 'white')}] {lab}"
+            if c.get("force"):   # outermost: the parser reads [Skill N+] first, then the check
+                lab = f"[{V.skills[c['force']['skill']]['name']} {c['force']['min']}+] {lab}"
             L += [f"### {i + 1}. {lab}"]
             if c.get("check") and c["check"].get("mods"):
                 L.append(f"- mods: {fmt_mods(c['check']['mods'], V)}")

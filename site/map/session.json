@@ -1751,6 +1751,10 @@
     "choices": [
      {
       "label": "Hand him a fact sheet and dive straight into your tax agenda.",
+      "force": {
+       "skill": "educator",
+       "min": 3
+      },
       "check": {
        "skill": "educator",
        "dc": 12,
