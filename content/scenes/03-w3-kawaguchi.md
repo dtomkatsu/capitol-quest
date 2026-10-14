@@ -46,9 +46,18 @@ He looks up for the first time.
 - **Talk Story:** A man who lights up about Japan isn't stalling. He just showed you the door he actually keeps open.
 - **Procedure:** Fifteen minutes, and the clock is running whichever way this goes. Steer it, or spend it.
 
-### 1. Steer the conversation back to policy.
-He catches the shift and nods, a little sorry to see the trip go. "Right. Sit."
+### 1. [Procedure 13 white] Steer the conversation back to policy.
+- mods: influence/25
+// PLACEHOLDER: Devin is rewriting the pass and fail text.
+Pass:
+You wait for the end of his sentence, thank him for the story, and ask one question about the referral sheet under his hand. He looks at it, then at you, and answers it.
 
+- effect: +2 influence
+- then: F
+Fail:
+He catches the shift and nods, a little sorry to see the trip go. "Right." He glances at the clock and the moment is gone.
+
+- effect: -2 influence
 - then: F
 
 ### 2. [Talk Story 8 white] Ask him about the trip.

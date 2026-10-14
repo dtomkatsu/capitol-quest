@@ -1797,8 +1797,31 @@
     "choices": [
      {
       "label": "Steer the conversation back to policy.",
-      "reply": "He catches the shift and nods, a little sorry to see the trip go. \"Right. Sit.\"",
-      "goto": "friday"
+      "check": {
+       "skill": "procedure",
+       "dc": 13,
+       "type": "white",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 25
+        }
+       ]
+      },
+      "success": {
+       "reply": "You wait for the end of his sentence, thank him for the story, and ask one question about the referral sheet under his hand. He looks at it, then at you, and answers it.",
+       "effects": {
+        "influence": 2
+       },
+       "goto": "friday"
+      },
+      "failure": {
+       "reply": "He catches the shift and nods, a little sorry to see the trip go. \"Right.\" He glances at the clock and the moment is gone.",
+       "effects": {
+        "influence": -2
+       },
+       "goto": "friday"
+      }
      },
      {
       "label": "Ask him about the trip.",
