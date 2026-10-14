@@ -45,7 +45,7 @@ He looks up for the first time.
 **Rep. Jon Kawaguchi:** He says it's been a busy week, but nothing he hasn't seen before. His eyes light up when he starts talking about his family trip to Japan last month.
 
 - **Talk Story:** A man who lights up about Japan isn't stalling. He just showed you the door he actually keeps open.
-- **Procedure:** Fifteen minutes, and the clock is running whichever way this goes. Steer it, or spend it.
+- **Procedure:** This is getting off topic, and you don't have much time left.
 
 ### 1. [Procedure 12 white] Steer the conversation back to policy.
 - mods: influence/25
