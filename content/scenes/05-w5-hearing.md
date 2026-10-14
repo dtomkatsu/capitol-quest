@@ -19,7 +19,7 @@ House Finance posts its agenda Tuesday at four. It is the last week the committe
 - effect: -2 support
 - then: B
 Pass:
-By nine the seats are full and the hallway behind them is full too. A full room is hard for a chair to skip past.
+You manage a good showing. It's standing room only at the hearing.
 
 - effect: +5 support
 Fail:
