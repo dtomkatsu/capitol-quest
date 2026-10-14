@@ -59,18 +59,30 @@ Ten minutes of ramen, a bullet train, and a daughter who ordered for the whole t
 - effect: +2 influence
 - then: E
 Fail:
-"Uh—" You trail off, unable to follow up. He waits a beat, then checks the clock. "Right. Sit."
+"Uh—" You trail off, unable to follow up. He waits a beat, then checks the clock.
 
 - effect: -2 influence
-- then: E
+- then: G
 
 ## D · brushoff
 - art: w2-finance-office
-He squints at the wall of text and charts as if it's Ancient Greek.
+He takes the page and squints at the wall of text and charts as if it's Ancient Greek.
 
 **Rep. Jon Kawaguchi:** "Thanks, uh, for this. I'll look it over later." He says it in a less-than-convincing tone, filing it away among his messy stacks of paper.
 
 - **Educator:** A fact sheet is a document. A sentence is the thing he repeats to Souza. You handed him the document.
+
+### 1. Thank him and go.
+Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
+
+- then: F
+
+## G · coldshoulder
+// PLACEHOLDER: Devin is rewriting this. Reached only by failing the Talk Story check about the Japan trip (node C); the fact-sheet failure goes to D instead, so nothing here may mention a page.
+- art: w2-finance-office
+**Rep. Jon Kawaguchi:** "Leave it with my scheduler." He is already standing. "Notices go out in two weeks. If your bill is on one, you'll hear it the same way everyone does."
+
+- **Talk Story:** You asked about the one thing he loves and had nothing to say after it. He heard that.
 
 ### 1. Thank him and go.
 Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
