@@ -2090,7 +2090,7 @@
        }
       },
       "failure": {
-       "reply": "Fifteen show. The room looks empty on the committee's own camera, and anyone on the dais can see it.",
+       "reply": "Your contacts fail to show up. The large hearing room looks noticeably empty.",
        "effects": {
         "support": -2
        }

@@ -23,7 +23,7 @@ You manage a good showing. It's standing room only at the hearing.
 
 - effect: +5 support
 Fail:
-Fifteen show. The room looks empty on the committee's own camera, and anyone on the dais can see it.
+Your contacts fail to show up. The large hearing room looks noticeably empty.
 
 - effect: -2 support
 
