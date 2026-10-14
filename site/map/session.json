@@ -1763,7 +1763,7 @@
        "effects": {
         "influence": 2
        },
-       "goto": "office"
+       "goto": "friday"
       },
       "failure": {
        "reply": "As you drone on, Kawaguchi's eyes start to glaze over. He fidgets with the pencil on his desk.",
@@ -1798,7 +1798,7 @@
      {
       "label": "Steer the conversation back to policy.",
       "reply": "He catches the shift and nods, a little sorry to see the trip go. \"Right. Sit.\"",
-      "goto": "office"
+      "goto": "friday"
      },
      {
       "label": "Ask him about the trip.",
@@ -1818,14 +1818,14 @@
        "effects": {
         "influence": 2
        },
-       "goto": "office"
+       "goto": "friday"
       },
       "failure": {
        "reply": "\"Uh—\" You trail off, unable to follow up. He waits a beat, then checks the clock.",
        "effects": {
         "influence": -2
        },
-       "goto": "coldshoulder"
+       "goto": "friday"
       }
      }
     ]
@@ -1843,101 +1843,6 @@
      {
       "label": "Thank him and go.",
       "reply": "Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.",
-      "goto": "friday"
-     }
-    ]
-   },
-   "coldshoulder": {
-    "art": "w2-finance-office",
-    "speaker": "kawaguchi",
-    "text": "\"Leave it with my scheduler.\" He is already standing. \"Notices go out in two weeks. If your bill is on one, you'll hear it the same way everyone does.\"",
-    "voices": [
-     {
-      "t": "talkstory",
-      "text": "You asked about the one thing he loves and had nothing to say after it. He heard that."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Thank him and go.",
-      "reply": "Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.",
-      "goto": "friday"
-     }
-    ]
-   },
-   "office": {
-    "art": "w2-finance-office",
-    "speaker": "kawaguchi",
-    "text": "He doesn't stand. \"Sit. The first notices are two weeks out, and I wanted you to hear where you stand from me, not off a phone in that hallway with everyone else.\" He turns his chair a few degrees toward the window. \"Eight hundred and seventy-six measures came to Finance last session. I heard a fraction of them and I'm not apologizing for the fraction.\" A pause, and this is the part he actually called you up here for. \"My problem, if you make my notice in February, is that whatever I hear, Ways and Means hears after me. And Chris Souza hasn't returned a call of mine since November.\"",
-    "voices": [
-     {
-      "t": "fiscal",
-      "text": "876 referrals, and this committee hands back one of the two lowest hearing rates in the building. He isn't being dramatic, he's quoting his own workload."
-     },
-     {
-      "t": "procedure",
-      "text": "He just drew you the route: Finance, then Ways and Means. A bill he hears today is still a bill Souza can bury in April. Plan for two gates, not one."
-     },
-     {
-      "t": "talkstory",
-      "text": "\"Hasn't returned a call since November\" isn't a complaint, it's an offer. He wants something carried to the Senate that he can't be seen carrying himself."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"Then tell me what Ways and Means needs to hear.\"",
-      "effects": {
-       "influence": 3
-      },
-      "reply": "He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. \"Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so.\"",
-      "goto": "friday"
-     },
-     {
-      "label": "\"Hear one of ours early, chair. I'll fill your room.\"",
-      "effects": {
-       "support": 3,
-       "influence": -1
-      },
-      "reply": "\"Everybody fills my room.\" But he writes something down, which is more than he did in January.",
-      "goto": "friday"
-     },
-     {
-      "label": "\"Call him. From this office, while I'm sitting here.\"",
-      "check": {
-       "skill": "talkstory",
-       "dc": 13,
-       "type": "red",
-       "mods": [
-        {
-         "from": "influence",
-         "per": 25
-        },
-        {
-         "from": "flag",
-         "id": "kawaguchi-date",
-         "add": 2,
-         "label": "the date he gave you"
-        },
-        {
-         "from": "skill",
-         "id": "procedure",
-         "per": 3
-        }
-       ]
-      },
-      "success": {
-       "reply": "He looks at you a long moment, then picks up the desk phone. He does not get Souza. He gets a scheduler — and he uses the chair's voice on her, the one he has not once used on you. \"Jon Kawaguchi. Put them on the calendar.\" He hangs up. \"That is the entire favor. Don't spend it saying hello.\"",
-       "effects": {
-        "influence": -2,
-        "flag": "souza-intro"
-       }
-      },
-      "failure": {
-       "reply": "\"In my own office?\" He puts one hand flat on the desk, which is as close as this man comes to raising his voice. \"When I want the Senate to know what I'm doing, I'll tell them myself.\"",
-       "effects": {
-        "influence": -4
-       }
-      },
       "goto": "friday"
      }
     ]

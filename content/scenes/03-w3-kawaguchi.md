@@ -27,7 +27,7 @@ Pass:
 He reads the page, all of it, and then reads the number again. "Who checked this?" You tell him. He puts it under the referral sheet instead of on top of the pile, which is a very small and very specific kind of yes.
 
 - effect: +2 influence
-- then: E
+- then: F
 Fail:
 As you drone on, Kawaguchi's eyes start to glaze over. He fidgets with the pencil on his desk.
 
@@ -49,7 +49,7 @@ He looks up for the first time.
 ### 1. Steer the conversation back to policy.
 He catches the shift and nods, a little sorry to see the trip go. "Right. Sit."
 
-- then: E
+- then: F
 
 ### 2. [Talk Story 8 white] Ask him about the trip.
 - mods: influence/25
@@ -57,12 +57,12 @@ Pass:
 Ten minutes of ramen, a bullet train, and a daughter who ordered for the whole table in Japanese. By the end he is leaning back in his chair. "Okay. Now what did you actually come up here for?"
 
 - effect: +2 influence
-- then: E
+- then: F
 Fail:
 "Uh—" You trail off, unable to follow up. He waits a beat, then checks the clock.
 
 - effect: -2 influence
-- then: G
+- then: F
 
 ## D · brushoff
 - art: w2-finance-office
@@ -76,50 +76,6 @@ He takes the page and squints at the wall of text and charts as if it's Ancient 
 Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
 
 - then: F
-
-## G · coldshoulder
-// PLACEHOLDER: Devin is rewriting this. Reached only by failing the Talk Story check about the Japan trip (node C); the fact-sheet failure goes to D instead, so nothing here may mention a page.
-- art: w2-finance-office
-**Rep. Jon Kawaguchi:** "Leave it with my scheduler." He is already standing. "Notices go out in two weeks. If your bill is on one, you'll hear it the same way everyone does."
-
-- **Talk Story:** You asked about the one thing he loves and had nothing to say after it. He heard that.
-
-### 1. Thank him and go.
-Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
-
-- then: F
-
-## E · office
-- art: w2-finance-office
-**Rep. Jon Kawaguchi:** He doesn't stand. "Sit. The first notices are two weeks out, and I wanted you to hear where you stand from me, not off a phone in that hallway with everyone else." He turns his chair a few degrees toward the window. "Eight hundred and seventy-six measures came to Finance last session. I heard a fraction of them and I'm not apologizing for the fraction." A pause, and this is the part he actually called you up here for. "My problem, if you make my notice in February, is that whatever I hear, Ways and Means hears after me. And Chris Souza hasn't returned a call of mine since November."
-
-- **Policy Brain:** 876 referrals, and this committee hands back one of the two lowest hearing rates in the building. He isn't being dramatic, he's quoting his own workload.
-- **Procedure:** He just drew you the route: Finance, then Ways and Means. A bill he hears today is still a bill Souza can bury in April. Plan for two gates, not one.
-- **Talk Story:** "Hasn't returned a call since November" isn't a complaint, it's an offer. He wants something carried to the Senate that he can't be seen carrying himself.
-
-### 1. "Then tell me what Ways and Means needs to hear."
-He writes two words on a legal pad, tears the sheet off and slides it across: FLOOR, NOT CEILING. "Souza doesn't care what your bill raises. He cares what it costs him in a bad year. Go answer that, and don't tell him I said so."
-
-- effect: +3 influence
-- then: F
-
-### 2. "Hear one of ours early, chair. I'll fill your room."
-"Everybody fills my room." But he writes something down, which is more than he did in January.
-
-- effect: +3 support, -1 influence
-- then: F
-
-### 3. [Talk Story 13 red] "Call him. From this office, while I'm sitting here."
-- mods: influence/25, flag kawaguchi-date +2 "the date he gave you", PROCEDURE/3
-- then: F
-Pass:
-He looks at you a long moment, then picks up the desk phone. He does not get Souza. He gets a scheduler — and he uses the chair's voice on her, the one he has not once used on you. "Jon Kawaguchi. Put them on the calendar." He hangs up. "That is the entire favor. Don't spend it saying hello."
-
-- effect: -2 influence, flag souza-intro
-Fail:
-"In my own office?" He puts one hand flat on the desk, which is as close as this man comes to raising his voice. "When I want the Senate to know what I'm doing, I'll tell them myself."
-
-- effect: -4 influence
 
 ## F · friday
 You're back in the hallway outside Finance with everyone else who doesn't have a chair's ear, watching the same door you just walked out of. Nothing posts today. But you know which way he leans now, and that is more than the forty other measures that will get fifteen minutes and a closed door instead of an open one will ever learn about him.
