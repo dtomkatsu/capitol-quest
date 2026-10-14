@@ -29,7 +29,7 @@ He reads the page, all of it, and then reads the number again. "Who checked this
 - effect: +2 influence
 - then: E
 Fail:
-He glances at it, turns it face-down, and checks the clock over your shoulder. "I get a lot of these." It was a good page. It was also the fortieth page this week.
+He takes the page, and you can see the exact moment this stops being a conversation: four columns, two charts, a footnote in small type. "I get a lot of these." It was a good page. It was also the fortieth page this week.
 
 - effect: -4 influence
 - then: D
