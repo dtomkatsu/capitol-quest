@@ -14,7 +14,7 @@ House Finance posts its agenda Tuesday at four. It is the last week the committe
 - **Talk Story:** Nobody on the dais wants to be seen delaying hurricane money, which means nobody wants to be seen with anything else either.
 
 ### 1. [Mobilizing 12 white] Pack the hearing room.
-- mods: support/30
+- mods: support/30, flag w4-turnout +2 "last week's turnout"
 - _ante: Packing a room SPENDS the base: you are asking people to take an unpaid day off before you know whether the chair will seat them (same rule as ev-testimony's pack-the-room).
 - effect: -2 support
 - then: B
