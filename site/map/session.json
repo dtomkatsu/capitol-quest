@@ -1799,7 +1799,7 @@
       "label": "Steer the conversation back to policy.",
       "check": {
        "skill": "procedure",
-       "dc": 13,
+       "dc": 12,
        "type": "white",
        "mods": [
         {

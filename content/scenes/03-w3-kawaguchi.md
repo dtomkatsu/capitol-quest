@@ -46,7 +46,7 @@ He looks up for the first time.
 - **Talk Story:** A man who lights up about Japan isn't stalling. He just showed you the door he actually keeps open.
 - **Procedure:** Fifteen minutes, and the clock is running whichever way this goes. Steer it, or spend it.
 
-### 1. [Procedure 13 white] Steer the conversation back to policy.
+### 1. [Procedure 12 white] Steer the conversation back to policy.
 - mods: influence/25
 // PLACEHOLDER: Devin is rewriting the pass and fail text.
 Pass:
