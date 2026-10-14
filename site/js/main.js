@@ -4463,9 +4463,31 @@ const SessionPanel = {
       const pushed = S.pushBill === bill.id && S.pushWeek >= 0 &&
         S.week - S.pushWeek <= 1;
       if (pushed) add(pushBonus(inf), "you worked the chair this week");
-      return { base: g, parts: parts, pushed: pushed,
+      /* HARD INFLUENCE GATE (2026-10-13, Devin: "not having enough
+         influence should mean that bill doesn't get heard"). chairs.json
+         gate.hearingGate = {stage, min}: under `min` of the campaign's
+         influence (plus what the player bought for THIS bill, so a push
+         still counts) the chair will not schedule the bill at all — the
+         probability is 0, not merely low, and the parts list says why.
+         It reads the campaign meter and NOT the bill's tilted number on
+         purpose: the player can see that meter on the HUD, and a passive
+         campaign (30, downward-only decay to the baseline) never reaches
+         the line, so the simulation's passive anchor is untouched. */
+      const hg = G.hearingGate;
+      let gated = false;
+      if (hg && hg.stage === chair.id) {
+        const have = S.metrics.influence +
+          ((bill.earned && bill.earned.influence) || 0);
+        if (have < hg.min) {
+          gated = true;
+          parts.push({ n: -p, label: "influence " + Math.round(have) +
+            ", under " + hg.min + ": the chair won't schedule you" });
+          p = 0;
+        }
+      }
+      return { base: g, parts: parts, pushed: pushed, gated: gated,
         meters: { support: sup, influence: inf },
-        p: Math.max(0.02, Math.min(0.95, p)) };
+        p: gated ? 0 : Math.max(0.02, Math.min(0.95, p)) };
     };
     const chairOdds = (bill, chair) => chairOddsParts(bill, chair).p;
     // sid is optional only so an old call site can't crash; pass it —
@@ -4652,7 +4674,9 @@ const SessionPanel = {
           b.lastOdds = { p: p, base: od.base, parts: od.parts,
                          meters: od.meters,
                          chair: ch.name, committee: ch.committee };
-          if (!moved && draw < hz * (G.nearFactor || 1.6)) {
+          if (od.gated) {
+            rec(b, "gated", { chair: ch.name, min: (G.hearingGate || {}).min });
+          } else if (!moved && draw < hz * (G.nearFactor || 1.6)) {
             rec(b, "near", { p: p, chair: ch.name });
           }
           if (moved) {
@@ -5072,6 +5096,10 @@ const SessionPanel = {
                 : esc(m.chair || "The chair") + " pulled the file and put " +
                   "it back. At " + Math.round((m.p || 0) * 100) +
                   "% it was close — and close is not a hearing." };
+          case "gated":
+            return { cls: "cut", t: "Not calendared",
+              s: esc(m.chair || "The chair") + " would not schedule it: " +
+                 "your influence is under " + m.min + "." };
           case "diluted":
             return { cls: "cut", t: "Cut on the way through",
               s: "Support was " + Math.round(m.support) + ". It cleared " +
@@ -5746,7 +5774,7 @@ class BootScene extends Phaser.Scene {
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
     this.load.json("session", "map/session.json?v=43");
-    this.load.json("chairs", "map/chairs.json?v=2");
+    this.load.json("chairs", "map/chairs.json?v=3");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {
