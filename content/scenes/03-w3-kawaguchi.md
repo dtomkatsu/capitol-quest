@@ -29,7 +29,7 @@ He reads the page, all of it, and then reads the number again. "Who checked this
 - effect: +2 influence
 - then: E
 Fail:
-He takes the page, and you can see the exact moment this stops being a conversation: four columns, two charts, a footnote in small type. "I get a lot of these." It was a good page. It was also the fortieth page this week.
+As you drone on, Kawaguchi's eyes start to glaze over. He fidgets with the pencil on his desk.
 
 - effect: -4 influence
 - then: D
