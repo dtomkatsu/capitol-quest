@@ -11,7 +11,7 @@ Kawaguchi's office is two doors down from the briefing room, and it has a gateke
 - **Procedure:** The chair's calendar is the real referral list. Whoever gets onto it first is not always whoever he wants to hear.
 - **Talk Story:** She is not the obstacle. She decides whether he hears your name as a favor or as a nuisance.
 
-### 1. [Talk Story 3+] [Talk Story 9 white] Ask her what the chair's week actually looks like.
+### 1. [Talk Story 3+] [Talk Story 9 white] Introduce yourself to the office manager.
 - mods: influence/25
 Pass:
 She puts the phone down, which seems to surprise her too. "He has fifteen minutes next week, before the lateral file lands. Don't be late, and don't bring a binder." She writes your name in pen.

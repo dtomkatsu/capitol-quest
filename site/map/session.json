@@ -1670,7 +1670,7 @@
     ],
     "choices": [
      {
-      "label": "Ask her what the chair's week actually looks like.",
+      "label": "Introduce yourself to the office manager.",
       "force": {
        "skill": "talkstory",
        "min": 3
