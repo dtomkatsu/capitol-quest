@@ -12,9 +12,9 @@
   "championed": 0.12,
   "pushInfluence": 4,
   "hearingGate": {
-  "_note": "HARD GATE (2026-10-13, Devin): at this stage the chair will not schedule a bill at all while the campaign influence (plus what you bought for that bill) is under `min`. Probability is 0, not low. A passive campaign sits at 30 and never reaches 25, so the simulator passive anchor is unchanged.",
+  "_note": "HARD GATE (2026-10-13, Devin): at this stage the chair will not schedule a bill at all while the campaign influence (plus what you bought for that bill) is under `min`. Probability is 0, not low. A passive campaign sits at 30 and never reaches 28, so the simulator passive anchor is unchanged.",
   "stage": "h-fin",
-  "min": 25
+  "min": 28
  },
  "dilution": {
    "_note": "Distinct failure modes: low influence still kills a bill outright (never heard, unchanged). Low SUPPORT does not make the hearing harder — it decides what SURVIVES the hearing: the moment a bill clears a chair gate, support under `floor` takes a bite out of its dollar figure. GRADUATED since 2026-08-21 (it was a cliff at 35, and unreachable besides — per-bill support was written once at seeding and never again, so nothing could ever lower it). `floor` is where dilution starts, `full` is where the per-gate bite reaches its maximum `cut`, and it ramps linearly between the two — so drifting toward the line costs a little before it costs a lot, which is the only version a player can learn from. Multiplicative and stacks across the two money-committee gates (a chronically unpopular bill can limp out of both already thin), floored by `min` so dilution alone never zeroes a bill — killing it stays the job of never-heard/voted-down/conference. floor 45 is deliberately just under the 50 every campaign starts at plus its family tilt: a passive campaign is never diluted (which is what preserves the calibrated bands), but a campaign bleeding support to floor-calendar weeks will be.",

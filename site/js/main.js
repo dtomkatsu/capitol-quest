@@ -5774,7 +5774,7 @@ class BootScene extends Phaser.Scene {
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
     this.load.json("session", "map/session.json?v=46");
-    this.load.json("chairs", "map/chairs.json?v=3");
+    this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {
