@@ -19,6 +19,7 @@ Fifteen minutes, his scheduler said, and she said it twice. So you wait in the b
 **Rep. Jon Kawaguchi:** You exchange greetings. He barely looks up from the referral sheet. "Hi. How can I help you?"
 
 - **Policy Brain:** Skip the small talk. The numbers are what really matters.
+- **Educator:** Go on. He needs to know the facts.
 - **Talk Story:** Get to know him a little bit. You'll have time for the policy talk later.
 
 ### 1. [Educator 12 red] Hand him a fact sheet and dive straight into your tax agenda.
