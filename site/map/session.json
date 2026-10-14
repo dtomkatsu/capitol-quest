@@ -1798,7 +1798,7 @@
      {
       "label": "Steer the conversation back to policy.",
       "check": {
-       "skill": "procedure",
+       "skill": "educator",
        "dc": 12,
        "type": "white",
        "mods": [
