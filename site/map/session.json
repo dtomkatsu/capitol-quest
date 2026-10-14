@@ -284,7 +284,8 @@
    "week": 5,
    "title": "First Lateral",
    "phase": "Session",
-   "event": "w5-disaster"
+   "pre": "w5-disaster",
+   "event": "w5-hearing"
   },
   {
    "week": 6,
@@ -979,7 +980,7 @@
   "w3-federal": {
    "_note": "The federal safety-net cuts, moved out of w1-opening 2026-08-15 so the material has a scene of its own. Grounded in ~/HawaiiAppleseed/snap-medicaid-timeline (repo dtomkatsu/Hawaii-Appleseed-website, medicaidData/snapData arrays) — federal HR1 SNAP/Medicaid cuts, all already in effect by this session's Jan 2027 start. Figures: SNAP-Ed eliminated 2025-10-01 (-$2.5M/yr); ABAWD work-req age 18-54 -> 18-64 2026-10-01 hits 16,570 adults 55-64 + 10,303 households w/ teens 14-18; Medicaid narrower immigrant eligibility + 6-month (was 12) recert already dropped an est. 1,200-2,400 people. Refresh these if the timeline's data updates. NOTE the player's own bills have not been heard yet (h-fin deadline is week 5) — nothing here may imply a hearing on them.",
    "start": {
-    "text": "Hawaiʻi could be on the hook for $550 million for its Medicaid program and $150 million for its Supplemental Nutrition Assistance Program (SNAP). The state will have to be responsible for making up this loss in funding.",
+    "text": "The federal government has decided to force states to shoulder more of the costs for their own SNAP and Medicaid programs. Hawaii could be on the hook for $550 million for its Medicaid program and $150 million for its SNAP program. The state will have to be responsible for making up this loss in funding.",
     "voices": [],
     "choices": []
    },
@@ -2026,7 +2027,7 @@
   "w5-disaster": {
    "_note": "WEEK 5 EVENT (2026-10-13, Devin: \"the event for week five will be that there is a disaster\"). Pure event like w3-federal — narration only, no choices. THE TEXT IS A PLACEHOLDER DRAFT until Devin writes it. Week 5 had no scripted event (it was the generic rotation); this replaces that. The week-7 Kona-low storm (w7-storm, -$600M) was REMOVED the same day and parked in content/drafts — this hurricane is the session's one disaster. The disaster is a LOW-CATEGORY HURRICANE causing $300M in damage (Devin, 2026-10-13), booked as -$300M revenueK on the one choice (effects need a choice; the 'Take the number' line is a continue).",
    "start": {
-    "text": "A low-category hurricane passes over the islands. The damage is real but not catastrophic: downed power lines, flooded roads, a few hundred families out of their homes and a string of closed schools. The governor has declared an emergency, and every agency is asking the Legislature for relief money that was not in the budget. Budget and Finance puts the damage at $300 million.",
+    "text": "A low-intensity hurricane passes through the islands. Although no lives are lost, the damage is substantial: hundreds of homes are either damaged or destroyed, and it will take weeks to repair some of the more remote power lines and roads. The Governor estimates the damage at $300 million on the lower end, which the  Legislature will have to cover with emergency appropriations.",
     "voices": [],
     "choices": [
      {
@@ -2035,6 +2036,76 @@
        "revenueK": -300000
       },
       "reply": "Three hundred million dollars, on your scoreboard, in a column you did not put it in. It will sit there for the rest of the session."
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "coalition": "talk-coalition",
+     "office": "talk-office",
+     "silva": "talk-rep"
+    }
+   }
+  },
+  "w5-hearing": {
+   "_note": "WEEK 5 EVENT, after the hurricane (w5-disaster is now the week's `pre`, 2026-10-13). FIRST DRAFT, placeholder text until Devin rewrites it. This is House Finance's deadline week (chairs.json h-fin deadline 5): resolveBills rolls each bill at week's END, so NOTHING here may say whether a bill was heard or not — the scene is the notice and the room, and the verdict arrives in the \"Since you ended the week\" report. The Feb 14 date Kawaguchi may have named in w1/w3 (flag kawaguchi-date) is the date this week lands on.",
+   "start": {
+    "text": "House Finance posts its agenda Tuesday at four. It is the last week the committee can hear anything that started in the House, and the hurricane has made the room tighter: the chair has forty minutes of emergency appropriations to move before he gets to anyone else's bill. Whatever is on the notice gets a hearing. Whatever is not, is finished.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "The deadline is the whole game. A bill the chair does not schedule this week does not die in a vote, it dies by never coming up."
+     },
+     {
+      "t": "fiscal",
+      "text": "Hearing rates in this committee are low in a normal year. This is not a normal week."
+     },
+     {
+      "t": "talkstory",
+      "text": "Nobody on the dais wants to be seen delaying hurricane money, which means nobody wants to be seen with anything else either."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Pack the hearing room.",
+      "effects": {
+       "support": -2,
+       "influence": 1
+      },
+      "reply": "Whatever is on the notice, the coalition fills the seats. A full room is hard to skip past."
+     },
+     {
+      "label": "Work the committee members' staff.",
+      "effects": {
+       "influence": 2
+      },
+      "reply": "You spend the day in the back offices, one aide at a time, asking only that someone say your bill's number out loud when the chair asks for anything else."
+     },
+     {
+      "label": "Catch the chair's eye in the hallway before the gavel.",
+      "check": {
+       "skill": "talkstory",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "influence",
+         "per": 30
+        }
+       ]
+      },
+      "success": {
+       "reply": "Two sentences, walking. He does not stop, but he does not say no, and that is a lot to get from a man carrying a stack of hurricane bills.",
+       "effects": {
+        "influence": 4
+       }
+      },
+      "failure": {
+       "reply": "He is already talking to someone else, about water. You get a nod and a closing door.",
+       "effects": {
+        "influence": -1
+       }
+      }
      }
     ]
    },

@@ -4,6 +4,5 @@ talks: coalition, office, silva=talk-rep
 ---
 
 # w3-federal
-
 ## A · start
-Hawaiʻi could be on the hook for $550 million for its Medicaid program and $150 million for its Supplemental Nutrition Assistance Program (SNAP). The state will have to be responsible for making up this loss in funding.
+The federal government has decided to force states to shoulder more of the costs for their own SNAP and Medicaid programs. Hawaii could be on the hook for $550 million for its Medicaid program and $150 million for its SNAP program. The state will have to be responsible for making up this loss in funding.

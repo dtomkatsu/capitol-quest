@@ -7,7 +7,7 @@ talks: coalition, office, silva=talk-rep
 
 ## A · start
 // PLACEHOLDER: Devin is rewriting this.
-A low-category hurricane passes over the islands. The damage is real but not catastrophic: downed power lines, flooded roads, a few hundred families out of their homes and a string of closed schools. The governor has declared an emergency, and every agency is asking the Legislature for relief money that was not in the budget. Budget and Finance puts the damage at $300 million.
+A low-intensity hurricane passes through the islands. Although no lives are lost, the damage is substantial: hundreds of homes are either damaged or destroyed, and it will take weeks to repair some of the more remote power lines and roads. The Governor estimates the damage at $300 million on the lower end, which the  Legislature will have to cover with emergency appropriations.
 
 ### 1. Take the number.
 Three hundred million dollars, on your scoreboard, in a column you did not put it in. It will sit there for the rest of the session.
