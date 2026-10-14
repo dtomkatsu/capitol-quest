@@ -1749,7 +1749,7 @@
       "label": "Hand him a fact sheet and dive straight into your tax agenda.",
       "check": {
        "skill": "fiscal",
-       "dc": 10,
+       "dc": 12,
        "type": "red",
        "mods": [
         {

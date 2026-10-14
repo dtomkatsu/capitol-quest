@@ -21,7 +21,7 @@ Fifteen minutes, his scheduler said, and she said it twice. So you wait in the b
 - **Policy Brain:** Skip the small talk. The numbers are what really matters.
 - **Talk Story:** Get to know him a little bit. You'll have time for the policy talk later.
 
-### 1. [Policy Brain 10 red] Hand him a fact sheet and dive straight into your tax agenda.
+### 1. [Policy Brain 12 red] Hand him a fact sheet and dive straight into your tax agenda.
 - mods: influence/25
 Pass:
 He reads the page, all of it, and then reads the number again. "Who checked this?" You tell him. He puts it under the referral sheet instead of on top of the pile, which is a very small and very specific kind of yes.
