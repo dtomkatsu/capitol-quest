@@ -27,11 +27,18 @@ Your contacts fail to show up. The large hearing room looks noticeably empty.
 
 - effect: -2 support
 
-### 2. Work the committee members' staff.
-You spend the day in the back offices, one aide at a time, asking only that someone say your bill's number out loud when the chair asks for anything else.
-
-- effect: +2 influence
+### 2. [Base Building 12 white] Put out clips on social media about the hearing.
+- mods: support/30
+// PLACEHOLDER: pass/fail text is a draft; Devin is rewriting.
 - then: B
+Pass:
+The clips travel. Coalition members share them with their own networks, and people who have never been to the Capitol start asking when the hearing is.
+
+- effect: +3 support
+Fail:
+The clips get a few dozen views and a couple of polite replies. The people who see them are the people who already agree.
+
+- effect: -1 support
 
 ### 3. [Talk Story 12 white] Catch the chair's eye in the hallway before the gavel.
 - mods: influence/30

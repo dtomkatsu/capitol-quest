@@ -2098,11 +2098,30 @@
       "goto": "hearing"
      },
      {
-      "label": "Work the committee members' staff.",
-      "effects": {
-       "influence": 2
+      "label": "Put out clips on social media about the hearing.",
+      "check": {
+       "skill": "basebuilding",
+       "dc": 12,
+       "type": "white",
+       "mods": [
+        {
+         "from": "support",
+         "per": 30
+        }
+       ]
       },
-      "reply": "You spend the day in the back offices, one aide at a time, asking only that someone say your bill's number out loud when the chair asks for anything else.",
+      "success": {
+       "reply": "The clips travel. Coalition members share them with their own networks, and people who have never been to the Capitol start asking when the hearing is.",
+       "effects": {
+        "support": 3
+       }
+      },
+      "failure": {
+       "reply": "The clips get a few dozen views and a couple of polite replies. The people who see them are the people who already agree.",
+       "effects": {
+        "support": -1
+       }
+      },
       "goto": "hearing"
      },
      {
