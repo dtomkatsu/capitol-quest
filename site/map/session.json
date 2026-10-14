@@ -275,12 +275,6 @@
    "event": "w3-kawaguchi"
   },
   {
-   "week": 4,
-   "title": "Money Committee Week",
-   "phase": "Session",
-   "event": "w4-souza"
-  },
-  {
    "week": 5,
    "title": "First Lateral",
    "phase": "Session",
@@ -305,6 +299,13 @@
    "title": "First Crossover",
    "phase": "Session",
    "event": "w8-crossover"
+  },
+  {
+   "week": 9,
+   "title": "The Other Chamber",
+   "phase": "Session",
+   "milestone": false,
+   "event": "w9-souza"
   },
   {
    "week": 11,
@@ -992,88 +993,6 @@
     }
    }
   },
-  "w4-souza": {
-   "_note": "NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3). The red check reads `yamamoto-open` (2026-08-19, user's call moved the Kawaguchi meeting to week 5 — its `souza-intro` flag no longer exists this early, so this now reads the co-chair's tip from w2-yamamoto instead): a player who spent Yamamoto's favor gets +3 here, and a player who never got in her office is rolling this cold. `souza-intro` still exists — it is set THREE WEEKS LATER, in w5-decking, and is spent in w8-crossover and w11-wam.",
-   "start": {
-    "text": "Money Committee Week. Ways and Means posts its notices Tuesday at four, and by twenty past, every advocate in the building has read them off a phone in the same hallway. You have called Souza's office six times. His scheduler is unfailingly warm, remembers your name without being told, and has nothing — not this week, not next, and the week after that is holding for the chair. Room 211 is the same koa as every other door on the floor. It is closed.",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "Ways and Means is the last gate before conference and its deadline is week eleven. You have time. What you don't have is a way in."
-     },
-     {
-      "t": "talkstory",
-      "text": "Six calls and she still says your name warmly. That's a scheduler protecting a chair, not one brushing off a stranger — and the difference is worth something."
-     },
-     {
-      "t": "basebuilding",
-      "text": "There are twelve other members on that committee, and not one of them has a scheduler holding weeks. A chair is not the only person in a room."
-     }
-    ],
-    "choices": [
-     {
-      "label": "Take whatever she offers. Any slot, any hour.",
-      "effects": {
-       "influence": 2
-      },
-      "reply": "7:40 on a Friday morning, three weeks out, fifteen minutes, subject to the chair's floor schedule. You take it and you write it in pen."
-     },
-     {
-      "label": "Stop chasing the chair. Work the other twelve members.",
-      "effects": {
-       "support": 3,
-       "influence": -1
-      },
-      "reply": "Four offices in a day, two of them freshmen nobody has ever asked for anything. Thursday, a WAM member you have never met asks a question in a hearing that came straight off your one-pager."
-     },
-     {
-      "label": "Catch him in the hallway when the notices post.",
-      "check": {
-       "skill": "talkstory",
-       "dc": 12,
-       "type": "red",
-       "mods": [
-        {
-         "from": "flag",
-         "id": "souza-intro",
-         "add": 3,
-         "label": "Kawaguchi's phone call"
-        },
-        {
-         "from": "influence",
-         "per": 25
-        },
-        {
-         "from": "skill",
-         "id": "procedure",
-         "per": 4
-        }
-       ]
-      },
-      "success": {
-       "reply": "Ninety seconds between the elevator and the stairwell, and he never once stops walking. But he answers. \"Your problem isn't me. Your problem is the House sends me things in April and expects a miracle in May.\" The elevator takes him. You write the whole thing down on the back of the notice, standing up.",
-       "effects": {
-        "influence": 3,
-        "flag": "souza-ninety-seconds"
-       }
-      },
-      "failure": {
-       "reply": "He is polite, which is worse. \"Talk to my office.\" He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.",
-       "effects": {
-        "influence": -4
-       }
-      }
-     }
-    ]
-   },
-   "unlocks": {
-    "talks": {
-     "office": "talk-office",
-     "coalition": "talk-coalition",
-     "sen-x": "talk-sen"
-    }
-   }
-  },
   "w6-recess": {
    "_note": "THE MANDATORY RECESS. Const. art. III, sec. 10 requires a recess of at least five days somewhere between the 20th and 40th legislative day of every regular session; the dates themselves are set by concurrent resolution, not the constitution, and weekends, holidays and the recess days do not count toward the sixty. Anchored to real practice: the 2025 session opened Jan 15 and recessed Feb 20-26, which against sessionStart 2027-01-20 is exactly this week. NOT `noAction` — the CAPITOL is shut, the district is not, which is the entire scene. Grants rally/bench and deliberately withholds `push`: there is no chair in the building to work. The bite is mechanical, not textual: calendar `recess: true` makes resolveBills skip the week's chair rolls while every deadline stays where it was.",
    "start": {
@@ -1317,7 +1236,7 @@
    }
   },
   "w11-wam": {
-   "_note": "DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w4-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w5-decking) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.",
+   "_note": "DEADLINE WEEK: Ways and Means referral deadline (chairs.json stages.s-wam, deadline 11) — the last committee gate before conference. This is the PAYOFF of w9-souza's closed door and reads its flags: `souza-intro` (Kawaguchi's phone call, set in w5-decking) and `recess-draft` (the recess spent drafting the Senate amendment). Souza still never appears on screen — his scheduler, his committee and a closed door speak for him, exactly as in w4.",
    "start": {
     "text": "Ways and Means decks Friday, and after Ways and Means there is no more committee. Whatever is on that notice goes to conference. Whatever is not is finished, in a chamber that never held a hearing on it, having crossed the rotunda for nothing.\n\nRoom 211 is the same closed koa door it was in February. But the anteroom is different now: there are eleven people in it and every one of them is carrying a measure that already passed the other chamber. This is the bottleneck the whole building funnels into, and it is one man's calendar.",
     "voices": [
@@ -1788,7 +1707,7 @@
    }
   },
   "w3-kawaguchi": {
-   "_note": "WEEK 3 (2026-10-13: moved from week 2 — week 2 is now the legislator briefing (w2-briefing) and the office-manager scheduling scene (w2-schedule), whose Talk Story pass sets `kawaguchi-date`, read in the office check below; all 'two weeks out' timing is now 'two', since the referral deadline is still week 5; the meeting now opens with a greeting beat — fact-sheet check [pass -> the meeting, fail -> a short brush-off] or small talk about his Japan trip [Talk Story check] — before the old office meeting, now node E; the three bring-something choices in A were cut).  — THE KAWAGUCHI MEETING, moved back here from week 5 on 2026-10-12 (Devin's call, for the weeks-1-to-6 demo: \"move his convo from later to 2\"). It was week 5's w5-decking, and week 2's Yamamoto courtesy call (w2-yamamoto, talk-yamamoto) was set aside in content/drafts/ to make room; its `yamamoto-open` flag is gone, and w4-souza now reads `souza-intro` instead. NOTHING HERE MAY IMPLY A HEARING OR NOTICE HAS HAPPENED — Finance's referral deadline is still week 5 (chairs.json stages.h-fin). The old decking-day lines (the notice at four, watching it post) were rewritten for week 2. Original week-5 note follows. DEADLINE WEEK, and THE KAWAGUCHI MEETING. Finance's referral deadline is week 5 (chairs.json stages.h-fin), and the date Kawaguchi may have named via the week-1 optional talk (`talk-kawaguchi`) is February 14th — THIS week — so a player who earned `kawaguchi-date` is walking in already owed something. TWO-PART ART carries over unchanged from the original placement: the dialogue-level `art` (w2-finance, the Beretania breezeway) carries the approach, the `office` node overrides it with w2-finance-office; renderNode reads `n.art || dlg.art`. Sets `souza-intro`, spent in w8-crossover and w11-wam — both AFTER this week, so the causality holds now that the meeting sits at week 5 instead of week 2. w4-souza used to read `souza-intro` from here when this was week 2; since the meeting is now three weeks LATER than w4-souza, that scene reads `yamamoto-open` (set in w2-yamamoto) instead — keep it that way, or w4 is checking a flag that cannot exist yet.",
+   "_note": "WEEK 3 (2026-10-13: moved from week 2 — week 2 is now the legislator briefing (w2-briefing) and the office-manager scheduling scene (w2-schedule), whose Talk Story pass sets `kawaguchi-date`, read in the office check below; all 'two weeks out' timing is now 'two', since the referral deadline is still week 5; the meeting now opens with a greeting beat — fact-sheet check [pass -> the meeting, fail -> a short brush-off] or small talk about his Japan trip [Talk Story check] — before the old office meeting, now node E; the three bring-something choices in A were cut).  — THE KAWAGUCHI MEETING, moved back here from week 5 on 2026-10-12 (Devin's call, for the weeks-1-to-6 demo: \"move his convo from later to 2\"). It was week 5's w5-decking, and week 2's Yamamoto courtesy call (w2-yamamoto, talk-yamamoto) was set aside in content/drafts/ to make room; its `yamamoto-open` flag is gone, and w9-souza now reads `souza-intro` instead. NOTHING HERE MAY IMPLY A HEARING OR NOTICE HAS HAPPENED — Finance's referral deadline is still week 5 (chairs.json stages.h-fin). The old decking-day lines (the notice at four, watching it post) were rewritten for week 2. Original week-5 note follows. DEADLINE WEEK, and THE KAWAGUCHI MEETING. Finance's referral deadline is week 5 (chairs.json stages.h-fin), and the date Kawaguchi may have named via the week-1 optional talk (`talk-kawaguchi`) is February 14th — THIS week — so a player who earned `kawaguchi-date` is walking in already owed something. TWO-PART ART carries over unchanged from the original placement: the dialogue-level `art` (w2-finance, the Beretania breezeway) carries the approach, the `office` node overrides it with w2-finance-office; renderNode reads `n.art || dlg.art`. Sets `souza-intro`, spent in w8-crossover and w11-wam — both AFTER this week, so the causality holds now that the meeting sits at week 5 instead of week 2. w9-souza used to read `souza-intro` from here when this was week 2; since the meeting is now three weeks LATER than w9-souza, that scene reads `yamamoto-open` (set in w2-yamamoto) instead — keep it that way, or w4 is checking a flag that cannot exist yet.",
    "art": "w2-finance",
    "start": {
     "text": "Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.",
@@ -2165,6 +2084,88 @@
      "coalition": "talk-coalition",
      "office": "talk-office",
      "silva": "talk-rep"
+    }
+   }
+  },
+  "w9-souza": {
+   "_note": "MOVED TO WEEK 9 (2026-10-13, Devin: \"move wk 4 later, where appropriate\" — after crossover, before the week-11 WAM deadline; was w4-souza in week 4, id renamed). OUTSIDE THE DEMO (ends week 7). Week 4 is open for Devin's new event. Opening line and the deadline line were adjusted for week 9; the rest is unchanged.  NO BANNER YET — the dialogue renders fine without an `art` key. Souza never appears on screen and has no talk slot: his scheduler, his committee members and a closed door speak for him, which is the whole argument of the week (moved from week 3 to week 4 on 2026-08-15 when w3-federal took week 3). The red check reads `yamamoto-open` (2026-08-19, user's call moved the Kawaguchi meeting to week 5 — its `souza-intro` flag no longer exists this early, so this now reads the co-chair's tip from w2-yamamoto instead): a player who spent Yamamoto's favor gets +3 here, and a player who never got in her office is rolling this cold. `souza-intro` still exists — it is set THREE WEEKS LATER, in w5-decking, and is spent in w8-crossover and w11-wam.",
+   "start": {
+    "text": "The bills have crossed over, and now it is the Senate's money committee. Ways and Means posts its notices Tuesday at four, and by twenty past, every advocate in the building has read them off a phone in the same hallway. You have called Souza's office six times. His scheduler is unfailingly warm, remembers your name without being told, and has nothing — not this week, not next, and the week after that is holding for the chair. Room 211 is the same koa as every other door on the floor. It is closed.",
+    "voices": [
+     {
+      "t": "procedure",
+      "text": "Ways and Means is the last gate before conference and its deadline is week eleven. You have two weeks. What you don't have is a way in."
+     },
+     {
+      "t": "talkstory",
+      "text": "Six calls and she still says your name warmly. That's a scheduler protecting a chair, not one brushing off a stranger — and the difference is worth something."
+     },
+     {
+      "t": "basebuilding",
+      "text": "There are twelve other members on that committee, and not one of them has a scheduler holding weeks. A chair is not the only person in a room."
+     }
+    ],
+    "choices": [
+     {
+      "label": "Take whatever she offers. Any slot, any hour.",
+      "effects": {
+       "influence": 2
+      },
+      "reply": "7:40 on a Friday morning, three weeks out, fifteen minutes, subject to the chair's floor schedule. You take it and you write it in pen."
+     },
+     {
+      "label": "Stop chasing the chair. Work the other twelve members.",
+      "effects": {
+       "support": 3,
+       "influence": -1
+      },
+      "reply": "Four offices in a day, two of them freshmen nobody has ever asked for anything. Thursday, a WAM member you have never met asks a question in a hearing that came straight off your one-pager."
+     },
+     {
+      "label": "Catch him in the hallway when the notices post.",
+      "check": {
+       "skill": "talkstory",
+       "dc": 12,
+       "type": "red",
+       "mods": [
+        {
+         "from": "flag",
+         "id": "souza-intro",
+         "add": 3,
+         "label": "Kawaguchi's phone call"
+        },
+        {
+         "from": "influence",
+         "per": 25
+        },
+        {
+         "from": "skill",
+         "id": "procedure",
+         "per": 4
+        }
+       ]
+      },
+      "success": {
+       "reply": "Ninety seconds between the elevator and the stairwell, and he never once stops walking. But he answers. \"Your problem isn't me. Your problem is the House sends me things in April and expects a miracle in May.\" The elevator takes him. You write the whole thing down on the back of the notice, standing up.",
+       "effects": {
+        "influence": 3,
+        "flag": "souza-ninety-seconds"
+       }
+      },
+      "failure": {
+       "reply": "He is polite, which is worse. \"Talk to my office.\" He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.",
+       "effects": {
+        "influence": -4
+       }
+      }
+     }
+    ]
+   },
+   "unlocks": {
+    "talks": {
+     "office": "talk-office",
+     "coalition": "talk-coalition",
+     "sen-x": "talk-sen"
     }
    }
   }
