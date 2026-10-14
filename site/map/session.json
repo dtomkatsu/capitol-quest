@@ -1671,6 +1671,10 @@
     "choices": [
      {
       "label": "Ask her what the chair's week actually looks like.",
+      "force": {
+       "skill": "talkstory",
+       "min": 3
+      },
       "check": {
        "skill": "talkstory",
        "dc": 9,
