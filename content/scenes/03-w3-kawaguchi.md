@@ -21,7 +21,7 @@ Fifteen minutes, his scheduler said, and she said it twice. So you wait in the b
 - **Policy Brain:** Skip the small talk. The numbers are what really matters.
 - **Talk Story:** Get to know him a little bit. You'll have time for the policy talk later.
 
-### 1. [Policy Brain 12 red] Hand him a fact sheet and dive straight into your tax agenda.
+### 1. [Educator 12 red] Hand him a fact sheet and dive straight into your tax agenda.
 - mods: influence/25
 Pass:
 He reads the page, all of it, and then reads the number again. "Who checked this?" You tell him. He puts it under the referral sheet instead of on top of the pile, which is a very small and very specific kind of yes.
@@ -46,7 +46,7 @@ He looks up for the first time.
 - **Talk Story:** A man who lights up about Japan isn't stalling. He just showed you the door he actually keeps open.
 - **Procedure:** Fifteen minutes, and the clock is running whichever way this goes. Steer it, or spend it.
 
-### 1. [Educator 12 white] Steer the conversation back to policy.
+### 1. [Procedure 12 white] Steer the conversation back to policy.
 - mods: influence/25
 // PLACEHOLDER: Devin is rewriting the pass and fail text.
 Pass:

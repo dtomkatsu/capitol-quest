@@ -1748,7 +1748,7 @@
      {
       "label": "Hand him a fact sheet and dive straight into your tax agenda.",
       "check": {
-       "skill": "fiscal",
+       "skill": "educator",
        "dc": 12,
        "type": "red",
        "mods": [
@@ -1798,7 +1798,7 @@
      {
       "label": "Steer the conversation back to policy.",
       "check": {
-       "skill": "educator",
+       "skill": "procedure",
        "dc": 12,
        "type": "white",
        "mods": [
