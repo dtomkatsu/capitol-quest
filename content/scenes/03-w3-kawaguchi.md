@@ -66,7 +66,9 @@ Fail:
 
 ## D · brushoff
 - art: w2-finance-office
-**Rep. Jon Kawaguchi:** "Leave it with my scheduler." He is already standing. "Notices go out in two weeks. If your bill is on one, you'll hear it the same way everyone does."
+He squints at the wall of text and charts as if it's Ancient Greek.
+
+**Rep. Jon Kawaguchi:** "Thanks, uh, for this. I'll look it over later." He says it in a less-than-convincing tone, filing it away among his messy stacks of paper.
 
 - **Educator:** A fact sheet is a document. A sentence is the thing he repeats to Souza. You handed him the document.
 
