@@ -14,7 +14,7 @@ Kawaguchi's office is two doors down from the briefing room, and it has a gateke
 ### 1. [Talk Story 3+] [Talk Story 9 white] Introduce yourself to the office manager.
 - mods: influence/25
 Pass:
-She puts the phone down, which seems to surprise her too. "He has fifteen minutes next week, before the lateral file lands. Don't be late, and don't bring a binder." She writes your name in pen.
+She puts the phone down, which seems to surprise her too. "What was your name again?" You tell her. "He has fifteen minutes next week, before the lateral file lands. Don't be late, and don't bring a binder." She writes your name in pen.
 
 - effect: +2 influence, flag kawaguchi-date
 - then: end

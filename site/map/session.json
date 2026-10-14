@@ -1687,7 +1687,7 @@
        ]
       },
       "success": {
-       "reply": "She puts the phone down, which seems to surprise her too. \"He has fifteen minutes next week, before the lateral file lands. Don't be late, and don't bring a binder.\" She writes your name in pen.",
+       "reply": "She puts the phone down, which seems to surprise her too. \"What was your name again?\" You tell her. \"He has fifteen minutes next week, before the lateral file lands. Don't be late, and don't bring a binder.\" She writes your name in pen.",
        "effects": {
         "influence": 2,
         "flag": "kawaguchi-date"
