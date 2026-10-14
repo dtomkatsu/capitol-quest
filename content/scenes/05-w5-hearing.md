@@ -25,7 +25,7 @@ You manage a good showing. It's standing room only at the hearing.
 Fail:
 Your contacts fail to show up. The large hearing room looks noticeably empty.
 
-- effect: -2 support
+- effect: -2 support, -2 influence
 
 ### 2. [Base Building 12 white] Put out clips on social media about the hearing.
 - mods: support/30
@@ -38,7 +38,7 @@ The clips travel. Coalition members share them with their own networks, and peop
 Fail:
 The clips get a few dozen views and a couple of polite replies. The people who see them are the people who already agree.
 
-- effect: -1 support
+- effect: -1 support, -1 influence
 
 ### 3. [Talk Story 12 white] Catch the chair's eye in the hallway before the gavel.
 - mods: influence/30
@@ -50,7 +50,7 @@ Two sentences, walking. He does not stop, but he does not say no, and that is a 
 Fail:
 He is already talking to someone else, about water. You get a nod and a closing door.
 
-- effect: -1 influence
+- effect: -2 influence
 
 ## B · hearing
 // PLACEHOLDER: Devin is rewriting this. Part two: the room itself. It must NOT say whether the bill was heard (the engine rolls that at week's end).

@@ -1060,7 +1060,7 @@
       "failure": {
        "reply": "He is polite, which is worse. \"Talk to my office.\" He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.",
        "effects": {
-        "influence": -3
+        "influence": -4
        }
       }
      }
@@ -1767,7 +1767,7 @@
       "failure": {
        "reply": "\"He's in committee.\" She writes your name on a sticky note and presses it to the edge of the desk. \"We'll call you.\" The note will be there next week. So will the line.",
        "effects": {
-        "influence": -1
+        "influence": -2
        }
       }
      },
@@ -1843,7 +1843,7 @@
       "failure": {
        "reply": "He glances at it, turns it face-down, and checks the clock over your shoulder. \"I get a lot of these.\" It was a good page. It was also the fortieth page this week.",
        "effects": {
-        "influence": -2
+        "influence": -4
        },
        "goto": "brushoff"
       }
@@ -1898,7 +1898,7 @@
       "failure": {
        "reply": "\"Uh—\" You trail off, unable to follow up. He waits a beat, then checks the clock. \"Right. Sit.\"",
        "effects": {
-        "influence": -1
+        "influence": -2
        },
        "goto": "office"
       }
@@ -2092,7 +2092,8 @@
       "failure": {
        "reply": "Your contacts fail to show up. The large hearing room looks noticeably empty.",
        "effects": {
-        "support": -2
+        "support": -2,
+        "influence": -2
        }
       },
       "goto": "hearing"
@@ -2119,7 +2120,8 @@
       "failure": {
        "reply": "The clips get a few dozen views and a couple of polite replies. The people who see them are the people who already agree.",
        "effects": {
-        "support": -1
+        "support": -1,
+        "influence": -1
        }
       },
       "goto": "hearing"
@@ -2146,7 +2148,7 @@
       "failure": {
        "reply": "He is already talking to someone else, about water. You get a nod and a closing door.",
        "effects": {
-        "influence": -1
+        "influence": -2
        }
       },
       "goto": "hearing"

@@ -33,4 +33,4 @@ Ninety seconds between the elevator and the stairwell, and he never once stops w
 Fail:
 He is polite, which is worse. "Talk to my office." He is talking to somebody else before the sentence is finished, and you are standing in a hallway holding a notice you had already read.
 
-- effect: -3 influence
+- effect: -4 influence

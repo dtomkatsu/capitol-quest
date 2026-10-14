@@ -31,7 +31,7 @@ He reads the page, all of it, and then reads the number again. "Who checked this
 Fail:
 He glances at it, turns it face-down, and checks the clock over your shoulder. "I get a lot of these." It was a good page. It was also the fortieth page this week.
 
-- effect: -2 influence
+- effect: -4 influence
 - then: D
 
 ### 2. Ask him how his session's been going. Is he getting any downtime?
@@ -61,7 +61,7 @@ Ten minutes of ramen, a bullet train, and a daughter who ordered for the whole t
 Fail:
 "Uh—" You trail off, unable to follow up. He waits a beat, then checks the clock. "Right. Sit."
 
-- effect: -1 influence
+- effect: -2 influence
 - then: E
 
 ## D · brushoff

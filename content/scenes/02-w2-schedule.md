@@ -21,7 +21,7 @@ She puts the phone down, which seems to surprise her too. "He has fifteen minute
 Fail:
 "He's in committee." She writes your name on a sticky note and presses it to the edge of the desk. "We'll call you." The note will be there next week. So will the line.
 
-- effect: -1 influence
+- effect: -2 influence
 - then: end
 
 ### 2. Leave a fact sheet and your card. Don't take up her time.
