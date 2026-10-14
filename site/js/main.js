@@ -5773,7 +5773,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=57");
+    this.load.json("session", "map/session.json?v=58");
     this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

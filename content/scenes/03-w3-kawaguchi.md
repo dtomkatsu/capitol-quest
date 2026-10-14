@@ -56,7 +56,7 @@ You wait for the end of his sentence, thank him for the story, and ask one quest
 - effect: +2 influence
 - then: F
 Fail:
-He catches the shift and nods, a little sorry to see the trip go. "Right." He glances at the clock and the moment is gone.
+He catches the shift and nods, a little sorry to see the trip go. "Right." The moment is gone.
 
 - effect: -2 influence
 - then: F
@@ -69,7 +69,7 @@ Ten minutes of ramen, a bullet train, and a daughter who ordered for the whole t
 - effect: +2 influence
 - then: F
 Fail:
-"Uh—" You trail off, unable to follow up. He waits a beat, then checks the clock.
+"Uh—" You trail off, unable to follow up. He waits a beat.
 
 - effect: -2 influence
 - then: F
@@ -88,7 +88,8 @@ Fifteen minutes, and he used four of them. The door closes softly, which is some
 - then: F
 
 ## F · friday
-You're back in the hallway outside Finance with everyone else who doesn't have a chair's ear, watching the same door you just walked out of. Nothing posts today. But you know which way he leans now, and that is more than the forty other measures that will get fifteen minutes and a closed door instead of an open one will ever learn about him.
+// PLACEHOLDER: Devin is rewriting this. The only place in the scene where Kawaguchi checks the clock.
+Kawaguchi checks the clock on the wall, then the one on his phone. "That's my fifteen." He stands, gathers the referral sheet, and holds the door for you. Nothing has been scheduled, and nothing will post today.
 
 - **Procedure:** Fifteen minutes with the chair is not a hearing, and nothing has been scheduled. Whatever he decides, you will read it standing up in a hallway in two weeks, same as everyone who didn't get the meeting.
 
