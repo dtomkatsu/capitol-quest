@@ -145,7 +145,7 @@ Marked `// PLACEHOLDER` in the files, my drafts, not yours:
 | Scene | Week | What it is |
 |---|---|---|
 | `03-w3-kawaguchi` | 3 | the Kawaguchi meeting |
-| `04-w4-disaster` | 4 | the hurricane |
+| `06-w6-disaster` | 6 | the hurricane (moved from week 4, 2026-10-14) |
 | `04-w4-rally` | 5 | rally vs. listening session |
 | `05-w5-hearing` | 5 | deadline week, two parts |
 
@@ -163,7 +163,7 @@ earn theirs the most.
 
 ### 8. Two lint warnings
 
-- `w4-disaster` has no skill voices. Every other scene has two or three.
+- `w6-disaster` has no skill voices. Every other scene has two or three.
 - `souza-intro` is read in week 8 but nothing sets it any more. Week 8
   is outside the demo, so this is harmless until the full game returns.
 
@@ -231,7 +231,7 @@ ending. A scripted week 7 would send the player out on the demo's own
 terms — the House floor vote is what the calendar already calls the
 week.
 
-### 5. `04-w4-disaster` — the hurricane
+### 5. `06-w6-disaster` — the hurricane (week 6, the recess's `pre`)
 
 Nearly yours already. It only needs **two or three instinct voices**;
 it is the one scene in the demo with none, and the lint flags it.

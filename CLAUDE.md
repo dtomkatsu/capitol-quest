@@ -1400,6 +1400,17 @@ intel tier — so it cannot simply be repointed at Mobilizing.
   scripted scene) and left demo week 7 opening straight into the hub
   with no narrative at all.
 
+**The deadline warning is week 4's, and the hurricane is week 6's
+(2026-10-14, Devin: "they won't have time to change anything in week 5").**
+`w4-rally` node A opens with Devin's own two sentences ("Next week is your
+last chance to receive a hearing in the House Finance Committee…") and
+carries NO deadline voices; `w5-hearing` is prep + the room and no longer
+warns. The hurricane scene is `06-w6-disaster` (id `w6-disaster`), week 6's
+calendar `pre`, so it plays before `w6-recess` — after the deadline, so
+nothing in weeks 4-5 may mention it. It grants `coalition, silva=talk-rep`
+only, matching the recess (no new door opens in an empty building). If the
+bill dies at week 5 the game is over and the hurricane never plays.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:

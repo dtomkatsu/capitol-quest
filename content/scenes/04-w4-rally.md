@@ -7,8 +7,10 @@ actions: rally, bench, push
 # w4-rally
 
 ## A · start
-// PLACEHOLDER: Devin is rewriting this.
-Next week is the House Finance deadline, and nothing of yours has been scheduled. The coalition wants to do something visible before then. There are two ways to spend the week: a rally outside the Capitol, loud and photogenic, or a community listening session in a church hall, quieter and slower.
+// PLACEHOLDER: Devin is rewriting the second paragraph (the first is his, and carries the deadline warning).
+Next week is your last chance to receive a hearing in the House Finance Committee. By Friday, any House bill that has not been heard will effectively be dead.
+
+The coalition wants to do something visible before then. There are two ways to spend the week: a rally outside the Capitol, loud and photogenic, or a community listening session in a church hall, quieter and slower.
 
 - **Mobilizing:** A crowd on the lawn is the one thing the building can see from its own windows.
 - **Base Building:** Nobody leaves a rally knowing a leader's name. A listening session is how you find the ones who will still be here in May.
