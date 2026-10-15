@@ -1659,12 +1659,6 @@
    "_note": "WEEK 3 EVENT, THE KAWAGUCHI MEETING (Devin's calls: moved from week 5 to 2 on 2026-10-12, then to week 3 on 2026-10-13 when week 2 became the briefing + scheduling scenes). Week 2's w2-schedule Talk Story pass sets `kawaguchi-date`; nothing here reads it now. Opens on a greeting beat (B): fact-sheet red check -> the meeting (F) or a brush-off (D), or small talk about his Japan trip (C) -> F. Nothing has been scheduled or posted, and no hearing may be implied: h-fin deadline is week 5. A failed check costs -2 influence at most (house rule; the Finance gate is 28 and influence starts at 30). Grants `push, lobby`, so node F is where the player is pointed at the call-in move. Parked history: week 2's Yamamoto call is in content/drafts.",
    "art": "w2-finance",
    "start": {
-    "text": "Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.",
-    "voices": [],
-    "goto": "greeting",
-    "choices": []
-   },
-   "greeting": {
     "art": "w2-finance-office",
     "speaker": "kawaguchi",
     "text": "You exchange greetings. \"Hi. How can I help you?\"",

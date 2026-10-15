@@ -5916,7 +5916,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=84");
+    this.load.json("session", "map/session.json?v=85");
     this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
@@ -7921,7 +7921,9 @@ class RoomScene extends Phaser.Scene {
     if (this.bands.length) {
       this.bands.forEach((b, i) => {
         this.add.image(b.x, b.y, texKeys[i])
-            .setOrigin(0, 0).setScale(this.ss).setDepth(b.d);
+            .setOrigin(0, 0).setScale(this.ss).setDepth(b.d)
+            // a band named in cfg.hideBands is loaded but not drawn
+            .setVisible(!(this.cfg.hideBands || []).includes(b.f));
       });
     } else {
       this.add.image(0, 0, texKeys[0]).setOrigin(0, 0).setScale(this.ss);
@@ -8033,7 +8035,7 @@ class RoomScene extends Phaser.Scene {
            so the label belongs to the door and not to the walkway. */
       let mk = null;
       const mkAt = h.mark || [h.px, h.py - 20];
-      if (this.cfg.bare) {
+      if (this.cfg.bare || (this.cfg.hideMarks || []).includes(h.id)) {
         /* a `bare` room draws no markers (the Capitol as a backdrop) */
       } else if (h.kind === "door") {
         mk = this.add.image(mkAt[0], mkAt[1], roomMarkerTexture(this))
@@ -8604,6 +8606,8 @@ const ROOM_HALLWAY = {
   view: [281, 206, 1099, 725],
   enter: null,
   hideActor: true,   // the walking figure is not drawn here for now (2026-10-15)
+  hideBands: ["hallway_figure.png"],   // nor is the legislator in the alcove
+  hideMarks: ["legislator"],           // or the marker over them
   // the legislator IS the week: tapping them opens the session flow
   // (creation funnel first, then Opening Day — renderHub's early bail
   // owns that order, not this hook)

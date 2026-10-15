@@ -7,15 +7,16 @@ actions: push, lobby
 
 # w3-kawaguchi
 
-## A · start
-Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.
+// HIDDEN FOR NOW (breezeway): ## A · start
+// HIDDEN FOR NOW (breezeway): Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.
 
 // HIDDEN FOR NOW (instinct thought): - **Procedure:** Read the room right: a chair who wants you to hear something from him instead of off a printout is either doing you a favor or bracing you for a loss. Both cost him time he doesn't have today.
 // HIDDEN FOR NOW (instinct thought): - **Talk Story:** Week three, and the chair of Finance found fifteen minutes for you before there is anything to hear. Chairs don't spend that on a stranger without wanting something back.
 
--> B
+// HIDDEN FOR NOW (breezeway): -> B
 
-## B · greeting
+// To restore the breezeway: un-comment node A above and rename this header back to '## B · greeting'.
+## B · start
 - art: w2-finance-office
 **Rep. Jon Kawaguchi:** You exchange greetings. "Hi. How can I help you?"
 
