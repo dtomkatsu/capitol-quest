@@ -1331,6 +1331,24 @@ multi-millionaires", $150M/yr) is a NEW, MODELED policy in policies.json
 (tax family `wealth`, src says modeled-not-a-fiscal-note). Remove `revenueOnly`
 to unlock the rest.
 
+**THE MOVE COMES FROM OUTSIDE THE BUILDING (2026-10-14, Devin: "instead
+of working the building slash chair … put a call out to people to call
+their legislators").** Both in-building verbs were a lobbyist's, which
+the faceless-campaign rule says the Advocate is not:
+- the bill push's hub row read **"Work <chair>"** and now reads
+  **"Calls to <chair>'s office / ask your people to call about <bill>"**;
+- the `lobby` action was **"Work the building"** (office to office,
+  coffee, favours remembered) and is now **"Put out a call to action"**
+  — your list, their own legislators.
+**The MECHANICS are untouched**: the push is still the same bonus scaled
+by influence, `lobby` still trains Talk Story at +1 support / +3
+influence, and the simulator's bands are unmoved. Only the words
+changed. Two things to reconsider if this is ever taken further: a
+call-in arguably ought to scale with SUPPORT rather than influence (that
+would move the calibrated bands and needs `simulate_gauntlet.py`), and
+`lobby` is the only action that trains Talk Story — which gates every
+intel tier — so it cannot simply be repointed at Mobilizing.
+
 **The demo's three blockers, fixed 2026-10-14** (audit in `DEMO-GAPS.md`):
 - **Actions are granted again.** NOT ONE scene in weeks 1-7 carried an
   `actions:` line, so `push` — the only lever on a bill's hearing odds,

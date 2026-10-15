@@ -1877,7 +1877,7 @@ const SessionPanel = {
       for (const aid of u.actions || []) {
         if (S.unlocks.actions.includes(aid)) continue;
         S.unlocks.actions.push(aid);
-        got.push(aid === "push" ? "Work a chair"
+        got.push(aid === "push" ? "Call in on a chair"
           : (data.actions[aid] || {}).name || aid);
       }
       if (got.length) save();
@@ -3997,14 +3997,23 @@ const SessionPanel = {
             const stDl = stageOf(sid);
             const dlLeft = stDl.deadline != null ?
               stDl.deadline - S.week : null;
+            /* THE PLAYER IS THE ADVOCATE, SO THE MOVE COMES FROM
+               OUTSIDE (2026-10-14, Devin: "instead of working the
+               building slash chair … put a call out to people to call
+               their legislators"). This row used to read "Work <chair>",
+               which is a lobbyist buttonholing a member in a corridor —
+               a power the faceless-campaign rule says the player does
+               not have. Same mechanic, honest verb: you spend the week
+               turning your own list onto that chair's phones. */
             html += '<div class="sh-row" data-push="' + b.id +
-              '"><span class="shname"><b>' + sym("push") + " Work " +
-              esc(ch.name) +
+              '"><span class="shname"><b>' + sym("push") + " Calls to " +
+              esc(ch.name) + "’s office" +
               // the offer names what the push is worth AT THIS BILL'S
               // influence, not a constant — the whole point of scaling
               // it is that the player can watch the price of their own
               // standing on the button before spending the week
-              "</b><small>spend the week on " + esc(b.name) + " — " +
+              "</b><small>ask your people to call about " +
+              esc(b.name) + " — " +
               Math.round(pushBonus(bInf(b)) * 100) +
               " points of scheduling odds" +
               (dlLeft != null ? ' · <b class="dl' +
@@ -4946,7 +4955,8 @@ const SessionPanel = {
             lines.push(have < hg.min
               ? "<b>Under " + hg.min + " influence, this chair will not " +
                 "schedule you at all</b> — you are at " + Math.round(have) +
-                ". Work the chair, or the deadline passes without a hearing."
+                ". Turn out calls to his office, or the deadline passes " +
+                "without a hearing."
               : "He will not calendar anything from a campaign under " +
                 hg.min + " influence. You are at " + Math.round(have) + ".");
           }
@@ -5853,7 +5863,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=67");
+    this.load.json("session", "map/session.json?v=68");
     this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

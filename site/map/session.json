@@ -229,23 +229,27 @@
    ]
   },
   "lobby": {
-   "name": "Work the building",
-   "icon": "🤝",
-   "desc": "Office to office, floor by floor. Coffee, one-pagers, favors remembered.",
+   "name": "Put out a call to action",
+   "icon": "📞",
+   "desc": "Your list, their own legislators. A phone number, a script, and a deadline.",
    "trains": "talkstory",
    "effects": {
     "support": 1,
     "influence": 3
    },
-   "result": "Four offices, two commitments, one 'send me the language.' The building runs on exactly this.",
+   "result": "The blast goes out Tuesday morning. By Thursday three offices have heard from people who live in their district and had never called before — and one of them says so, out loud, in a hallway.",
    "voices": [
     {
      "t": "talkstory",
-     "text": "Read the room right and four offices remember your name in March. That's the whole skill."
+     "text": "A hundred calls from strangers is noise. Forty from people who vote in their district is a message, and the difference is entirely in who you ask."
+    },
+    {
+     "t": "mobilizing",
+     "text": "They already agree with you. All you are doing is handing them the number and the hour — that is the whole job this week."
     },
     {
      "t": "procedure",
-     "text": "Charming doesn't skip a single deadline. Track which ones you spent today talking instead of filing."
+     "text": "Time it to the notice, not to your own calendar. A call that lands the day after the agenda posts is a call about a decision already made."
     }
    ]
   }

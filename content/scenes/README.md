@@ -28,7 +28,7 @@ _note: Free text that ships as _note (any _key: does).
 art: w2-finance                       banner, site/assets/events/<art>.png
 at: {"island": "hawaii"}              week-beat camera target (JSON)
 talks: silva=talk-rep, office, sen-x=talk-sen doors this scene opens (bare id = talk-<id>)
-actions: bench, lobby                 ("push" = the work-the-chair rows)
+actions: bench, lobby                 ("push" = the call-in-on-a-chair rows)
 ---
 
 # w5-decking                          title (ignored)
