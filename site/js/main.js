@@ -5801,7 +5801,10 @@ const SessionPanel = {
        walking view with no instincts chosen and no bills, and nothing
        told them the game had not started yet. */
     const needCreate = cal0.agenda && !S.agendaLocked;
-    if (needCreate || (!START_ROOM && eventPending(cal0))) {
+    /* A week's pending scene pops on load too (2026-10-15, Devin: events
+       should open on their own, not wait behind "Something needs your
+       attention"). It used to be held back while START_ROOM was set. */
+    if (needCreate || eventPending(cal0)) {
       openOverlay(true);            // the FIRST week arriving
       // skill investment / bill agenda comes first when it's pending —
       // the narrative event follows once that's locked in (see sess-lock)
