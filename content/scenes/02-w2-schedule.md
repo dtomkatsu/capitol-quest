@@ -9,23 +9,21 @@ actions: lobby
 ## A · start
 Kawaguchi's office 
 
-- **Talk Story:** She's the gatekeeper for Kawaguchi. You need her 
+- **Talk Story:** She's the gatekeeper for all of Kawaguchi's meetings. It's worth talking to her for at least a couple minutes.
 
 ### 1. [Talk Story 3+] [Talk Story 9 white] Introduce yourself to the office manager.
 - mods: influence/25
 Pass:
-You exchange introductions. Shelly looks a bit pleased that you bothered with it. "Representative's calendar is pretty much booked out for the next couple weeks...I can slot you in next week Thursday for 15 minutes."
+You make introductions. Shelly looks pleasantly surprised that you bothered with it. "Representative's calendar is pretty much booked out for the next couple weeks...I can slot you in next week Thursday for 15 minutes."
 
 - effect: +2 influence, flag kawaguchi-date
 - then: end
 Fail:
-She writes your name on a sticky note and presses it to the edge of the desk. "We'll call you." The note will be there next week.
-
+She has you write your contact info on a sticky note. "Okay then, I'll let you know if there's an opening."
 - effect: -2 influence
 - then: end
 
 ### 2. Leave a fact sheet and your card. Don't take up her time.
-She slides it into a tray that is already full. It is, at least, a very polite way to be forgotten.
-
-- effect: +1 support
+She takes the documents and beams a fake smile. Those are going straight into the recycling bin after you leave.
+- effect: +0 support
 - then: end

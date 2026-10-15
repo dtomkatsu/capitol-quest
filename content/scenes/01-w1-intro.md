@@ -25,7 +25,7 @@ She sighs. "I can only do so much. You've gotta get through to leadership and th
 ## C · senate
 **Rep. Christina Silva:** You ask about the Senate. She shakes her head. "Not looking good. I've been hearing that Ways & Means is going to oppose any tax increases. Their plan is to make budget cuts instead. I'll try to work on them, but you'll have to talk to everyone you can."
 
-"Got it, I'll see you around," you say. Rep. Silva promises to keep you updated, as she turns and disappears back into the crowd.
+Rep. Silva promises to keep you updated, as she turns and disappears back into the crowd.
 
 // HIDDEN FOR NOW (instinct thought): - **Talk Story:** "I'll try to work on them" is a promise to try, not a vote. She is telling you exactly where her help ends.
 // HIDDEN FOR NOW (instinct thought): - **Mobilizing:** Ways & Means won't move for a memo. They move when the hallway outside their door is full of people who need what's on the chopping block.
@@ -41,7 +41,7 @@ It is the only free hour of the session, and everyone in the building will spend
 - **Policy Brain:** Or the opposite instinct: the building will still be here at nine, and so will every number you haven't read yet.
 - **Base Building:** Whoever you spend today on, you will be asking them for something in March. Choose the ones you will still be asking.
 
-### 1. Talk to people.
+### 1. Spend some time mingling with the sea of lobbyists and capitol staff before you leave.
 You spend the hour where the building is loudest: the rotunda, the east doors, the line for plate lunches. Nobody commits to anything. A few more people know your name at nine than did at eight.
 
 - effect: +2 influence

@@ -1522,7 +1522,7 @@
    },
    "senate": {
     "speaker": "silva",
-    "text": "You ask about the Senate. She shakes her head. \"Not looking good. I've been hearing that Ways & Means is going to oppose any tax increases. Their plan is to make budget cuts instead. I'll try to work on them, but you'll have to talk to everyone you can.\"\n\n\"Got it, I'll see you around,\" you say. Rep. Silva promises to keep you updated, as she turns and disappears back into the crowd.",
+    "text": "You ask about the Senate. She shakes her head. \"Not looking good. I've been hearing that Ways & Means is going to oppose any tax increases. Their plan is to make budget cuts instead. I'll try to work on them, but you'll have to talk to everyone you can.\"\n\nRep. Silva promises to keep you updated, as she turns and disappears back into the crowd.",
     "voices": [],
     "goto": "options",
     "choices": []
@@ -1545,7 +1545,7 @@
     ],
     "choices": [
      {
-      "label": "Talk to people.",
+      "label": "Spend some time mingling with the sea of lobbyists and capitol staff before you leave.",
       "effects": {
        "influence": 2
       },
@@ -1601,7 +1601,7 @@
     "voices": [
      {
       "t": "talkstory",
-      "text": "She's the gatekeeper for Kawaguchi. You need her"
+      "text": "She's the gatekeeper for all of Kawaguchi's meetings. It's worth talking to her for at least a couple minutes."
      }
     ],
     "choices": [
@@ -1623,14 +1623,14 @@
        ]
       },
       "success": {
-       "reply": "You exchange introductions. Shelly looks a bit pleased that you bothered with it. \"Representative's calendar is pretty much booked out for the next couple weeks...I can slot you in next week Thursday for 15 minutes.\"",
+       "reply": "You make introductions. Shelly looks pleasantly surprised that you bothered with it. \"Representative's calendar is pretty much booked out for the next couple weeks...I can slot you in next week Thursday for 15 minutes.\"",
        "effects": {
         "influence": 2,
         "flag": "kawaguchi-date"
        }
       },
       "failure": {
-       "reply": "She writes your name on a sticky note and presses it to the edge of the desk. \"We'll call you.\" The note will be there next week.",
+       "reply": "She has you write your contact info on a sticky note. \"Okay then, I'll let you know if there's an opening.\"",
        "effects": {
         "influence": -2
        }
@@ -1639,9 +1639,9 @@
      {
       "label": "Leave a fact sheet and your card. Don't take up her time.",
       "effects": {
-       "support": 1
+       "support": 0
       },
-      "reply": "She slides it into a tray that is already full. It is, at least, a very polite way to be forgotten."
+      "reply": "She takes the documents and beams a fake smile. Those are going straight into the recycling bin after you leave."
      }
     ]
    },
