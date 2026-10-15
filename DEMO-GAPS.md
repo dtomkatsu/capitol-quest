@@ -184,3 +184,71 @@ earn theirs the most.
 Items 1–5 are the difference between a demo that works and one that
 doesn't. That is about two and a half hours. Items 6 and 7 are polish
 and can land in any order after.
+
+---
+
+## What to write, in order
+
+The mechanics are fixed; the rest is prose. In priority order, with what
+each scene now has to carry.
+
+### 1. `05-w5-hearing` — week 5, the deadline (two parts)
+
+**The most important scene in the demo.** It is where the whole question
+resolves, and it is the last week the player can do anything about it.
+Both nodes are my draft.
+
+It has to carry three things:
+- **The clock.** Friday is the end. A bill not heard is not voted down,
+  it just never comes up.
+- **The last move.** Working the chair is still available this week —
+  this is the final chance to spend it.
+- **No verdict.** The scene must not say whether your bill was heard.
+  The engine rolls that when the week ends, and the answer arrives on
+  the next week's report. Say what the room feels like, not how it came
+  out.
+
+### 2. `03-w3-kawaguchi` — week 3, the chair
+
+Now carries more weight than when I drafted it: **week 3 is where the
+player is handed "work the chair."** The scene is the introduction to
+the one lever they have, so meeting Kawaguchi should make it obvious
+that his calendar is the thing standing between them and a hearing —
+and that they can come back and press him.
+
+### 3. `04-w4-rally` — week 4, rally vs. listening session
+
+The Mobilizing / Base Building fork, and the week that grants the rally
+and the bench. The teaching is that turnout and durability are bought
+separately: the rally is loud and fades, the bench is dull and lasts.
+Let them actually disagree.
+
+### 4. Week 7 — the demo's ending
+
+Right now it falls back to a generic (leadership leaning on Silva). It
+works and it is about the right size, but it is not written as an
+ending. A scripted week 7 would send the player out on the demo's own
+terms — the House floor vote is what the calendar already calls the
+week.
+
+### 5. `04-w4-disaster` — the hurricane
+
+Nearly yours already. It only needs **two or three instinct voices**;
+it is the one scene in the demo with none, and the lint flags it.
+
+---
+
+## Two things to watch while you write
+
+**The influence floor is 28, and the demo spends influence freely.**
+Weeks 1–4 carry eight −2 influence choices and two −4s. Influence starts
+at 30 and only ever drifts down. Two ordinary-looking choices put the
+player under the line, where Finance will not schedule them at all. The
+gate is now visible in the intel panel, so it is no longer invisible —
+but if you want the demo to be winnable by an ordinary player, the
+negative choices in weeks 1–4 are where to look.
+
+**Mention the move.** The player now gets one action a week from week 2
+on. Scenes that never refer to it leave a mechanic sitting unused in the
+hub. A line in weeks 3 and 5 pointing at the chair's calendar is enough.
+
