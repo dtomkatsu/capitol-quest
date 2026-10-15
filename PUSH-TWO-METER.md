@@ -106,10 +106,9 @@ violation:
 But it does mean a high-support campaign gets paid **twice**: once at
 dilution, once at scheduling. Which leads to —
 
-**Worth doing at the same time: make the push cost support.** Two or
-three points. It turns the call-in into a genuine stock-spend, kills the
-double-dip, and gives the demo's most-repeated verb a real price. I have
-not modelled this; it would need its own run.
+**Worth doing at the same time: make the push cost support.** Modelled
+below — and it turns out to be the piece that makes the whole change
+free.
 
 ---
 
@@ -147,3 +146,87 @@ Three things to do with it, in order:
    over.
 
 About an hour, most of it the re-run and the doc.
+
+---
+
+## The support cost, modelled
+
+A call-in spends your list. Charging the push support turns it into a
+genuine stock-spend and kills the double-dip. **12,000 sessions a cell,
+standard error ±0.27pp**, so anything under about half a point is noise.
+
+| Design | Push-first | Balanced | Push-first end support |
+|---|---|---|---|
+| shipped (one meter, free) | 9.51% ±0.27 | 6.27% ±0.22 | 51.0 |
+| two-meter, free | 11.81% ±0.29 | 7.54% ±0.24 | 51.0 |
+| **two-meter, cost 2** | **9.65% ±0.27** | **7.22% ±0.24** | **43.7** |
+| two-meter, cost 3 | 8.97% ±0.26 | 6.98% ±0.23 | 40.2 |
+
+**Cost 2 pays for the gradient exactly.** Push-first lands at 9.65%
+against the shipped 9.51% — a difference of 0.14pp against a ±0.27pp
+error, i.e. the same number. So you can add the second meter and the
+design doc's headline band does not move at all. The free version needed
++2.8pp explained; this one needs nothing explained.
+
+Passive, rally, bench and the call-out stay at exactly their shipped
+rates in every row, as before — they never push.
+
+### Two things it does that are arguably improvements
+
+**It narrows push-first's dominance.** The gap over a mixed rotation
+goes from 3.24pp to 2.43pp, because balanced gains (6.27 → 7.22) while
+push-first holds. The simulator's own notes flag push-first beating
+every rotation as a finding rather than a goal; this softens it without
+touching anything else.
+
+**It puts a real price on the game's most-repeated verb.** A push-first
+campaign now ends the session at 43.7 support instead of 51.0 — it
+drains the thing it runs on. The dilution floor is 45, so a wealth bill
+(+12 support tilt) still sits safely at 55.7 and the dollar figures
+barely move (average scale 0.58 → 0.57). But the pressure is now real
+and visible, and for a family with a negative support tilt — GET at −10,
+admin at −4 — it would start biting. That is the right shape: spamming
+the call-in should eventually cost you the bill's size even when it
+works.
+
+### In the demo it is nearly free
+
+Pushing in weeks 3, 4 and 5, chance of a hearing by the deadline:
+
+| Design | start support 55 | start support 65 | support left |
+|---|---|---|---|
+| shipped (free) | 55% | 55% | 65 |
+| two-meter, free | 58% | 59% | 65 |
+| **two-meter, cost 2** | **57%** | **59%** | **59** |
+| two-meter, cost 3 | 57% | 59% | 56 |
+
+Six points of support over three weeks, against a demo that hands it out
+generously and a dilution floor far below. Visible — it is the size of a
+bad dialogue choice — without being punishing.
+
+---
+
+## Revised recommendation
+
+**Do both, together.** The two-meter push alone needs a +2.8pp
+explanation; the two-meter push *with a cost of 2* needs none.
+
+```
+bonus = min(0.30, 0.15
+          + max(0, billSupport   - 50) / 450
+          + max(0, billInfluence - 30) / 540)
+cost  = 2 support, charged when the push is taken
+```
+
+What is left to do, in order:
+
+1. Build it — `pushBonus` takes support, `gate.push` gains `supportDiv`,
+   `influenceDiv`, `costSupport`. Mirror it in the simulator's port,
+   which is the one place the two can silently desync.
+2. Print the cost on the button. An unadvertised charge is not a
+   decision — the same rule the checked-choice ante already follows.
+3. Re-run `simulate_gauntlet.py` at 20k and update §8d/§8e. The bands
+   should come back unchanged for every profile except balanced.
+
+About an hour.
+
