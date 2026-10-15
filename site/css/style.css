@@ -3217,6 +3217,16 @@ body.booting #hud { visibility: hidden; }
    (points to spend, agenda unlocked); the compact .sk-sheet is the
    every-other-week view. */
 .sk-select { margin: 14px 0 4px; }
+/* the WHY plate ahead of instincts (renderIntro) — reading width,
+   body-size prose under the same stencil title */
+.cq-intro { max-width: 620px; }
+.cq-intro p {
+  margin: 16px 2px 0;
+  color: var(--txt-2b);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.cq-intro .sk-title { margin-bottom: 4px; }
 .sk-title {
   display: inline-block;
   padding: 6px 18px 5px;

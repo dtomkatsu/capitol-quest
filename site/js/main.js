@@ -3512,6 +3512,41 @@ const SessionPanel = {
       }, CR_OUT);
     };
 
+    /* ---- the WHY screen, before instincts: one plate saying what the
+       game is for, so the first thing a new player meets is the point,
+       not a points budget. Shown once per campaign — `introSeen` rides
+       in S, so a reload mid-creation goes straight to the cards. */
+    const renderIntro = () => {
+      overlay.classList.add("creating");
+      body.dataset.view = "";
+      body.innerHTML =
+        '<div class="sk-select cq-intro">' +
+        '<div class="sk-title">Welcome to the Capitol</div>' +
+        "<p>Capitol Quest is a real Hawaiʻi legislative session, played " +
+        "from the inside. You pick the bills you want to fight for, then " +
+        "try to carry them through committee hearings, crossover, floor " +
+        "votes and conference — on the Legislature's actual calendar, " +
+        "against its actual deadlines.</p>" +
+        "<p>Most bills don't make it. A chair never schedules the hearing, " +
+        "a deadline slips past, a vote comes up short, a deal falls apart " +
+        "in conference. That isn't the game being unfair — it's how a " +
+        "session works. The point is to live through its twists and " +
+        "turns yourself: what it takes to get a bill heard, why good " +
+        "ideas die, and what you can still do about it.</p>" +
+        "</div>" +
+        '<button class="sk-begin" id="cq-intro-go" type="button">' +
+        "Continue ▸</button>";
+      body.scrollTop = 0;
+      renderTurnBtn();
+      body.querySelector("#cq-intro-go").addEventListener("pointerdown",
+        (ev) => {
+          ev.stopPropagation();
+          S.introSeen = true;
+          save();
+          screenSwap(true, renderHub);
+        });
+    };
+
     /* ---- creation is its OWN screen, and it comes first. Every entry
        point into the overlay funnels through renderHub, so one early
        bail here is what guarantees a fresh campaign opens on SELECT
@@ -3951,7 +3986,8 @@ const SessionPanel = {
       // both full-bleed, and both gated here so every entry point lands
       // on the right screen until the campaign is actually formed
       if (!S.agendaLocked) {
-        if (S.skillPts > 0) renderSelect();
+        if (!S.introSeen) renderIntro();
+        else if (S.skillPts > 0) renderSelect();
         else renderAgendaSelect();
         return;
       }
