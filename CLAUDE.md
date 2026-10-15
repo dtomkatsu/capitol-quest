@@ -1331,6 +1331,32 @@ multi-millionaires", $150M/yr) is a NEW, MODELED policy in policies.json
 (tax family `wealth`, src says modeled-not-a-fiscal-note). Remove `revenueOnly`
 to unlock the rest.
 
+**The push now READS BOTH METERS AND COSTS SUPPORT (2026-10-14).**
+`gate.push` is continuous — `base + max(0, billSup - supportFrom)/supportDiv
++ max(0, billInf - from)/influenceDiv`, capped — and taking it charges
+`costSupport` 2 off the campaign. Three things to know:
+- **The old bucketed form was dead code in play.** It stepped every 30
+  points of influence from 30, so on a wealth bill (-10 tilt) the first
+  step needed campaign influence 70: it paid a flat 0.15 at every state a
+  player could reach. A step nobody reaches teaches nothing.
+- **The support cost is what keeps the bands.** Measured at 20k/cell,
+  seed 0: passive/lobby/rally/bench are IDENTICAL to the decimal (they
+  never push — structural, not tuning), push-first holds at 10.1%
+  (it runs ~11.8% without the cost), balanced gains ~0.9pp. See
+  DESIGN-11 §8d's 2026-10-14 block and `PUSH-TWO-METER.md`.
+- **This does NOT repeal "support must not make a hearing easier unless
+  the chair is aligned."** That rule governs support sitting there
+  PASSIVELY; the push is support being SPENT, which is the documented
+  physics of the meter finally having something that spends it. The
+  charge is printed ON the button — an unadvertised charge is not a
+  decision, the same rule the checked-choice ante follows.
+- **Keep `tools/simulate_gauntlet.py`'s `push_bonus` in step** — that
+  port is the one place the two can silently desync, and it now takes
+  support and charges the cost too.
+- Known, recorded: the cost is mildly regressive against a family with a
+  small support tilt (income -0.5pp), because the push drives support
+  toward the very threshold that would reward it.
+
 **THE MOVE COMES FROM OUTSIDE THE BUILDING (2026-10-14, Devin: "instead
 of working the building slash chair … put a call out to people to call
 their legislators").** Both in-building verbs were a lobbyist's, which
