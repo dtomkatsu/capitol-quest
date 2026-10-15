@@ -1318,6 +1318,19 @@ lobbyist-only lines (testifying, "our members", the roundtable) rewritten to a
 legislator's. She is an EXTERNAL actor like Kawaguchi, not one of the player's
 introducers. Older notes in this file that say "Grange" mean her.
 
+**Game over + the demo's single revenue measure (2026-10-14, Devin):**
+`lost()` in SessionPanel = every bill the campaign carried is dead (the usual
+way is never being heard by House Finance at the week-5 deadline). It ends the
+session exactly like sine die (`ended()` replaces the bare `S.week >
+sineDieWeek` tests; `eventPending` and `runEvent` stand down; the hub leads
+with `sineDieHtml`'s GAME OVER card + the post-mortems + "Try again").
+`demo.revenueOnly: ["wealthtax"]` (session.json) leaves only that revenue
+measure pickable in the creation funnel — the other cards render greyed
+(`.agc.locked`, "Not in the demo"). `wealthtax` ("Tax the wealth of
+multi-millionaires", $150M/yr) is a NEW, MODELED policy in policies.json
+(tax family `wealth`, src says modeled-not-a-fiscal-note). Remove `revenueOnly`
+to unlock the rest.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:

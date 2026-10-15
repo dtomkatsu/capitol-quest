@@ -32,6 +32,15 @@
  ],
  "revenue": [
   {
+   "id": "wealthtax",
+   "name": "Tax the wealth of multi-millionaires",
+   "icon": "💎",
+   "amt": 150000,
+   "who": "A small annual tax on net worth above $5 million. It reaches only the wealthiest households in the state, and the money is yours to spend on the priorities you chose.",
+   "src": "MODELED, not a fiscal note — about $150M/yr (a rate on net worth above $5M across Hawaiʻi's wealthiest households). Replace when a real estimate exists.",
+   "tax": "wealth"
+  },
+  {
    "id": "conveyance",
    "name": "Modernize the conveyance tax",
    "icon": "🏠",

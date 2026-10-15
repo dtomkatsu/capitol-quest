@@ -1568,6 +1568,7 @@ const SYM = (() => {
   // 2026-08-15 — the drawing stays for whenever a GET measure returns
   S.conveyance = S.house;
   S.capgains = S.chart;
+  S.wealthtax = S.chart;
   S.wwcr = S.building;
   return S;
 })();
@@ -1614,6 +1615,12 @@ const SessionPanel = {
       data.sineDieWeek = demo.lastWeek;
       data.calendar = data.calendar.filter((c) => c.week <= demo.lastWeek);
     }
+    /* GAME OVER: every bill the campaign carried is dead (the usual way
+       is never being heard by House Finance at its week-5 deadline).
+       The session is over for the player exactly as at sine die. */
+    const lost = () => S.bills.length > 0 &&
+      S.bills.every((b) => b.status === "dead");
+    const ended = () => S.week > data.sineDieWeek || lost();
     const $ = (id) => document.getElementById(id);
     const overlay = $("session-overlay");
     const body = $("sess-body");
@@ -2300,9 +2307,13 @@ const SessionPanel = {
          "The Campaign · Week N" said nothing the plate didn't. */
       // after the last week the stamp reads SINE DIE — the Legislature's
       // own word for it — not "Week 17 · Interim", a week that isn't one
-      const over = S.week > data.sineDieWeek;
+      const over = ended();
       const endDate = over ? dateRangeFor(data.sineDieWeek) : dateStr;
-      $("session-title").innerHTML = over && demo
+      $("session-title").innerHTML = lost()
+        ? '<span class="mast-no"><small>Game</small><b>over</b></span>' +
+          '<span class="mast-t"><b>Your bills are dead</b><small>Week ' +
+          Math.min(S.week, data.sineDieWeek) + "</small></span>"
+        : over && demo
         ? '<span class="mast-no"><small>End of</small><b>demo</b></span>' +
           '<span class="mast-t"><b>Thanks for playing</b><small>Weeks 1–' +
           demo.lastWeek + "</small></span>"
@@ -2335,7 +2346,7 @@ const SessionPanel = {
       const btn = $("turn-chip");
       if (!btn) return;
       const cal = calFor(S.week);
-      const interim = S.week > data.sineDieWeek;
+      const interim = ended();
       const needAgenda = cal.agenda && !S.agendaLocked;
       // "unspent" = an unplayed event, or an OPENED action still unused —
       // a week whose event granted nothing has nothing pending
@@ -2345,10 +2356,11 @@ const SessionPanel = {
             S.actionWeek !== S.week));
       btn.disabled = interim;
       btn.querySelector(".tc-label").textContent = interim ?
-        (demo ? "Demo" : "Sine die") :
+        (lost() ? "Game over" : demo ? "Demo" : "Sine die") :
         "Week " + S.week + " · " + cal.title;
       btn.querySelector(".tc-act").innerHTML =
-        (interim ? (demo ? "Demo complete" : "Session over") :
+        (interim ? (lost() ? "No bills left" :
+            demo ? "Demo complete" : "Session over") :
           needAgenda ? "Set agenda ▸" :
           S.week === data.sineDieWeek ?
             (demo ? "Finish the demo ▸" : "Leave the building ▸") :
@@ -3638,12 +3650,20 @@ const SessionPanel = {
           : "<b>" + n + "</b> tax bill" + (n === 1 ? "" : "s") +
             " chosen · " + fmtK(raise) + " of " + fmtK(spend)) +
         "</div><div class=\"agc-grid\">";
+      const onlyRev = demo && demo.revenueOnly;
       for (const p of mine) {
         const on = S.agenda.includes(p.id);
+        // DEMO: only the listed revenue measures can be picked; the
+        // rest stay on the screen, greyed, so the player sees the menu
+        const locked = !!onlyRev && p.kind === "gain" &&
+          !onlyRev.includes(p.id);
         // role/tabindex: the card IS the control — the only way to pick
         // a bill — so it has to be reachable and pressable by keyboard
         html += '<div class="agc ' + p.kind + (on ? " on" : "") +
-          '" data-pol="' + p.id + '" role="button" tabindex="0"' +
+          (locked ? " locked" : "") +
+          '" data-pol="' + p.id + '" role="button" tabindex="' +
+          (locked ? "-1" : "0") + '"' +
+          (locked ? ' aria-disabled="true"' : "") +
           ' aria-pressed="' + (on ? "true" : "false") + '">' +
           '<div class="agc-art">' + (sym(p.id) || p.icon || "") + "</div>" +
           '<div class="agc-name">' + esc(p.name) + "</div>" +
@@ -3653,7 +3673,8 @@ const SessionPanel = {
           step.kindLabel + "</span>" +
           '<span class="agc-amt">' + (p.kind === "cost" ? "−" : "+") +
           fmtK(p.amt) + '/yr</span><span class="agc-pick">' +
-          (on ? "✓" : "+") + "</span></div></div>";
+          (locked ? "Not in the demo" : on ? "✓" : "+") +
+          "</span></div></div>";
       }
       html += "</div></div>";
 
@@ -3699,6 +3720,7 @@ const SessionPanel = {
       for (const r of body.querySelectorAll(".agc")) {
         r.addEventListener("pointerdown", (ev) => {
           ev.stopPropagation();
+          if (r.classList.contains("locked")) return;
           const id = r.dataset.pol;
           if (S.agenda.includes(id)) {
             S.agenda = S.agenda.filter((x) => x !== id);
@@ -3864,7 +3886,7 @@ const SessionPanel = {
       overlay.classList.remove("creating");
       body.dataset.view = "hub";
       const cal = calFor(S.week);
-      const interim = S.week > data.sineDieWeek;
+      const interim = ended();
       let html = "";
 
       // SINE DIE LEADS (2026-09-22). The verdict is the answer to the
@@ -4124,11 +4146,12 @@ const SessionPanel = {
        week may carry a `pre` (the storm at week 7) in front of its own
        event, and every gate that decides whether to pop the panel has
        to ask about the pair, not just `cal.event`. */
-    const eventPending = (cal) =>
-      (!!cal.pre && !S.preDone.includes(S.week)) ||
-      (!!cal.event && !S.eventDone.includes(S.week));
+    const eventPending = (cal) => !lost() &&
+      ((!!cal.pre && !S.preDone.includes(S.week)) ||
+      (!!cal.event && !S.eventDone.includes(S.week)));
 
     const runEvent = () => {
+      if (lost()) { renderHub(); return; }   // game over: no more scenes
       const cal = calFor(S.week);
       /* THE PRE RUNS FIRST AND IS MARKED THE MOMENT IT FINISHES, not
          when the week's own event does. The player can close the panel
@@ -4885,7 +4908,7 @@ const SessionPanel = {
     };
 
     const intelHtml = () => {
-      if (S.week < 1 || S.week > data.sineDieWeek) return "";
+      if (S.week < 1 || ended()) return "";
       const live = liveBills();
       if (!live.length) return "";
       const proc = S.skills[(IN.clock || {}).skill || "procedure"] || 0;
@@ -5003,7 +5026,7 @@ const SessionPanel = {
           '<div class="ic-foot"><span>Rapport <b>' + r + "</b></span>" +
           (n ? '<span class="ic-on">carrying ' + n + "</span>" :
             '<span class="ic-off">' +
-              (S.week > data.sineDieWeek ? "adjourned" : "waiting") +
+              (ended() ? "adjourned" : "waiting") +
               "</span>") + "</div></div>";
       }
       return h + "</div>";
@@ -5246,6 +5269,21 @@ const SessionPanel = {
     };
 
     const sineDieHtml = () => {
+      if (lost()) {
+        const unheard = S.bills.filter(
+          (b) => b.death && b.death.cause === "never heard").length;
+        return '<div class="sh-sec">Game over</div>' +
+          '<div class="sess-score"><b>None of your bills are still alive</b>' +
+          "<small>" + (unheard === S.bills.length
+            ? "House Finance never scheduled a hearing for any of them. " +
+              "In the Legislature a bill that is never heard doesn’t lose " +
+              "a vote; it just never comes up, and nobody has to say no."
+            : "Every bill you carried has died in the building. That is " +
+              "the ordinary outcome here, and it is why the work is what " +
+              "it is.") + "</small></div>" + billLedger(true) +
+          '<button class="sh-week-end" id="sess-new" type="button">' +
+          "Try again ▸</button>";
+      }
       if (demo) {
         // the demo's ending: no verdict (the bills are mid-flight, so a
         // gap reading "nothing enacted" would say the player failed) —
@@ -5360,7 +5398,7 @@ const SessionPanel = {
        released by openWeek; the catch releases it if the step throws
        first, or End Turn would be dead for the rest of the session. */
     const advanceWeek = () => {
-      if (S.week > data.sineDieWeek || beating) return;
+      if (ended() || beating) return;
       beating = true;
       try { stepWeek(); } catch (err) { beating = false; throw err; }
     };
@@ -5567,7 +5605,7 @@ const SessionPanel = {
     $("turn-chip").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       const cal = calFor(S.week);
-      if (S.week > data.sineDieWeek) return;
+      if (ended()) return;
       if (cal.agenda && !S.agendaLocked) {   // week 1: lock the agenda first
         openOverlay();
         renderHub();
@@ -5775,11 +5813,11 @@ class BootScene extends Phaser.Scene {
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
-    this.load.json("policies", "map/policies.json?v=2");
+    this.load.json("policies", "map/policies.json?v=3");
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=65");
+    this.load.json("session", "map/session.json?v=66");
     this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

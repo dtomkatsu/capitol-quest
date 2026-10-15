@@ -375,6 +375,9 @@
  "demo": {
   "_note": "DEMO MODE. While this block exists the session ends after `lastWeek`: main.js moves sineDieWeek to it in memory (the calendar is cut to match), and the adjournment screen is this card instead of the verdict. Delete the block to get the full 16-week game back — nothing else was changed.",
   "lastWeek": 7,
+  "revenueOnly": [
+   "wealthtax"
+  ],
   "title": "That's the end of the demo",
   "text": "You've worked the first seven weeks of a sixteen-week session. Here is what you did, and where your bills stand. What becomes of them, and the nine weeks after, is the rest of the game."
  },
