@@ -1924,7 +1924,7 @@
        }
       },
       "failure": {
-       "reply": "He pretends to not hear you. You stand there awkwardly, forgotten.",
+       "reply": "He pretends to not notice you. You stand there awkwardly, forgotten.",
        "effects": {
         "influence": -2
        }

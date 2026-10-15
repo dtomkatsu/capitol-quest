@@ -47,7 +47,7 @@ As Rep. Kawaguchi passes by, you ask him about the bill's prospects. Without sto
 
 - effect: +4 influence
 Fail:
-He pretends to not hear you. You stand there awkwardly, forgotten.
+He pretends to not notice you. You stand there awkwardly, forgotten.
 
 - effect: -2 influence
 
