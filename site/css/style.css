@@ -627,6 +627,16 @@ body.booting #hud { visibility: hidden; }
   backdrop-filter: blur(7px) saturate(1.12);
 }
 
+/* The WEEK overlay lets the Capitol show through (2026-10-15, Devin: the
+   Capitol is the game screen, events are laid over it): a light scrim
+   and no blur, where Budget and Policies keep the full dim. */
+#session-overlay.ovl::before {
+  background: radial-gradient(120% 90% at 50% 8%,
+    rgba(6, 8, 14, .12) 0%, rgba(3, 4, 9, .38) 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* panel material: a lit surface — a cool key light at the top-left, depth
    toward the foot, a gold hairline just inside the edge (the foil), and
    an ambient shadow that settles the panel into the scrim. OPAQUE, per

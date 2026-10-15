@@ -7949,6 +7949,15 @@ class RoomScene extends Phaser.Scene {
         this.cache.json.get(this.cfg.key + "_frame") || null);
     if (this.plan.ready && this.textures.exists("char_sheet"))
       this.actor = new Actor(this, this.cache.json.get("char_meta"));
+    /* A `bare` room is a BACKDROP (2026-10-15, Devin: the Capitol is the
+       game screen from week 2 with events laid over it): the walking
+       figure, its shadow and the door markers are not drawn. The
+       figure still exists, so tap-to-walk and door arrival code keep
+       working; it is just not visible. */
+    if (this.cfg.bare && this.actor) {
+      this.actor.sp.setVisible(false);
+      this.actor.sh.setVisible(false);
+    }
     this.keys = this.input.keyboard && this.input.keyboard.addKeys({
       up: "UP", down: "DOWN", left: "LEFT", right: "RIGHT",
       w: "W", a: "A", s: "S", d: "D",
@@ -8024,7 +8033,9 @@ class RoomScene extends Phaser.Scene {
            so the label belongs to the door and not to the walkway. */
       let mk = null;
       const mkAt = h.mark || [h.px, h.py - 20];
-      if (h.kind === "door") {
+      if (this.cfg.bare) {
+        /* a `bare` room draws no markers (the Capitol as a backdrop) */
+      } else if (h.kind === "door") {
         mk = this.add.image(mkAt[0], mkAt[1], roomMarkerTexture(this))
           .setOrigin(0.5, MARKER_TIP);
         if (!still) this.tweens.add({ targets: mk, y: mk.y - 3,
@@ -8562,6 +8573,7 @@ const ROOM_CAPITOL = {
   // GO somewhere get one — the swing covers a scene change that was a
   // hard cut, which is where the animation earns its cost.
   swings: ["finance"],
+  bare: true,   // backdrop: no walking figure, no door markers
 };
 /* THE OPENING-WEEK HALLWAY (2026-08-27, user's call, from a reference
    photo of a Capitol corridor): week 1 boots here instead of the
