@@ -8,5 +8,4 @@ The whiteboard by the door hasn't changed: bills are alive until a deadline says
 ### 1. "Thanks. Back to it."
 Someone's taped a fresh sticky note under the deadline column: DRINK WATER. SESSIONS ARE CARDIO.
 
-- effect: 
 - then: end

@@ -9,5 +9,4 @@
 ### 1. "Noted, chair."
 He almost smiles. Almost.
 
-- effect: 
 - then: end

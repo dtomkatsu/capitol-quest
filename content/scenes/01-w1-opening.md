@@ -1,12 +1,11 @@
 ---
-_note: Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.
-unlocks._note: Opening Day opens the whole ground floor: the scripted week-1 talks (these used to live on the calendar entry) plus a first walk through the building.
+_note: Opening Day, the 9 a.m. presser: one microphone, three messages. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) on 2026-08-15 (week 1 was doing two jobs), so keep this node about the room and the gap. Choice 1 (tax fairness) costs -2 influence, softened from -4 on 2026-10-14: it is the obvious on-message pick for a wealth-tax game, and -4 plus the policy-research hour put a player at 25 in week 1, under the Finance gate of 28. Opening Day opens the week-1 talks (silva=talk-rep, sen-x=talk-sen).
 talks: silva=talk-rep, sen-x=talk-sen
 ---
 
 # w1-opening
 
-## C · start
+## A · start
 Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?
 
 - **Talk Story:** Four minutes, every outlet in town. Read the room before you read the line.
@@ -15,7 +14,7 @@ Opening Day. Lei on every railing, three governors in the gallery — and the pr
 ### 1. "Tax fairness, by name. The register pays more than the penthouse."
 The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad.
 
-- effect: +5 support, -4 influence
+- effect: +5 support, -2 influence
 - then: end
 
 ### 2. "Cost of living. Discipline. A budget that doesn't wobble."

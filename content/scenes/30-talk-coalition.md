@@ -20,4 +20,3 @@ The math on the wall stops for a second. Someone writes: SOMEBODY TO NOT DISAPPE
 Fail:
 Same answer as always: bodies at a hearing. You asked a real question in a hallway, which is where real questions go to be small talk.
 
-- effect:

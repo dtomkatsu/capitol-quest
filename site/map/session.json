@@ -387,7 +387,7 @@
  },
  "dialogues": {
   "w1-opening": {
-   "_note": "Opening Day. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) 2026-08-15 — week 1 was doing two jobs and doing neither well. Keep this node about the room and the gap; the federal numbers belong to w3-federal, which is where their data lineage note now lives too.",
+   "_note": "Opening Day, the 9 a.m. presser: one microphone, three messages. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) on 2026-08-15 (week 1 was doing two jobs), so keep this node about the room and the gap. Choice 1 (tax fairness) costs -2 influence, softened from -4 on 2026-10-14: it is the obvious on-message pick for a wealth-tax game, and -4 plus the policy-research hour put a player at 25 in week 1, under the Finance gate of 28. Opening Day opens the week-1 talks (silva=talk-rep, sen-x=talk-sen).",
    "start": {
     "text": "Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?",
     "voices": [
@@ -405,7 +405,7 @@
       "label": "\"Tax fairness, by name. The register pays more than the penthouse.\"",
       "effects": {
        "support": 5,
-       "influence": -4
+       "influence": -2
       },
       "reply": "The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad."
      },
@@ -428,7 +428,6 @@
     ]
    },
    "unlocks": {
-    "_note": "Opening Day opens the whole ground floor: the scripted week-1 talks (these used to live on the calendar entry) plus a first walk through the building.",
     "talks": {
      "silva": "talk-rep",
      "sen-x": "talk-sen"
@@ -756,7 +755,6 @@
     "choices": [
      {
       "label": "\"Thanks. Back to it.\"",
-      "effects": {},
       "reply": "Someone's taped a fresh sticky note under the deadline column: DRINK WATER. SESSIONS ARE CARDIO."
      }
     ]
@@ -779,7 +777,6 @@
     "choices": [
      {
       "label": "\"Noted, chair.\"",
-      "effects": {},
       "reply": "He almost smiles. Almost."
      }
     ]
@@ -822,8 +819,7 @@
        }
       },
       "failure": {
-       "reply": "Same answer as always: bodies at a hearing. You asked a real question in a hallway, which is where real questions go to be small talk.",
-       "effects": {}
+       "reply": "Same answer as always: bodies at a hearing. You asked a real question in a hallway, which is where real questions go to be small talk."
       }
      }
     ]
@@ -1920,16 +1916,16 @@
    }
   },
   "w5-hearing": {
-   "_note": "WEEK 5 EVENT. The deadline WARNING moved to week 4 (w4-rally node A, Devin's own two sentences) on 2026-10-14 so the player has a week to act on it; the hurricane (w6-disaster) now lands in week 6, AFTER this deadline, so nothing here may mention it. FIRST DRAFT, placeholder text until Devin rewrites it. TWO-PARTER (Devin): part one (node A) is the PREP, part two (node B) is the hearing room itself. This is House Finance's deadline week (chairs.json h-fin deadline 5): resolveBills rolls each bill at week's END, so NOTHING here may say whether a bill was heard or not — the scene is the notice and the room, and the verdict arrives in the \"Since you ended the week\" report. The Feb 14 date Kawaguchi may have named in w1/w3 (flag kawaguchi-date) is the date this week lands on.",
+   "_note": "WEEK 5 EVENT. The deadline WARNING moved to week 4 (w4-rally node A, Devin's own two sentences) on 2026-10-14 so the player has a week to act on it; the hurricane (w6-disaster) now lands in week 6, AFTER this deadline, so nothing here may mention it. FIRST DRAFT, placeholder text until Devin rewrites it. TWO-PARTER (Devin): part one (node A) is the PREP, part two (node B) is the hearing room itself. This is House Finance's deadline week (chairs.json h-fin deadline 5): resolveBills rolls each bill at week's END, so NOTHING here may say whether a bill was heard or not — the scene is the notice and the room, and the verdict arrives in the \"Since you ended the week\" report. Weeks run Wednesday to Tuesday (week 5 is Feb 17-23), so Friday is the deadline and any weekday NAMED here must be checked against that; DCs here are 10 (lowered from 12, 2026-10-14).",
    "start": {
-    "text": "House Finance posts its agenda Tuesday at four. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.\n\nYour phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. You have until the hearing to decide where to put what is left.",
+    "text": "House Finance posts its agenda this week. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.\n\nYour phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. You have until the hearing to decide where to put what is left.",
     "voices": [],
     "choices": [
      {
       "label": "Pack the hearing room.",
       "check": {
        "skill": "mobilizing",
-       "dc": 12,
+       "dc": 10,
        "type": "white",
        "mods": [
         {
@@ -1967,7 +1963,7 @@
       "label": "Put out clips on social media about the hearing.",
       "check": {
        "skill": "basebuilding",
-       "dc": 12,
+       "dc": 10,
        "type": "white",
        "mods": [
         {
@@ -1995,7 +1991,7 @@
       "label": "Catch the chair's eye in the hallway before the gavel.",
       "check": {
        "skill": "talkstory",
-       "dc": 12,
+       "dc": 10,
        "type": "white",
        "mods": [
         {
@@ -2121,7 +2117,7 @@
    }
   },
   "w4-rally": {
-   "_note": "WEEK 4 EVENT (2026-10-13, Devin: \"rally as one choice and community listening session as another\"). FIRST DRAFT, placeholder text until Devin rewrites it. Weeks 1-3 are meetings and week 5 is the hearing, so this is the coalition's first move in public. Nothing here may imply a hearing has happened or been scheduled (h-fin deadline is week 5). Both checks are white and cost -1 influence on a fail (2026-10-14: softened from -2/-3 because the Finance gate is 28 and influence starts at 30). PAYOFFS (2026-10-14): the rally is VISIBILITY, so it pays influence (+1 support, +2 influence); the listening session is the BASE, so it pays support (+3 support, +1 influence). A pass on either sets flag `w4-turnout`, which week 5's pack-the-room check reads as +2, so this week's choice carries into the hearing. Rally = Mobilizing (turnout, breadth, spiky); listening session = Base Building (relationships, leaders, durability) — the McAlevey split in CLAUDE.md, so neither is the 'right' answer.",
+   "_note": "WEEK 4 EVENT (2026-10-13, Devin: \"rally as one choice and community listening session as another\"). FIRST DRAFT, placeholder text until Devin rewrites it. Weeks 1-3 are meetings and week 5 is the hearing, so this is the coalition's first move in public. Nothing here may imply a hearing has happened or been scheduled (h-fin deadline is week 5). Both checks are DC 9 (lowered from 11, 2026-10-14: a skill-1 player was at roughly one in three) and white and cost -1 influence on a fail (2026-10-14: softened from -2/-3 because the Finance gate is 28 and influence starts at 30). PAYOFFS (2026-10-14): the rally is VISIBILITY, so it pays influence (+1 support, +2 influence); the listening session is the BASE, so it pays support (+3 support, +1 influence). A pass on either sets flag `w4-turnout`, which week 5's pack-the-room check reads as +2, so this week's choice carries into the hearing. Rally = Mobilizing (turnout, breadth, spiky); listening session = Base Building (relationships, leaders, durability) — the McAlevey split in CLAUDE.md, so neither is the 'right' answer.",
    "start": {
     "text": "Next week is your last chance to receive a hearing in the House Finance Committee. By Friday, any House bill that has not been heard will effectively be dead.\n\nThe coalition wants to do something visible before then. There are two ways to spend the week: a rally outside the Capitol, loud and photogenic, or a community listening session in a church hall, quieter and slower.",
     "voices": [
@@ -2143,7 +2139,7 @@
       "label": "Hold a rally on the Capitol lawn.",
       "check": {
        "skill": "mobilizing",
-       "dc": 11,
+       "dc": 9,
        "type": "white",
        "mods": [
         {
@@ -2171,7 +2167,7 @@
       "label": "Host a community listening session.",
       "check": {
        "skill": "basebuilding",
-       "dc": 11,
+       "dc": 9,
        "type": "white",
        "mods": [
         {

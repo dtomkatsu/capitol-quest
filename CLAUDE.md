@@ -1070,8 +1070,10 @@ Rules that must survive edits:
   exactly the bug this note exists to prevent re-introducing.
 - **The player's own bills are not heard until week 5** (`h-fin`
   deadline in chairs.json) — nothing in weeks 1–4 may be written as
-  though a hearing on them has happened or been scheduled, other than
-  the February 14th date Kawaguchi may name in w1.
+  though a hearing on them has happened or been scheduled. (Weeks run
+  Wednesday to Tuesday from 2027-01-20: week 4 is Feb 10-16, week 5 is
+  Feb 17-23 — the old "February 14th" date Kawaguchi named in w1 was a
+  week-4 date and is gone.)
 - **Real calendar dates**: `data.sessionStart` (session.json, the 3rd
   Wednesday in January) anchors week 1; `dateRangeFor(w)` in main.js
   derives every other week's date range by +7 days, no per-week dates
@@ -1286,16 +1288,16 @@ The old business-caucus Silva (ex-Grange) talk is parked in
 placeholder. The hallway legislator's tooltip says Silva too (HALL_V 9).
 Where this file says "Rep. X" it means her now.
 
-**Week 1 now ends its pre with a three-way choice (node D of `w1-intro`,
-2026-10-12):** after the handoff, 1 = work the rotunda (the old optional
-`w1-kawaguchi` talk, merged in as node E — deleted as its own file; it sets
-`kawaguchi-date`), 2 = the coalition table (`talk-coalition`'s text copied
-in as node F; `talk-coalition` itself still serves other weeks), 3 = leave
-the building for policy research (new node G: +1 Policy Brain / Educator /
-Procedure, -1 influence for being out of the room — the first thing that
-trains Policy Brain or Educator after week 1). Each ends the scene, then the
-presser (`w1-opening`) runs. Week 1's hub no longer carries the
-`kawaguchi`/`coalition` doors (`silva=talk-rep`, `sen-x=talk-sen` remain).
+**Week 1's pre ends on a TWO-way choice (node D of `w1-intro`; it was
+three-way on 2026-10-12 and Devin cut it down by hand):** 1 = talk to
+people (+2 influence), 2 = go back to the office for policy research
+(+1 Policy Brain, -1 influence for being out of the room — the first
+thing that trains Policy Brain after week 1). Each ends the scene, then
+the presser (`w1-opening`) runs. The old rotunda talk and coalition-table
+nodes are gone from the file. Week 1's hub carries `silva=talk-rep` and
+`sen-x=talk-sen` only. `w1-intro` is now A narration, B Silva, C Silva on
+the Senate, D the options; the handoff node described below no longer
+exists as its own beat.
 
 **The handoff moved:** Week 1 runs `w1-intro` = A narration → Continue →
 B Silva's dialogue → C the HANDOFF (bills to Silva and Sen. X; it was
