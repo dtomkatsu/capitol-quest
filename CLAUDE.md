@@ -1331,6 +1331,31 @@ multi-millionaires", $150M/yr) is a NEW, MODELED policy in policies.json
 (tax family `wealth`, src says modeled-not-a-fiscal-note). Remove `revenueOnly`
 to unlock the rest.
 
+**The demo's three blockers, fixed 2026-10-14** (audit in `DEMO-GAPS.md`):
+- **Actions are granted again.** NOT ONE scene in weeks 1-7 carried an
+  `actions:` line, so `push` — the only lever on a bill's hearing odds,
+  worth +15pp — never appeared, the hub had no "Act" section any week,
+  and the three action-trained skills could never grow. Now: w2 `lobby`,
+  w3 `push, lobby`, w4 `rally, bench, push`, w5 `push, rally, lobby`,
+  w6 `rally, bench` (the recess withholds `push`, as documented above).
+  **Any new demo week needs its own `actions:` line** — openings are
+  granted, never owed.
+- **The hard influence gate is VISIBLE** (`intelHtml`). `gate.hearingGate`
+  zeroes a bill's odds under 28 influence and nothing said so, so a
+  player two bad choices below the line was unwinnable and could not
+  tell. The line prints for EVERYONE at any skill — it is the rule of
+  the room, not intel you buy with Talk Story.
+- **The demo's last week is the last roll.** Ending it advanced into
+  lastWeek+1 and rolled every gate again (a bill "voted down in week 8"
+  of a seven-week demo), and `lost()` then showed GAME OVER instead of
+  the end-of-demo card. Guarded by `past` INSIDE stepWeek — never by
+  returning early, because `beating` is released in openWeek() and a
+  early return strands the turn chip forever.
+- **The generic rotation now covers the final demo week** (`calFor`):
+  it stops below `sineDieWeek`, which is right for week 16 (its own
+  scripted scene) and left demo week 7 opening straight into the hub
+  with no narrative at all.
+
 ## Your two introducers (2026-08-15)
 
 The Advocate has no seat, so two members carry the package. Rules:

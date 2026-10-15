@@ -1,6 +1,7 @@
 ---
 _note: WEEK 4 EVENT (2026-10-13, Devin: "rally as one choice and community listening session as another"). FIRST DRAFT, placeholder text until Devin rewrites it. Weeks 1-3 are meetings and week 5 is the hearing, so this is the coalition's first move in public. Nothing here may imply a hearing has happened or been scheduled (h-fin deadline is week 5). Both checks are white and cost influence on a fail (house rule, 2026-10-13: a failed white check is -2). A pass on either sets flag `w4-turnout`, which week 5's pack-the-room check reads as +2, so this week's choice carries into the hearing. Rally = Mobilizing (turnout, breadth, spiky); listening session = Base Building (relationships, leaders, durability) — the McAlevey split in CLAUDE.md, so neither is the 'right' answer.
 talks: coalition, office, sen-x=talk-sen
+actions: rally, bench, push
 ---
 
 # w4-rally

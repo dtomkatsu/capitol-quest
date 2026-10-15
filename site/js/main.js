@@ -1814,8 +1814,15 @@ const SessionPanel = {
         title: hit.title || data.weekTitles[w] || "Interim",
         phase: hit.phase || (w >= data.sineDieWeek && !demo ? "Adjournment" :
           w >= 14 ? "Conference" : "Session"),
+        /* THE LAST DEMO WEEK STILL GETS A SCENE (2026-10-14). The
+           generic rotation stops BELOW sineDieWeek, which is right for
+           the real game (week 16 is adjournment and carries its own
+           scripted scene) and wrong for the demo, where lastWeek is
+           simply the last week you play: week 7 opened straight into
+           the hub with no narrative at all. In demo mode the final
+           week is included. */
         event: hit.event !== undefined ? hit.event :
-          (w >= 2 && w < data.sineDieWeek
+          (w >= 2 && (demo ? w <= data.sineDieWeek : w < data.sineDieWeek)
             ? data.genericEvents[(w - 2) % data.genericEvents.length]
             : null),
         // a PRE-event runs before the week's own event and is tracked
@@ -4926,6 +4933,23 @@ const SessionPanel = {
           const o = oddsIntel(b, sid);
           lines.push(o.t);
           src = o.src;
+          /* THE HARD GATE IS NEVER A SURPRISE (2026-10-14). chairs.json
+             gate.hearingGate zeroes a bill's odds outright under `min`
+             influence, and nothing on screen said so — a player two bad
+             choices below the line was unwinnable and could not tell.
+             Everyone sees this, at any skill: it is the rule of the
+             room, not intel someone has to be good enough to buy. */
+          const hg = G.hearingGate;
+          if (hg && hg.stage === sid) {
+            const have = S.metrics.influence +
+              ((b.earned && b.earned.influence) || 0);
+            lines.push(have < hg.min
+              ? "<b>Under " + hg.min + " influence, this chair will not " +
+                "schedule you at all</b> — you are at " + Math.round(have) +
+                ". Work the chair, or the deadline passes without a hearing."
+              : "He will not calendar anything from a campaign under " +
+                hg.min + " influence. You are at " + Math.round(have) + ".");
+          }
           if (fisc >= ((IN.basis || {}).cite || 3)) {
             const ch = chairOf(sid) || {};
             const g = rateFor(ch.committee, b.kind, b.tax);
@@ -5269,7 +5293,9 @@ const SessionPanel = {
     };
 
     const sineDieHtml = () => {
-      if (lost()) {
+      // the demo reaching its own last week is an ENDING, not a loss:
+      // the player got there, and the summary is the point of going
+      if (lost() && !(demo && S.week > demo.lastWeek)) {
         const unheard = S.bills.filter(
           (b) => b.death && b.death.cause === "never heard").length;
         return '<div class="sh-sec">Game over</div>' +
@@ -5416,10 +5442,20 @@ const SessionPanel = {
                      influence: S.metrics.influence };
       S.week += 1;
       startBills();
+
       // upkeep FIRST, then the building acts: the week's decay is in
       // force for the rolls that week, and lands inside the trend the
       // player reads on the map (weekBase was snapshotted above)
-      const moves = weekUpkeep().concat(resolveBills());
+      /* THE DEMO'S LAST WEEK IS THE LAST ROLL (2026-10-14). Ending the
+         final demo week advances into lastWeek+1, and the building used
+         to act one more time there: a bill could be "voted down in week
+         8" of a seven-week demo, and `lost()` then showed GAME OVER in
+         place of the end-of-demo card and its summary. Past the
+         boundary nothing moves. (Guarded HERE and not by returning
+         early: `beating` is released inside openWeek(), so a stepWeek
+         that returns before it strands the turn chip forever.) */
+      const past = !!demo && S.week > demo.lastWeek;
+      const moves = past ? [] : weekUpkeep().concat(resolveBills());
       // stamp the movement report to THIS week so the hub shows it until
       // the next advance; near-misses included — the near record is the
       // only time the player ever feels how close "never heard" ran
@@ -5817,7 +5853,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=66");
+    this.load.json("session", "map/session.json?v=67");
     this.load.json("chairs", "map/chairs.json?v=4");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

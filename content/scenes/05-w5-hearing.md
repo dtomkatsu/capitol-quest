@@ -1,6 +1,7 @@
 ---
 _note: WEEK 5 EVENT, after the hurricane (w5-disaster is now the week's `pre`, 2026-10-13). FIRST DRAFT, placeholder text until Devin rewrites it. TWO-PARTER (Devin): part one (node A) is the PREP, part two (node B) is the hearing room itself. This is House Finance's deadline week (chairs.json h-fin deadline 5): resolveBills rolls each bill at week's END, so NOTHING here may say whether a bill was heard or not — the scene is the notice and the room, and the verdict arrives in the "Since you ended the week" report. The Feb 14 date Kawaguchi may have named in w1/w3 (flag kawaguchi-date) is the date this week lands on.
 talks: coalition, office, silva=talk-rep
+actions: push, rally, lobby
 ---
 
 # w5-hearing

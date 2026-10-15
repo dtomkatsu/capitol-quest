@@ -1,6 +1,7 @@
 ---
 _note: WEEK 2, PART TWO (the calendar `event`). Devin 2026-10-13: week 2 is the legislator info briefing, then trying to schedule a meeting with Kawaguchi through his office manager; the meeting itself is week 3 (w3-kawaguchi). FIRST DRAFT — the office manager is unnamed narration (no speaker/portrait), and the Talk Story pass sets `kawaguchi-date`, which w3-kawaguchi/office choice 3 reads as a +2 bonus. The meeting happens either way; the check only decides whether the date comes easy.
 talks: office, silva=talk-rep
+actions: lobby
 ---
 
 # w2-schedule

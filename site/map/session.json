@@ -1132,7 +1132,11 @@
     "talks": {
      "coalition": "talk-coalition",
      "silva": "talk-rep"
-    }
+    },
+    "actions": [
+     "rally",
+     "bench"
+    ]
    }
   },
   "w8-crossover": {
@@ -1712,7 +1716,10 @@
     "talks": {
      "office": "talk-office",
      "silva": "talk-rep"
-    }
+    },
+    "actions": [
+     "lobby"
+    ]
    }
   },
   "w3-kawaguchi": {
@@ -1902,7 +1909,11 @@
      "kawaguchi": "talk-kawaguchi",
      "office": "talk-office",
      "silva": "talk-rep"
-    }
+    },
+    "actions": [
+     "push",
+     "lobby"
+    ]
    }
   },
   "w5-hearing": {
@@ -2029,7 +2040,12 @@
      "coalition": "talk-coalition",
      "office": "talk-office",
      "silva": "talk-rep"
-    }
+    },
+    "actions": [
+     "push",
+     "rally",
+     "lobby"
+    ]
    }
   },
   "w9-souza": {
@@ -2197,7 +2213,12 @@
      "coalition": "talk-coalition",
      "office": "talk-office",
      "sen-x": "talk-sen"
-    }
+    },
+    "actions": [
+     "rally",
+     "bench",
+     "push"
+    ]
    }
   },
   "w4-disaster": {

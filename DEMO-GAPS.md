@@ -1,5 +1,9 @@
 # Demo gaps — what's left to make weeks 1–7 playable
 
+> **Update 2026-10-14:** blockers 1 and 3 and bugs 4 and 5 are FIXED and
+> verified live. Blocker 2 is resolved as (a) — the push is back, so the
+> odds are the player's own. What is left is the writing: items 6 and 7.
+
 Audited 2026-10-14 against the live build: scene files, `session.json`,
 `chairs.json`, the gate maths, and two headless playthroughs.
 
