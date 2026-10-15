@@ -7954,7 +7954,7 @@ class RoomScene extends Phaser.Scene {
        figure, its shadow and the door markers are not drawn. The
        figure still exists, so tap-to-walk and door arrival code keep
        working; it is just not visible. */
-    if (this.cfg.bare && this.actor) {
+    if ((this.cfg.bare || this.cfg.hideActor) && this.actor) {
       this.actor.sp.setVisible(false);
       this.actor.sh.setVisible(false);
     }
@@ -8603,6 +8603,7 @@ const ROOM_HALLWAY = {
   // one and change the other.
   view: [281, 206, 1099, 725],
   enter: null,
+  hideActor: true,   // the walking figure is not drawn here for now (2026-10-15)
   // the legislator IS the week: tapping them opens the session flow
   // (creation funnel first, then Opening Day — renderHub's early bail
   // owns that order, not this hook)
