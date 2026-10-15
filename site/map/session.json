@@ -237,8 +237,9 @@
     "support": 1,
     "influence": 3
    },
-   "result": "The blast goes out Tuesday morning. By Thursday three offices have heard from people who live in their district and had never called before — and one of them says so, out loud, in a hallway.",
-   "voices": [
+   "result": "The newsletter blast goes out Tuesday morning, and your supporters and coalition partners deluge the House Finance committee members with phone calls and emails.",
+   "voices": [],
+   "_voicesHidden": [
     {
      "t": "talkstory",
      "text": "A hundred calls from strangers is noise. Forty from people who vote in their district is a message, and the difference is entirely in who you ask."
