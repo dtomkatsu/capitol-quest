@@ -1221,6 +1221,50 @@ body.booting #hud { visibility: hidden; }
   cursor: pointer;
 }
 #sess-reset:hover { color: #fff; }
+#sess-back {
+  padding: 0;
+  margin-right: 18px;
+  background: none;
+  border: none;
+  color: var(--txt-4);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#sess-back:hover { color: #fff; }
+/* demo only: lower an instinct by one, and the respec-everything plate */
+.sk-row .skdn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-right: 6px;
+  background: none;
+  border: 1.5px dashed var(--txt-5b);
+  border-radius: 3px;
+  color: var(--txt-5b);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.sk-row .skdn:hover:not(:disabled) { border-style: solid; color: #fff; }
+.sk-row .skdn:disabled { opacity: .3; cursor: default; }
+.sk-respec {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  background: none;
+  border: 1px solid rgba(var(--gold-rgb), .45);
+  border-radius: var(--r-sm, 6px);
+  color: var(--gold-lt, #f2c14e);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sk-respec:hover { background: rgba(var(--gold-rgb), .12); }
 
 /* ---------- the session masthead: ONE plate in the panel's top-left
    corner carrying the week numeral, the week's name and its dates.

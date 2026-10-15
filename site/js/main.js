@@ -1816,6 +1816,18 @@ const SessionPanel = {
     const save = () => {
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
     };
+    /* DEMO AID (2026-10-15, Devin): "back to the start of the week".
+       The whole state is snapshotted the moment a week begins (after the
+       gauntlet has rolled, so the week's outcomes are frozen), and
+       restoreWeek() puts it back. Kept in its own key, never inside S. */
+    const WSNAP_KEY = "cq-week-start";
+    let restoreGen = 0;   // bumped by restoreWeek; a roll in flight then drops its effects
+    const snapWeek = () => {
+      try {
+        localStorage.setItem(WSNAP_KEY,
+          JSON.stringify({ week: S.week, state: JSON.stringify(S) }));
+      } catch (e) {}
+    };
     const allPolicies = [
       ...policies.priorities.map((p) => ({ ...p, kind: "cost" })),
       ...policies.revenue.map((p) => ({ ...p, kind: "gain" })),
@@ -3190,7 +3202,9 @@ const SessionPanel = {
                with a staged roll the metric cards sit in view above the
                scene, and a support tick landing before the stamp would
                spoil the verdict a beat early */
+            const myGen = restoreGen;
             const finish = () => {
+              if (myGen !== restoreGen) return;   // the week was restored mid-roll
               /* THE ANTE (2026-08-21): a CHECKED choice's own `effects`
                  block is the stake — paid on commit, win or lose, on
                  top of whichever outcome block lands. It is what lets
@@ -3799,6 +3813,7 @@ const SessionPanel = {
           startBills();
           S.log.push({ week: S.week, agenda: [...S.agenda] });
           save();
+          snapWeek();
           // the campaign is formed — now play the week's narrative,
           // if any is still waiting
           const cal = calFor(S.week);
@@ -3838,6 +3853,11 @@ const SessionPanel = {
           "</span></b><small>" + esc(s.desc) + "</small>" +
           (honing ? '<small class="skhone">Honing — one more week of ' +
             "practice raises it.</small>" : "") + "</span>" +
+          (demo
+            ? '<button class="skdn" type="button" aria-label="Lower ' +
+              esc(s.name) + '"' + (v <= (skStart.base || 1) ? " disabled" : "") +
+              ">−</button>"
+            : "") +
           (S.skillPts > 0
             ? '<button class="skup" type="button"' +
               (v >= cap ? " disabled" : "") + ">+</button>"
@@ -3862,6 +3882,19 @@ const SessionPanel = {
     };
     const wireSkillUps = (rerender) => {
       for (const r of body.querySelectorAll("[data-skill]")) {
+        // demo only: take a point back out so it can be spent elsewhere
+        const dn = r.querySelector(".skdn");
+        if (dn && !dn.disabled) {
+          dn.addEventListener("pointerdown", (ev) => {
+            ev.stopPropagation();
+            const k = r.dataset.skill;
+            if (S.skills[k] <= (skStart.base || 1)) return;
+            S.skills[k] -= 1;
+            S.skillPts += 1;
+            save();
+            rerender();
+          });
+        }
         const up = r.querySelector(".skup");
         if (!up || up.disabled) continue;
         up.addEventListener("pointerdown", (ev) => {
@@ -3891,6 +3924,22 @@ const SessionPanel = {
         "difficulty. Support and influence add to the roll — so does " +
         "being the kind of advocate who noticed. What you practice " +
         "each week, you sharpen.</div>";
+      if (demo) {
+        body.insertAdjacentHTML("afterbegin",
+          '<button id="sk-respec" class="sk-respec" type="button">' +
+          "↺ Respec instincts — refund every point and spend them again" +
+          "</button>");
+        $("sk-respec").addEventListener("pointerdown", (ev) => {
+          ev.stopPropagation();
+          const base = skStart.base || 1;
+          for (const k of SK) {
+            S.skillPts += Math.max(0, S.skills[k] - base);
+            S.skills[k] = Math.min(S.skills[k], base);
+          }
+          save();
+          renderSheet();
+        });
+      }
       body.scrollTop = 0;
       renderTurnBtn();
       wireSkillUps(renderSheet);
@@ -5524,6 +5573,7 @@ const SessionPanel = {
         S.pushBill = null;
       }
       save();
+      snapWeek();
       renderHead();
       /* The opening-week hallway retires with week 1: the first
          advance swaps the live room over to the Capitol, the home view
@@ -5731,6 +5781,7 @@ const SessionPanel = {
        panel's height goes to the dialogue instead. `data.identity` is
        no longer read anywhere in the UI. */
     $("sess-foot").innerHTML =
+      '<button id="sess-back" type="button">↶ Back to start of week</button>' +
       '<button id="sess-reset" type="button">Restart session</button>';
     /* Two-press confirm for a destructive button: the first press arms
        it and says what the second does, a timer disarms it. The copy
@@ -5780,6 +5831,27 @@ const SessionPanel = {
       if (cal.agenda && !S.agendaLocked) renderHub();
       else runEvent();
     };
+    const restoreWeek = () => {
+      let snap = null;
+      try { snap = JSON.parse(localStorage.getItem(WSNAP_KEY) || "null"); }
+      catch (e) {}
+      if (!snap || !snap.state) return;
+      restoreGen++;
+      document.querySelectorAll(".sd-tray").forEach((t) => t.remove());
+      S = JSON.parse(snap.state);
+      save();
+      syncScore();
+      renderHead();
+      renderTurnBtn();
+      const cal = calFor(S.week);
+      if (cal.agenda && !S.agendaLocked) renderHub();
+      else if (eventPending(cal)) runEvent();
+      else renderHub();
+    };
+    $("sess-back").addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      restoreWeek();
+    });
     $("sess-reset").addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       armed(e.currentTarget, "Really restart? Press again", restartSession);
@@ -5792,6 +5864,10 @@ const SessionPanel = {
     syncScore();
     renderHead();
     const cal0 = calFor(S.week);
+    try {
+      const ws = JSON.parse(localStorage.getItem(WSNAP_KEY) || "null");
+      if (S.agendaLocked && (!ws || ws.week !== S.week)) snapWeek();
+    } catch (e) {}
     /* A fresh campaign OPENS ON THE CREATION FUNNEL, room or no room
        (2026-09-22, user's call: "ensure that the game still starts with
        the stat selection screens"). START_ROOM only suppresses the pop

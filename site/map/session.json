@@ -198,9 +198,9 @@
    ]
   },
   "bench": {
-   "name": "Build the bench",
+   "name": "Conduct outreach with potential supporters.",
    "icon": "🌱",
-   "desc": "House meeting, then another. The people testifying in April are the ones you train in February.",
+   "desc": "",
    "trains": "basebuilding",
    "_note": "The deliberately UNGLAMOROUS action. It hands back the smallest immediate number of any move — that is the teaching, not a balance bug. Base Building's payoff is not the support tick, it is the conference hold-firm roll and the Grange on-the-record dare in the endgame. A player who only ever rallies arrives at conference with nothing left to hold the line with. Do not 'fix' this by raising the support effect to match the rally.",
    "effects": {
