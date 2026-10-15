@@ -6,19 +6,19 @@ art: w1-opening
 # w1-intro
 
 ## A · start
-It's the first day of the session. Hundreds of people stream into the Capitol, filling the offices and balconies. Draped in leis, legislators and their staff welcome visitors with tables of plate lunches.
+It's the first day of the session. Hundreds of people stream into the Capitol, filling the offices and balconies. Draped in lei, legislators and their staff welcome visitors with tables of plate lunches.
 
-You work your way through the crowd and spot Representative Silva—your main ally and bill introducer. She motions for you to step off to the side with her.
+You work your way through the crowd on the inner balconies and spot Representative Silva—your main ally and bill introducer. She motions for you to step off to the side with her.
 
 -> B
 
 ## B · silva
-**Rep. Christina Silva:** "Just so you know, House leadership is telling us to not ask for new funding this year. I'm hoping for the best, but we'll have to push hard for anything that has a price tag. At least they're open to raising taxes."
+**Rep. Christina Silva:** "Just so you know, House leadership is telling us to not ask for new funding this year. I'm hoping for the best, but we'll have to push hard for anything that has a price tag. At least they're *probably* open to raising taxes."
 
 She sighs. "I can only do so much. You've gotta get through to leadership and the Finance Committee."
 
-- **Procedure:** She just read you the order of operations: leadership sets the ceiling, then Finance decides what even reaches a hearing. Two gates, and neither one is about whether the bill is good.
-- **Educator:** "No new funding" and "open to raising taxes" sound like opposites. They aren't: one is a spending ask, the other is where the money comes from. That is the sentence for leadership.
+// HIDDEN FOR NOW (instinct thought): - **Procedure:** She just read you the order of operations: leadership sets the ceiling, then Finance decides what even reaches a hearing. Two gates, and neither one is about whether the bill is good.
+// HIDDEN FOR NOW (instinct thought): - **Educator:** "No new funding" and "open to raising taxes" sound like opposites. They aren't: one is a spending ask, the other is where the money comes from. That is the sentence for leadership.
 
 -> C
 
@@ -27,8 +27,8 @@ She sighs. "I can only do so much. You've gotta get through to leadership and th
 
 "Got it, I'll see you around," you say. Rep. Silva promises to keep you updated, as she turns and disappears back into the crowd.
 
-- **Talk Story:** "I'll try to work on them" is a promise to try, not a vote. She is telling you exactly where her help ends.
-- **Mobilizing:** Ways & Means won't move for a memo. They move when the hallway outside their door is full of people who need what's on the chopping block.
+// HIDDEN FOR NOW (instinct thought): - **Talk Story:** "I'll try to work on them" is a promise to try, not a vote. She is telling you exactly where her help ends.
+// HIDDEN FOR NOW (instinct thought): - **Mobilizing:** Ways & Means won't move for a memo. They move when the hallway outside their door is full of people who need what's on the chopping block.
 
 -> D
 

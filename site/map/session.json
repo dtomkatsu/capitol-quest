@@ -261,7 +261,6 @@
    "title": "Opening Day",
    "phase": "Session",
    "pre": "w1-intro",
-   "event": "w1-opening",
    "agenda": true
   },
   {
@@ -386,54 +385,6 @@
   "text": "You've worked the first seven weeks of a sixteen-week session. Here is what you did, and where your bills stand. What becomes of them, and the nine weeks after, is the rest of the game."
  },
  "dialogues": {
-  "w1-opening": {
-   "_note": "Opening Day, the 9 a.m. presser: one microphone, three messages. The HR1 SNAP/Medicaid material that used to open this scene moved to its own week-3 event (w3-federal) on 2026-08-15 (week 1 was doing two jobs), so keep this node about the room and the gap. Choice 1 (tax fairness) costs -2 influence, softened from -4 on 2026-10-14: it is the obvious on-message pick for a wealth-tax game, and -4 plus the policy-research hour put a player at 25 in week 1, under the Finance gate of 28. Opening Day opens the week-1 talks (silva=talk-rep, sen-x=talk-sen).",
-   "start": {
-    "text": "Opening Day. Lei on every railing, three governors in the gallery — and the press set up on the makai steps, where your campaign has the 9 a.m. slot. One microphone, four minutes, every outlet in town. What's the message?",
-    "voices": [
-     {
-      "t": "talkstory",
-      "text": "Four minutes, every outlet in town. Read the room before you read the line."
-     },
-     {
-      "t": "mobilizing",
-      "text": "Whatever you say, say it loud enough that the back row remembers it Monday."
-     }
-    ],
-    "choices": [
-     {
-      "label": "\"Tax fairness, by name. The register pays more than the penthouse.\"",
-      "effects": {
-       "support": 5,
-       "influence": -2
-      },
-      "reply": "The crowd claps. Upstairs, two office doors close quietly. Rep. Silva, at the edge of the steps, writes one word on a notepad."
-     },
-     {
-      "label": "\"Cost of living. Discipline. A budget that doesn't wobble.\"",
-      "effects": {
-       "influence": 5,
-       "support": -3
-      },
-      "reply": "Inside, the murmurs are approving. Somewhere on the sidewalk, a coalition text thread goes quiet."
-     },
-     {
-      "label": "Four minutes of pure aloha — thank everyone, promise nothing.",
-      "effects": {
-       "support": 1,
-       "influence": 1
-      },
-      "reply": "Warm, safe, forgettable. Three offices call before lunch asking for 'whatever that one-pager was.'"
-     }
-    ]
-   },
-   "unlocks": {
-    "talks": {
-     "silva": "talk-rep",
-     "sen-x": "talk-sen"
-    }
-   }
-  },
   "ev-forecast": {
    "start": {
     "text": "Rumor from the tax department: the Council on Revenues may shave the forecast at its next meeting. If it's true, every bill with a price tag gets harder. The coalition wants to know the campaign's posture before the papers ask.",
@@ -1557,40 +1508,22 @@
    "_note": "WEEK 1, PART ONE AND TWO. Node A is the narration beat; Continue leads to nodes B and C, the dialogue with Rep. Christina Silva (it was the optional talk w1-silva, merged in here 2026-10-12, Devin: \"the second dialogue is with that representative Silva\"; its carve-out pitch was replaced 2026-10-13 by the leadership/Senate briefing — B is House leadership and Finance, C is the Senate and Ways & Means, no choices, she walks off into the crowd). Node D is the only choice, two ways to spend the free hour: talk to people (+2 influence) or go back to the office and work on policy (+1 Policy Brain); each ends the scene, and then the week's own scene, w1-opening, runs the presser. The Sen. X/Silva handoff and the old three-way choice (Kawaguchi in the rotunda, the coalition table, the research stack) were parked 2026-10-13 in content/drafts/01-w1-intro-parked.md (Devin: \"there's no event after\"). Original note: Week 1's narration beat — the room, the number, before anyone speaks. It runs as week 1's `pre` (calendar), then w1-opening starts at the Rep. X talk. It used to be node A of w1-opening; moved out so it can be edited on its own (2026-10-12, Devin).",
    "art": "w1-opening",
    "start": {
-    "text": "It's the first day of the session. Hundreds of people stream into the Capitol, filling the offices and balconies. Draped in leis, legislators and their staff welcome visitors with tables of plate lunches.\n\nYou work your way through the crowd and spot Representative Silva—your main ally and bill introducer. She motions for you to step off to the side with her.",
+    "text": "It's the first day of the session. Hundreds of people stream into the Capitol, filling the offices and balconies. Draped in lei, legislators and their staff welcome visitors with tables of plate lunches.\n\nYou work your way through the crowd on the inner balconies and spot Representative Silva—your main ally and bill introducer. She motions for you to step off to the side with her.",
     "voices": [],
     "goto": "silva",
     "choices": []
    },
    "silva": {
     "speaker": "silva",
-    "text": "\"Just so you know, House leadership is telling us to not ask for new funding this year. I'm hoping for the best, but we'll have to push hard for anything that has a price tag. At least they're open to raising taxes.\"\n\nShe sighs. \"I can only do so much. You've gotta get through to leadership and the Finance Committee.\"",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "She just read you the order of operations: leadership sets the ceiling, then Finance decides what even reaches a hearing. Two gates, and neither one is about whether the bill is good."
-     },
-     {
-      "t": "educator",
-      "text": "\"No new funding\" and \"open to raising taxes\" sound like opposites. They aren't: one is a spending ask, the other is where the money comes from. That is the sentence for leadership."
-     }
-    ],
+    "text": "\"Just so you know, House leadership is telling us to not ask for new funding this year. I'm hoping for the best, but we'll have to push hard for anything that has a price tag. At least they're *probably* open to raising taxes.\"\n\nShe sighs. \"I can only do so much. You've gotta get through to leadership and the Finance Committee.\"",
+    "voices": [],
     "goto": "senate",
     "choices": []
    },
    "senate": {
     "speaker": "silva",
     "text": "You ask about the Senate. She shakes her head. \"Not looking good. I've been hearing that Ways & Means is going to oppose any tax increases. Their plan is to make budget cuts instead. I'll try to work on them, but you'll have to talk to everyone you can.\"\n\n\"Got it, I'll see you around,\" you say. Rep. Silva promises to keep you updated, as she turns and disappears back into the crowd.",
-    "voices": [
-     {
-      "t": "talkstory",
-      "text": "\"I'll try to work on them\" is a promise to try, not a vote. She is telling you exactly where her help ends."
-     },
-     {
-      "t": "mobilizing",
-      "text": "Ways & Means won't move for a memo. They move when the hallway outside their door is full of people who need what's on the chopping block."
-     }
-    ],
+    "voices": [],
     "goto": "options",
     "choices": []
    },
@@ -1972,7 +1905,7 @@
       "goto": "hearing"
      },
      {
-      "label": "Try to find Rep. Kawaguchi",
+      "label": "Try to intercept Rep. Kawaguchi as he walks from a hearing back to his office.",
       "check": {
        "skill": "talkstory",
        "dc": 10,
@@ -1985,13 +1918,13 @@
        ]
       },
       "success": {
-       "reply": "As he passes by, you ask him",
+       "reply": "As Rep. Kawaguchi passes by, you ask him about the bill's prospects. Without stopping, he assures you that the bill will be fairly considered by the committee members.",
        "effects": {
         "influence": 4
        }
       },
       "failure": {
-       "reply": "He is already talking to someone else. You get a nod and a closing door.",
+       "reply": "He pretends to not hear you. You stand there awkwardly, forgotten.",
        "effects": {
         "influence": -2
        }
@@ -2001,7 +1934,7 @@
     ]
    },
    "hearing": {
-    "text": "Hearing day. The committee room is warm and the agenda is long. The chair gavels in, works down the list at a pace that tells everyone how much time is left. You take a seat and wait to see how far down the notice he gets.",
+    "text": "Hearing day. Your entire campaign could hinge on how well you do here.",
     "voices": [],
     "choices": []
    },

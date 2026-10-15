@@ -2185,6 +2185,7 @@ body.booting #hud { visibility: hidden; }
   border-top: 1px solid rgba(var(--paper-rgb), .08);
 }
 .sd-narr { color: var(--paper-4); font-style: italic; }   /* unattributed prose */
+.sd-narr em { font-style: normal; }   /* *emphasis* inside italic prose reads upright */
 /* an action's result page: one short scene (sd-solo), the header and
    the Continue plate inside the reader's own surface */
 .sd-solo { margin-top: 10px; }

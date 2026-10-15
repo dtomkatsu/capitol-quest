@@ -18,7 +18,7 @@ Your phones have been ringing in the chair's office since last week. The coaliti
 - effect: -2 support
 - then: B
 Pass:
-You manage a good showing. It's standing room only at the hearing.
+You achieve a good showing. It's standing room only at the hearing.
 
 - effect: +5 support
 Fail:
@@ -31,26 +31,26 @@ Your contacts fail to show up. The large hearing room looks noticeably empty.
 // PLACEHOLDER: pass/fail text is a draft; Devin is rewriting.
 - then: B
 Pass:
-The clips travel. Coalition members share them with their own networks, and people who have never been to the Capitol start asking when the hearing is.
+The clips attract a good amount of attention on various social media platforms. 
 
 - effect: +3 support
 Fail:
-The clips get a few dozen views and a couple of polite replies. The people who see them are the people who already agree.
+The clips draw less than a 100 views each—and only a handful of comments from your diehard supporters.
 
 - effect: -1 support, -1 influence
 
-### 3. [Talk Story 10 white] Catch the chair's eye in the hallway before the gavel.
+### 3. [Talk Story 10 white] Try to intercept Rep. Kawaguchi as he walks from a hearing back to his office.
 - mods: influence/30
 - then: B
 Pass:
-Two sentences, walking. He does not stop, but he does not say no, and that is a lot to get from a man carrying a stack of folders.
+As Rep. Kawaguchi passes by, you ask him about the bill's prospects. Without stopping, he assures you that the bill will be fairly considered by the committee members.
 
 - effect: +4 influence
 Fail:
-He is already talking to someone else. You get a nod and a closing door.
+He pretends to not hear you. You stand there awkwardly, forgotten.
 
 - effect: -2 influence
 
 ## B · hearing
 // PLACEHOLDER: Devin is rewriting this. Part two: the room itself. It must NOT say whether the bill was heard (the engine rolls that at week's end).
-Hearing day. The committee room is warm and the agenda is long. The chair gavels in, works down the list at a pace that tells everyone how much time is left. You take a seat and wait to see how far down the notice he gets.
+Hearing day. Your entire campaign could hinge on how well you do here.

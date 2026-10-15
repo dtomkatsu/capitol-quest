@@ -2825,12 +2825,17 @@ const SessionPanel = {
     // one spoken line, DE format — speaker in caps and color, role
     // dimmed. `sid` (the character key) picks the custom glyph; the
     // data icon is only a fallback for unmapped characters.
+    /* *word* in a scene's text is emphasis (2026-10-15, Devin). esc()
+       runs FIRST, so the only markup that can reach the page is the
+       <em> this makes; a lone * is left as it is. */
+    const escI = (s) => esc(String(s == null ? "" : s))
+      .replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
     const saidHtml = (who, text, cls, sid) =>
       '<div class="sd-said' + (cls ? " " + cls : "") + '"><b class="sd-who">' +
       (sym(sid) || (who.icon ? who.icon + " " : "")) +
       esc((who.name || "").toUpperCase()) +
       "</b>" + (who.role ? '<span class="sd-role">' + esc(who.role) +
-        "</span>" : "") + dash + esc(text) + "</div>";
+        "</span>" : "") + dash + escI(text) + "</div>";
 
     /* The dialogue reader is a RUNNING TRANSCRIPT, the way the reference
        plays it: nothing is replaced, everything accumulates in `.sd-log`.
@@ -3132,7 +3137,7 @@ const SessionPanel = {
           }
         }
         append((who ? saidHtml(who, n.text, "", n.speaker) :
-          '<div class="sd-narr">' + esc(n.text) + "</div>") +
+          '<div class="sd-narr">' + escI(n.text) + "</div>") +
           voiceHtml(n.voices));
         /* A node with NO choices is a beat that just moves on (2026-10-07,
            user's call: "no instincts or responses, just continue"). The
@@ -5540,11 +5545,12 @@ const SessionPanel = {
       const openWeek = () => {
         beating = false;
         renderTurnBtn();
-        if (moves.length) {
-          openOverlay(true);
-          renderHub();              // let the player read what happened
-          return;
-        }
+        /* The week's own scene plays FIRST, report or no report
+           (2026-10-15, Devin: events auto-popup at the start of each
+           week). A week that arrived with movement used to stop at the
+           hub and wait for the player to open the scene; now the scene
+           runs and its closing renderHub() shows the "Since you ended
+           the week" report (S.moves lasts until the next advance). */
         if (eventPending(cal)) {
           openOverlay(true);
           runEvent();
@@ -5907,7 +5913,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=76");
+    this.load.json("session", "map/session.json?v=78");
     this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
