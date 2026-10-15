@@ -3307,10 +3307,10 @@ const SessionPanel = {
         "</svg>",
       procedure:
         '<svg viewBox="0 0 120 84"><path class="g-maze" ' +
-        'pathLength="100" d="M10,74 L110,74 L110,10 ' +
-        'L10,10 L10,58 L94,58 L94,26 L26,26 L26,44 L72,44" fill="none" ' +
+        'pathLength="100" d="M26,74 L94,74 L94,10 ' +
+        'L26,10 L26,58 L78,58 L78,26 L42,26 L42,44 L62,44" fill="none" ' +
         'stroke="currentColor" stroke-width="5" stroke-linejoin="miter"/>' +
-        '<circle class="g-dot" cx="78" cy="44" r="5.5" fill="#f2c14e"/>' +
+        '<circle class="g-dot" cx="68" cy="44" r="5.5" fill="#f2c14e"/>' +
         "</svg>",
       educator:
         '<svg viewBox="0 0 120 84">' +
@@ -3358,7 +3358,7 @@ const SessionPanel = {
         'fill="currentColor" opacity=".45" stroke="currentColor" ' +
         'stroke-width="4" stroke-linejoin="round"/>' +
         '<rect x="56" y="34" width="8" height="8" fill="currentColor"/>' +
-        '<line x1="12" y1="42" x2="108" y2="42" stroke="currentColor" ' +
+        '<line x1="26" y1="42" x2="94" y2="42" stroke="currentColor" ' +
         'stroke-width="4" stroke-linecap="round"/>' +
         '<g class="g-roots" fill="none" stroke="#f2c14e" ' +
         'stroke-width="4" stroke-linecap="round">' +
@@ -3611,14 +3611,10 @@ const SessionPanel = {
     let agendaStep = 0;
     const AG_STEPS = [
       { key: "cost", title: "Choose your priorities",
-        lede: "What the campaign is fighting for. These are not bills " +
-          "you carry — they set the PRICE. Every one of them spends " +
-          "money the state does not currently have.",
+        lede: "",
         kindLabel: "Invest" },
-      { key: "gain", title: "Choose how to pay",
-        lede: "These are the bills your introducers actually carry, " +
-          "and the only measures the money committees will ever see. " +
-          "Raising it is the whole session.",
+      { key: "gain", title: "Revenue raisers",
+        lede: "",
         kindLabel: "Raise" },
     ];
 
@@ -3648,7 +3644,7 @@ const SessionPanel = {
       });
       html += "</div>" +
         '<div class="sk-title">' + esc(step.title) + "</div>" +
-        '<div class="ag-lede">' + esc(step.lede) + "</div>" +
+        (step.lede ? '<div class="ag-lede">' + esc(step.lede) + "</div>" : "") +
         '<div class="sk-ptchip">' +
         (agendaStep === 0
           ? "<b>" + costs.length + "</b> priorit" +
@@ -5892,11 +5888,11 @@ class BootScene extends Phaser.Scene {
     this.load.json("budget", "map/budget.json?v=1");
     this.load.json("revenue", "map/revenue.json?v=1");
     this.load.json("get_flows", "map/get_flows.json?v=1");
-    this.load.json("policies", "map/policies.json?v=3");
+    this.load.json("policies", "map/policies.json?v=5");
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=74");
+    this.load.json("session", "map/session.json?v=75");
     this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

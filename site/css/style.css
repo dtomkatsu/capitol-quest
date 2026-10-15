@@ -5017,3 +5017,7 @@ body.in-capitol #chips { display: none; }
 /* DEMO: revenue measures that are not available are shown, greyed */
 .agc.locked { opacity: .38; filter: grayscale(1); cursor: not-allowed; }
 .agc.locked:hover { transform: none; box-shadow: none; }
+.agc.locked .agc-pick {
+  width: auto; padding: 0 6px; white-space: nowrap;
+  font-size: 9px; letter-spacing: .04em;
+}

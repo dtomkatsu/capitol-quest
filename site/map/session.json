@@ -74,37 +74,37 @@
    "name": "Policy Brain",
    "icon": "📊",
    "pole": "wonk",
-   "desc": "Revenue estimates, fiscal notes, and whether the number on the page is real."
+   "desc": "Reading a budget or a fiscal note, and catching the number that doesn't add up."
   },
   "procedure": {
    "name": "Procedure",
    "icon": "📜",
    "pole": "wonk",
-   "desc": "Referrals, deadlines, decking — what the rules quietly allow."
+   "desc": "Knowing the rules of the building: deadlines, referrals, and the quiet ways a bill dies."
   },
   "educator": {
    "name": "Educator",
    "icon": "🎓",
    "pole": "wonk",
-   "desc": "Breaking a policy down until a legislator — or a brand-new advocate — actually gets it."
+   "desc": "Explaining a policy so it clicks, whether it's for a legislator or someone at their first hearing."
   },
   "talkstory": {
    "name": "Talk Story",
    "icon": "🌺",
    "pole": "organizer",
-   "desc": "Reading a person, and knowing who's really with you — a skeptical chair or a coalition partner, same skill either way."
+   "desc": "Reading people and figuring out who's really with you, from a committee chair to a coalition partner."
   },
   "mobilizing": {
    "name": "Mobilizing",
    "icon": "✊",
    "pole": "organizer",
-   "desc": "Turning out the people already with you — how many bodies in the room, and how fast."
+   "desc": "Getting your people to show up at hearings, at rallies, and on the phones."
   },
   "basebuilding": {
    "name": "Base Building",
    "icon": "🌱",
    "pole": "organizer",
-   "desc": "Growing the coalition and developing new leaders — whether anyone is still with you in week 14."
+   "desc": "Growing the coalition and new leaders, so people are still with you at the end of session."
   }
  },
  "characters": {
