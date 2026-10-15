@@ -1,11 +1,11 @@
 ---
-_note: WEEK 3 (2026-10-13: moved from week 2 — week 2 is now the legislator briefing (w2-briefing) and the office-manager scheduling scene (w2-schedule), whose Talk Story pass sets `kawaguchi-date`, read in the office check below; all 'two weeks out' timing is now 'two', since the referral deadline is still week 5; the meeting now opens with a greeting beat — fact-sheet check [pass -> the meeting, fail -> a short brush-off] or small talk about his Japan trip [Talk Story check] — before the old office meeting, now node E; the three bring-something choices in A were cut).  — THE KAWAGUCHI MEETING, moved back here from week 5 on 2026-10-12 (Devin's call, for the weeks-1-to-6 demo: "move his convo from later to 2"). It was week 5's w5-decking, and week 2's Yamamoto courtesy call (w2-yamamoto, talk-yamamoto) was set aside in content/drafts/ to make room; its `yamamoto-open` flag is gone, and w9-souza now reads `souza-intro` instead. NOTHING HERE MAY IMPLY A HEARING OR NOTICE HAS HAPPENED — Finance's referral deadline is still week 5 (chairs.json stages.h-fin). The old decking-day lines (the notice at four, watching it post) were rewritten for week 2. Original week-5 note follows. DEADLINE WEEK, and THE KAWAGUCHI MEETING. Finance's referral deadline is week 5 (chairs.json stages.h-fin), and the date Kawaguchi may have named via the week-1 optional talk (`talk-kawaguchi`) is February 14th — THIS week — so a player who earned `kawaguchi-date` is walking in already owed something. TWO-PART ART carries over unchanged from the original placement: the dialogue-level `art` (w2-finance, the Beretania breezeway) carries the approach, the `office` node overrides it with w2-finance-office; renderNode reads `n.art || dlg.art`. Sets `souza-intro`, spent in w8-crossover and w11-wam — both AFTER this week, so the causality holds now that the meeting sits at week 5 instead of week 2. w9-souza used to read `souza-intro` from here when this was week 2; since the meeting is now three weeks LATER than w9-souza, that scene reads `yamamoto-open` (set in w2-yamamoto) instead — keep it that way, or w4 is checking a flag that cannot exist yet.
+_note: WEEK 3 EVENT, THE KAWAGUCHI MEETING (Devin's calls: moved from week 5 to 2 on 2026-10-12, then to week 3 on 2026-10-13 when week 2 became the briefing + scheduling scenes). Week 2's w2-schedule Talk Story pass sets `kawaguchi-date`; nothing here reads it now. Opens on a greeting beat (B): fact-sheet red check -> the meeting (F) or a brush-off (D), or small talk about his Japan trip (C) -> F. Nothing has been scheduled or posted, and no hearing may be implied: h-fin deadline is week 5. A failed check costs -2 influence at most (house rule; the Finance gate is 28 and influence starts at 30). Grants `push, lobby`, so node F is where the player is pointed at the call-in move. Parked history: week 2's Yamamoto call is in content/drafts.
 art: w2-finance
 talks: kawaguchi, office, silva=talk-rep
 actions: push, lobby
 ---
 
-# w2-kawaguchi
+# w3-kawaguchi
 
 ## A · start
 Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.
@@ -33,7 +33,7 @@ He reads the page, all of it, and then reads the number again. "Who checked this
 Fail:
 As you drone on, Kawaguchi's eyes start to glaze over. He fidgets with the pencil on his desk.
 
-- effect: -4 influence
+- effect: -2 influence
 - then: D
 
 ### 2. Ask him how his session's been going. Is he getting any downtime?
@@ -97,5 +97,4 @@ Kawaguchi checks the clock on the wall, then the one on his phone. "That's my fi
 ### 1. Head back to the office.
 You walk out past the same koa door, a few feet closer to the chair's ear than most people ever get.
 
-- effect: 
 - then: end
