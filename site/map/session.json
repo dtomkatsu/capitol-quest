@@ -1923,7 +1923,7 @@
   "w5-hearing": {
    "_note": "WEEK 5 EVENT. The deadline WARNING moved to week 4 (w4-rally node A, Devin's own two sentences) on 2026-10-14 so the player has a week to act on it; the hurricane (w6-disaster) now lands in week 6, AFTER this deadline, so nothing here may mention it. FIRST DRAFT, placeholder text until Devin rewrites it. TWO-PARTER (Devin): part one (node A) is the PREP, part two (node B) is the hearing room itself. This is House Finance's deadline week (chairs.json h-fin deadline 5): resolveBills rolls each bill at week's END, so NOTHING here may say whether a bill was heard or not — the scene is the notice and the room, and the verdict arrives in the \"Since you ended the week\" report. The Feb 14 date Kawaguchi may have named in w1/w3 (flag kawaguchi-date) is the date this week lands on.",
    "start": {
-    "text": "House Finance posts its agenda Tuesday at four. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.\n\nYour phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. Friday is the deadline, and you have until the hearing to decide where to put what is left.",
+    "text": "House Finance posts its agenda Tuesday at four. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.\n\nYour phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. You have until the hearing to decide where to put what is left.",
     "voices": [],
     "choices": [
      {

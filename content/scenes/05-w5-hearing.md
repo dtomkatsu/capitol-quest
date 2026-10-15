@@ -7,10 +7,10 @@ actions: push, rally, lobby
 # w5-hearing
 
 ## A · start
-// DRAFT for Devin to edit (Claude, 2026-10-14). Says nothing about whether the bill is on the agenda.
+// PLACEHOLDER (PINNED): Claude's draft; Devin will rewrite it by hand. Says nothing about whether the bill is on the agenda.
 House Finance posts its agenda Tuesday at four. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.
 
-Your phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. Friday is the deadline, and you have until the hearing to decide where to put what is left.
+Your phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. You have until the hearing to decide where to put what is left.
 
 ### 1. [Mobilizing 12 white] Pack the hearing room.
 - mods: support/30, flag w4-turnout +2 "last week's turnout"
