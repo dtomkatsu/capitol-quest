@@ -7,10 +7,7 @@ actions: push, rally, lobby
 # w5-hearing
 
 ## A · start
-// PLACEHOLDER (PINNED): Claude's draft; Devin will rewrite it by hand. Says nothing about whether the bill is on the agenda.
-House Finance posts its agenda this week. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.
-
-Your phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. You have until the hearing to decide where to put what is left.
+House Finance posts its agenda this week. You can still drum up support for your bill in the meantime.
 
 ### 1. [Mobilizing 10 white] Pack the hearing room.
 - mods: support/30, flag w4-turnout +2 "last week's turnout"
