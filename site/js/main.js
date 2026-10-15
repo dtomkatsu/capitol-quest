@@ -4014,8 +4014,12 @@ const SessionPanel = {
               // standing on the button before spending the week
               "</b><small>ask your people to call about " +
               esc(b.name) + " — " +
-              Math.round(pushBonus(bInf(b)) * 100) +
+              Math.round(pushBonus(bInf(b), bSup(b)) * 100) +
               " points of scheduling odds" +
+              // AN UNADVERTISED CHARGE IS NOT A DECISION — the same rule
+              // the checked-choice ante follows. A call-in spends your
+              // list, and the player sees the price before the press.
+              (pushCost() ? " · costs " + pushCost() + " support" : "") +
               (dlLeft != null ? ' · <b class="dl' +
                 (dlLeft <= 1 ? " dl-soon" : "") + '">' +
                 (dlLeft <= 0 ? "deadline week" :
@@ -4109,6 +4113,15 @@ const SessionPanel = {
           S.actionWeek = S.week;
           S.pushWeek = S.week;
           S.pushBill = b.id;
+          /* SUPPORT IS A STOCK AND THIS IS WHAT SPENDS IT (2026-10-14).
+             A call-in burns your list's goodwill, and charging it is
+             also what keeps the two-meter bonus free in band terms:
+             measured at 12k sessions, push-first holds at its shipped
+             rate with costSupport 2 and runs 2.3pp hot without it. */
+          if (pushCost()) {
+            S.metrics.support = Math.max(0,
+              Math.min(100, S.metrics.support - pushCost()));
+          }
           // pushing is inside-game work on THIS bill specifically, so it
           // also raises the bill's own influence, on top of the one-week
           // odds bonus — the two effects overlap in the moment (this
@@ -4128,19 +4141,24 @@ const SessionPanel = {
           // under it rendered at the reader's 16.5px
           body.innerHTML = '<div class="sd-scene sd-solo">' +
             '<div class="sd-speaker"><b>' + sym("push") +
-            " Working the building</b>" +
+            " Calls to " + esc(ch.name) + "’s office</b>" +
             "<small>your action this week</small></div>" +
             '<div class="sd-narr">' + esc(
-              "You spend the week in " + ch.name + "'s outer office, on " +
-              b.name + ". You are not the only one waiting.") + "</div>" +
+              "The number goes out Monday with one sentence under it: ask " +
+              ch.name + " to hear " + b.name + ". By Wednesday his front " +
+              "desk has stopped saying the chair is in committee and " +
+              "started writing names down.") + "</div>" +
             (ch.voice ? '<div class="sd-reply">' + esc(ch.voice) +
               "</div>" : "") +
             '<div class="sd-fx"><span class="gain">Scheduling odds +' +
-            Math.round(pushBonus(bInf(b)) * 100) +
+            Math.round(pushBonus(bInf(b), bSup(b)) * 100) +
             ' next week</span><span class="gain">' + sym("influence") +
             " " + esc(b.name) +
-            "'s influence +" + (G.pushInfluence || 4) +
-            "</span></div>" + trHtml +
+            "'s influence +" + (G.pushInfluence || 4) + "</span>" +
+            (pushCost() ? '<span class="cost">' + sym("support") +
+              " Public support −" + pushCost() + " — you spent the list" +
+              "</span>" : "") +
+            "</div>" + trHtml +
             '<button class="sd-done" type="button">Continue ▸</button></div>';
           body.querySelector(".sd-done").addEventListener("pointerdown",
             (e2) => { e2.stopPropagation(); SFX.choice(); renderHub(); });
@@ -4427,16 +4445,28 @@ const SessionPanel = {
        makes hardest. Adding a reward for standing must never take
        something away from a player who has not built any.
        Capped so it can never dwarf the measured base rate. */
-    const pushBonus = (inf) => {
+    /* THE CALL-IN READS BOTH METERS (2026-10-14). It is a call-in now,
+       so the people are the mechanism and the standing is only whether
+       the office picks up — support carries two thirds of the climb.
+       Continuous, like every other term in chairOdds: the old bucketed
+       form needed campaign influence 70 before its first step fired on
+       a wealth bill, so it paid a flat 0.15 at every state a player
+       could reach. Still one-sided (base IS the floor), still capped so
+       it cannot dwarf the measured base rate, and taking it now COSTS
+       support — chairs.json gate.push carries the whole argument. */
+    const pushCost = () => (G.push || {}).costSupport || 0;
+    const pushBonus = (inf, sup) => {
       const p = G.push || {};
       const base = p.base != null ? p.base : 0.15;
-      const step = p.step != null ? p.step : 0.05;
-      const per = p.per != null ? p.per : 30;
+      const cap = p.cap != null ? p.cap : 0.30;
       const from = p.from != null ? p.from :
         (G.influenceBaseline != null ? G.influenceBaseline : 30);
-      const cap = p.cap != null ? p.cap : 0.30;
-      return Math.min(cap,
-        base + step * Math.max(0, Math.floor((inf - from) / per)));
+      const sFrom = p.supportFrom != null ? p.supportFrom : 50;
+      const sDiv = p.supportDiv || 450;
+      const iDiv = p.influenceDiv || 540;
+      return Math.min(cap, base +
+        Math.max(0, (sup == null ? sFrom : sup) - sFrom) / sDiv +
+        Math.max(0, inf - from) / iDiv);
     };
 
     /* DILUTION IS GRADUATED (2026-08-21). It was a cliff: support under
@@ -4507,7 +4537,8 @@ const SessionPanel = {
       // clears the push once it has been consumed
       const pushed = S.pushBill === bill.id && S.pushWeek >= 0 &&
         S.week - S.pushWeek <= 1;
-      if (pushed) add(pushBonus(inf), "you worked the chair this week");
+      if (pushed) add(pushBonus(inf, sup),
+        "your people called his office this week");
       /* HARD INFLUENCE GATE (2026-10-13, Devin: "not having enough
          influence should mean that bill doesn't get heard"). chairs.json
          gate.hearingGate = {stage, min}: under `min` of the campaign's
@@ -5107,7 +5138,9 @@ const SessionPanel = {
          from a live read: a bill's meters are derived from the
          campaign's now, and this card is read weeks later. */
       const dInf = o.meters ? o.meters.influence : null;
-      const bonus = Math.round(pushBonus(dInf == null ? 30 : dInf) * 100);
+      const dSup = o.meters ? o.meters.support : null;
+      const bonus = Math.round(
+        pushBonus(dInf == null ? 30 : dInf, dSup) * 100);
       let lesson;
       if (d.cause === "never heard" && !d.pushed) {
         lesson = "You never spent a week working " +
@@ -5864,7 +5897,7 @@ class BootScene extends Phaser.Scene {
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
     this.load.json("session", "map/session.json?v=68");
-    this.load.json("chairs", "map/chairs.json?v=4");
+    this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
   create() {

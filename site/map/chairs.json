@@ -12,11 +12,11 @@
   "championed": 0.12,
   "pushInfluence": 4,
   "hearingGate": {
-  "_note": "HARD GATE (2026-10-13, Devin): at this stage the chair will not schedule a bill at all while the campaign influence (plus what you bought for that bill) is under `min`. Probability is 0, not low. A passive campaign sits at 30 and never reaches 28, so the simulator passive anchor is unchanged.",
-  "stage": "h-fin",
-  "min": 28
- },
- "dilution": {
+   "_note": "HARD GATE (2026-10-13, Devin): at this stage the chair will not schedule a bill at all while the campaign influence (plus what you bought for that bill) is under `min`. Probability is 0, not low. A passive campaign sits at 30 and never reaches 28, so the simulator passive anchor is unchanged.",
+   "stage": "h-fin",
+   "min": 28
+  },
+  "dilution": {
    "_note": "Distinct failure modes: low influence still kills a bill outright (never heard, unchanged). Low SUPPORT does not make the hearing harder — it decides what SURVIVES the hearing: the moment a bill clears a chair gate, support under `floor` takes a bite out of its dollar figure. GRADUATED since 2026-08-21 (it was a cliff at 35, and unreachable besides — per-bill support was written once at seeding and never again, so nothing could ever lower it). `floor` is where dilution starts, `full` is where the per-gate bite reaches its maximum `cut`, and it ramps linearly between the two — so drifting toward the line costs a little before it costs a lot, which is the only version a player can learn from. Multiplicative and stacks across the two money-committee gates (a chronically unpopular bill can limp out of both already thin), floored by `min` so dilution alone never zeroes a bill — killing it stays the job of never-heard/voted-down/conference. floor 45 is deliberately just under the 50 every campaign starts at plus its family tilt: a passive campaign is never diluted (which is what preserves the calibrated bands), but a campaign bleeding support to floor-calendar weeks will be.",
    "floor": 45,
    "full": 15,
@@ -71,11 +71,13 @@
   "influenceBaseline": 30,
   "_influenceDecayNote": "INFLUENCE IS A RATE, NOT A RATCHET (2026-08-21). Standing inside a building decays when you are not in it, so 'Work the building' is upkeep rather than a one-way climb — which is the distinction between the two meters that the game previously asserted in tooltips and nowhere else. Decays DOWNWARD ONLY, toward `influenceBaseline`, which is the value every campaign starts at: a player knocked below it by events must earn it back and never drifts up for free, and a passive campaign therefore sits exactly at the baseline all session. That is what keeps the simulator's passive band unmoved. It runs during the recess too, deliberately — a week when the Capitol is shut is precisely when a standing slips.",
   "push": {
-   "_note": "THE PUSH SCALES WITH THE INFLUENCE BEHIND IT (2026-08-21) — it was a flat actionBonus 0.15 whoever asked. An insider's word to a chair is worth more than a stranger's, and the push is the game's most-used verb, so this is where the influence meter should bite hardest. bonus = min(cap, base + step * max(0, floor((billInfluence - from) / per))). ONE-SIDED ON PURPOSE: `base` IS the old flat 0.15 and the steps only ever ADD, counted from `from` (the influence baseline every campaign starts at). The first draft scaled from zero (base 0.10, a step every 30 points) and looked correct at a campaign influence of 30 — until you remember bills carry a family tilt: a wealth measure sits 10 under its campaign, landed in the first bucket, and its push quietly paid 0.10 where it had always paid 0.15. That is a stealth nerf to precisely the families the tilt already makes hardest, and it was caught in play, not in the maths. Adding a reward for standing must never take something away from a player who has not built any. Capped so it can never dwarf the measured base rate.",
+   "_note": "THE CALL-IN READS BOTH METERS AND COSTS SUPPORT (2026-10-14, Devin). bonus = min(cap, base + max(0, billSupport - supportFrom)/supportDiv + max(0, billInfluence - from)/influenceDiv), and taking it charges `costSupport` off the campaign. WHY IT CHANGED: the old form stepped every `per` points of influence from `from`, so on a wealth bill (-10 influence tilt) the first step needed campaign influence 70 and the push paid a FLAT 0.15 at every meter state a player could actually reach — 'scales with the influence behind it' was true in the code and invisible in play. Continuous now, like every other term in chairOdds: a step nobody reaches teaches nothing, and one they do reach is a cliff they cannot see coming. SUPPORT CARRIES TWO THIRDS OF THE CLIMB because the move is a call-in — the people are the mechanism, the standing is only whether the office picks up. That does NOT repeal 'support must not make a hearing easier unless the chair is aligned': that rule governs support sitting there PASSIVELY, and this is support being SPENT, which is the documented physics of the meter (a stock you spend) finally having something that spends it. STILL ONE-SIDED: `base` IS the old flat 0.15 and the terms only ever ADD, so this can never pay a player less than it used to — the 2026-08-21 lesson about tilted families, unchanged. costSupport 2 IS WHAT MAKES THIS FREE: measured at 12k sessions/cell, push-first lands at 9.65% +/-0.27 against the shipped 9.51% — the same number — while `balanced` gains ~1pp, so the gap over a mixed rotation narrows from 3.2pp to 2.4pp. Passive/rally/bench/lobby never push and are untouched by construction. Full working in PUSH-TWO-METER.md; re-run tools/simulate_gauntlet.py after any edit here.",
    "base": 0.15,
-   "step": 0.05,
-   "per": 30,
+   "supportFrom": 50,
+   "supportDiv": 450,
    "from": 30,
+   "influenceDiv": 540,
+   "costSupport": 2,
    "cap": 0.3
   },
   "_actionBonusNote": "SUPERSEDED by `push` above (2026-08-21); kept because old saves and any un-migrated call site still fall back to it, and because it documents what the flat value used to be."

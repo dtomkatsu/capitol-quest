@@ -557,6 +557,62 @@ what each policy BUILDS by sine die (no bill in play):
 The meter table is OUTPUT now, not input — the reachable ceiling of each
 weekly habit, which is exactly what the old profiles were guessing at.
 
+**RE-RUN 2026-10-14, after the push became a two-meter CALL-IN that
+costs support** (Devin: "instead of working the building slash chair …
+put a call out to people to call their legislators"). The verb changed
+from a lobbyist buttonholing a chair to the campaign turning its own
+list onto his phones, and the maths followed it: the bonus reads
+support as well as influence, and taking it charges 2 support. Same
+20,000 sessions/cell, same seed:
+
+```
+$ python3 tools/simulate_gauntlet.py --sessions 20000 -v   # 2026-10-14
+profile   wealth          income          credit (hyp)
+passive   2.4% (×0.53)    3.2% (×0.54)    8.6% (×0.58)
+push      10.1% (×0.58)   10.6% (×0.58)   26.8% (×0.63)
+lobby     4.5% (×0.64)    5.4% (×0.64)    14.8% (×0.64)
+rally     3.5% (×0.64)    4.9% (×0.64)    14.4% (×0.64)
+bench     3.8% (×0.73)    4.8% (×0.71)    13.5% (×0.79)
+balanced  7.3% (×0.66)    8.2% (×0.68)    21.7% (×0.71)
+```
+
+**Four of six profiles are IDENTICAL to the 08-21 run, to the decimal** —
+passive, lobby, rally and bench never push, so nothing in `pushBonus`
+can reach them. That is structural, not tuning, and it is why this
+change needed no re-calibration: **the invariant anchor did not move
+because it could not.**
+
+Of the two that do push:
+
+| profile · wealth | 08-21 | 10-14 |
+|---|---|---|
+| push-first | 10.1% | **10.1%** |
+| balanced | 6.4% | **7.3%** |
+
+**Push-first is unchanged and the support cost is why.** Without the
+cost the two-meter bonus runs it to ~11.8% (measured at 12k, ±0.29);
+charging 2 support pays for the gradient exactly. So the headline band
+this document is written around survives a real change to the most-used
+verb in the game. `balanced` gains ~0.9pp, which narrows push-first's
+dominance over a mixed rotation from 3.7pp to 2.8pp — the one number in
+this section that moved, and in the direction the §8d notes already
+wanted.
+
+**One honest asymmetry, worth recording rather than smoothing.** Income
+drops 11.1% → 10.6% on the push profile, and it is explicable rather
+than noise: a push-first campaign ends around 43.7 support, an income
+bill's tilt is only +6 (against wealth's +12), so its bill support lands
+at ~49.7 — just under the `supportFrom` 50 threshold where the support
+term starts paying. It pays the 2-support cost and earns none of the
+bonus back. **The cost is mildly regressive against families with a
+small support tilt**, because the push itself drives support down toward
+the very threshold that would reward it. Fixable by lowering
+`supportFrom` or scaling the cost; left alone for now because the
+affected magnitude is half a point on one family, and because a call-in
+that works less well for a bill with a thinner base is not obviously
+wrong. Full working: `PUSH-TWO-METER.md`.
+
+
 **Why passive moved from 3.3/4.2% to 2.4/3.2%**, attributed rather than
 waved at (measured by disabling one change at a time):
 

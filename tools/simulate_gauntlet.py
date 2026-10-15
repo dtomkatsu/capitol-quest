@@ -166,19 +166,26 @@ def scaled_fx(action, skills):
     return fx
 
 
-def push_bonus(G, influence):
-    """Port of main.js pushBonus(): the weekly chair push scales with the
-    influence behind it. ONE-SIDED: `base` IS the old flat 0.15 and the
-    steps only add, counted from the influence baseline — scaling from
-    zero instead made a tilted family's push pay LESS than it used
-    to."""
+def push_bonus(G, influence, support=None):
+    """Port of main.js pushBonus(): the weekly call-in reads BOTH meters
+    (2026-10-14). Support carries two thirds of the climb — it is a
+    call-in, so the people are the mechanism and the standing is only
+    whether the office picks up. Continuous, not bucketed: the old form
+    needed campaign influence 70 before its first step fired on a wealth
+    bill, so it paid a flat 0.15 at every reachable state. ONE-SIDED:
+    `base` IS the old flat 0.15 and the terms only add, so it can never
+    pay less than it used to — the 2026-08-21 tilted-family lesson.
+    KEEP THIS IN STEP WITH main.js pushBonus(); this port is the one
+    place the two can silently desync."""
     p = G.get("push") or {}
     base = p.get("base", 0.15)
-    step = p.get("step", 0.05)
-    per = p.get("per", 30)
-    frm = p.get("from", G.get("influenceBaseline", 30))
     cap = p.get("cap", 0.30)
-    return min(cap, base + step * max(0, (influence - frm) // per))
+    frm = p.get("from", G.get("influenceBaseline", 30))
+    s_from = p.get("supportFrom", 50)
+    return min(cap, base
+               + max(0, (s_from if support is None else support) - s_from)
+                 / p.get("supportDiv", 450)
+               + max(0, influence - frm) / p.get("influenceDiv", 540))
 
 
 def dil_factor(G, sup):
@@ -248,6 +255,10 @@ def simulate_one(chairs, committees, session, family, profile, rng):
                 act = "rally" if "rally" in actions else None
         if act == "push":
             earned_influence += G.get("pushInfluence", 4)
+            # a call-in spends the list: support is a stock, and this is
+            # the thing that spends it (main.js charges the same)
+            support = max(0, min(100, support
+                                 - (G.get("push") or {}).get("costSupport", 0)))
             pushed_week = week
             skills["procedure"] = min(6, skills.get("procedure", 0) + 0)
             plan_i += 1
@@ -311,7 +322,7 @@ def simulate_one(chairs, committees, session, family, profile, rng):
             # the push bought above is live for THIS week's roll only,
             # and scales with the influence behind it
             if week - pushed_week <= 1:
-                p += push_bonus(G, b_inf())
+                p += push_bonus(G, b_inf(), b_sup())
             p = max(0.02, min(0.95, p))
             hz = week_hazard(p, window)
             moved = rng.random() < hz
