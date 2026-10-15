@@ -7,6 +7,8 @@ talks: coalition, office, silva=talk-rep
 
 ## A · start
 // PLACEHOLDER: Devin is rewriting this.
+This is the House Finance deadline week. By Friday, any House bill that has not been heard in Finance is dead for the session. There is no vote and no record, just a bill that never came up.
+
 House Finance posts its agenda Tuesday at four. It is the last week the committee can hear anything that started in the House, and the hurricane has made the room tighter: the chair has forty minutes of emergency appropriations to move before he gets to anyone else's bill. Whatever is on the notice gets a hearing. Whatever is not, is finished.
 
 - **Procedure:** The deadline is the whole game. A bill the chair does not schedule this week does not die in a vote, it dies by never coming up.
