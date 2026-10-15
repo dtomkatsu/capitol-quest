@@ -8335,7 +8335,7 @@ class RoomScene extends Phaser.Scene {
   buildHotLayer() {
     const layer = document.createElement("div");
     layer.className = "room-hot";
-    layer.setAttribute("aria-label", this.cfg.greet ? this.cfg.greet[0] : "Room");
+    layer.setAttribute("aria-label", this.cfg.greet ? this.cfg.greet[0] : "Hawaiʻi State Capitol");
     for (const rec of this.hot) {
       const b = document.createElement("button");
       b.type = "button";
@@ -8413,7 +8413,8 @@ class RoomScene extends Phaser.Scene {
     this._opening = false;
     this.fit();
     if (this._skipGreetOnce) { this._skipGreetOnce = false; return; }
-    Dialog.show(this.cfg.greet[0], this.cfg.greet[1]);
+    // a room with no `greet` (the Capitol, 2026-10-15) enters silently
+    if (this.cfg.greet) Dialog.show(this.cfg.greet[0], this.cfg.greet[1]);
   }
 
   /* DPR moved — re-rasterise the type; fit() re-applies every scale */
@@ -8561,12 +8562,6 @@ const ROOM_CAPITOL = {
   // GO somewhere get one — the swing covers a scene change that was a
   // hard cut, which is where the animation earns its cost.
   swings: ["finance"],
-  greet: ["Hawaiʻi State Capitol",
-    "E komo mai — a gallery in the open rotunda. The chambers " +
-    "root the courtyard below — Senate toward ʻEwa, House toward " +
-    "Diamond Head — and hallways branch deeper into the building, " +
-    "to committee rooms and the Level 5 elevators. No dome " +
-    "overhead: the sky is Hawaiʻi's capitol dome."],
 };
 /* THE OPENING-WEEK HALLWAY (2026-08-27, user's call, from a reference
    photo of a Capitol corridor): week 1 boots here instead of the
