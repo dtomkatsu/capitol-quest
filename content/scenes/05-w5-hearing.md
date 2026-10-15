@@ -7,8 +7,10 @@ actions: push, rally, lobby
 # w5-hearing
 
 ## A · start
-// PLACEHOLDER: Devin is writing this opener (the deadline warning moved to week 4; this one line is a bridge so the node is not empty).
-It is deadline week. Whatever the chair is going to hear, he will hear it by Friday, and the only thing left to do is make the last calls.
+// DRAFT for Devin to edit (Claude, 2026-10-14). Says nothing about whether the bill is on the agenda.
+House Finance posts its agenda Tuesday at four. By then everything that is going to happen has happened, and what is left is whatever you can still do before the gavel.
+
+Your phones have been ringing in the chair's office since last week. The coalition is tired and still showing up. Friday is the deadline, and you have until the hearing to decide where to put what is left.
 
 ### 1. [Mobilizing 12 white] Pack the hearing room.
 - mods: support/30, flag w4-turnout +2 "last week's turnout"
