@@ -1,5 +1,5 @@
 ---
-_note: WEEK 4 EVENT (2026-10-13, Devin: "rally as one choice and community listening session as another"). FIRST DRAFT, placeholder text until Devin rewrites it. Weeks 1-3 are meetings and week 5 is the hearing, so this is the coalition's first move in public. Nothing here may imply a hearing has happened or been scheduled (h-fin deadline is week 5). Both checks are white and cost influence on a fail (house rule, 2026-10-13: a failed white check is -2). A pass on either sets flag `w4-turnout`, which week 5's pack-the-room check reads as +2, so this week's choice carries into the hearing. Rally = Mobilizing (turnout, breadth, spiky); listening session = Base Building (relationships, leaders, durability) — the McAlevey split in CLAUDE.md, so neither is the 'right' answer.
+_note: WEEK 4 EVENT (2026-10-13, Devin: "rally as one choice and community listening session as another"). FIRST DRAFT, placeholder text until Devin rewrites it. Weeks 1-3 are meetings and week 5 is the hearing, so this is the coalition's first move in public. Nothing here may imply a hearing has happened or been scheduled (h-fin deadline is week 5). Both checks are white and cost -1 influence on a fail (2026-10-14: softened from -2/-3 because the Finance gate is 28 and influence starts at 30). PAYOFFS (2026-10-14): the rally is VISIBILITY, so it pays influence (+1 support, +2 influence); the listening session is the BASE, so it pays support (+3 support, +1 influence). A pass on either sets flag `w4-turnout`, which week 5's pack-the-room check reads as +2, so this week's choice carries into the hearing. Rally = Mobilizing (turnout, breadth, spiky); listening session = Base Building (relationships, leaders, durability) — the McAlevey split in CLAUDE.md, so neither is the 'right' answer.
 talks: coalition, office, sen-x=talk-sen
 actions: rally, bench, push
 ---
@@ -22,12 +22,12 @@ Pass:
 // PLACEHOLDER
 The lawn fills. Cameras come, and so does a staffer from Finance who stands at the back and counts.
 
-- effect: +3 support, +1 influence, flag w4-turnout
+- effect: +1 support, +2 influence, flag w4-turnout
 Fail:
 // PLACEHOLDER
 Far fewer show up than were promised. The photos make the lawn look empty, and the building notices.
 
-- effect: -2 influence
+- effect: -1 influence
 - then: end
 
 ### 2. [Base Building 11 white] Host a community listening session.
@@ -36,10 +36,10 @@ Pass:
 // PLACEHOLDER
 The church hall is full, and people talk until the coffee runs out. Three of them volunteer to lead the next one.
 
-- effect: +2 support, +2 influence, flag w4-turnout
+- effect: +3 support, +1 influence, flag w4-turnout
 Fail:
 // PLACEHOLDER
 The room is polite and half empty. People say they care and nobody offers to do anything.
 
-- effect: -1 support, -2 influence
+- effect: -1 influence
 - then: end
