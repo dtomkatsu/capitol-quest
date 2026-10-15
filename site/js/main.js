@@ -1826,7 +1826,7 @@ const SessionPanel = {
       const hit = data.calendar.find((c) => c.week === w) || {};
       return {
         week: w,
-        title: hit.title || data.weekTitles[w] || "Interim",
+        title: hit.title != null ? hit.title : (data.weekTitles[w] || "Interim"),   // "" = a week with no title (week 3)
         phase: hit.phase || (w >= data.sineDieWeek && !demo ? "Adjournment" :
           w >= 14 ? "Conference" : "Session"),
         /* THE LAST DEMO WEEK STILL GETS A SCENE (2026-10-14). The
@@ -2346,7 +2346,7 @@ const SessionPanel = {
           "</small></span>"
         : '<span class="mast-no"><small>Week</small><b>' + S.week +
           "</b></span>" +
-          '<span class="mast-t"><b>' + esc(cal.title) + "</b><small>" +
+          '<span class="mast-t">' + (cal.title ? "<b>" + esc(cal.title) + "</b>" : "") + "<small>" +
           esc(cal.phase) + (dateStr ? " · " + esc(dateStr) : "") +
           "</small></span>";
       renderTimeline();
@@ -2379,7 +2379,7 @@ const SessionPanel = {
       btn.disabled = interim;
       btn.querySelector(".tc-label").textContent = interim ?
         (lost() ? "Game over" : demo ? "Demo" : "Sine die") :
-        "Week " + S.week + " · " + cal.title;
+        "Week " + S.week + (cal.title ? " · " + cal.title : "");
       btn.querySelector(".tc-act").innerHTML =
         (interim ? (lost() ? "No bills left" :
             demo ? "Demo complete" : "Session over") :
@@ -5916,7 +5916,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=80");
+    this.load.json("session", "map/session.json?v=84");
     this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }

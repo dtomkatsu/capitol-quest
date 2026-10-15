@@ -272,7 +272,7 @@
   },
   {
    "week": 3,
-   "title": "What Washington Left",
+   "title": "",
    "phase": "Session",
    "pre": "w3-federal",
    "event": "w3-kawaguchi"
@@ -1660,16 +1660,7 @@
    "art": "w2-finance",
    "start": {
     "text": "Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.",
-    "voices": [
-     {
-      "t": "procedure",
-      "text": "Read the room right: a chair who wants you to hear something from him instead of off a printout is either doing you a favor or bracing you for a loss. Both cost him time he doesn't have today."
-     },
-     {
-      "t": "talkstory",
-      "text": "Week three, and the chair of Finance found fifteen minutes for you before there is anything to hear. Chairs don't spend that on a stranger without wanting something back."
-     }
-    ],
+    "voices": [],
     "goto": "greeting",
     "choices": []
    },
@@ -1801,15 +1792,11 @@
    },
    "brushoff": {
     "art": "w2-finance-office",
-    "text": "He takes the page and squints at the wall of text and charts as if it's Ancient Greek.\n\n**Rep. Jon Kawaguchi:** \"Thanks, uh, for this. I'll look it over later with my staff.\" He says it in a less-than-convincing tone, filing it away among the messy stacks of paper on his desk.",
+    "speaker": "kawaguchi",
+    "text": "He takes the page and squints at the wall of text and charts as if it's Ancient Greek. \"Thanks, uh, for this. I'll look it over later with my staff.\" He says it in a less-than-convincing tone, filing it away among the messy stacks of paper on his desk.",
     "voices": [],
-    "choices": [
-     {
-      "label": "Thank him and go.",
-      "reply": "Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.",
-      "goto": "friday"
-     }
-    ]
+    "goto": "friday",
+    "choices": []
    },
    "friday": {
     "text": "Kawaguchi glances down to his phone. \"I'm afraid I've gotta run, thank you for stopping by today. We'll be in touch.\" He stands and ushers you out the door.",

@@ -10,8 +10,8 @@ actions: push, lobby
 ## A · start
 Fifteen minutes, his scheduler said, and she said it twice. So you wait in the breezeway where the trades come through, watching the courtyard fill and empty and fill. Nothing has been referred to Finance yet, and the lateral file that decides who gets heard this year is two weeks off. Your request made it onto his calendar, which in this hallway does not happen for a courtesy.
 
-- **Procedure:** Read the room right: a chair who wants you to hear something from him instead of off a printout is either doing you a favor or bracing you for a loss. Both cost him time he doesn't have today.
-- **Talk Story:** Week three, and the chair of Finance found fifteen minutes for you before there is anything to hear. Chairs don't spend that on a stranger without wanting something back.
+// HIDDEN FOR NOW (instinct thought): - **Procedure:** Read the room right: a chair who wants you to hear something from him instead of off a printout is either doing you a favor or bracing you for a loss. Both cost him time he doesn't have today.
+// HIDDEN FOR NOW (instinct thought): - **Talk Story:** Week three, and the chair of Finance found fifteen minutes for you before there is anything to hear. Chairs don't spend that on a stranger without wanting something back.
 
 -> B
 
@@ -74,15 +74,10 @@ Fail:
 
 ## D · brushoff
 - art: w2-finance-office
-He takes the page and squints at the wall of text and charts as if it's Ancient Greek.
-
-**Rep. Jon Kawaguchi:** "Thanks, uh, for this. I'll look it over later with my staff." He says it in a less-than-convincing tone, filing it away among the messy stacks of paper on his desk.
+**Rep. Jon Kawaguchi:** He takes the page and squints at the wall of text and charts as if it's Ancient Greek. "Thanks, uh, for this. I'll look it over later with my staff." He says it in a less-than-convincing tone, filing it away among the messy stacks of paper on his desk.
 
 
-### 1. Thank him and go.
-Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
-
-- then: F
+-> F
 
 ## F · friday
 Kawaguchi glances down to his phone. "I'm afraid I've gotta run, thank you for stopping by today. We'll be in touch." He stands and ushers you out the door.
