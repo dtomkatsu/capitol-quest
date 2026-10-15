@@ -17,11 +17,10 @@ Fifteen minutes, his scheduler said, and she said it twice. So you wait in the b
 
 ## B · greeting
 - art: w2-finance-office
-**Rep. Jon Kawaguchi:** You exchange greetings. He barely looks up from the referral sheet. "Hi. How can I help you?"
+**Rep. Jon Kawaguchi:** You exchange greetings. "Hi. How can I help you?"
 
-- **Policy Brain:** Skip the small talk. The numbers are what really matters.
-- **Educator:** Go on. He needs to know the facts.
-- **Talk Story:** Get to know him a little bit. You'll have time for the policy talk later.
+- **Educator:** Skip the small talk. The numbers are what really matters.
+- **Talk Story:** Get to know him a bit. You can ease into the policy discussion later.
 
 ### 1. [Educator 3+] [Educator 12 red] Hand him a fact sheet and dive straight into your tax agenda.
 - mods: influence/25
@@ -37,7 +36,6 @@ As you drone on, Kawaguchi's eyes start to glaze over. He fidgets with the penci
 - then: D
 
 ### 2. Ask him how his session's been going. Is he getting any downtime?
-He looks up for the first time.
 
 - then: C
 
@@ -45,19 +43,18 @@ He looks up for the first time.
 - art: w2-finance-office
 **Rep. Jon Kawaguchi:** He says it's been a busy week, but nothing he hasn't seen before. His eyes light up when he starts talking about his family trip to Japan last month.
 
-- **Talk Story:** A man who lights up about Japan isn't stalling. He just showed you the door he actually keeps open.
-- **Procedure:** This is getting off topic, and you don't have much time left.
+- **Talk Story:** You're breaking through to him, keep going. 
+- **Procedure:** This is getting off topic—the meeting is already short as it is.
 
-### 1. [Procedure 12 white] Steer the conversation back to policy.
+### 1. [Procedure 12 white] Try to steer the conversation back to policy.
 - mods: influence/25
-// PLACEHOLDER: Devin is rewriting the pass and fail text.
 Pass:
-You wait for the end of his sentence, thank him for the story, and ask one question about the referral sheet under his hand. He looks at it, then at you, and answers it.
+You smoothly shift the conversation to his priorities for the session.
 
 - effect: +2 influence
 - then: F
 Fail:
-He catches the shift and nods, a little sorry to see the trip go. "Right." The moment is gone.
+You clumsily interrupt him in the middle of a sentence. He sighs and agrees to move on.
 
 - effect: -2 influence
 - then: F
@@ -65,12 +62,12 @@ He catches the shift and nods, a little sorry to see the trip go. "Right." The m
 ### 2. [Talk Story 8 white] Ask him about the trip.
 - mods: influence/25
 Pass:
-Ten minutes of ramen, a bullet train, and a daughter who ordered for the whole table in Japanese. By the end he is leaning back in his chair. "Okay. Now what did you actually come up here for?"
+He rambles on about his trip itinerary for several minutes. His grandson is great at baseball, by the way.
 
 - effect: +2 influence
 - then: F
 Fail:
-"Uh—" You trail off, unable to follow up. He waits a beat.
+"Uh..." You trail off, unable to follow up. He waits a moment before continuing.
 
 - effect: -2 influence
 - then: F
@@ -79,9 +76,8 @@ Fail:
 - art: w2-finance-office
 He takes the page and squints at the wall of text and charts as if it's Ancient Greek.
 
-**Rep. Jon Kawaguchi:** "Thanks, uh, for this. I'll look it over later." He says it in a less-than-convincing tone, filing it away among his messy stacks of paper.
+**Rep. Jon Kawaguchi:** "Thanks, uh, for this. I'll look it over later with my staff." He says it in a less-than-convincing tone, filing it away among the messy stacks of paper on his desk.
 
-- **Educator:** A fact sheet is a document. A sentence is the thing he repeats to Souza. You handed him the document.
 
 ### 1. Thank him and go.
 Fifteen minutes, and he used four of them. The door closes softly, which is somehow worse.
@@ -89,12 +85,9 @@ Fifteen minutes, and he used four of them. The door closes softly, which is some
 - then: F
 
 ## F · friday
-// PLACEHOLDER: Devin is rewriting this. The only place in the scene where Kawaguchi checks the clock.
-Kawaguchi checks the clock on the wall, then the one on his phone. "That's my fifteen." He stands, gathers the referral sheet, and holds the door for you. Nothing has been scheduled, and nothing will post today.
+Kawaguchi glances down to his phone. "I'm afraid I've gotta run, thank you for stopping by today. We'll be in touch." He stands and ushers you out the door.
 
-- **Procedure:** Fifteen minutes with the chair is not a hearing, and nothing has been scheduled. Whatever he decides, you will read it standing up in a hallway in two weeks, same as everyone who didn't get the meeting.
 
 ### 1. Head back to the office.
-You walk out past the same koa door, a few feet closer to the chair's ear than most people ever get.
 
 - then: end

@@ -7,25 +7,21 @@ actions: rally, bench, push
 # w4-rally
 
 ## A · start
-// PLACEHOLDER: Devin is rewriting the second paragraph (the first is his, and carries the deadline warning).
 Next week is your last chance to receive a hearing in the House Finance Committee. By Friday, any House bill that has not been heard will effectively be dead.
 
-The coalition wants to do something visible before then. There are two ways to spend the week: a rally outside the Capitol, loud and photogenic, or a community listening session in a church hall, quieter and slower.
+Your coalition wants to hold an event to raise awareness around your shared priorities. There are two options at your disposal: a rally outside the Capitol, or a community listening session in a church.
 
-- **Mobilizing:** A crowd on the lawn is the one thing the building can see from its own windows.
-- **Base Building:** Nobody leaves a rally knowing a leader's name. A listening session is how you find the ones who will still be here in May.
-- **Talk Story:** Which of these will the chair hear about first? Not the quiet one.
+- **Mobilizing:** A rally would give you a lot of visibility at the Capitol.
+- **Base Building:** Community engagement is the only way to bring new people into the fold.
 
 ### 1. [Mobilizing 9 white] Hold a rally on the Capitol lawn.
 - mods: support/30
 Pass:
-// PLACEHOLDER
-The lawn fills. Cameras come, and so does a staffer from Finance who stands at the back and counts.
+The rally is a huge success. All of your partners showed up (shockingly), and there was a significant media presence.
 
 - effect: +1 support, +2 influence, flag w4-turnout
 Fail:
-// PLACEHOLDER
-Far fewer show up than were promised. The photos make the lawn look empty, and the building notices.
+You only manage to turn out a handful of partners. Even the most flattering camera angles can't hide the rally's poor attendance.
 
 - effect: -1 influence
 - then: end
@@ -33,13 +29,10 @@ Far fewer show up than were promised. The photos make the lawn look empty, and t
 ### 2. [Base Building 9 white] Host a community listening session.
 - mods: support/30
 Pass:
-// PLACEHOLDER
-The church hall is full, and people talk until the coffee runs out. Three of them volunteer to lead the next one.
-
+The church is packed with attendees, and you get a sense of the excitement bubbling in the room.
 - effect: +3 support, +1 influence, flag w4-turnout
 Fail:
-// PLACEHOLDER
-The room is polite and half empty. People say they care and nobody offers to do anything.
+The room is half empty, while the group discussions seem to fizzle out quickly.
 
 - effect: -1 influence
 - then: end
