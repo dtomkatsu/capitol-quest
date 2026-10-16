@@ -2682,7 +2682,11 @@ const SessionPanel = {
     // voices pipe up one after another — a small stagger per voice (the
     // beat wrapper animates as a whole; each voice re-enters on its own
     // delay on top of that, which reads as the instincts chiming in)
-    const voiceHtml = (voices) => (voices || []).map((v, i) => {
+    /* HIDDEN (2026-10-16, Devin: cut text throughout). The instinct
+       asides stay in the scene files; flip SHOW_VOICES to bring them
+       back. Skill-tagged CHOICES are unaffected — those are options. */
+    const SHOW_VOICES = false;
+    const voiceHtml = (voices) => (SHOW_VOICES ? voices || [] : []).map((v, i) => {
       const sk = data.skills[v.t];
       if (!sk) return "";
       return '<div class="sd-voice v-skill p-' + (sk.pole || "bridge") +
@@ -4006,14 +4010,13 @@ const SessionPanel = {
               // influence, not a constant — the whole point of scaling
               // it is that the player can watch the price of their own
               // standing on the button before spending the week
-              "</b><small>ask your people to call about " +
-              esc(b.name) + " — " +
+              "</b><small>+" +
               Math.round(pushBonus(bInf(b), bSup(b)) * 100) +
-              " points of scheduling odds" +
+              " pts hearing odds" +
               // AN UNADVERTISED CHARGE IS NOT A DECISION — the same rule
               // the checked-choice ante follows. A call-in spends your
               // list, and the player sees the price before the press.
-              (pushCost() ? " · costs " + pushCost() + " support" : "") +
+              (pushCost() ? " · −" + pushCost() + " support" : "") +
               (dlLeft != null ? ' · <b class="dl' +
                 (dlLeft <= 1 ? " dl-soon" : "") + '">' +
                 (dlLeft <= 0 ? "deadline week" :
@@ -4053,8 +4056,8 @@ const SessionPanel = {
           (S.week === data.sineDieWeek ?
             (demo ? "Finish the demo ▸" : "Leave the building ▸") :
             "End Week " + S.week + " ▸") + "</button>" +
-          (skipping ? '<div class="sh-note">An opening is ' +
-            "unused — ending the week lets it close.</div>" : "");
+          "";
+        void skipping;
       }
 
       body.innerHTML = html;
@@ -4976,15 +4979,14 @@ const SessionPanel = {
           if (hg && hg.stage === sid) {
             const have = S.metrics.influence +
               ((b.earned && b.earned.influence) || 0);
-            lines.push(have < hg.min
+            if (have < hg.min) lines.push(have < hg.min
               ? "<b>Under " + hg.min + " influence, this chair will not " +
                 "schedule you at all</b> — you are at " + Math.round(have) +
                 ". Turn out calls to his office, or the deadline passes " +
                 "without a hearing."
-              : "He will not calendar anything from a campaign under " +
-                hg.min + " influence. You are at " + Math.round(have) + ".");
+              : "");
           }
-          if (fisc >= ((IN.basis || {}).cite || 3)) {
+          if (false && fisc >= ((IN.basis || {}).cite || 3)) {
             const ch = chairOf(sid) || {};
             const g = rateFor(ch.committee, b.kind, b.tax);
             lines.push("The measured floor under all of it: " +
@@ -5133,33 +5135,26 @@ const SessionPanel = {
         switch (m.kind) {
           case "heard":
             return { cls: "won", t: "Heard in committee",
-              s: esc(m.chair || "The chair") + " put it on a hearing " +
-                 "calendar. It moves." };
+              s: "It moves." };
           case "near":
             return { cls: "near", t: "Nearly calendared",
               s: m.floor
                 ? "It came up short on the floor calendar this week."
-                : esc(m.chair || "The chair") + " pulled the file and put " +
-                  "it back. At " + Math.round((m.p || 0) * 100) +
-                  "% it was close — and close is not a hearing." };
+                : "Close at " + Math.round((m.p || 0) * 100) +
+                  "% — but not a hearing." };
           case "gated":
             return { cls: "cut", t: "Not calendared",
-              s: esc(m.chair || "The chair") + " would not schedule it: " +
-                 "your influence is under " + m.min + "." };
+              s: "Influence under " + m.min + "." };
           case "diluted":
             return { cls: "cut", t: "Cut on the way through",
-              s: "Support was " + Math.round(m.support) + ". It cleared " +
-                 "the committee at " + Math.round(m.scale * 100) +
-                 "% of the ask — " + fmtK(Math.round(m.amtK * m.scale)) +
-                 "/yr." };
+              s: "Now " + fmtK(Math.round(m.amtK * m.scale)) + "/yr (" +
+                 Math.round(m.scale * 100) + "% of the ask)." };
           case "conf":
             return { cls: m.ok ? "won" : "cut",
               t: m.ok ? "Held the number in conference"
                       : "Halved in conference",
-              s: "Rolled " + m.total + " against " + m.dc + " on " +
-                 esc((data.skills[m.skill] || {}).name || m.skill) + ". " +
-                 (m.ok ? "The number survives." : "It comes out at " +
-                   fmtK(Math.round(m.amtK * m.scale)) + "/yr.") };
+              s: m.ok ? "The number survives." : "Now " +
+                   fmtK(Math.round(m.amtK * m.scale)) + "/yr." };
           case "enacted":
             // its own class, not just "won": becoming law is the rarest
             // thing that happens in this game and looked identical to a
@@ -5170,18 +5165,13 @@ const SessionPanel = {
           case "dead":
             return { cls: "dead", t: "Dead — " + esc(m.cause),
               s: m.cause === "never heard"
-                ? "No vote was taken. No record exists of anyone killing it."
-                : "The clock beat it." };
+                ? "No vote, no record." : "The clock beat it." };
           case "recess":
             // the recess has to be VISIBLE or the week reads as a bug.
             // Name the cost explicitly: a week skipped against a
             // deadline that did not move to make up for it.
             return { cls: "quiet", t: "Recess — nothing moved",
-              s: (m.floor
-                ? "Neither chamber convened, so it was never called."
-                : esc(m.chair || "The chair") + " scheduled nothing, " +
-                  "because during a recess nobody can.") +
-                 " One week gone. The deadline did not move." };
+              s: "A week gone; the deadline didn't move." };
           /* The two CAMPAIGN-level rows: they carry no bill, because
              they happened to the campaign rather than to a measure.
              They are reported for the same reason near-misses are —
@@ -5190,16 +5180,11 @@ const SessionPanel = {
           case "burn":
             return { cls: "drift d-sup", campaign: true,
               t: "The base spent a week on the floor calendar",
-              s: "A vote was expected and never called" +
-                 (m.bills > 1 ? " on " + m.bills + " of your bills" : "") +
-                 ". Public Support −" + m.n + ". Turnout is a stock: " +
-                 "you spend it every week you ask people to show up." };
+              s: "Public Support −" + m.n + "." };
           case "decay":
             return { cls: "drift d-inf", campaign: true,
               t: "Influence slipped",
-              s: "Political Influence −" + m.n + ", to " + m.to +
-                 ". Standing inside the building is a rate, not a " +
-                 "ratchet — it needs the week you spend on it." };
+              s: "Political Influence −" + m.n + " (now " + m.to + ")." };
           default: return null;
         }
       };
