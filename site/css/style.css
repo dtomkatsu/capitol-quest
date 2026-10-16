@@ -5093,3 +5093,15 @@ body.in-capitol #chips { display: none; }
   margin-top: 3px;
   color: var(--txt-2b);
 }
+
+/* creation screen two: the one bill, then what it could fund
+   (renderAgendaSelect). The priority cards are information, not
+   controls — no hover lift, no pointer. */
+.agc-grid.ag-one { grid-template-columns: minmax(0, 340px); }
+.sk-title.ag-sub { margin-top: 26px; }
+.agc.info { cursor: default; }
+.agc.info:hover {
+  transform: none;
+  border-color: rgba(var(--paper-rgb), .35);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .45);
+}

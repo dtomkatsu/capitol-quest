@@ -3654,195 +3654,77 @@ const SessionPanel = {
       });
     };
 
-    /* ---- creation screen two: BUILD YOUR PACKAGE, in TWO STEPS —
-       what you're fighting FOR, then how you PAY for it. Same
-       archetype-screen treatment as SELECT INSTINCTS (full-bleed
-       `creating`, stencil title plate, glyph cards, one plate out),
-       with a step rail across the top and a running ledger of the
-       package on the footer plate.
-
-       Splitting the pick in two IS the module's argument: the player
-       chooses a cost and then has to look at what pays for it, instead
-       of reading one flat list where a school-meals bill and a GET
-       increase are the same kind of object.
-       **There is NO CAP on either step** (2026-08-19, user's call:
-       "allow users to choose as many investment priorities as they
-       want, same for the tax options"). It used to be ≤3 shared across
-       both steps, which made step 2 open with the budget possibly
-       already spent — that scarcity was carrying the argument, and the
-       argument now has to come from the tally and the gauntlet instead:
-       a player who takes all six watches six bills go through the money
-       committees and finds out what that costs in weeks and support.
-       The floor stays: at least one bill, or there is no campaign.
-       `agendaStep` is view state, deliberately NOT in S: reloading
-       mid-pick should land you back on step 1 with your picks intact,
-       not resume a half-finished wizard. */
-    let agendaStep = 0;
-    const AG_STEPS = [
-      { key: "cost", title: "Choose your priorities",
-        lede: "",
-        kindLabel: "Invest" },
-      { key: "gain", title: "Revenue raisers",
-        lede: "",
-        kindLabel: "Raise" },
-    ];
+    /* ---- creation screen two: THE BILL, AND WHAT IT COULD BUY.
+       The game revolves around ONE bill now (2026-10-15, Devin: "i want
+       it to revolve around the wealth tax … cancel out the other
+       revenue raisers"). The other revenue measures are retired from
+       policies.json (kept under `_retiredRevenue`), and the priorities
+       stop being a pick: they are an information page — what the
+       wealth tax's money could pay for — not a cost the player signs
+       up to. So this screen chooses nothing. It shows the bill, shows
+       the menu of things the revenue could fund, and hands the bill to
+       the introducers. Same archetype treatment as SELECT INSTINCTS
+       (full-bleed `creating`, stencil title, glyph cards, one plate). */
+    const agCard = (p, info) =>
+      '<div class="agc ' + p.kind + (info ? " info" : " on") + '">' +
+      '<div class="agc-art">' + (sym(p.id) || p.icon || "") + "</div>" +
+      '<div class="agc-name">' + esc(p.name) + "</div>" +
+      '<div class="agc-desc">' + esc(p.who || "") + "</div>" +
+      (p.src ? '<div class="agc-src">' + esc(p.src) + "</div>" : "") +
+      '<div class="agc-foot"><span class="agc-kind">' +
+      (p.kind === "cost" ? "Could fund" : "Your bill") + "</span>" +
+      '<span class="agc-amt">' + (p.kind === "cost" ? "" : "+") +
+      fmtK(p.amt) + "/yr</span></div></div>";
 
     const renderAgendaSelect = () => {
       overlay.classList.add("creating");
       body.dataset.view = "";
-      const step = AG_STEPS[agendaStep];
-      const picked = allPolicies.filter((p) => S.agenda.includes(p.id));
-      const mine = allPolicies.filter((p) => p.kind === step.key);
-      const costs = picked.filter((p) => p.kind === "cost");
-      const gains = picked.filter((p) => p.kind === "gain");
-      const spend = costs.reduce((s, p) => s + p.amt, 0);
-      const raise = gains.reduce((s, p) => s + p.amt, 0);
-      // `n` is the BILL count — the revenue picks — everywhere the word
-      // "bill" appears. The priorities are counted separately because
-      // they are a price, not legislation.
-      const n = gains.length;
+      const bills = allPolicies.filter((p) => p.kind === "gain");
+      const prios = allPolicies.filter((p) => p.kind === "cost");
+      const raise = bills.reduce((s, p) => s + p.amt, 0);
+      const fits = prios.filter((p) => p.amt <= raise);
 
-      // step rail
-      let html = '<div class="sk-select"><div class="ag-rail">';
-      AG_STEPS.forEach((s, i) => {
-        html += '<div class="ag-step ' +
-          (i === agendaStep ? "now" : i < agendaStep ? "past" : "next") +
-          '" data-step="' + i + '"><span class="ag-num">' + (i + 1) +
-          '</span><span class="ag-lbl">' +
-          (s.key === "cost" ? "Priorities" : "Revenue") + "</span></div>";
-      });
-      html += "</div>" +
-        '<div class="sk-title">' + esc(step.title) + "</div>" +
-        (step.lede ? '<div class="ag-lede">' + esc(step.lede) + "</div>" : "") +
-        '<div class="sk-ptchip">' +
-        (agendaStep === 0
-          ? "<b>" + costs.length + "</b> priorit" +
-            (costs.length === 1 ? "y" : "ies") + " chosen" +
-            (spend ? " · " + fmtK(spend) + "/yr to find" : "")
-          : "<b>" + n + "</b> tax bill" + (n === 1 ? "" : "s") +
-            " chosen · " + fmtK(raise) + " of " + fmtK(spend)) +
-        "</div><div class=\"agc-grid\">";
-      const onlyRev = demo && demo.revenueOnly;
-      for (const p of mine) {
-        const on = S.agenda.includes(p.id);
-        // DEMO: only the listed revenue measures can be picked; the
-        // rest stay on the screen, greyed, so the player sees the menu
-        const locked = !!onlyRev && p.kind === "gain" &&
-          !onlyRev.includes(p.id);
-        // role/tabindex: the card IS the control — the only way to pick
-        // a bill — so it has to be reachable and pressable by keyboard
-        html += '<div class="agc ' + p.kind + (on ? " on" : "") +
-          (locked ? " locked" : "") +
-          '" data-pol="' + p.id + '" role="button" tabindex="' +
-          (locked ? "-1" : "0") + '"' +
-          (locked ? ' aria-disabled="true"' : "") +
-          ' aria-pressed="' + (on ? "true" : "false") + '">' +
-          '<div class="agc-art">' + (sym(p.id) || p.icon || "") + "</div>" +
-          '<div class="agc-name">' + esc(p.name) + "</div>" +
-          '<div class="agc-desc">' + esc(p.who || "") + "</div>" +
-          (p.src ? '<div class="agc-src">' + esc(p.src) + "</div>" : "") +
-          '<div class="agc-foot"><span class="agc-kind">' +
-          step.kindLabel + "</span>" +
-          '<span class="agc-amt">' + (p.kind === "cost" ? "−" : "+") +
-          fmtK(p.amt) + '/yr</span><span class="agc-pick">' +
-          (locked ? "Not in the demo" : on ? "✓" : "+") +
-          "</span></div></div>";
-      }
-      html += "</div></div>";
+      let html = '<div class="sk-select">' +
+        '<div class="sk-title">Your bill</div>' +
+        '<div class="ag-lede">One bill, carried all session. Getting it ' +
+        "heard, kept alive and passed is the whole game.</div>" +
+        '<div class="agc-grid ag-one">' +
+        bills.map((p) => agCard(p, false)).join("") + "</div>" +
+        '<div class="sk-title ag-sub">What it could fund</div>' +
+        '<div class="ag-lede">For information only — you don’t choose ' +
+        "these. They are the kinds of investments " + fmtK(raise) +
+        "/yr in new revenue could pay for" +
+        (fits.length && fits.length < prios.length
+          ? "; " + fits.length + " of the " + prios.length +
+            " below fit inside it on their own."
+          : ".") + "</div>" +
+        '<div class="agc-grid">' +
+        prios.map((p) => agCard(p, true)).join("") + "</div></div>";
 
-      // the package ledger rides on the footer, above the plate
-      if (picked.length) {
-        html += '<div class="ag-tally">' + picked.map((p) =>
-          '<span class="agt ' + p.kind + '">' + (sym(p.id) || "") + " " +
-          esc(p.name) + "</span>").join("") + "</div>";
-      }
-      /* There is always a way back up the corridor: from Revenue to
-         Priorities, and from Priorities all the way out to the instinct
-         screen. Before this, step 1 was a one-way door — you could
-         revise your bills forever but never revisit the instincts you
-         picked ninety seconds earlier. */
+      // always a way back up the corridor to the instincts
       html += '<div class="ag-nav">' +
-        (agendaStep > 0
-          ? '<button class="ag-back" id="ag-back" type="button">' +
-            '<span class="agb-ar">◂</span>Priorities</button>'
-          : '<button class="ag-back" id="ag-skills" type="button">' +
-            '<span class="agb-ar">◂</span>Instincts</button>') +
-        (agendaStep < AG_STEPS.length - 1
-          ? '<button class="sk-begin" id="ag-next" type="button">' +
-            "How do we pay for it ▸</button>"
-          : '<button class="sk-begin" id="sess-lock" type="button"' +
-            (n && costs.length ? "" : " disabled") + ">" +
-            /* TWO gates now, and they fail in the order the corridor
-               walks: no tax bill means there is no campaign to run,
-               and no priority means there is nothing the money is FOR.
-               The second message has to name step 1 explicitly — it is
-               the one case where the button you are looking at is
-               blocked by a screen behind you. */
-            (!n ? "Choose at least one tax bill to continue"
-              : !costs.length
-                ? "◂ Choose a priority for the money to fund"
-                : "Hand " + n + " bill" + (n === 1 ? "" : "s") +
-                  " to your introducers ▸") + "</button>") +
-        "</div>";
+        '<button class="ag-back" id="ag-skills" type="button">' +
+        '<span class="agb-ar">◂</span>Instincts</button>' +
+        '<button class="sk-begin" id="sess-lock" type="button">' +
+        "Hand the bill to your introducers ▸</button></div>";
 
-      const keep = body.scrollTop;         // bumps shouldn't jump the page
       body.innerHTML = html;
-      body.scrollTop = keep;
+      body.scrollTop = 0;
       renderTurnBtn();
-      for (const r of body.querySelectorAll(".agc")) {
-        r.addEventListener("pointerdown", (ev) => {
-          ev.stopPropagation();
-          if (r.classList.contains("locked")) return;
-          const id = r.dataset.pol;
-          if (S.agenda.includes(id)) {
-            S.agenda = S.agenda.filter((x) => x !== id);
-          } else {
-            S.agenda.push(id);
-          }
-          save();
-          renderAgendaSelect();
-        });
-      }
-      // the rail is navigable too — a player who wants to revise
-      // priorities after seeing the price shouldn't have to back out
-      // every step change slides, and the direction is which way along
-      // the corridor you are walking — a rail jump backwards must not
-      // animate forwards or the motion lies about where you went
-      const goStep = (i) => {
-        if (i === agendaStep) return;
-        const fwd = i > agendaStep;
-        agendaStep = i;
-        screenSwap(fwd, renderAgendaSelect);
-      };
-      for (const r of body.querySelectorAll(".ag-step")) {
-        r.addEventListener("pointerdown", (ev) => {
-          ev.stopPropagation();
-          goStep(+r.dataset.step);
-        });
-      }
-      const step2 = body.querySelector("#ag-next");
-      if (step2) step2.addEventListener("pointerdown", (ev) => {
-        ev.stopPropagation();
-        goStep(1);
-      });
-      const back = body.querySelector("#ag-back");
-      if (back) back.addEventListener("pointerdown", (ev) => {
-        ev.stopPropagation();
-        goStep(0);
-      });
-      // all the way back out of the package and into the instincts —
-      // renderSelect is called DIRECTLY, not through renderHub, whose
-      // bail would just bounce straight back here once the points are
-      // spent (skillPts is 0 by the time anyone reaches this screen)
+      // all the way back out to the instincts — renderSelect is called
+      // DIRECTLY, not through renderHub, whose bail would bounce straight
+      // back here once the points are spent
       const toSkills = body.querySelector("#ag-skills");
       if (toSkills) toSkills.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
         screenSwap(false, renderSelect);
       });
       const lock = body.querySelector("#sess-lock");
-      if (lock && !lock.disabled) {
+      if (lock) {
         lock.addEventListener("pointerdown", (ev) => {
           ev.stopPropagation();
+          // the agenda IS the bill list — priorities are never on it
+          S.agenda = bills.map((p) => p.id);
           if (!S.agenda.length) return;
           S.agendaLocked = true;
           startBills();
@@ -5434,8 +5316,8 @@ const SessionPanel = {
       const verdict = !enacted
         ? "Nothing the campaign carried became law."
         : !want
-          ? "You raised " + fmtK(got) + "/yr with nothing promised " +
-            "against it — somebody else's argument now."
+          ? "You raised " + fmtK(got) + "/yr in new revenue — money " +
+            "for the investments on the Policies tab."
           : got > want
             ? "You raised what you promised, and " + fmtK(got - want) +
               "/yr more."
@@ -5462,7 +5344,8 @@ const SessionPanel = {
       if (!S.bills.length) return "";
       // the gap bar rides only with the sine die verdict now — mid-season
       // the revenue meter and the Budget tab carry the money
-      let h = '<div class="sh-sec">Your bills</div>';
+      let h = '<div class="sh-sec">Your bill' +
+        (S.bills.length === 1 ? "" : "s") + "</div>";
       for (const b of S.bills) {
         const sid = b.route[b.stage] || b.route[b.route.length - 1];
         const st = stageOf(sid);

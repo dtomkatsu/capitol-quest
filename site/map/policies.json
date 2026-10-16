@@ -39,7 +39,9 @@
    "who": "A one-time, 2-percent tax on net worth above $20 million.",
    "src": "Modeled, not a fiscal note. Estimate pending.",
    "tax": "wealth"
-  },
+  }
+ ],
+ "_retiredRevenue": [
   {
    "id": "conveyance",
    "name": "Modernize the conveyance tax",
