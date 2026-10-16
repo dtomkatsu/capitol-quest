@@ -5086,3 +5086,10 @@ body.in-capitol #chips { display: none; }
   width: auto; padding: 0 6px; white-space: nowrap;
   font-size: 9px; letter-spacing: .04em;
 }
+
+/* the week's intel, folded into a live bill's ledger row (intelLines) */
+.bill-row .bill-intel {
+  display: block;
+  margin-top: 3px;
+  color: var(--txt-2b);
+}

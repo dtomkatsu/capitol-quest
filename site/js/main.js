@@ -1601,7 +1601,7 @@ const sym = (id, cls) => SYM[id]
    player runs the coalition and the argument. Content must never hand
    the player a legislator's powers. Time passes in TURNS — one turn =
    one week of the legislative session. Each week: an intel report
-   (accuracy gated per facet by skills — see intelHtml) and an event
+   (accuracy gated per facet by skills — see intelLines) and an event
    dialogue (the six SKILLS chime in on everything, colored by pole —
    not a left/right trait system). Talk story and actions are NOT a
    weekly allowance — the week's event OPENS them (dialogue-level
@@ -4007,8 +4007,8 @@ const SessionPanel = {
       // because "did my bill move" is the question the player opened with
       html += movesHtml();
 
-      // the week's intel — what the campaign heard, as well as it can hear
-      html += intelHtml();
+      // the week's intel now rides on each bill's ledger row
+      // (intelLines) instead of restating every bill in its own section
 
       // instincts live on their own tab now — the hub only shows the
       // sheet when there is something to actually change (unspent
@@ -4019,14 +4019,20 @@ const SessionPanel = {
           " to spend</small></div>" + sheetHtml();
       }
 
-      html += billLedger(interim);
-      html += introStrip();
+      /* THE HUB IS A TO-DO LIST FIRST (2026-10-15, Devin: "too much info
+         going on"). What you can DO this week leads; the bill ledger —
+         with the intel folded into each row — sits under it as the
+         reference, and the introducer cards and funding bar are gone
+         from the hub (the revenue meter and Budget tab carry the money). */
+      const ledger = billLedger(interim);
 
       // this week's event — the thing that opens every other door.
       // A week carrying a `pre` is not "handled" until BOTH scenes are
       // through, so this asks eventPending rather than eventDone alone.
       const evDone = !eventPending(cal);
-      if (cal.event || cal.pre) {
+      // only while it is still waiting — events auto-play, so a
+      // "handled ✓" row was just one more line to read past
+      if ((cal.event || cal.pre) && !evDone) {
         html += '<div class="sh-sec">This week</div>';
         html += '<div class="sh-row' + (evDone ? " done" : "") +
           '" data-ev="1"><span class="shname"><b>' + sym("event") + " " +
@@ -4047,7 +4053,7 @@ const SessionPanel = {
         // only when the ledger isn't already showing them — billLedger
         // renders its own "Your bills" section the moment bills exist,
         // and both firing printed the heading twice
-        html += gapHtml() + '<div class="sh-sec">Your bills</div>';
+        html += '<div class="sh-sec">Your bills</div>';
         for (const id of S.agenda) {
           const p = allPolicies.find((q) => q.id === id);
           // priorities are the PRICE and live in the gap block above;
@@ -4149,6 +4155,8 @@ const SessionPanel = {
           "doors — no meeting stuck, no moment worth spending. End it " +
           "when you’re ready.</div>";
       }
+
+      html += ledger;
 
       // end of week (at sine die the verdict and "start over" lead the hub)
       if (!interim) {
@@ -5055,25 +5063,22 @@ const SessionPanel = {
         src: "hallway talk — could be wrong" };
     };
 
-    const intelHtml = () => {
+    /* The week's intel for ONE live bill — what the campaign heard about
+       it, as well as it can hear. It used to be its own hub section that
+       restated every bill above the ledger; now billLedger appends it to
+       the bill's own row. The deadline is the ledger's job (it always
+       prints it), so only Procedure's urgent warnings come through. */
+    const intelLines = (b) => {
       if (S.week < 1 || ended()) return "";
-      const live = liveBills();
-      if (!live.length) return "";
       const proc = S.skills[(IN.clock || {}).skill || "procedure"] || 0;
       const fisc = S.skills[(IN.basis || {}).skill || "fiscal"] || 0;
-      // headings are TYPE, the rows carry the icons (2026-09-22): three of
-      // nine headings had one, and sym("event") marked two different things
-      let h = '<div class="sh-sec">' +
-        " The week’s intel</div>";
-      for (const b of live) {
+      {
         const sid = b.route[b.stage];
         const st = stageOf(sid);
         const lines = [];
-        let src = "around the building";
         if (st.gate === "chair") {
           const o = oddsIntel(b, sid);
           lines.push(o.t);
-          src = o.src;
           /* THE HARD GATE IS NEVER A SURPRISE (2026-10-14). chairs.json
              gate.hearingGate zeroes a bill's odds outright under `min`
              influence, and nothing on screen said so — a player two bad
@@ -5112,25 +5117,14 @@ const SessionPanel = {
         }
         if (st.gate !== "conf" && st.deadline != null) {
           const left = st.deadline - S.week;
-          if (proc >= ((IN.clock || {}).warn || 3)) {
-            lines.push(left <= 0 ? "<b>Deadline week. Now or never.</b>"
-              : "Deadline week " + st.deadline + " — " + left +
-                " week" + (left === 1 ? "" : "s") + " out.");
-          } else if (left <= 1) {
-            lines.push(left <= 0
-              ? "<b>Someone mentions today is the deadline.</b>"
-              : "<b>Someone mentions the deadline is next week.</b>");
+          if (left <= 0) {
+            lines.push(proc >= ((IN.clock || {}).warn || 3)
+              ? "<b>Deadline week. Now or never.</b>"
+              : "<b>Someone mentions today is the deadline.</b>");
           }
         }
-        h += '<div class="intel-row"><span class="shname"><b>' +
-          esc(b.name) + "</b><small>" + lines.join(" ") +
-          '</small></span><span class="isrc">' + esc(src) +
-          "</span></div>";
+        return lines.join(" ");
       }
-      h += '<div class="sh-note">What you hear is only as good ' +
-        "as your skills: Talk Story prices the chairs, Procedure reads " +
-        "the clock, Policy Brain knows the measured numbers.</div>";
-      return h;
     };
 
     /* the live number is insider knowledge — the ledger prices it only
@@ -5164,38 +5158,6 @@ const SessionPanel = {
         ? Math.round(v) : esc(bandOf(v / 100).short || "?");
       return " · " + sym("support") + fmt(bSup(b)) +
         " " + sym("influence") + fmt(bInf(b));
-    };
-
-    /* the two members carrying the package — shown once bills exist,
-       because that is when "who is on point" starts deciding odds */
-    const introStrip = () => {
-      const ks = introKeys();
-      if (!ks.length || !S.bills.length) return "";
-      const live = liveBills();
-      const onPoint = {};
-      for (const b of live) {
-        const w = carrierFor(b.route[b.stage]);
-        if (w) onPoint[w] = (onPoint[w] || 0) + 1;
-      }
-      let h = '<div class="sh-sec">Your introducers</div>' +
-        '<div class="intro-strip">';
-      for (const k of ks) {
-        const i = INTROS[k];
-        const r = introRap(k);
-        const n = onPoint[k] || 0;
-        h += '<div class="introc' + (n ? " active" : "") + '"' +
-          (i.voice ? ' tabindex="0" data-tip="' + escA(i.voice) + '"' : "") +
-          ">" +
-          '<div class="ic-top"><b>' + esc(i.name) + "</b><span>" +
-          esc(i.role || "") + "</span></div>" +
-          '<div class="ic-bar"><i style="width:' + r + '%"></i></div>' +
-          '<div class="ic-foot"><span>Rapport <b>' + r + "</b></span>" +
-          (n ? '<span class="ic-on">carrying ' + n + "</span>" :
-            '<span class="ic-off">' +
-              (ended() ? "adjourned" : "waiting") +
-              "</span>") + "</div></div>";
-      }
-      return h + "</div>";
     };
 
     /* ---- the post-mortem: WHY a bill died, in the building's own
@@ -5498,8 +5460,9 @@ const SessionPanel = {
 
     const billLedger = (reveal) => {
       if (!S.bills.length) return "";
-      // at sine die (reveal) the gap bar rides with the verdict instead
-      let h = (reveal ? "" : gapHtml()) + '<div class="sh-sec">Your bills</div>';
+      // the gap bar rides only with the sine die verdict now — mid-season
+      // the revenue meter and the Budget tab carry the money
+      let h = '<div class="sh-sec">Your bills</div>';
       for (const b of S.bills) {
         const sid = b.route[b.stage] || b.route[b.route.length - 1];
         const st = stageOf(sid);
@@ -5528,17 +5491,15 @@ const SessionPanel = {
           }
         } else {
           const dlLeft = st.deadline != null ? st.deadline - S.week : null;
-          const car = carrierFor(sid);
-          line = st.label + " · <b class=\"dl" +
+          const intel = intelLines(b);
+          line = st.label + (st.deadline != null ? " · <b class=\"dl" +
             (dlLeft != null && dlLeft <= 1 ? " dl-soon" : "") +
-            "\">deadline week " + st.deadline + "</b>" +
-            // both names get a role word: "carried by X · Y" read as
-            // two anonymous people standing next to each other
-            (car ? " · carried by " + esc(introName(car)) : "") +
+            "\">deadline week " + st.deadline + "</b>" : "") +
             (ch ? " · chair " + esc(ch.name) : "") +
             (b.amtScale < 1 ? " · already cut to " +
               Math.round(b.amtScale * 100) + "%" : "") +
-            meterNote(b);
+            meterNote(b) +
+            (intel ? '<span class="bill-intel">' + intel + "</span>" : "");
         }
         // the measured rate is PUBLIC DATA and must reach every player —
         // a tip, which a tap opens, not a title, which touch never shows
