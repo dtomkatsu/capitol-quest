@@ -1,7 +1,7 @@
 # talk-coalition
 
 ## A · start
-The coalition count on the wall: 61 orgs on the meals bill, 40 on the credit, 'it's complicated' scrawled next to anything with the word conveyance in it. One big turnout moment fits in a month — whoever asks early gets it.
+The coalition count on the wall: 52 orgs signed on to the wealth tax, and a list underneath of everything that money could pay for — school meals, the keiki credit, rooftop solar for renters. One big turnout moment fits in a month — whoever asks early gets it.
 
 - **Mobilizing:** This is your actual caucus. The one that shows up in matching shirts.
 - **Base Building:** Sixty-one organizations, one shared printer. Respect the logistics or lose the coalition to burnout.

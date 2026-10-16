@@ -1241,8 +1241,10 @@ const PolicyPanel = {
       [...data.priorities, ...data.revenue].map((p) => p.id));
     let enacted;
     try {
-      enacted = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")
-        .filter((id) => known.has(id)));
+      // the tab is read-only now, so old saved picks must not keep
+      // moving the budget chip
+      enacted = new Set();
+      void known;
     } catch (e) { enacted = new Set(); }
     const save = () => {
       try { localStorage.setItem(KEY, JSON.stringify([...enacted])); }
@@ -1279,8 +1281,7 @@ const PolicyPanel = {
             (delta < 0 ? "a " + fmtK(-delta / 1e3) + " hole to fill." :
              delta > 0 ? fmtK(delta / 1e3) + " left over." :
              "exactly balanced.")
-          : "\nOpen Policies to invest in priorities — and to raise " +
-            "the revenue that pays for them.");
+          : "\nOpen Policies to see your bill and what it could fund.");
     };
     this._updateChip = updateChip;
 
@@ -1288,12 +1289,11 @@ const PolicyPanel = {
       const spent = sum(data.priorities);
       const raised = sum(data.revenue);
       $("prio-hero").innerHTML =
-        "<b>" + fmtK(spent) + "/yr</b> invested in what comes next" +
-        "<small>Tap Enact to fund a priority. Spending lands on the " +
-        "budget scoreboard (bottom right) — cover it from the Raise " +
-        "revenue tab.</small>";
+        "<b>What the wealth tax could fund</b>" +
+        "<small>For information — investments new revenue could pay " +
+        "for. Your bill is what you carry; these are what it buys.</small>";
       $("rpol-hero").innerHTML =
-        "<b>+" + fmtK(raised) + "/yr</b> in new revenue" +
+        "<b>Your bill</b>" +
         "<small>Every option is a real proposal with a real trade-off — " +
         "who pays is as important as how much.</small>";
     };
@@ -1317,7 +1317,12 @@ const PolicyPanel = {
           "</span>" +
           '<span class="ptag ' + kind + '">' +
           (kind === "cost" ? "−" : "+") + fmtK(p.amt) + "/yr</span>" +
-          '<button class="pgo" type="button"></button>';
+          "";
+        // INFORMATION ONLY (2026-10-16): the session's one bill is the
+        // wealth tax, carried through the gauntlet — nothing is enacted
+        // from this tab, so the rows carry no Enact button
+        rowsEl.appendChild(row);
+        continue;
         const btn = row.querySelector(".pgo");
         const paint = () => {
           const on = enacted.has(p.id);
@@ -5872,7 +5877,7 @@ class BootScene extends Phaser.Scene {
     // hand-maintained: the pre-commit cache-bump hook only rewrites ?v=
     // refs inside HTML, so a JSON loaded from JS needs bumping BY HAND
     // whenever its content changes (v6 = skillStart.ranks)
-    this.load.json("session", "map/session.json?v=87");
+    this.load.json("session", "map/session.json?v=88");
     this.load.json("chairs", "map/chairs.json?v=5");
     this.load.json("rates", "map/hearing_rates.json?v=1");
   }
